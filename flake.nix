@@ -35,7 +35,7 @@
             # https://github.com/spf13/cobra
             cobra-cli
 
-            # https://github.com/golang/mock
+            # https://github.com/uber-go/mock
             mockgen
 
             # nix formatter
