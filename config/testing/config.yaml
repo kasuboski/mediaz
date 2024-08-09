@@ -1,0 +1,4 @@
+tmdb:
+  host: my-host
+  scheme: https
+  apiKey: my-api-key
