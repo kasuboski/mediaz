@@ -11,8 +11,8 @@ jobs:
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@v4
 
-      - name: Build binary
-        run: nix develop --command go build .
-
       - name: Run unit tests
         run: nix develop --command go test -v -cover ./...
+
+      - name: Build binary
+        run: nix develop --command go build .
