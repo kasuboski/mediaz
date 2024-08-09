@@ -6,7 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/kasuboski/mediaz/pkg/client"
+	client "github.com/kasuboski/mediaz/pkg/tmdb"
 )
 
 func TestClient_CanCall(t *testing.T) {
