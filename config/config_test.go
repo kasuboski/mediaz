@@ -16,6 +16,7 @@ func TestNew(t *testing.T) {
 		cu := mocks.NewMockConfigUnmarshaler(ctrl)
 
 		wantErr := errors.New("expected testing error")
+		cu.EXPECT().ConfigFileUsed().Times(1).Return("fake-config.yaml")
 		cu.EXPECT().ReadInConfig().Times(1).Return(wantErr)
 		c, err := New(cu)
 		if err == nil {
