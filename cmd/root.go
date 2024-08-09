@@ -32,7 +32,7 @@ func Execute() {
 
 func init() {
 	cobra.OnInitialize(initConfig)
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is ./mediaz.yaml)")
+	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file")
 	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
 
@@ -40,12 +40,13 @@ func init() {
 func initConfig() {
 	if cfgFile != "" {
 		viper.SetConfigFile(cfgFile)
-	} else {
-		viper.SetConfigName("mediaz")
-		viper.SetConfigType("yaml")
 	}
 
 	viper.SetEnvPrefix("MEDIAZ")
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_", "-", ""))
 	viper.AutomaticEnv()
+
+	viper.SetDefault("tmdb.scheme", "https")
+	viper.SetDefault("tmdb.host", "api.themoviedb.org")
+	viper.SetDefault("tmdb.apikey", "")
 }

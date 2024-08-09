@@ -17,17 +17,20 @@ type TMDB struct {
 type ConfigUnmarshaler interface {
 	ReadInConfig() error
 	Unmarshal(any, ...viper.DecoderConfigOption) error
+	ConfigFileUsed() string
 }
 
 // New reads a new configuration
 func New(cu ConfigUnmarshaler) (Config, error) {
 	var c Config
 
-	err := cu.ReadInConfig()
-	if err != nil {
-		return c, err
+	if cu.ConfigFileUsed() != "" {
+		err := cu.ReadInConfig()
+		if err != nil {
+			return c, err
+		}
 	}
 
-	err = cu.Unmarshal(&c)
+	err := cu.Unmarshal(&c)
 	return c, err
 }

@@ -1,4 +1,0 @@
-tmdb:
-  host: api.themoviedb.org
-  scheme: https
-  apiKey: # read from environment variable

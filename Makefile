@@ -8,5 +8,8 @@ tmdb.schema.json:
 nix-format:
 	nixpkgs-fmt flake.nix
 
+test:
+	go test -v -cover ./...
+
 clean:
 	rm tmdb.schema.json
