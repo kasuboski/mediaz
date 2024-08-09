@@ -1,1 +1,3 @@
 # mediaz
+
+## Environment Variables
