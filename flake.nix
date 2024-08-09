@@ -38,7 +38,7 @@
             # https://github.com/golang/mock
             mockgen
 
-            # nix formatter  
+            # nix formatter
             nixpkgs-fmt
           ];
 
