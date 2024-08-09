@@ -18,8 +18,8 @@ var (
 	movieQuery string
 )
 
-// movieCmd represents the movie command
-var movieCmd = &cobra.Command{
+// searchMovieCmd represents the movie command
+var searchMovieCmd = &cobra.Command{
 	Use:   "movie",
 	Short: "search for a movie",
 	Long:  `search for a movie`,
@@ -60,8 +60,8 @@ var movieCmd = &cobra.Command{
 }
 
 func init() {
-	movieCmd.Flags().StringVarP(&movieQuery, "query", "q", "", "a query for movies")
-	_ = movieCmd.MarkFlagRequired("query")
+	searchMovieCmd.Flags().StringVarP(&movieQuery, "query", "q", "", "a query for movies")
+	_ = searchMovieCmd.MarkFlagRequired("query")
 
-	searchCmd.AddCommand(movieCmd)
+	searchCmd.AddCommand(searchMovieCmd)
 }
