@@ -31,7 +31,20 @@
 
             # https://github.com/golangci/golangci-lint
             golangci-lint
+
+            # https://github.com/spf13/cobra
+            cobra-cli
+
+            # https://github.com/uber-go/mock
+            mockgen
+
+            # nix formatter
+            nixpkgs-fmt
           ];
+
+          shellHook = ''
+            alias cobra="cobra-cli"
+          '';
         };
       });
     };
