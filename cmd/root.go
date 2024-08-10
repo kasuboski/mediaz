@@ -49,4 +49,8 @@ func initConfig() {
 	viper.SetDefault("tmdb.scheme", "https")
 	viper.SetDefault("tmdb.host", "api.themoviedb.org")
 	viper.SetDefault("tmdb.apikey", "")
+
+	viper.SetDefault("prowlarr.scheme", "http")
+	viper.SetDefault("prowlarr.host", "")
+	viper.SetDefault("prowlarr.apikey", "")
 }

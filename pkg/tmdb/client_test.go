@@ -1,12 +1,10 @@
-package client_test
+package tmdb
 
 import (
 	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
-
-	client "github.com/kasuboski/mediaz/pkg/tmdb"
 )
 
 func TestClient_CanCall(t *testing.T) {
@@ -16,7 +14,7 @@ func TestClient_CanCall(t *testing.T) {
 	defer server.Close()
 	hc := server.Client()
 
-	c, err := client.NewClientWithResponses(server.URL, client.WithHTTPClient(hc))
+	c, err := NewClientWithResponses(server.URL, WithHTTPClient(hc))
 	if err != nil {
 		t.Fatalf("couldn't create client: %v", err)
 	}

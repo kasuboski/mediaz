@@ -8,7 +8,7 @@ import (
 	"net/url"
 
 	"github.com/kasuboski/mediaz/config"
-	"github.com/kasuboski/mediaz/pkg/client"
+	"github.com/kasuboski/mediaz/pkg/tmdb"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -34,13 +34,13 @@ var searchMovieCmd = &cobra.Command{
 			Host:   cfg.TMDB.Host,
 		}
 
-		c, err := client.NewClient(u.String())
+		c, err := tmdb.NewClient(u.String())
 		if err != nil {
 			log.Fatalf("failed to create tmdb client: %v", err)
 		}
 
 		ctx := context.TODO()
-		r, err := c.SearchMovie(ctx, &client.SearchMovieParams{
+		r, err := c.SearchMovie(ctx, &tmdb.SearchMovieParams{
 			Query: movieQuery,
 		}, func(ctx context.Context, req *http.Request) error {
 			req.Header.Add("Authorization", "Bearer "+cfg.TMDB.APIKey)

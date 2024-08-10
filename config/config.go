@@ -5,10 +5,17 @@ import (
 )
 
 type Config struct {
-	TMDB TMDB `json:"tmdb" yaml:"tmdb" mapstructure:"tmdb"`
+	TMDB     TMDB     `json:"tmdb" yaml:"tmdb" mapstructure:"tmdb"`
+	Prowlarr Prowlarr `json:"prowlarr" yaml:"prowlarr" mapstructure:"prowlarr"`
 }
 
 type TMDB struct {
+	Scheme string `json:"scheme" yaml:"scheme" mapstructure:"scheme"`
+	Host   string `json:"host" yaml:"host" mapstructure:"host"`
+	APIKey string `json:"apiKey" yaml:"apiKey" mapstructure:"apiKey"`
+}
+
+type Prowlarr struct {
 	Scheme string `json:"scheme" yaml:"scheme" mapstructure:"scheme"`
 	Host   string `json:"host" yaml:"host" mapstructure:"host"`
 	APIKey string `json:"apiKey" yaml:"apiKey" mapstructure:"apiKey"`
