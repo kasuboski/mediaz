@@ -18,7 +18,6 @@ import (
 
 var (
 	movieQuery string
-	path       string
 )
 
 // searchMovieCmd represents the movie command

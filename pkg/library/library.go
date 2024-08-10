@@ -66,9 +66,9 @@ func (l *Library) FindMovies() ([]string, error) {
 	return movies, nil
 }
 
-func (l *Library) FindEpisodes() []string {
+func (l *Library) FindEpisodes() ([]string, error) {
 	episodes := []string{}
-	fs.WalkDir(l.tv, ".", func(path string, d fs.DirEntry, err error) error {
+	err := fs.WalkDir(l.tv, ".", func(path string, d fs.DirEntry, err error) error {
 		// log.Printf("episode walk: %s", path)
 		if err != nil {
 			// just skip this dir for now if there's an issue
@@ -97,7 +97,11 @@ func (l *Library) FindEpisodes() []string {
 		return nil
 	})
 
-	return episodes
+	if err != nil {
+		return nil, err
+	}
+
+	return episodes, nil
 }
 
 func levelsOfNesting(path string) int {

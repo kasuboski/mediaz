@@ -76,7 +76,10 @@ func TestFindEpisodes(t *testing.T) {
 	fs["myfile.txt"] = &fstest.MapFile{}
 
 	l := New(nil, fs)
-	episodes := l.FindEpisodes()
+	episodes, err := l.FindEpisodes()
+	if err != nil {
+		t.Fatal(err)
+	}
 	if !slices.Equal(expected, episodes) {
 		t.Fatalf("wanted %v; got %v", expected, episodes)
 	}
