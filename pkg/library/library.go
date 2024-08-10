@@ -4,11 +4,13 @@ import (
 	"io/fs"
 	"log"
 	"regexp"
+	"strings"
 )
 
 const (
-	moviePattern = "((\\w|\\s)+)(\\(\\d+\\))?\\s*({tmdb-\\w+})*\\.*\\w*"
-	showPattern  = "((\\w|\\s)+)(\\(\\d+\\))?\\s*([sS]\\d{1,2}[eE]\\d{1,2})\\s*({tmdb-\\w+})*\\.*\\w*"
+	// moviePattern = "((\\w|\\s)+)(\\(\\d+\\))?\\s*({tmdb-\\w+})*\\.*\\w*"
+	moviePattern = `^((\w|\s|')+)(\(\d+\))?\s*({tmdb-\w+})?\.?\w*$`
+	showPattern  = `^(\w|\s|')+(\((\w|\s)+\))*\s*(\(\d+\))*\s*({tmdb-\d+})?-?\s*([sS]\d{1,2}[eE]\d{1,2})?\s*-?\s*(\w|\s|'|-)*\s*(\(\d+\))?\.?\w*$`
 )
 
 var (
@@ -37,17 +39,17 @@ func (l *Library) FindMovies() ([]string, error) {
 			return fs.SkipDir
 		}
 
-		match := movieRegex.MatchString(d.Name())
-		// This probaby doesn't take into account we only want one level of nesting
+		match := matchMovie(d.Name())
+		nesting := levelsOfNesting(path)
 		if d.IsDir() {
-			if !match && d.Name() != "." {
+			if nesting > 0 || (!match && d.Name() != ".") {
 				log.Printf("skipping dir: %s", d.Name())
 				return fs.SkipDir
 			}
 			return nil
 		}
 
-		if !match {
+		if !match || nesting == 0 {
 			return nil
 		}
 
@@ -72,16 +74,20 @@ func (l *Library) FindEpisodes() []string {
 			return fs.SkipDir
 		}
 
-		match := showRegex.MatchString(d.Name())
+		match := matchEpisode(d.Name())
+		nesting := levelsOfNesting(path)
 		if d.IsDir() {
-			if !match && d.Name() != "." {
+			if strings.Contains(d.Name(), "Season ") {
+				return nil
+			}
+			if nesting > 2 || (!match && d.Name() != ".") {
 				log.Printf("skipping dir: %s", d.Name())
 				return fs.SkipDir
 			}
 			return nil
 		}
 
-		if !match {
+		if !match || nesting == 0 {
 			return nil
 		}
 
@@ -91,4 +97,16 @@ func (l *Library) FindEpisodes() []string {
 	})
 
 	return episodes
+}
+
+func levelsOfNesting(path string) int {
+	return strings.Count(path, "/")
+}
+
+func matchMovie(name string) bool {
+	return movieRegex.MatchString(name)
+}
+
+func matchEpisode(name string) bool {
+	return showRegex.MatchString(name)
 }
