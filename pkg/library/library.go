@@ -2,20 +2,21 @@ package library
 
 import (
 	"io/fs"
-	"log"
+	"path/filepath"
 	"regexp"
 	"strings"
 )
 
 const (
 	// moviePattern = "((\\w|\\s)+)(\\(\\d+\\))?\\s*({tmdb-\\w+})*\\.*\\w*"
-	moviePattern = `^((\w|\s|')+)(\(\d+\))?\s*({tmdb-\w+})?\.?\w*$`
+	moviePattern = `^((\w|\s|')+)(\(\d+\))?\s*({tmdb-\w+})?(\w|\s|'|-)*\.?\w*$`
 	showPattern  = `^(\w|\s|')+(\((\w|\s)+\))*\s*(\(\d+\))*\s*({tmdb-\d+})?-?\s*([sS]\d{1,2}[eE]\d{1,2})?\s*-?\s*(\w|\s|'|-)*\s*(\(\d+\))?\.?\w*$`
 )
 
 var (
-	movieRegex = regexp.MustCompile(moviePattern)
-	showRegex  = regexp.MustCompile(showPattern)
+	movieRegex      = regexp.MustCompile(moviePattern)
+	showRegex       = regexp.MustCompile(showPattern)
+	videoExtensions = []string{".mp4", ".avi", ".mkv", ".m4v"}
 )
 
 type Library struct {
@@ -33,7 +34,7 @@ func New(movies fs.FS, tv fs.FS) Library {
 func (l *Library) FindMovies() ([]string, error) {
 	movies := []string{}
 	err := fs.WalkDir(l.movies, ".", func(path string, d fs.DirEntry, err error) error {
-		log.Printf("movie walk: %s", path)
+		// log.Printf("movie walk: %s", path)
 		if err != nil {
 			// just skip this dir for now if there's an issue
 			return fs.SkipDir
@@ -43,13 +44,13 @@ func (l *Library) FindMovies() ([]string, error) {
 		nesting := levelsOfNesting(path)
 		if d.IsDir() {
 			if nesting > 0 || (!match && d.Name() != ".") {
-				log.Printf("skipping dir: %s", d.Name())
+				// log.Printf("skipping dir: %s", d.Name())
 				return fs.SkipDir
 			}
 			return nil
 		}
 
-		if !match || nesting == 0 {
+		if !match || nesting == 0 || !isVideoFile(path) {
 			return nil
 		}
 
@@ -68,7 +69,7 @@ func (l *Library) FindMovies() ([]string, error) {
 func (l *Library) FindEpisodes() []string {
 	episodes := []string{}
 	fs.WalkDir(l.tv, ".", func(path string, d fs.DirEntry, err error) error {
-		log.Printf("episode walk: %s", path)
+		// log.Printf("episode walk: %s", path)
 		if err != nil {
 			// just skip this dir for now if there's an issue
 			return fs.SkipDir
@@ -81,13 +82,13 @@ func (l *Library) FindEpisodes() []string {
 				return nil
 			}
 			if nesting > 2 || (!match && d.Name() != ".") {
-				log.Printf("skipping dir: %s", d.Name())
+				// log.Printf("skipping dir: %s", d.Name())
 				return fs.SkipDir
 			}
 			return nil
 		}
 
-		if !match || nesting == 0 {
+		if !match || nesting == 0 || !isVideoFile(path) {
 			return nil
 		}
 
@@ -104,9 +105,24 @@ func levelsOfNesting(path string) int {
 }
 
 func matchMovie(name string) bool {
-	return movieRegex.MatchString(name)
+	return movieRegex.MatchString(sanitizeName(name))
 }
 
 func matchEpisode(name string) bool {
-	return showRegex.MatchString(name)
+	return showRegex.MatchString(sanitizeName(name))
+}
+
+func isVideoFile(name string) bool {
+	ext := filepath.Ext(name)
+	for _, e := range videoExtensions {
+		if strings.ToLower(ext) == e {
+			return true
+		}
+	}
+
+	return false
+}
+
+func sanitizeName(name string) string {
+	return strings.Trim(strings.TrimSpace(name), "'")
 }
