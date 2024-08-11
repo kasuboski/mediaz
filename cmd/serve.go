@@ -5,9 +5,9 @@ import (
 	"os"
 
 	"github.com/kasuboski/mediaz/config"
-	tmdb "github.com/kasuboski/mediaz/pkg/client"
 	"github.com/kasuboski/mediaz/pkg/library"
 	"github.com/kasuboski/mediaz/pkg/logger"
+	"github.com/kasuboski/mediaz/pkg/tmdb"
 	"github.com/kasuboski/mediaz/server"
 
 	"github.com/spf13/cobra"

@@ -43,6 +43,11 @@ func TestNew(t *testing.T) {
 				Host:   "my-host",
 				APIKey: "my-api-key",
 			},
+			Prowlarr: Prowlarr{
+				Scheme: "https",
+				Host:   "my-prowlarr-host",
+				APIKey: "my-prowlarr-api-key",
+			},
 		}
 
 		if !reflect.DeepEqual(c, wantConfig) {
@@ -54,6 +59,7 @@ func TestNew(t *testing.T) {
 		cu := viper.New()
 		cu.SetConfigFile("")
 		cu.SetDefault("tmdb.scheme", "https")
+		cu.SetDefault("prowlarr.scheme", "http")
 		c, err := New(cu)
 		if err != nil {
 			t.Errorf("TestNew() err = %v, want %v", err, nil)
@@ -62,6 +68,9 @@ func TestNew(t *testing.T) {
 		wantConfig := Config{
 			TMDB: TMDB{
 				Scheme: "https",
+			},
+			Prowlarr: Prowlarr{
+				Scheme: "http",
 			},
 		}
 

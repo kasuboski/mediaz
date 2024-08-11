@@ -52,6 +52,10 @@ func initConfig() {
 
 	viper.SetDefault("server.port", 8080)
 
+	viper.SetDefault("prowlarr.scheme", "http")
+	viper.SetDefault("prowlarr.host", "")
+	viper.SetDefault("prowlarr.apikey", "")
+
 	viper.SetDefault("library.tv", "")
 	viper.SetDefault("library.movie", "")
 }

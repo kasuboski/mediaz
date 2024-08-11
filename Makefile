@@ -1,4 +1,4 @@
-generate: tmdb.schema.json
+generate: tmdb.schema.json prowlarr.schema.json
 	go generate ./...
 
 tmdb.schema.json:
@@ -7,3 +7,4 @@ tmdb.schema.json:
 
 clean:
 	rm tmdb.schema.json
+	rm prowlarr.schema.json

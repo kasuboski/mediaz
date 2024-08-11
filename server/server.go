@@ -9,9 +9,9 @@ import (
 	"os/signal"
 	"time"
 
-	tmdb "github.com/kasuboski/mediaz/pkg/client"
 	"github.com/kasuboski/mediaz/pkg/library"
 	"github.com/kasuboski/mediaz/pkg/logger"
+	"github.com/kasuboski/mediaz/pkg/tmdb"
 	"go.uber.org/zap"
 
 	"github.com/gorilla/handlers"
@@ -81,9 +81,6 @@ func (s Server) Serve(port int) error {
 // Healthz is an endpoint that can be used for probes
 func (s Server) Healthz() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		log := logger.FromCtx(r.Context())
-		log.Info("health check")
-
 		response := GenericResponse{
 			Response: "ok",
 		}
@@ -121,7 +118,7 @@ func (s Server) ListMovies() http.HandlerFunc {
 			return
 		}
 
-		log.Info("returning movies ", zap.Any("list", movies))
+		log.Info("returning movies", zap.Any("list", movies))
 		w.Header().Set("content-type", "application/json")
 		_, _ = w.Write(b)
 	}
@@ -149,7 +146,7 @@ func (s Server) ListTVShows() http.HandlerFunc {
 			return
 		}
 
-		log.Info("returning tv shows ", zap.Any("list", episodes))
+		log.Info("returning tv shows", zap.Any("list", episodes))
 		w.Header().Set("content-type", "application/json")
 		_, _ = w.Write(b)
 	}

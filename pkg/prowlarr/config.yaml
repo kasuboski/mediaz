@@ -1,0 +1,9 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/deepmap/oapi-codegen/HEAD/configuration-schema.json
+package: prowlarr
+output: client.gen.go
+generate:
+  models: true
+  client: true
+output-options:
+  nullable-type: true
+  name-normalizer: ToCamelCaseWithInitialisms
