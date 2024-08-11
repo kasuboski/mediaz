@@ -54,8 +54,15 @@ var searchMovieCmd = &cobra.Command{
 		if err != nil {
 			log.Fatalf("failed to read movie query response body: %v", err)
 		}
+		
+		resp, err := client.ParseSearchMovieResponse(r)
+		if err != nil {
+			log.Fatal("failed to parse respons")
+		}
 
-		log.Println(string(b))
+		if resp.JSON200 != nil {
+			
+		}
 	},
 }
 
