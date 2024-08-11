@@ -2,16 +2,15 @@ package cmd
 
 import (
 	"context"
-	"io"
 	"log"
 	"net/http"
 	"net/url"
 	"os"
 
 	"github.com/kasuboski/mediaz/config"
-	"github.com/kasuboski/mediaz/pkg/client"
 	"github.com/kasuboski/mediaz/pkg/library"
 	"github.com/kasuboski/mediaz/pkg/logger"
+	"github.com/kasuboski/mediaz/pkg/tmdb"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -37,13 +36,13 @@ var searchMovieCmd = &cobra.Command{
 			Host:   cfg.TMDB.Host,
 		}
 
-		c, err := client.NewClient(u.String())
+		c, err := tmdb.NewClient(u.String())
 		if err != nil {
 			log.Fatalf("failed to create tmdb client: %v", err)
 		}
 
 		ctx := context.TODO()
-		r, err := c.SearchMovie(ctx, &client.SearchMovieParams{
+		r, err := c.SearchMovie(ctx, &tmdb.SearchMovieParams{
 			Query: movieQuery,
 		}, func(ctx context.Context, req *http.Request) error {
 			req.Header.Add("Authorization", "Bearer "+cfg.TMDB.APIKey)
@@ -53,12 +52,18 @@ var searchMovieCmd = &cobra.Command{
 			log.Fatalf("failed to query movie: %v", err)
 		}
 
-		b, err := io.ReadAll(r.Body)
+		resp, err := tmdb.ParseSearchMovieResponse(r)
 		if err != nil {
-			log.Fatalf("failed to read movie query response body: %v", err)
+			log.Fatalf("failed to parse movie response: %v", err)
 		}
 
-		log.Println(string(b))
+		if resp.JSON200 == nil || resp.JSON200.Results == nil {
+			log.Fatal("no results found")
+		}
+
+		for _, r := range *resp.JSON200.Results {
+			log.Println(*r.Title)
+		}
 	},
 }
 

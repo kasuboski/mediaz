@@ -2,3 +2,7 @@ tmdb:
   host: my-host
   scheme: https
   apiKey: my-api-key
+prowlarr:
+  host: my-prowlarr-host
+  scheme: https
+  apiKey: my-prowlarr-api-key
