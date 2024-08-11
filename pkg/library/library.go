@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	moviePattern = `^((\w|\s|')+)(\(\d+\))?\s*({tmdb-\w+})?(\w|\s|'|-)*\.?\w*$`
+	moviePattern = `^((\w|\s|')+)(\(\d+\))?\s*({tmdb-\w+})?([[:print:]])*\.?\w*$`
 	showPattern  = `^(\w|\s|')+(\((\w|\s)+\))*\s*(\(\d+\))*\s*({tmdb-\d+})?-?\s*([sS]\d{1,2}[eE]\d{1,2})?\s*-?\s*(\w|\s|'|-)*\s*(\(\d+\))?\.?\w*$`
 )
 

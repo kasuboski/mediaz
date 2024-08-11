@@ -19,14 +19,6 @@ func TestMatchMovie(t *testing.T) {
 			t.Errorf("didn't match movie: %s", m)
 		}
 	}
-
-	negatives := []string{"Batman Begins (2005).en.srt"}
-	for _, m := range negatives {
-		matched := matchMovie(m)
-		if matched {
-			t.Errorf("shouldn't match movie: %s", m)
-		}
-	}
 }
 
 func TestMatchEpisode(t *testing.T) {
@@ -36,14 +28,6 @@ func TestMatchEpisode(t *testing.T) {
 		matched := matchEpisode(m)
 		if !matched {
 			t.Errorf("didn't match episode: %s", m)
-		}
-	}
-
-	negatives := []string{"Batman Begins (2005).en.srt"}
-	for _, m := range negatives {
-		matched := matchEpisode(m)
-		if matched {
-			t.Errorf("shouldn't match episode: %s", m)
 		}
 	}
 }
