@@ -1,10 +1,11 @@
 package cmd
 
 import (
-	"log"
+	"context"
 	"os"
 
 	"github.com/kasuboski/mediaz/pkg/library"
+	"github.com/kasuboski/mediaz/pkg/logger"
 	"github.com/spf13/cobra"
 )
 
@@ -16,20 +17,22 @@ var listTVCmd = &cobra.Command{
 	Args:       cobra.ExactArgs(1),
 	ArgAliases: []string{"path to TV library"},
 	Run: func(cmd *cobra.Command, args []string) {
-		// cfg, err := config.New(viper.GetViper())
-		// if err != nil {
-		// 	log.Fatalf("failed to read configurations: %v", err)
-		// }
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		log := logger.Get()
+		ctx = logger.WithCtx(ctx, log)
+
 		path := args[0]
 		tvFS := os.DirFS(path)
 		lib := library.New(nil, tvFS)
-		episodes, err := lib.FindEpisodes()
+		episodes, err := lib.FindEpisodes(ctx)
 		if err != nil {
 			log.Fatal(err)
 		}
 
 		for _, m := range episodes {
-			log.Println(m)
+			log.Info(m)
 		}
 	},
 }

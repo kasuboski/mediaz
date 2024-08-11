@@ -11,6 +11,7 @@ import (
 	"github.com/kasuboski/mediaz/config"
 	"github.com/kasuboski/mediaz/pkg/client"
 	"github.com/kasuboski/mediaz/pkg/library"
+	"github.com/kasuboski/mediaz/pkg/logger"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -69,20 +70,22 @@ var listMovieCmd = &cobra.Command{
 	Args:       cobra.ExactArgs(1),
 	ArgAliases: []string{"path to movies"},
 	Run: func(cmd *cobra.Command, args []string) {
-		// cfg, err := config.New(viper.GetViper())
-		// if err != nil {
-		// 	log.Fatalf("failed to read configurations: %v", err)
-		// }
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		log := logger.Get()
+		ctx = logger.WithCtx(ctx, log)
+
 		path := args[0]
 		movieFS := os.DirFS(path)
 		lib := library.New(movieFS, nil)
-		movies, err := lib.FindMovies()
+		movies, err := lib.FindMovies(ctx)
 		if err != nil {
 			log.Fatal(err)
 		}
 
 		for _, m := range movies {
-			log.Println(m)
+			log.Info(m)
 		}
 	},
 }

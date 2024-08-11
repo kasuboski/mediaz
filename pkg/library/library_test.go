@@ -2,6 +2,7 @@ package library
 
 import (
 	"bufio"
+	"context"
 	"os"
 	"path/filepath"
 	"slices"
@@ -48,7 +49,7 @@ func TestMatchEpisode(t *testing.T) {
 }
 
 func TestFindMovies(t *testing.T) {
-	// t.Skip()
+	ctx := context.Background()
 	negatives := fstest.MapFS{
 		"myfile.txt": {},
 		"Batman Begins (2005)/Batman Begins (2005).en.srt": {},
@@ -60,7 +61,7 @@ func TestFindMovies(t *testing.T) {
 	}
 
 	l := New(fs, nil)
-	movies, err := l.FindMovies()
+	movies, err := l.FindMovies(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -71,12 +72,12 @@ func TestFindMovies(t *testing.T) {
 }
 
 func TestFindEpisodes(t *testing.T) {
-	// t.Skip()
+	ctx := context.Background()
 	fs, expected := fsFromFile(t, "./test_episodes.txt")
 	fs["myfile.txt"] = &fstest.MapFile{}
 
 	l := New(nil, fs)
-	episodes, err := l.FindEpisodes()
+	episodes, err := l.FindEpisodes(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}

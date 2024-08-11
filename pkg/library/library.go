@@ -1,10 +1,13 @@
 package library
 
 import (
+	"context"
 	"io/fs"
 	"path/filepath"
 	"regexp"
 	"strings"
+
+	"github.com/kasuboski/mediaz/pkg/logger"
 )
 
 const (
@@ -30,10 +33,12 @@ func New(movies fs.FS, tv fs.FS) Library {
 	}
 }
 
-func (l *Library) FindMovies() ([]string, error) {
+func (l *Library) FindMovies(ctx context.Context) ([]string, error) {
+	log := logger.FromCtx(ctx)
+
 	movies := []string{}
 	err := fs.WalkDir(l.movies, ".", func(path string, d fs.DirEntry, err error) error {
-		// log.Printf("movie walk: %s", path)
+		log.Debugw("movie walk", "path", path)
 		if err != nil {
 			// just skip this dir for now if there's an issue
 			return fs.SkipDir
@@ -43,7 +48,7 @@ func (l *Library) FindMovies() ([]string, error) {
 		nesting := levelsOfNesting(path)
 		if d.IsDir() {
 			if nesting > 0 || (!match && d.Name() != ".") {
-				// log.Printf("skipping dir: %s", d.Name())
+				log.Debugw("skipping", "dir", d.Name())
 				return fs.SkipDir
 			}
 			return nil
@@ -65,10 +70,11 @@ func (l *Library) FindMovies() ([]string, error) {
 	return movies, nil
 }
 
-func (l *Library) FindEpisodes() ([]string, error) {
+func (l *Library) FindEpisodes(ctx context.Context) ([]string, error) {
+	log := logger.FromCtx(ctx)
 	episodes := []string{}
 	err := fs.WalkDir(l.tv, ".", func(path string, d fs.DirEntry, err error) error {
-		// log.Printf("episode walk: %s", path)
+		log.Debugw("episode walk", "path", path)
 		if err != nil {
 			// just skip this dir for now if there's an issue
 			return fs.SkipDir
@@ -81,7 +87,7 @@ func (l *Library) FindEpisodes() ([]string, error) {
 				return nil
 			}
 			if nesting > 2 || (!match && d.Name() != ".") {
-				// log.Printf("skipping dir: %s", d.Name())
+				log.Debugw("skipping", "dir", d.Name())
 				return fs.SkipDir
 			}
 			return nil
