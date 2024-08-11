@@ -46,10 +46,10 @@ func Get() *zap.SugaredLogger {
 		developmentCfg := zap.NewDevelopmentEncoderConfig()
 		developmentCfg.EncodeLevel = zapcore.CapitalColorLevelEncoder
 
-		encoder := zapcore.NewJSONEncoder(productionCfg)
-		isDebug := os.Getenv("APP_DEBUG")
-		if isDebug != "" {
-			encoder = zapcore.NewConsoleEncoder(developmentCfg)
+		encoder := zapcore.NewConsoleEncoder(developmentCfg)
+		isJSON := os.Getenv("JSON_LOG")
+		if isJSON != "" {
+			encoder = zapcore.NewJSONEncoder(productionCfg)
 		}
 
 		var gitRevision string
