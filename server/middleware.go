@@ -9,6 +9,7 @@ import (
 	"go.uber.org/zap"
 )
 
+// LogMiddleware adds a logger to the request context with fields specific to the request
 func (s Server) LogMiddleware() mux.MiddlewareFunc {
 	return func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

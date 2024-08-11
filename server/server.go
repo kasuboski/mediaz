@@ -70,6 +70,7 @@ func (s Server) Serve(port int) error {
 	return srv.Shutdown(ctx)
 }
 
+// Healthz is an endpoint that can be used for probes
 func (s Server) Healthz() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromCtx(r.Context())
