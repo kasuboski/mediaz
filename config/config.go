@@ -5,8 +5,9 @@ import (
 )
 
 type Config struct {
-	TMDB   TMDB   `json:"tmdb" yaml:"tmdb" mapstructure:"tmdb"`
-	Server Server `json:"server" yaml:"server" mapstructure:"server"`
+	TMDB    TMDB    `json:"tmdb" yaml:"tmdb" mapstructure:"tmdb"`
+	Server  Server  `json:"server" yaml:"server" mapstructure:"server"`
+	Library Library `json:"library" yaml:"library" mapstructure:"library"`
 }
 
 type TMDB struct {
@@ -17,6 +18,11 @@ type TMDB struct {
 
 type Server struct {
 	Port int `json:"port" yaml:"port" mapstructure:"port"`
+}
+
+type Library struct {
+	MovieDir string `json:"movie" yaml:"movie" mapstructure:"movie"`
+	TVDir    string `json:"tv" yaml:"tv" mapstructure:"tv"`
 }
 
 type ConfigUnmarshaler interface {

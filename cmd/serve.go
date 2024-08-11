@@ -1,11 +1,12 @@
 package cmd
 
 import (
-	"log"
 	"net/url"
+	"os"
 
 	"github.com/kasuboski/mediaz/config"
 	tmdb "github.com/kasuboski/mediaz/pkg/client"
+	"github.com/kasuboski/mediaz/pkg/library"
 	"github.com/kasuboski/mediaz/pkg/logger"
 	"github.com/kasuboski/mediaz/server"
 
@@ -16,17 +17,14 @@ import (
 // serveCmd represents the serve command
 var serveCmd = &cobra.Command{
 	Use:   "serve",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	Short: "start the media server",
+	Long:  `start the media server`,
 	Run: func(cmd *cobra.Command, args []string) {
+		log := logger.Get()
+
 		cfg, err := config.New(viper.GetViper())
 		if err != nil {
-			log.Fatalf("failed to read configurations: %v", err)
+			log.Error("failed to read configurations", err)
 		}
 
 		u := url.URL{
@@ -36,12 +34,15 @@ to quickly create a Cobra application.`,
 
 		tmdbClient, err := tmdb.NewClient(u.String())
 		if err != nil {
-			log.Fatalf("failed to create tmdb client: %v", err)
+			log.Error("failed to create tmdb client", err)
 		}
 
-		log := logger.Get()
-		server := server.New(tmdbClient, log)
-		log.Fatal(server.Serve(cfg.Server.Port))
+		movieFS := os.DirFS(cfg.Library.MovieDir)
+		tvFS := os.DirFS(cfg.Library.TVDir)
+		library := library.New(movieFS, tvFS)
+
+		server := server.New(tmdbClient, library, log)
+		log.Error(server.Serve(cfg.Server.Port))
 	},
 }
 

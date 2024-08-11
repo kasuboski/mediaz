@@ -10,6 +10,7 @@ import (
 	"time"
 
 	tmdb "github.com/kasuboski/mediaz/pkg/client"
+	"github.com/kasuboski/mediaz/pkg/library"
 	"github.com/kasuboski/mediaz/pkg/logger"
 	"go.uber.org/zap"
 
@@ -28,13 +29,15 @@ type TMDBClientInterface tmdb.ClientInterface
 type Server struct {
 	baseLogger *zap.SugaredLogger
 	tmdb       TMDBClientInterface
+	library    library.Library
 }
 
 // New creates a new media server
-func New(tmbdClient *tmdb.Client, logger *zap.SugaredLogger) Server {
+func New(tmbdClient *tmdb.Client, library library.Library, logger *zap.SugaredLogger) Server {
 	return Server{
-		baseLogger: logger,
 		tmdb:       tmbdClient,
+		library:    library,
+		baseLogger: logger,
 	}
 }
 
@@ -43,6 +46,11 @@ func (s Server) Serve(port int) error {
 	rtr := mux.NewRouter()
 	rtr.Use(s.LogMiddleware())
 	rtr.HandleFunc("/healthz", s.Healthz()).Methods(http.MethodGet)
+
+	api := rtr.PathPrefix("/api").Subrouter()
+	v1 := api.PathPrefix("/v1").Subrouter()
+	v1.HandleFunc("/movies", s.ListMovies()).Methods(http.MethodGet)
+	v1.HandleFunc("/tv", s.ListTVShows()).Methods(http.MethodGet)
 
 	corsHandler := handlers.CORS(
 		handlers.AllowedOrigins([]string{"*"}),
@@ -64,7 +72,7 @@ func (s Server) Serve(port int) error {
 	signal.Notify(c, os.Interrupt)
 	<-c
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 	defer cancel()
 
 	return srv.Shutdown(ctx)
@@ -86,6 +94,62 @@ func (s Server) Healthz() http.HandlerFunc {
 			return
 		}
 
+		w.Header().Set("content-type", "application/json")
+		_, _ = w.Write(b)
+	}
+}
+
+// ListMovies lists movies on disk
+func (s Server) ListMovies() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log := logger.FromCtx(r.Context())
+		movies, err := s.library.FindMovies(r.Context())
+		if err != nil {
+			log.Error("failed to list movies", zap.Error(err))
+			http.Error(w, "failed to list movies", http.StatusInternalServerError)
+			return
+		}
+
+		resp := GenericResponse{
+			Response: movies,
+		}
+
+		b, err := json.Marshal(movies)
+		if err != nil {
+			log.Error("failed to marshal respponse", err, zap.Any("response", resp))
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		log.Info("returning movies ", zap.Any("list", movies))
+		w.Header().Set("content-type", "application/json")
+		_, _ = w.Write(b)
+	}
+}
+
+// ListTVShows lists tv shows on disk
+func (s Server) ListTVShows() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log := logger.FromCtx(r.Context())
+		episodes, err := s.library.FindEpisodes(r.Context())
+		if err != nil {
+			log.Error("failed to list shows", zap.Error(err))
+			http.Error(w, "failed to list shows", http.StatusInternalServerError)
+			return
+		}
+
+		resp := GenericResponse{
+			Response: episodes,
+		}
+
+		b, err := json.Marshal(episodes)
+		if err != nil {
+			log.Error("failed to marshal respponse", err, zap.Any("response", resp))
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		log.Info("returning tv shows ", zap.Any("list", episodes))
 		w.Header().Set("content-type", "application/json")
 		_, _ = w.Write(b)
 	}
