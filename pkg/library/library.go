@@ -18,7 +18,7 @@ const (
 var (
 	movieRegex      = regexp.MustCompile(moviePattern)
 	showRegex       = regexp.MustCompile(showPattern)
-	videoExtensions = []string{".mp4", ".avi", ".mkv", ".m4v"}
+	videoExtensions = []string{".mp4", ".avi", ".mkv", ".m4v", ".iso", ".ts", ".m2ts"}
 )
 
 type Library struct {
