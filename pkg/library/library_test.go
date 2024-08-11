@@ -41,7 +41,7 @@ func TestMatchEpisode(t *testing.T) {
 
 	negatives := []string{"Batman Begins (2005).en.srt"}
 	for _, m := range negatives {
-		matched := matchMovie(m)
+		matched := matchEpisode(m)
 		if matched {
 			t.Errorf("shouldn't match episode: %s", m)
 		}
