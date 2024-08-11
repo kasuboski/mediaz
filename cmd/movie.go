@@ -6,9 +6,12 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"os"
 
 	"github.com/kasuboski/mediaz/config"
 	"github.com/kasuboski/mediaz/pkg/client"
+	"github.com/kasuboski/mediaz/pkg/library"
+	"github.com/kasuboski/mediaz/pkg/logger"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -59,9 +62,39 @@ var searchMovieCmd = &cobra.Command{
 	},
 }
 
+// listMovieCmd lists movies in a library
+var listMovieCmd = &cobra.Command{
+	Use:        "movie",
+	Short:      "List movies found at a path",
+	Long:       `List movies found at a path`,
+	Args:       cobra.ExactArgs(1),
+	ArgAliases: []string{"path to movies"},
+	Run: func(cmd *cobra.Command, args []string) {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		log := logger.Get()
+		ctx = logger.WithCtx(ctx, log)
+
+		path := args[0]
+		movieFS := os.DirFS(path)
+		lib := library.New(movieFS, nil)
+		movies, err := lib.FindMovies(ctx)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		for _, m := range movies {
+			log.Info(m)
+		}
+	},
+}
+
 func init() {
 	searchMovieCmd.Flags().StringVarP(&movieQuery, "query", "q", "", "a query for movies")
 	_ = searchMovieCmd.MarkFlagRequired("query")
 
 	searchCmd.AddCommand(searchMovieCmd)
+
+	listCmd.AddCommand(listMovieCmd)
 }
