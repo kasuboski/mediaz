@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"context"
-	"io"
 	"log"
 	"net/http"
 	"net/url"
@@ -50,12 +49,18 @@ var searchMovieCmd = &cobra.Command{
 			log.Fatalf("failed to query movie: %v", err)
 		}
 
-		b, err := io.ReadAll(r.Body)
+		resp, err := tmdb.ParseSearchMovieResponse(r)
 		if err != nil {
-			log.Fatalf("failed to read movie query response body: %v", err)
+			log.Fatalf("failed to parse movie response: %v", err)
 		}
 
-		log.Println(string(b))
+		if resp.JSON200 == nil || resp.JSON200.Results == nil {
+			log.Fatal("no results found")
+		}
+
+		for _, r := range *resp.JSON200.Results {
+			log.Println(*r.Title)
+		}
 	},
 }
 

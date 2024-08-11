@@ -2,8 +2,6 @@ package cmd
 
 import (
 	"context"
-	"encoding/json"
-	"io"
 	"log"
 	"net/http"
 	"net/url"
@@ -44,18 +42,16 @@ var listIndexerCmd = &cobra.Command{
 			log.Fatalf("failed to list indexers: %v", err)
 		}
 
-		b, err := io.ReadAll(r.Body)
+		resp, err := prowlarr.ParseGetAPIV1IndexerResponse(r)
 		if err != nil {
-			log.Fatalf("failed to read response body: %v", err)
+			log.Fatalf("failed to parse indexer response: %v", err)
 		}
 
-		var indexers []*prowlarr.IndexerResource
-		err = json.Unmarshal(b, &indexers)
-		if err != nil {
-			log.Fatalf("failed to unmarshal response: %v", err)
+		if resp.JSON200 == nil {
+			log.Fatal("no results in response")
 		}
 
-		for _, i := range indexers {
+		for _, i := range *resp.JSON200 {
 			name, err := i.Name.Get()
 			if err != nil {
 				continue
