@@ -11,6 +11,7 @@ import (
 
 	"github.com/kasuboski/mediaz/pkg/library"
 	"github.com/kasuboski/mediaz/pkg/logger"
+	"github.com/kasuboski/mediaz/pkg/prowlarr"
 	"github.com/kasuboski/mediaz/pkg/tmdb"
 	"go.uber.org/zap"
 
@@ -24,18 +25,21 @@ type GenericResponse struct {
 }
 
 type TMDBClientInterface tmdb.ClientInterface
+type ProwlarrClientInterface prowlarr.ClientInterface
 
 // Server houses all dependencies for the media server to work such as loggers, clients, configurations, etc.
 type Server struct {
 	baseLogger *zap.SugaredLogger
 	tmdb       TMDBClientInterface
+	prowlarr   ProwlarrClientInterface
 	library    library.Library
 }
 
 // New creates a new media server
-func New(tmbdClient *tmdb.Client, library library.Library, logger *zap.SugaredLogger) Server {
+func New(tmbdClient TMDBClientInterface, prowlarrClient ProwlarrClientInterface, library library.Library, logger *zap.SugaredLogger) Server {
 	return Server{
 		tmdb:       tmbdClient,
+		prowlarr:   prowlarrClient,
 		library:    library,
 		baseLogger: logger,
 	}

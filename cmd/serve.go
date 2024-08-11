@@ -7,6 +7,7 @@ import (
 	"github.com/kasuboski/mediaz/config"
 	"github.com/kasuboski/mediaz/pkg/library"
 	"github.com/kasuboski/mediaz/pkg/logger"
+	"github.com/kasuboski/mediaz/pkg/prowlarr"
 	"github.com/kasuboski/mediaz/pkg/tmdb"
 	"github.com/kasuboski/mediaz/server"
 
@@ -24,24 +25,34 @@ var serveCmd = &cobra.Command{
 
 		cfg, err := config.New(viper.GetViper())
 		if err != nil {
-			log.Error("failed to read configurations", err)
+			log.Fatal("failed to read configurations", err)
 		}
 
-		u := url.URL{
+		tmdbURL := url.URL{
 			Scheme: cfg.TMDB.Scheme,
 			Host:   cfg.TMDB.Host,
 		}
 
-		tmdbClient, err := tmdb.NewClient(u.String())
+		tmdbClient, err := tmdb.NewClient(tmdbURL.String())
 		if err != nil {
-			log.Error("failed to create tmdb client", err)
+			log.Fatal("failed to create tmdb client", err)
+		}
+
+		prowlarrURL := url.URL{
+			Scheme: cfg.Prowlarr.Scheme,
+			Host:   cfg.Prowlarr.Host,
+		}
+
+		prowlarrClient, err := prowlarr.NewClient(prowlarrURL.String())
+		if err != nil {
+			log.Fatal("failed to create prowlarr client", err)
 		}
 
 		movieFS := os.DirFS(cfg.Library.MovieDir)
 		tvFS := os.DirFS(cfg.Library.TVDir)
 		library := library.New(movieFS, tvFS)
 
-		server := server.New(tmdbClient, library, log)
+		server := server.New(tmdbClient, prowlarrClient, library, log)
 		log.Error(server.Serve(cfg.Server.Port))
 	},
 }
