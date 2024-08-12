@@ -3,6 +3,7 @@ package library
 import (
 	"context"
 	"io/fs"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -33,10 +34,10 @@ func New(movies fs.FS, tv fs.FS) Library {
 	}
 }
 
-func (l *Library) FindMovies(ctx context.Context) ([]string, error) {
+func (l *Library) FindMovies(ctx context.Context) ([]Movie, error) {
 	log := logger.FromCtx(ctx)
 
-	movies := []string{}
+	movies := []Movie{}
 	err := fs.WalkDir(l.movies, ".", func(path string, d fs.DirEntry, err error) error {
 		log.Debugw("movie walk", "path", path)
 		if err != nil {
@@ -58,7 +59,9 @@ func (l *Library) FindMovies(ctx context.Context) ([]string, error) {
 			return nil
 		}
 
-		movies = append(movies, d.Name())
+		movie := FromPath(path)
+
+		movies = append(movies, movie)
 
 		return nil
 	})
@@ -134,4 +137,10 @@ func isVideoFile(name string) bool {
 
 func sanitizeName(name string) string {
 	return strings.Trim(strings.TrimSpace(name), "'")
+}
+
+func dirName(path string) string {
+	dirPath := filepath.Dir(path)
+	split := strings.Split(dirPath, string(os.PathSeparator))
+	return split[len(split)-1]
 }
