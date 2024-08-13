@@ -4,6 +4,7 @@ type Movie struct {
 	Name   string
 	TMDBID string
 	Path   string
+	Size   string
 }
 
 func FromPath(path string) Movie {

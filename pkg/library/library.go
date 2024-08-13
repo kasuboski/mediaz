@@ -2,7 +2,9 @@ package library
 
 import (
 	"context"
+	"fmt"
 	"io/fs"
+	"math"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -60,6 +62,10 @@ func (l *Library) FindMovies(ctx context.Context) ([]Movie, error) {
 		}
 
 		movie := FromPath(path)
+		info, err := d.Info()
+		if err == nil {
+			movie.Size = fileSizeToString(info.Size())
+		}
 
 		movies = append(movies, movie)
 
@@ -143,4 +149,16 @@ func dirName(path string) string {
 	dirPath := filepath.Dir(path)
 	split := strings.Split(dirPath, string(os.PathSeparator))
 	return split[len(split)-1]
+}
+
+func fileSizeToString(size int64) string {
+	const unit = 1024
+
+	if size < unit {
+		return fmt.Sprintf("%d B", size)
+	}
+
+	exp := int(math.Log(float64(size)) / math.Log(unit))
+	pre := "KMGTPE"[exp-1]
+	return fmt.Sprintf("%.1f %cB", float64(size)/math.Pow(unit, float64(exp)), pre)
 }
