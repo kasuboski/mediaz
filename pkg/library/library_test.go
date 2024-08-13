@@ -11,7 +11,7 @@ import (
 )
 
 func TestMatchMovie(t *testing.T) {
-	_, expected := fsFromFile(t, "./test_movies.txt")
+	_, expected := fsFromFile(t, "./test_movies.txt", dirName)
 
 	for _, m := range expected {
 		matched := matchMovie(m)
@@ -22,7 +22,7 @@ func TestMatchMovie(t *testing.T) {
 }
 
 func TestMatchEpisode(t *testing.T) {
-	_, expected := fsFromFile(t, "./test_episodes.txt")
+	_, expected := fsFromFile(t, "./test_episodes.txt", filepath.Base)
 
 	for _, m := range expected {
 		matched := matchEpisode(m)
@@ -39,7 +39,7 @@ func TestFindMovies(t *testing.T) {
 		"Batman Begins (2005)/Batman Begins (2005).en.srt": {},
 		"My Movie/Uh Oh/My Movie.mp4":                      {},
 	}
-	fs, expected := fsFromFile(t, "./test_movies.txt")
+	fs, expected := fsFromFile(t, "./test_movies.txt", dirName)
 	for k, v := range negatives {
 		fs[k] = v
 	}
@@ -49,15 +49,19 @@ func TestFindMovies(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !slices.Equal(expected, movies) {
-		t.Fatalf("wanted %v; got %v", expected, movies)
+	movieNames := make([]string, len(movies))
+	for i, m := range movies {
+		movieNames[i] = m.Name
+	}
+	if !slices.Equal(expected, movieNames) {
+		t.Fatalf("wanted %v; got %v", expected, movieNames)
 	}
 
 }
 
 func TestFindEpisodes(t *testing.T) {
 	ctx := context.Background()
-	fs, expected := fsFromFile(t, "./test_episodes.txt")
+	fs, expected := fsFromFile(t, "./test_episodes.txt", filepath.Base)
 	fs["myfile.txt"] = &fstest.MapFile{}
 
 	l := New(nil, fs)
@@ -70,7 +74,7 @@ func TestFindEpisodes(t *testing.T) {
 	}
 }
 
-func fsFromFile(t *testing.T, path string) (fstest.MapFS, []string) {
+func fsFromFile(t *testing.T, path string, toExpected func(string) string) (fstest.MapFS, []string) {
 	f, err := os.Open(path)
 	if err != nil {
 		t.Fatalf("couldn't open file: %v", err)
@@ -83,7 +87,7 @@ func fsFromFile(t *testing.T, path string) (fstest.MapFS, []string) {
 	for scanner.Scan() {
 		path := scanner.Text()
 		testfs[path] = &fstest.MapFile{}
-		names = append(names, filepath.Base(path))
+		names = append(names, toExpected(path))
 	}
 
 	if err := scanner.Err(); err != nil {
