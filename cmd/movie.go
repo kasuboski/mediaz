@@ -90,7 +90,7 @@ var listMovieCmd = &cobra.Command{
 		}
 
 		for _, m := range movies {
-			log.Info(m.Name)
+			log.Info(m)
 		}
 	},
 }
