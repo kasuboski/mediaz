@@ -96,3 +96,57 @@ func fsFromFile(t *testing.T, path string, toExpected func(string) string) (fste
 
 	return testfs, names
 }
+
+func Test_fileSizeToString(t *testing.T) {
+	type args struct {
+		size int64
+	}
+	tests := []struct {
+		name string
+		want string
+		args args
+	}{
+		{
+			name: "b",
+			args: args{size: 500},
+			want: "500 B",
+		},
+		{
+			name: "kb",
+			args: args{size: 1024},
+			want: "1.0 KB",
+		},
+		{
+			name: "mb",
+			args: args{size: 1048576}, // 1024 * 1024
+			want: "1.0 MB",
+		},
+		{
+			name: "gb",
+			args: args{size: 1073741824}, // 1024 * 1024 * 1024
+			want: "1.0 GB",
+		},
+		{
+			name: "tb",
+			args: args{size: 1099511627776}, // 1024^4
+			want: "1.0 TB",
+		},
+		{
+			name: "not whole number",
+			args: args{size: 123456789},
+			want: "117.7 MB",
+		},
+		{
+			name: "zero",
+			args: args{size: 0},
+			want: "0 B",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := fileSizeToString(tt.args.size); got != tt.want {
+				t.Errorf("fileSizeToString() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
