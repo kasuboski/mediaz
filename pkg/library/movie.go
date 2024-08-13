@@ -1,10 +1,10 @@
 package library
 
 type Movie struct {
-	Name   string
-	TMDBID string
-	Path   string
-	Size   string
+	Name   string `json:"name"`
+	TMDBID string `json:"tmdbid"`
+	Path   string `json:"path"`
+	Size   string `json:"size"`
 }
 
 func FromPath(path string) Movie {
