@@ -52,7 +52,8 @@ var serveCmd = &cobra.Command{
 		tvFS := os.DirFS(cfg.Library.TVDir)
 		library := library.New(movieFS, tvFS)
 
-		server := server.New(tmdbClient, prowlarrClient, library, log)
+		manager := server.NewManager(tmdbClient, prowlarrClient, library, cfg)
+		server := server.New(log, manager)
 		log.Error(server.Serve(cfg.Server.Port))
 	},
 }

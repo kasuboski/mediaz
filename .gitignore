@@ -7,6 +7,7 @@
 *.dll
 *.so
 *.dylib
+mediaz
 
 # Test binary, built with `go test -c`
 *.test
@@ -24,6 +25,9 @@ go.work.sum
 # env file
 .env
 
-mediaz
-
+# workspace settings
 .vscode
+local.yaml
+
+# db files
+*.sqlite

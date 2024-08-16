@@ -38,6 +38,7 @@ func init() {
 
 // initConfig sets viper configurations and default values
 func initConfig() {
+	log.Print(cfgFile)
 	if cfgFile != "" {
 		viper.SetConfigFile(cfgFile)
 	}
@@ -48,11 +49,11 @@ func initConfig() {
 
 	viper.SetDefault("tmdb.scheme", "https")
 	viper.SetDefault("tmdb.host", "api.themoviedb.org")
-	viper.SetDefault("tmdb.apikey", "")
+	viper.SetDefault("tmdb.apiKey", "")
 
 	viper.SetDefault("prowlarr.scheme", "http")
 	viper.SetDefault("prowlarr.host", "")
-	viper.SetDefault("prowlarr.apikey", "")
+	viper.SetDefault("prowlarr.apiKey", "")
 
 	viper.SetDefault("server.port", 8080)
 

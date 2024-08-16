@@ -6,9 +6,9 @@ import (
 
 type Config struct {
 	TMDB     TMDB     `json:"tmdb" yaml:"tmdb" mapstructure:"tmdb"`
-	Server   Server   `json:"server" yaml:"server" mapstructure:"server"`
-	Library  Library  `json:"library" yaml:"library" mapstructure:"library"`
 	Prowlarr Prowlarr `json:"prowlarr" yaml:"prowlarr" mapstructure:"prowlarr"`
+	Library  Library  `json:"library" yaml:"library" mapstructure:"library"`
+	Server   Server   `json:"server" yaml:"server" mapstructure:"server"`
 }
 
 type TMDB struct {

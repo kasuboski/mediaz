@@ -3,7 +3,6 @@ package cmd
 import (
 	"context"
 	"log"
-	"net/http"
 	"net/url"
 	"os"
 
@@ -42,12 +41,7 @@ var searchMovieCmd = &cobra.Command{
 		}
 
 		ctx := context.TODO()
-		r, err := c.SearchMovie(ctx, &tmdb.SearchMovieParams{
-			Query: movieQuery,
-		}, func(ctx context.Context, req *http.Request) error {
-			req.Header.Add("Authorization", "Bearer "+cfg.TMDB.APIKey)
-			return nil
-		})
+		r, err := c.SearchMovie(ctx, &tmdb.SearchMovieParams{Query: movieQuery}, tmdb.SetRequestAPIKey(cfg.TMDB.APIKey))
 		if err != nil {
 			log.Fatalf("failed to query movie: %v", err)
 		}

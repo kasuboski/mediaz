@@ -3,7 +3,6 @@ package cmd
 import (
 	"context"
 	"log"
-	"net/http"
 	"net/url"
 
 	"github.com/kasuboski/mediaz/config"
@@ -34,10 +33,7 @@ var listIndexerCmd = &cobra.Command{
 		}
 
 		ctx := context.TODO()
-		r, err := c.GetAPIV1Indexer(ctx, func(ctx context.Context, req *http.Request) error {
-			prowlarr.SetRequestAPIKey(cfg.Prowlarr.APIKey, req)
-			return nil
-		})
+		r, err := c.GetAPIV1Indexer(ctx, prowlarr.SetRequestAPIKey(cfg.Prowlarr.APIKey))
 		if err != nil {
 			log.Fatalf("failed to list indexers: %v", err)
 		}
