@@ -122,6 +122,9 @@ func (m MediaManager) ListIndexers(ctx context.Context) ([]prowlarr.IndexerResou
 
 	var indexers []prowlarr.IndexerResource
 	err = json.Unmarshal(b, &indexers)
+	if err != nil {
+		return nil, err
+	}
 	return indexers, nil
 }
 
@@ -182,6 +185,7 @@ func (m MediaManager) SearchIndexers(ctx context.Context, indexers, categories [
 		IndexerIds: &indexers,
 		Query:      &query,
 		Categories: &categories,
+		Limit:      intPtr(100),
 	}, prowlarr.SetRequestAPIKey(m.config.Prowlarr.APIKey))
 	if err != nil {
 		return nil, err
@@ -201,4 +205,9 @@ func (m MediaManager) SearchIndexers(ctx context.Context, indexers, categories [
 	var releases []*prowlarr.ReleaseResource
 	err = json.Unmarshal(b, &releases)
 	return releases, err
+}
+
+func intPtr(in int) *int32 {
+	ret := int32(in)
+	return &ret
 }
