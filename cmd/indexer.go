@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"os"
 
+	"github.com/dustin/go-humanize"
 	"github.com/kasuboski/mediaz/config"
 	"github.com/kasuboski/mediaz/pkg/library"
 	"github.com/kasuboski/mediaz/pkg/logger"
@@ -131,10 +132,11 @@ var searchIndexerCmd = &cobra.Command{
 		for _, r := range releases {
 			name := r.Title.MustGet()
 			indexer := r.Indexer
-			size := r.Size
+			size := *r.Size
+			humanSize := humanize.Bytes(uint64(size))
 			tmdb := r.TmdbID
 
-			log.Infow(fmt.Sprintf("found %s", name), "indexer", indexer, "size", size, "tmdb", tmdb)
+			log.Infow(fmt.Sprintf("found %s", name), "indexer", indexer, "size", humanSize, "tmdb", tmdb)
 		}
 
 		log.Infof("found %d releases", len(releases))
