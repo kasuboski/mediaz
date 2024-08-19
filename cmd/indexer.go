@@ -104,24 +104,14 @@ var searchIndexerCmd = &cobra.Command{
 		manager := manager.New(tmdbClient, prowlarrClient, library)
 
 		ctx := logger.WithCtx(context.Background(), log)
-		r, err := prowlarrClient.GetAPIV1Indexer(ctx)
+		idx, err := manager.ListIndexers(ctx)
 		if err != nil {
-			log.Fatalf("failed to list indexers: %v", err)
+			log.Fatal(err)
 		}
-
-		resp, err := prowlarr.ParseGetAPIV1IndexerResponse(r)
-		if err != nil {
-			log.Fatalf("failed to parse indexer response: %v", err)
-		}
-
-		if resp.JSON200 == nil {
-			log.Fatal("no results in response")
-		}
-
-		indexers := make([]int32, len(*resp.JSON200))
-		for i, indexer := range *resp.JSON200 {
-			indexers[i] = *indexer.ID
-			log.Debugw("will search", "indexer", indexer.Name.MustGet())
+		indexers := make([]int32, len(idx))
+		for i, indexer := range idx {
+			indexers[i] = indexer.ID
+			log.Debugw("will search", "indexer", indexer.Name)
 		}
 
 		releases, err := manager.SearchIndexers(ctx, indexers, []int32{2000}, "Bourne Identity")

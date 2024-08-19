@@ -44,7 +44,7 @@ var serveCmd = &cobra.Command{
 			Host:   cfg.Prowlarr.Host,
 		}
 
-		prowlarrClient, err := prowlarr.NewClient(prowlarrURL.String())
+		prowlarrClient, err := prowlarr.NewClient(prowlarrURL.String(), prowlarr.WithRequestEditorFn(prowlarr.SetRequestAPIKey(cfg.Prowlarr.APIKey)))
 		if err != nil {
 			log.Fatal("failed to create prowlarr client", err)
 		}

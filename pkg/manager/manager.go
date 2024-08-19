@@ -20,16 +20,16 @@ type ProwlarrClientInterface prowlarr.ClientInterface
 type TMDBClientInterface tmdb.ClientInterface
 
 type MediaManager struct {
-	tmdb     TMDBClientInterface
-	prowlarr ProwlarrClientInterface
-	library  library.Library
+	tmdb    TMDBClientInterface
+	indexer IndexerStore
+	library library.Library
 }
 
 func New(tmbdClient TMDBClientInterface, prowlarrClient ProwlarrClientInterface, library library.Library) MediaManager {
 	return MediaManager{
-		tmdb:     tmbdClient,
-		prowlarr: prowlarrClient,
-		library:  library,
+		tmdb:    tmbdClient,
+		indexer: NewIndexerStore(prowlarrClient),
+		library: library,
 	}
 }
 
@@ -100,30 +100,13 @@ func (m MediaManager) SearchMovie(ctx context.Context, query string) (*SearchMov
 }
 
 // ListIndexers lists all managed indexers
-func (m MediaManager) ListIndexers(ctx context.Context) ([]prowlarr.IndexerResource, error) {
+func (m MediaManager) ListIndexers(ctx context.Context) ([]Indexer, error) {
 	log := logger.FromCtx(ctx)
-	resp, err := m.prowlarr.GetAPIV1Indexer(ctx)
-	if err != nil {
-		log.Debug("failed to list indexers", zap.Error(err))
-		return nil, err
-	}
-	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("unexpected status: %s", resp.Status)
+	if err := m.indexer.FetchIndexers(ctx); err != nil {
+		log.Error(err)
 	}
-
-	b, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	var indexers []prowlarr.IndexerResource
-	err = json.Unmarshal(b, &indexers)
-	if err != nil {
-		return nil, err
-	}
-	return indexers, nil
+	return m.indexer.ListIndexers(ctx), nil
 }
 
 func (m MediaManager) ListEpisodesOnDisk(ctx context.Context) ([]string, error) {
@@ -186,7 +169,7 @@ func (m MediaManager) SearchIndexers(ctx context.Context, indexers, categories [
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			res, err := m.searchIndexer(ctx, indexer, categories, query)
+			res, err := m.indexer.searchIndexer(ctx, indexer, categories, query)
 			if err != nil {
 				indexerError = errors.Join(indexerError, err)
 				return
@@ -203,38 +186,4 @@ func (m MediaManager) SearchIndexers(ctx context.Context, indexers, categories [
 	}
 
 	return releases, nil
-}
-
-func (m MediaManager) searchIndexer(ctx context.Context, indexer int32, categories []int32, query string) ([]*prowlarr.ReleaseResource, error) {
-	log := logger.FromCtx(ctx)
-
-	resp, err := m.prowlarr.GetAPIV1Search(ctx, &prowlarr.GetAPIV1SearchParams{
-		IndexerIds: &[]int32{indexer},
-		Query:      &query,
-		Categories: &categories,
-		Limit:      intPtr(100),
-	})
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	b, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		log.Debug("unexpected response status", zap.Any("status", resp.Status), zap.String("body", string(b)))
-		return nil, fmt.Errorf("unexpected status: %s", resp.Status)
-	}
-
-	var releases []*prowlarr.ReleaseResource
-	err = json.Unmarshal(b, &releases)
-	return releases, err
-}
-
-func intPtr(in int) *int32 {
-	ret := int32(in)
-	return &ret
 }
