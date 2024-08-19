@@ -1,4 +1,4 @@
-package server
+package manager
 
 import (
 	"context"
@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sync"
 
-	"github.com/kasuboski/mediaz/config"
 	"github.com/kasuboski/mediaz/pkg/library"
 	"github.com/kasuboski/mediaz/pkg/logger"
 	"github.com/kasuboski/mediaz/pkg/prowlarr"
@@ -23,15 +23,13 @@ type MediaManager struct {
 	tmdb     TMDBClientInterface
 	prowlarr ProwlarrClientInterface
 	library  library.Library
-	config   config.Config
 }
 
-func NewManager(tmbdClient TMDBClientInterface, prowlarrClient ProwlarrClientInterface, library library.Library, config config.Config) MediaManager {
+func New(tmbdClient TMDBClientInterface, prowlarrClient ProwlarrClientInterface, library library.Library) MediaManager {
 	return MediaManager{
 		tmdb:     tmbdClient,
 		prowlarr: prowlarrClient,
 		library:  library,
-		config:   config,
 	}
 }
 
@@ -71,7 +69,7 @@ func (m MediaManager) SearchMovie(ctx context.Context, query string) (*SearchMov
 		return nil, errors.New("query is empty")
 	}
 
-	res, err := m.tmdb.SearchMovie(ctx, &tmdb.SearchMovieParams{Query: query}, tmdb.SetRequestAPIKey(m.config.TMDB.APIKey))
+	res, err := m.tmdb.SearchMovie(ctx, &tmdb.SearchMovieParams{Query: query})
 	if err != nil {
 		log.Error("search movie failed request", zap.Error(err))
 		return nil, err
@@ -104,7 +102,7 @@ func (m MediaManager) SearchMovie(ctx context.Context, query string) (*SearchMov
 // ListIndexers lists all managed indexers
 func (m MediaManager) ListIndexers(ctx context.Context) ([]prowlarr.IndexerResource, error) {
 	log := logger.FromCtx(ctx)
-	resp, err := m.prowlarr.GetAPIV1Indexer(ctx, prowlarr.SetRequestAPIKey(m.config.Prowlarr.APIKey))
+	resp, err := m.prowlarr.GetAPIV1Indexer(ctx)
 	if err != nil {
 		log.Debug("failed to list indexers", zap.Error(err))
 		return nil, err
@@ -180,13 +178,42 @@ func (m MediaManager) AddMovie(ctx context.Context, request AddMovieRequest) err
 }
 
 func (m MediaManager) SearchIndexers(ctx context.Context, indexers, categories []int32, query string) ([]*prowlarr.ReleaseResource, error) {
+	var wg sync.WaitGroup
+
+	var indexerError error
+	releases := make([]*prowlarr.ReleaseResource, 0, 50)
+	for _, indexer := range indexers {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			res, err := m.searchIndexer(ctx, indexer, categories, query)
+			if err != nil {
+				indexerError = errors.Join(indexerError, err)
+				return
+			}
+
+			releases = append(releases, res...)
+		}()
+	}
+	wg.Wait()
+
+	if len(releases) == 0 && indexerError != nil {
+		// only return an error if no releases found and there was an error
+		return nil, indexerError
+	}
+
+	return releases, nil
+}
+
+func (m MediaManager) searchIndexer(ctx context.Context, indexer int32, categories []int32, query string) ([]*prowlarr.ReleaseResource, error) {
 	log := logger.FromCtx(ctx)
+
 	resp, err := m.prowlarr.GetAPIV1Search(ctx, &prowlarr.GetAPIV1SearchParams{
-		IndexerIds: &indexers,
+		IndexerIds: &[]int32{indexer},
 		Query:      &query,
 		Categories: &categories,
 		Limit:      intPtr(100),
-	}, prowlarr.SetRequestAPIKey(m.config.Prowlarr.APIKey))
+	})
 	if err != nil {
 		return nil, err
 	}

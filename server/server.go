@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/kasuboski/mediaz/pkg/logger"
+	"github.com/kasuboski/mediaz/pkg/manager"
 	"go.uber.org/zap"
 
 	"github.com/gorilla/handlers"
@@ -25,11 +26,11 @@ type GenericResponse struct {
 // Server houses all dependencies for the media server to work such as loggers, clients, configurations, etc.
 type Server struct {
 	baseLogger *zap.SugaredLogger
-	manager    MediaManager
+	manager    manager.MediaManager
 }
 
 // New creates a new media server
-func New(logger *zap.SugaredLogger, manager MediaManager) Server {
+func New(logger *zap.SugaredLogger, manager manager.MediaManager) Server {
 	return Server{
 		baseLogger: logger,
 		manager:    manager,
@@ -202,7 +203,7 @@ func (s Server) CreateMovie() http.HandlerFunc {
 			return
 		}
 
-		var request AddMovieRequest
+		var request manager.AddMovieRequest
 		err = json.Unmarshal(b, &request)
 		if err != nil {
 			log.Debug("invalid request body", zap.ByteString("body", b))

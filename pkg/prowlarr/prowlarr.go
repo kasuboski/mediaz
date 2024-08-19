@@ -10,7 +10,7 @@ func SetRequestAPIKey(apiKey string) func(ctx context.Context, req *http.Request
 		q := req.URL.Query()
 		q.Set("apikey", apiKey)
 		req.URL.RawQuery = q.Encode()
-		req.Header.Add("accept", "application/json")
+		req.Header.Add("Accept", "application/json")
 		return nil
 	}
 }

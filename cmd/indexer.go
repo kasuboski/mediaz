@@ -10,9 +10,9 @@ import (
 	"github.com/kasuboski/mediaz/config"
 	"github.com/kasuboski/mediaz/pkg/library"
 	"github.com/kasuboski/mediaz/pkg/logger"
+	"github.com/kasuboski/mediaz/pkg/manager"
 	"github.com/kasuboski/mediaz/pkg/prowlarr"
 	"github.com/kasuboski/mediaz/pkg/tmdb"
-	"github.com/kasuboski/mediaz/server"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -33,13 +33,13 @@ var listIndexerCmd = &cobra.Command{
 			Host:   cfg.Prowlarr.Host,
 		}
 
-		c, err := prowlarr.NewClient(u.String())
+		c, err := prowlarr.NewClient(u.String(), prowlarr.WithRequestEditorFn(prowlarr.SetRequestAPIKey((cfg.Prowlarr.APIKey))))
 		if err != nil {
 			log.Fatalf("failed to create client: %v", err)
 		}
 
 		ctx := context.TODO()
-		r, err := c.GetAPIV1Indexer(ctx, prowlarr.SetRequestAPIKey(cfg.Prowlarr.APIKey))
+		r, err := c.GetAPIV1Indexer(ctx)
 		if err != nil {
 			log.Fatalf("failed to list indexers: %v", err)
 		}
@@ -81,7 +81,7 @@ var searchIndexerCmd = &cobra.Command{
 			Host:   cfg.Prowlarr.Host,
 		}
 
-		prowlarrClient, err := prowlarr.NewClient(u.String())
+		prowlarrClient, err := prowlarr.NewClient(u.String(), prowlarr.WithRequestEditorFn(prowlarr.SetRequestAPIKey(cfg.Prowlarr.APIKey)))
 		if err != nil {
 			log.Fatalf("failed to create client: %v", err)
 		}
@@ -91,7 +91,7 @@ var searchIndexerCmd = &cobra.Command{
 			Host:   cfg.TMDB.Host,
 		}
 
-		tmdbClient, err := tmdb.NewClient(tmdbURL.String())
+		tmdbClient, err := tmdb.NewClient(tmdbURL.String(), tmdb.WithRequestEditorFn(tmdb.SetRequestAPIKey(cfg.TMDB.APIKey)))
 		if err != nil {
 			log.Fatal("failed to create tmdb client", err)
 		}
@@ -100,10 +100,10 @@ var searchIndexerCmd = &cobra.Command{
 		tvFS := os.DirFS(cfg.Library.TVDir)
 		library := library.New(movieFS, tvFS)
 
-		manager := server.NewManager(tmdbClient, prowlarrClient, library, cfg)
+		manager := manager.New(tmdbClient, prowlarrClient, library)
 
 		ctx := logger.WithCtx(context.Background(), log)
-		r, err := prowlarrClient.GetAPIV1Indexer(ctx, prowlarr.SetRequestAPIKey(cfg.Prowlarr.APIKey))
+		r, err := prowlarrClient.GetAPIV1Indexer(ctx)
 		if err != nil {
 			log.Fatalf("failed to list indexers: %v", err)
 		}

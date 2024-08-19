@@ -1,6 +1,7 @@
 package prowlarr
 
 import (
+	"context"
 	"net/http"
 	"net/url"
 	"testing"
@@ -21,6 +22,7 @@ func TestSetRequestAPIKey(t *testing.T) {
 			args: args{
 				apiKey: "my-api-key",
 				req: &http.Request{
+					Header: make(http.Header),
 					URL: &url.URL{
 						RawQuery: url.Values{
 							"my-qp": []string{"value-1", "value-2"},
@@ -40,7 +42,10 @@ func TestSetRequestAPIKey(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			SetRequestAPIKey(tt.args.apiKey, tt.args.req)
+			err := SetRequestAPIKey(tt.args.apiKey)(context.Background(), tt.args.req)
+			if err != nil {
+				t.Error(err)
+			}
 		})
 	}
 }
