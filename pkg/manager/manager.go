@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sync"
 
 	"github.com/kasuboski/mediaz/pkg/library"
 	"github.com/kasuboski/mediaz/pkg/logger"
@@ -177,9 +178,38 @@ func (m MediaManager) AddMovie(ctx context.Context, request AddMovieRequest) err
 }
 
 func (m MediaManager) SearchIndexers(ctx context.Context, indexers, categories []int32, query string) ([]*prowlarr.ReleaseResource, error) {
+	var wg sync.WaitGroup
+
+	var indexerError error
+	releases := make([]*prowlarr.ReleaseResource, 0, 50)
+	for _, indexer := range indexers {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			res, err := m.searchIndexer(ctx, indexer, categories, query)
+			if err != nil {
+				indexerError = errors.Join(indexerError, err)
+				return
+			}
+
+			releases = append(releases, res...)
+		}()
+	}
+	wg.Wait()
+
+	if len(releases) == 0 && indexerError != nil {
+		// only return an error if no releases found and there was an error
+		return nil, indexerError
+	}
+
+	return releases, nil
+}
+
+func (m MediaManager) searchIndexer(ctx context.Context, indexer int32, categories []int32, query string) ([]*prowlarr.ReleaseResource, error) {
 	log := logger.FromCtx(ctx)
+
 	resp, err := m.prowlarr.GetAPIV1Search(ctx, &prowlarr.GetAPIV1SearchParams{
-		IndexerIds: &indexers,
+		IndexerIds: &[]int32{indexer},
 		Query:      &query,
 		Categories: &categories,
 		Limit:      intPtr(100),
