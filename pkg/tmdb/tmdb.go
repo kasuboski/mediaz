@@ -1,4 +1,4 @@
-package prowlarr
+package tmdb
 
 import (
 	"context"
@@ -7,10 +7,8 @@ import (
 
 func SetRequestAPIKey(apiKey string) func(ctx context.Context, req *http.Request) error {
 	return func(ctx context.Context, req *http.Request) error {
-		q := req.URL.Query()
-		q.Set("apikey", apiKey)
-		req.URL.RawQuery = q.Encode()
-		req.Header.Add("Accept", "application/json")
+		req.Header.Add("Authorization", "Bearer "+apiKey)
+		req.Header.Add("accept", "application/json")
 		return nil
 	}
 }

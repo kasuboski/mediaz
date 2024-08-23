@@ -7,6 +7,7 @@ import (
 	"github.com/kasuboski/mediaz/config"
 	"github.com/kasuboski/mediaz/pkg/library"
 	"github.com/kasuboski/mediaz/pkg/logger"
+	"github.com/kasuboski/mediaz/pkg/manager"
 	"github.com/kasuboski/mediaz/pkg/prowlarr"
 	"github.com/kasuboski/mediaz/pkg/tmdb"
 	"github.com/kasuboski/mediaz/server"
@@ -33,7 +34,7 @@ var serveCmd = &cobra.Command{
 			Host:   cfg.TMDB.Host,
 		}
 
-		tmdbClient, err := tmdb.NewClient(tmdbURL.String())
+		tmdbClient, err := tmdb.NewClient(tmdbURL.String(), tmdb.WithRequestEditorFn(tmdb.SetRequestAPIKey(cfg.TMDB.APIKey)))
 		if err != nil {
 			log.Fatal("failed to create tmdb client", err)
 		}
@@ -43,7 +44,7 @@ var serveCmd = &cobra.Command{
 			Host:   cfg.Prowlarr.Host,
 		}
 
-		prowlarrClient, err := prowlarr.NewClient(prowlarrURL.String())
+		prowlarrClient, err := prowlarr.NewClient(prowlarrURL.String(), prowlarr.WithRequestEditorFn(prowlarr.SetRequestAPIKey(cfg.Prowlarr.APIKey)))
 		if err != nil {
 			log.Fatal("failed to create prowlarr client", err)
 		}
@@ -52,7 +53,8 @@ var serveCmd = &cobra.Command{
 		tvFS := os.DirFS(cfg.Library.TVDir)
 		library := library.New(movieFS, tvFS)
 
-		server := server.New(tmdbClient, prowlarrClient, library, log)
+		manager := manager.New(tmdbClient, prowlarrClient, library)
+		server := server.New(log, manager)
 		log.Error(server.Serve(cfg.Server.Port))
 	},
 }

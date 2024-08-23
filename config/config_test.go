@@ -59,6 +59,7 @@ func TestNew(t *testing.T) {
 		cu := viper.New()
 		cu.SetConfigFile("")
 		cu.SetDefault("tmdb.scheme", "https")
+		cu.SetDefault("tmdb.apiKey", "fake-key")
 		cu.SetDefault("prowlarr.scheme", "http")
 		c, err := New(cu)
 		if err != nil {
@@ -68,6 +69,7 @@ func TestNew(t *testing.T) {
 		wantConfig := Config{
 			TMDB: TMDB{
 				Scheme: "https",
+				APIKey: "fake-key",
 			},
 			Prowlarr: Prowlarr{
 				Scheme: "http",
