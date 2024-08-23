@@ -67,9 +67,10 @@ var listIndexerCmd = &cobra.Command{
 
 // searchIdexerCmd represents searching an indexer
 var searchIndexerCmd = &cobra.Command{
-	Use:   "indexer",
-	Short: "search indexers that are currently managed",
-	Long:  `search indexers that are currently managed`,
+	Use:        "indexer",
+	Short:      "search indexers that are currently managed",
+	Args:       cobra.ExactArgs(1),
+	ArgAliases: []string{"query"},
 	Run: func(cmd *cobra.Command, args []string) {
 		log := logger.Get()
 		cfg, err := config.New(viper.GetViper())
@@ -101,10 +102,10 @@ var searchIndexerCmd = &cobra.Command{
 		tvFS := os.DirFS(cfg.Library.TVDir)
 		library := library.New(movieFS, tvFS)
 
-		manager := manager.New(tmdbClient, prowlarrClient, library)
+		m := manager.New(tmdbClient, prowlarrClient, library)
 
 		ctx := logger.WithCtx(context.Background(), log)
-		idx, err := manager.ListIndexers(ctx)
+		idx, err := m.ListIndexers(ctx)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -114,7 +115,8 @@ var searchIndexerCmd = &cobra.Command{
 			log.Debugw("will search", "indexer", indexer.Name)
 		}
 
-		releases, err := manager.SearchIndexers(ctx, indexers, []int32{2000}, "Bourne Identity")
+		query := args[0]
+		releases, err := m.SearchIndexers(ctx, indexers, []int32{manager.MOVIE_CATEGORY, manager.TV_CATEGORY}, query)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -124,9 +126,8 @@ var searchIndexerCmd = &cobra.Command{
 			indexer := r.Indexer
 			size := *r.Size
 			humanSize := humanize.Bytes(uint64(size))
-			tmdb := r.TmdbID
 
-			log.Infow(fmt.Sprintf("found %s", name), "indexer", indexer, "size", humanSize, "tmdb", tmdb)
+			log.Infow(fmt.Sprintf("found %s", name), "indexer", indexer, "size", humanSize)
 		}
 
 		log.Infof("found %d releases", len(releases))

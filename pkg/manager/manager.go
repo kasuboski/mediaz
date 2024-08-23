@@ -59,6 +59,7 @@ type SearchMediaResult struct {
 
 const (
 	MOVIE_CATEGORY int32 = 2000
+	TV_CATEGORY    int32 = 5000
 )
 
 // SearchMovie querie tmdb for a movie
