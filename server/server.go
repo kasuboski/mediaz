@@ -72,12 +72,16 @@ func (s Server) Serve(port int) error {
 
 	v1 := api.PathPrefix("/v1").Subrouter()
 
-	v1.HandleFunc("/movies", s.ListMovies()).Methods(http.MethodGet)
-	v1.HandleFunc("/movies", s.CreateMovie()).Methods(http.MethodPost)
+	v1.HandleFunc("/library/movies", s.ListMovies()).Methods(http.MethodGet)
+	v1.HandleFunc("/library/movies", s.AddMovieToLibrary()).Methods(http.MethodPost)
 
-	v1.HandleFunc("/tv", s.ListTVShows()).Methods(http.MethodGet)
+	v1.HandleFunc("/library/tv", s.ListTVShows()).Methods(http.MethodGet)
+	// TODO: add method to add a show to your library
+	// v1.HandleFunc("/library/tv", s.AddShowToLibrary()).Methods(http.MethodPost)
 
-	v1.HandleFunc("/tmdb", s.SearchMovie()).Methods(http.MethodGet)
+	v1.HandleFunc("/discover/movie", s.SearchMovie()).Methods(http.MethodGet)
+	v1.HandleFunc("/discover/tv", s.SearchTV()).Methods(http.MethodGet)
+
 	v1.HandleFunc("/indexers", s.ListIndexers()).Methods(http.MethodGet)
 
 	corsHandler := handlers.CORS(
@@ -120,7 +124,7 @@ func (s Server) Healthz() http.HandlerFunc {
 func (s Server) ListMovies() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromCtx(r.Context())
-		movies, err := s.manager.ListMoviesOnDisk(r.Context())
+		movies, err := s.manager.ListMoviesInLibrary(r.Context())
 		if err != nil {
 			log.Error("failed to list movies", zap.Error(err))
 			http.Error(w, "failed to list movies", http.StatusInternalServerError)
@@ -140,7 +144,7 @@ func (s Server) ListTVShows() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("content-type", "application/json")
 		log := logger.FromCtx(r.Context())
-		episodes, err := s.manager.ListEpisodesOnDisk(r.Context())
+		episodes, err := s.manager.ListShowsInLibrary(r.Context())
 		if err != nil {
 			log.Error("failed to list shows", zap.Error(err))
 			http.Error(w, "failed to list shows", http.StatusInternalServerError)
@@ -193,7 +197,28 @@ func (s Server) SearchMovie() http.HandlerFunc {
 	}
 }
 
-func (s Server) CreateMovie() http.HandlerFunc {
+// SearchMovie searches for movie metadata via tmdb
+func (s Server) SearchTV() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log := logger.FromCtx(r.Context())
+		qps := r.URL.Query()
+		query := qps.Get("query")
+
+		result, err := s.manager.SearchTV(r.Context(), query)
+		if err != nil {
+			writeErrorResponse(w, http.StatusOK, err)
+			return
+		}
+
+		err = writeResponse(w, http.StatusOK, GenericResponse{Response: result})
+		if err != nil {
+			log.Error("failed to write response", zap.Error(err))
+			return
+		}
+	}
+}
+
+func (s Server) AddMovieToLibrary() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromCtx(r.Context())
 		b, err := io.ReadAll(r.Body)
@@ -211,7 +236,7 @@ func (s Server) CreateMovie() http.HandlerFunc {
 			return
 		}
 
-		err = s.manager.AddMovie(r.Context(), request)
+		err = s.manager.AddMovieToLibrary(r.Context(), request)
 		if err != nil {
 			writeErrorResponse(w, http.StatusInternalServerError, err)
 			return

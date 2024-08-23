@@ -33,14 +33,14 @@ func New(tmbdClient TMDBClientInterface, prowlarrClient ProwlarrClientInterface,
 	}
 }
 
-type SearchMovieResponse struct {
-	Page         *int            `json:"page,omitempty"`
-	Results      []*SearchResult `json:"results,omitempty"`
-	TotalPages   *int            `json:"total_pages,omitempty"`
-	TotalResults *int            `json:"total_results,omitempty"`
+type SearchMediaResponse struct {
+	Page         *int                 `json:"page,omitempty"`
+	Results      []*SearchMediaResult `json:"results,omitempty"`
+	TotalPages   *int                 `json:"total_pages,omitempty"`
+	TotalResults *int                 `json:"total_results,omitempty"`
 }
 
-type SearchResult struct {
+type SearchMediaResult struct {
 	Adult            *bool    `json:"adult,omitempty"`
 	BackdropPath     *string  `json:"backdrop_path,omitempty"`
 	GenreIds         *[]int   `json:"genre_ids,omitempty"`
@@ -62,7 +62,7 @@ const (
 )
 
 // SearchMovie querie tmdb for a movie
-func (m MediaManager) SearchMovie(ctx context.Context, query string) (*SearchMovieResponse, error) {
+func (m MediaManager) SearchMovie(ctx context.Context, query string) (*SearchMediaResponse, error) {
 	log := logger.FromCtx(ctx)
 	if query == "" {
 		log.Debug("search movie query is empty", zap.String("query", query))
@@ -77,26 +77,53 @@ func (m MediaManager) SearchMovie(ctx context.Context, query string) (*SearchMov
 	defer res.Body.Close()
 
 	log.Debug("search movie response", zap.Any("status", res.Status))
+	result, err := parseMediaResult(res)
+	if err != nil {
+		log.Debug("error parsing movie query result", zap.Error(err))
+		return nil, err
+	}
 
+	return result, nil
+}
+
+// SearchMovie querie tmdb for tv shows
+func (m MediaManager) SearchTV(ctx context.Context, query string) (*SearchMediaResponse, error) {
+	log := logger.FromCtx(ctx)
+	if query == "" {
+		log.Debug("search tv query is empty", zap.String("query", query))
+		return nil, errors.New("query is empty")
+	}
+
+	res, err := m.tmdb.SearchTv(ctx, &tmdb.SearchTvParams{Query: query})
+	if err != nil {
+		log.Error("search tv failed request", zap.Error(err))
+		return nil, err
+	}
+	defer res.Body.Close()
+
+	log.Debug("search tv response", zap.Any("status", res.Status))
+	result, err := parseMediaResult(res)
+	if err != nil {
+		log.Debug("error parsing tv show query result", zap.Error(err))
+		return nil, err
+	}
+
+	return result, nil
+}
+
+func parseMediaResult(res *http.Response) (*SearchMediaResponse, error) {
 	if res.StatusCode != http.StatusOK {
-		log.Debug("unexpected response", zap.String("status", res.Status))
-		return nil, fmt.Errorf("unexpected status: %s", res.Status)
+		return nil, fmt.Errorf("unexpected media query status status: %s", res.Status)
 	}
 
 	b, err := io.ReadAll(res.Body)
 	if err != nil {
-		log.Error("failed to read movie search response", zap.Error(err))
 		return nil, err
 	}
 
-	results := new(SearchMovieResponse)
+	results := new(SearchMediaResponse)
 	err = json.Unmarshal(b, &results)
-	if err != nil {
-		log.Error("failed to unmarshal search movie response", zap.Error(err))
-		return nil, err
-	}
-
-	return results, nil
+	return results, err
 }
 
 // ListIndexers lists all managed indexers
@@ -109,11 +136,11 @@ func (m MediaManager) ListIndexers(ctx context.Context) ([]Indexer, error) {
 	return m.indexer.ListIndexers(ctx), nil
 }
 
-func (m MediaManager) ListEpisodesOnDisk(ctx context.Context) ([]string, error) {
+func (m MediaManager) ListShowsInLibrary(ctx context.Context) ([]string, error) {
 	return m.library.FindEpisodes(ctx)
 }
 
-func (m MediaManager) ListMoviesOnDisk(ctx context.Context) ([]library.Movie, error) {
+func (m MediaManager) ListMoviesInLibrary(ctx context.Context) ([]library.Movie, error) {
 	return m.library.FindMovies(ctx)
 }
 
@@ -124,13 +151,13 @@ type AddMovieRequest struct {
 	Query    string  `json:"query"`
 }
 
-// AddMovie adds a movie to be managed by mediaz
+// AddMovieToLibrary adds a movie to be managed by mediaz
 // TODO: fetch trackers from indexer
 // TODO: decide tracker based on quality profile (part of request.. ui will have to do a lookup here before request)
 // TODO: query each indexer asynchronously?
 // TODO: pass to torrent client
 // TODO: always write status to database for given movie (queue, downloaded, missing (error?), Unreleased)
-func (m MediaManager) AddMovie(ctx context.Context, request AddMovieRequest) error {
+func (m MediaManager) AddMovieToLibrary(ctx context.Context, request AddMovieRequest) error {
 	log := logger.FromCtx(ctx)
 
 	categories := []int32{MOVIE_CATEGORY}
