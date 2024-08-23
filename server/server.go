@@ -159,6 +159,7 @@ func (s Server) ListTVShows() http.HandlerFunc {
 	}
 }
 
+// ListIndexers lists all indexers
 func (s Server) ListIndexers() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromCtx(r.Context())
@@ -197,7 +198,7 @@ func (s Server) SearchMovie() http.HandlerFunc {
 	}
 }
 
-// SearchMovie searches for movie metadata via tmdb
+// SearchTV searches for movie metadata via tmdb
 func (s Server) SearchTV() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromCtx(r.Context())
@@ -218,6 +219,7 @@ func (s Server) SearchTV() http.HandlerFunc {
 	}
 }
 
+// AddMovieToLibrary adds a movie to the library
 func (s Server) AddMovieToLibrary() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromCtx(r.Context())
