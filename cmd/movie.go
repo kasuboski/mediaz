@@ -19,11 +19,10 @@ var (
 	movieQuery string
 )
 
-// searchMovieCmd represents the movie command
-var searchMovieCmd = &cobra.Command{
+// discoverMovieCmd represents the movie command
+var discoverMovieCmd = &cobra.Command{
 	Use:   "movie",
-	Short: "search for a movie",
-	Long:  `search for a movie`,
+	Short: "discover a movie",
 	Run: func(cmd *cobra.Command, args []string) {
 		cfg, err := config.New(viper.GetViper())
 		if err != nil {
@@ -90,10 +89,10 @@ var listMovieCmd = &cobra.Command{
 }
 
 func init() {
-	searchMovieCmd.Flags().StringVarP(&movieQuery, "query", "q", "", "a query for movies")
-	_ = searchMovieCmd.MarkFlagRequired("query")
+	discoverMovieCmd.Flags().StringVarP(&movieQuery, "query", "q", "", "a query for movies")
+	_ = discoverMovieCmd.MarkFlagRequired("query")
 
-	searchCmd.AddCommand(searchMovieCmd)
+	discoverCmd.AddCommand(discoverMovieCmd)
 
 	listCmd.AddCommand(listMovieCmd)
 }
