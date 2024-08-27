@@ -13,6 +13,7 @@ import (
 	"github.com/kasuboski/mediaz/pkg/logger"
 	"github.com/kasuboski/mediaz/pkg/prowlarr"
 	"github.com/kasuboski/mediaz/pkg/tmdb"
+	"github.com/kasuboski/mediaz/storage"
 	"go.uber.org/zap"
 )
 
@@ -23,21 +24,23 @@ type MediaManager struct {
 	tmdb    TMDBClientInterface
 	indexer IndexerStore
 	library library.Library
+	storage storage.Storage
 }
 
-func New(tmbdClient TMDBClientInterface, prowlarrClient ProwlarrClientInterface, library library.Library) MediaManager {
+func New(tmbdClient TMDBClientInterface, prowlarrClient ProwlarrClientInterface, library library.Library, storage storage.Storage) MediaManager {
 	return MediaManager{
 		tmdb:    tmbdClient,
 		indexer: NewIndexerStore(prowlarrClient),
 		library: library,
+		storage: storage,
 	}
 }
 
 type SearchMediaResponse struct {
 	Page         *int                 `json:"page,omitempty"`
-	Results      []*SearchMediaResult `json:"results,omitempty"`
 	TotalPages   *int                 `json:"total_pages,omitempty"`
 	TotalResults *int                 `json:"total_results,omitempty"`
+	Results      []*SearchMediaResult `json:"results,omitempty"`
 }
 
 type SearchMediaResult struct {
@@ -148,8 +151,8 @@ func (m MediaManager) ListMoviesInLibrary(ctx context.Context) ([]library.Movie,
 // AddMovieRequest describes what is required to add a movie
 // TODO: add quality profiles
 type AddMovieRequest struct {
-	Indexers []int32 `json:"indexers"`
 	Query    string  `json:"query"`
+	Indexers []int32 `json:"indexers"`
 }
 
 // AddMovieToLibrary adds a movie to be managed by mediaz
@@ -174,6 +177,7 @@ func (m MediaManager) AddMovieToLibrary(ctx context.Context, request AddMovieReq
 		seeders, err := r.Seeders.Get()
 		if err != nil {
 			log.Debug("failed to get seeders from release", zap.Any("release", r))
+			continue
 		}
 
 		if seeders > maxSeeders {

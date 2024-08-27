@@ -11,6 +11,8 @@ import (
 	"github.com/kasuboski/mediaz/pkg/prowlarr"
 	"github.com/kasuboski/mediaz/pkg/tmdb"
 	"github.com/kasuboski/mediaz/server"
+	"github.com/kasuboski/mediaz/storage/sqlite"
+	"go.uber.org/zap"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -26,7 +28,7 @@ var serveCmd = &cobra.Command{
 
 		cfg, err := config.New(viper.GetViper())
 		if err != nil {
-			log.Fatal("failed to read configurations", err)
+			log.Fatal("failed to read configurations", zap.Error(err))
 		}
 
 		tmdbURL := url.URL{
@@ -36,7 +38,7 @@ var serveCmd = &cobra.Command{
 
 		tmdbClient, err := tmdb.NewClient(tmdbURL.String(), tmdb.WithRequestEditorFn(tmdb.SetRequestAPIKey(cfg.TMDB.APIKey)))
 		if err != nil {
-			log.Fatal("failed to create tmdb client", err)
+			log.Fatal("failed to create tmdb client", zap.Error(err))
 		}
 
 		prowlarrURL := url.URL{
@@ -46,14 +48,19 @@ var serveCmd = &cobra.Command{
 
 		prowlarrClient, err := prowlarr.NewClient(prowlarrURL.String(), prowlarr.WithRequestEditorFn(prowlarr.SetRequestAPIKey(cfg.Prowlarr.APIKey)))
 		if err != nil {
-			log.Fatal("failed to create prowlarr client", err)
+			log.Fatal("failed to create prowlarr client", zap.Error(err))
+		}
+
+		storage, err := sqlite.New(cfg.Storage.FilePath)
+		if err != nil {
+			log.Fatal("failed to create storage connection", zap.Error(err))
 		}
 
 		movieFS := os.DirFS(cfg.Library.MovieDir)
 		tvFS := os.DirFS(cfg.Library.TVDir)
 		library := library.New(movieFS, tvFS)
 
-		manager := manager.New(tmdbClient, prowlarrClient, library)
+		manager := manager.New(tmdbClient, prowlarrClient, library, storage)
 		server := server.New(log, manager)
 		log.Error(server.Serve(cfg.Server.Port))
 	},
@@ -61,14 +68,4 @@ var serveCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(serveCmd)
-
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// serveCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// serveCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }

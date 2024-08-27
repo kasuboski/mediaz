@@ -3406,7 +3406,6 @@ func (c *Client) PostAPIV1SearchWithBody(ctx context.Context, contentType string
 		return nil, err
 	}
 	req = req.WithContext(ctx)
-
 	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
 		return nil, err
 	}

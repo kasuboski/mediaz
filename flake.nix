@@ -40,6 +40,9 @@
 
             # nix formatter
             nixpkgs-fmt
+
+            # https://github.com/go-jet/jet
+            go-jet
           ];
 
           shellHook = ''

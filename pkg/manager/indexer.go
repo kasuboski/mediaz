@@ -33,11 +33,11 @@ func NewIndexerStore(prowlarr prowlarr.ClientInterface) IndexerStore {
 }
 
 type Indexer struct {
-	ID         int32                                         `json:"id"`
-	Name       string                                        `json:"name"`
 	Categories nullable.Nullable[[]prowlarr.IndexerCategory] `json:"categories,omitempty"`
-	Priority   int32                                         `json:"priority"`
 	Status     nullable.Nullable[IndexerStatus]              `json:"status,omitempty"`
+	Name       string                                        `json:"name"`
+	ID         int32                                         `json:"id"`
+	Priority   int32                                         `json:"priority"`
 }
 
 func (i *IndexerStore) ListIndexers(ctx context.Context) []Indexer {

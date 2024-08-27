@@ -81,14 +81,14 @@ func Get() *zap.SugaredLogger {
 // FromCtx returns the Logger associated with the ctx. If no logger
 // is associated, the default logger is returned, unless it is nil
 // in which case a disabled logger is returned.
-func FromCtx(ctx context.Context) *zap.SugaredLogger {
+func FromCtx(ctx context.Context, with ...any) *zap.SugaredLogger {
 	if l, ok := ctx.Value(ctxKey{}).(*zap.SugaredLogger); ok {
-		return l
+		return l.With(with)
 	} else if l := logger; l != nil {
-		return l
+		return l.With(with)
 	}
 
-	return Get()
+	return Get().With(with)
 }
 
 // WithCtx returns a copy of ctx with the Logger attached.

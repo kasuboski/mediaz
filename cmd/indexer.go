@@ -102,7 +102,8 @@ var searchIndexerCmd = &cobra.Command{
 		tvFS := os.DirFS(cfg.Library.TVDir)
 		library := library.New(movieFS, tvFS)
 
-		m := manager.New(tmdbClient, prowlarrClient, library)
+		// TODO: add database connection?
+		m := manager.New(tmdbClient, prowlarrClient, library, nil)
 
 		ctx := logger.WithCtx(context.Background(), log)
 		idx, err := m.ListIndexers(ctx)
