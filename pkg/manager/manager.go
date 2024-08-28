@@ -12,8 +12,8 @@ import (
 	"github.com/kasuboski/mediaz/pkg/library"
 	"github.com/kasuboski/mediaz/pkg/logger"
 	"github.com/kasuboski/mediaz/pkg/prowlarr"
+	"github.com/kasuboski/mediaz/pkg/storage"
 	"github.com/kasuboski/mediaz/pkg/tmdb"
-	"github.com/kasuboski/mediaz/storage"
 	"go.uber.org/zap"
 )
 

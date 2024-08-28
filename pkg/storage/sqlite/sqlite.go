@@ -8,7 +8,7 @@ import (
 	"github.com/go-jet/jet/v2/sqlite"
 	"github.com/kasuboski/mediaz/pkg/logger"
 	"github.com/kasuboski/mediaz/storage"
-	"github.com/kasuboski/mediaz/storage/sqlite/schema/table"
+	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/table"
 	_ "github.com/mattn/go-sqlite3"
 	"go.uber.org/zap"
 )
@@ -100,7 +100,7 @@ func (s SQLite) handleStatement(ctx context.Context, stmt sqlite.Statement, expe
 
 	rows, err := result.RowsAffected()
 	if err != nil {
-		log.Debug("failed to get number of rows affected")
+		log.Debug("failed to get number of rows affected", zap.Error(err))
 		tx.Rollback()
 		return result, err
 	}
