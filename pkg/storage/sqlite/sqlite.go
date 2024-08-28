@@ -7,7 +7,7 @@ import (
 
 	"github.com/go-jet/jet/v2/sqlite"
 	"github.com/kasuboski/mediaz/pkg/logger"
-	"github.com/kasuboski/mediaz/storage"
+	"github.com/kasuboski/mediaz/pkg/storage"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/table"
 	_ "github.com/mattn/go-sqlite3"
 	"go.uber.org/zap"

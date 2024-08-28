@@ -9,9 +9,9 @@ import (
 	"github.com/kasuboski/mediaz/pkg/logger"
 	"github.com/kasuboski/mediaz/pkg/manager"
 	"github.com/kasuboski/mediaz/pkg/prowlarr"
+	"github.com/kasuboski/mediaz/pkg/storage/sqlite"
 	"github.com/kasuboski/mediaz/pkg/tmdb"
 	"github.com/kasuboski/mediaz/server"
-	"github.com/kasuboski/mediaz/storage/sqlite"
 	"go.uber.org/zap"
 
 	"github.com/spf13/cobra"

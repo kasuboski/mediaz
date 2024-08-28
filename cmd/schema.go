@@ -5,7 +5,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/kasuboski/mediaz/storage/sqlite"
+	"github.com/kasuboski/mediaz/pkg/storage/sqlite"
 	"github.com/spf13/cobra"
 
 	jet "github.com/go-jet/jet/v2/generator/sqlite"
