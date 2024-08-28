@@ -8,7 +8,7 @@ import (
 	"github.com/go-jet/jet/v2/sqlite"
 	"github.com/kasuboski/mediaz/pkg/logger"
 	"github.com/kasuboski/mediaz/storage"
-	"github.com/kasuboski/mediaz/storage/sqlite/schema/gen/table"
+	"github.com/kasuboski/mediaz/storage/sqlite/schema/table"
 	_ "github.com/mattn/go-sqlite3"
 	"go.uber.org/zap"
 )
@@ -33,9 +33,27 @@ func New(filePath string) (storage.Storage, error) {
 	}, nil
 }
 
+// Init applies the provided schema file contents to the database
+func (s SQLite) Init(ctx context.Context, schemas ...string) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+
+	for _, s := range schemas {
+		_, err := tx.ExecContext(ctx, s)
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+	}
+
+	return tx.Commit()
+}
+
 // CreateIndexer stores a new indexer in the database
 func (s SQLite) CreateIndexer(ctx context.Context, name string, priority int) (int64, error) {
-	stmt := table.Indexers.INSERT(table.Indexers.AllColumns).VALUES(name).ON_CONFLICT(table.Indexers.Name).DO_NOTHING()
+	stmt := table.Indexers.INSERT(table.Indexers.Name, table.Indexers.Priority).VALUES(name, priority).ON_CONFLICT(table.Indexers.Name).DO_NOTHING()
 	_, err := s.handleInsert(ctx, stmt)
 	if err != nil {
 		return 0, err
@@ -89,14 +107,9 @@ func (s SQLite) handleStatement(ctx context.Context, stmt sqlite.Statement, expe
 
 	if rows != expectedRows {
 		log.Debug("unexpected number of rows effected", zap.Int64("rows", rows), zap.Int64("expected rows", expectedRows), zap.Error(err))
+		tx.Rollback()
 		return result, ErrNoRowsDeleted
 	}
 
-	err = tx.Commit()
-	if err != nil {
-		log.Debug("failed to commit transaction", zap.Error(err))
-		return result, err
-	}
-
-	return result, nil
+	return result, tx.Commit()
 }
