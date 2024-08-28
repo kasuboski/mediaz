@@ -22,8 +22,6 @@ var schemaCmd = &cobra.Command{
 	Short: "generate database code",
 	Long:  `generate database code`,
 	Run: func(cmd *cobra.Command, args []string) {
-		log.Println("hello")
-
 		var schemas []string
 		for _, schema := range schemaFiles {
 			f, err := os.ReadFile(schema)
@@ -34,22 +32,17 @@ var schemaCmd = &cobra.Command{
 			schemas = append(schemas, string(f))
 		}
 
-		log.Println(schemas)
-
-		log.Println("creating db")
 		tmpStorage, err := sqlite.New("tmp.sqlite")
 		if err != nil {
 			log.Fatal(err)
 		}
 		defer os.Remove("tmp.sqlite")
 
-		log.Println("init schema")
 		err = tmpStorage.Init(context.Background(), schemas...)
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		log.Println("generating dsn")
 		err = jet.GenerateDSN("tmp.sqlite", outputDirectory)
 		if err != nil {
 			log.Fatal(err)
