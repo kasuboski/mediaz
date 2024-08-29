@@ -20,8 +20,8 @@ func TestQualitySizeCutoff(t *testing.T) {
 	}
 
 	tests := []struct {
-		size    int
-		runtime int
+		size    uint64
+		runtime uint64
 		want    bool
 	}{
 		{

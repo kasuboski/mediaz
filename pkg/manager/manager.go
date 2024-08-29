@@ -172,6 +172,10 @@ func (m MediaManager) AddMovieToLibrary(ctx context.Context, request AddMovieReq
 	}
 
 	meta := FromSearchMediaResult(*r[0])
+	det, err := m.GetMovieDetails(ctx, meta.TMDBID)
+	if err != nil {
+		return err
+	}
 
 	categories := []int32{MOVIE_CATEGORY}
 	releases, err := m.SearchIndexers(ctx, request.Indexers, categories, meta.Title)
@@ -180,9 +184,20 @@ func (m MediaManager) AddMovieToLibrary(ctx context.Context, request AddMovieReq
 		return err
 	}
 
+	// TODO: Get this dynamically
+	qs := QualitySize{
+		Quality:   "HDTV-720p",
+		Min:       17.1,
+		Preferred: 1999,
+		Max:       2000,
+	}
 	var chosenRelease *prowlarr.ReleaseResource
 	var maxSeeders int32
 	for _, r := range releases {
+		if !MeetsQualitySize(qs, uint64(*r.Size), uint64(*det.Revenue)) {
+			continue
+		}
+
 		seeders, err := r.Seeders.Get()
 		if err != nil {
 			log.Debug("failed to get seeders from release", zap.Any("release", r))

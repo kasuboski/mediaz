@@ -11,12 +11,12 @@ type QualitySizes struct {
 type QualitySize struct {
 	Quality   string  `json:"quality"`
 	Min       float64 `json:"min"`
-	Preferred int     `json:"preferred"`
-	Max       int     `json:"max"`
+	Preferred uint64  `json:"preferred"`
+	Max       uint64  `json:"max"`
 }
 
 // MeetsQualitySize checks if the given fileSize (MB) and runtime (min) fall within the QualitySize
-func MeetsQualitySize(qs QualitySize, fileSize int, runtime int) bool {
+func MeetsQualitySize(qs QualitySize, fileSize uint64, runtime uint64) bool {
 	fileRatio := float64(fileSize) / float64(runtime)
 	if fileRatio < qs.Min {
 		return false
