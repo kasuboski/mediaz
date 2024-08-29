@@ -243,3 +243,17 @@ func (m MediaManager) AddIndexer(ctx context.Context, request AddIndexerRequest)
 
 	return indexer, nil
 }
+
+// DeleteIndexerRequest describes what is required to delete an indexer
+type DeleteIndexerRequest struct {
+	ID *int `json:"id" yaml:"id" mapstructure:"id"`
+}
+
+// AddIndexer stores a new indexer in the database
+func (m MediaManager) DeleteIndexer(ctx context.Context, request DeleteIndexerRequest) error {
+	if request.ID == nil {
+		return fmt.Errorf("indexer id is required")
+	}
+
+	return m.storage.DeleteIndexer(ctx, int64(*request.ID))
+}

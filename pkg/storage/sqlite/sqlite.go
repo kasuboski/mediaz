@@ -100,5 +100,6 @@ func (s SQLite) handleStatement(ctx context.Context, stmt sqlite.Statement) (sql
 		tx.Rollback()
 		return result, err
 	}
+
 	return result, tx.Commit()
 }

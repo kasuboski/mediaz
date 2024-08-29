@@ -84,6 +84,7 @@ func (s Server) Serve(port int) error {
 
 	v1.HandleFunc("/indexers", s.ListIndexers()).Methods(http.MethodGet)
 	v1.HandleFunc("/indexers", s.CreateIndexer()).Methods(http.MethodPost)
+	v1.HandleFunc("/indexers", s.DeleteIndexer()).Methods(http.MethodDelete)
 
 	corsHandler := handlers.CORS(
 		handlers.AllowedOrigins([]string{"*"}),
@@ -206,8 +207,42 @@ func (s Server) CreateIndexer() http.HandlerFunc {
 		}
 
 		log.Debug("succesfully added indexer")
-		writeResponse(w, http.StatusOK, GenericResponse{
+		writeResponse(w, http.StatusCreated, GenericResponse{
 			Response: indexer,
+		})
+	}
+}
+
+// ListIndexers deletes an indexer
+func (s Server) DeleteIndexer() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log := logger.FromCtx(r.Context())
+		b, err := io.ReadAll(r.Body)
+		if err != nil {
+			log.Debug("invalid request body", zap.Error(err))
+			http.Error(w, "invalid request body", http.StatusBadRequest)
+			return
+		}
+
+		var request manager.DeleteIndexerRequest
+		err = json.Unmarshal(b, &request)
+		if err != nil {
+			log.Debug("invalid request body", zap.ByteString("body", b))
+			http.Error(w, "invalid request body", http.StatusBadRequest)
+			return
+		}
+
+		log.Debug("adding indexer", zap.Any("request", request))
+		err = s.manager.DeleteIndexer(r.Context(), request)
+		if err != nil {
+			log.Debug("failed to delete indexer", zap.Error(err))
+			writeErrorResponse(w, http.StatusInternalServerError, err)
+			return
+		}
+
+		log.Debug("succesfully deleted indexer")
+		writeResponse(w, http.StatusOK, GenericResponse{
+			Response: request,
 		})
 	}
 }
