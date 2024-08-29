@@ -95,7 +95,7 @@ func (s Server) Serve(port int) error {
 	}
 
 	go func() {
-		s.baseLogger.Info("serving...", zap.Int("port", port))
+		s.baseLogger.Infow("serving...", "port", port)
 		if err := srv.ListenAndServe(); err != nil {
 			s.baseLogger.Error(err.Error())
 		}

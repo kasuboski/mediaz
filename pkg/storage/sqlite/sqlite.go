@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"log"
 
 	"github.com/go-jet/jet/v2/sqlite"
 	"github.com/kasuboski/mediaz/pkg/logger"
@@ -61,10 +60,10 @@ func (s SQLite) CreateIndexer(ctx context.Context, name, uri, apiKey string, pri
 		ApiKey:   &apiKey,
 		Priority: int32(priority),
 	}
-	stmt := table.Indexers.INSERT(table.Indexers.Name, table.Indexers.URI, table.Indexers.ApiKey, table.Indexers.Priority).MODEL(indexer).ON_CONFLICT(table.Indexers.Name).DO_NOTHING()
+
+	stmt := table.Indexers.INSERT(table.Indexers.Name, table.Indexers.URI, table.Indexers.ApiKey, table.Indexers.Priority).MODEL(indexer).RETURNING(table.Indexers.AllColumns)
 	result, err := s.handleInsert(ctx, stmt)
 	if err != nil {
-		log.Println("HERE")
 		return 0, err
 	}
 
@@ -83,19 +82,20 @@ func (s SQLite) DeleteIndexer(ctx context.Context, id int64) error {
 }
 
 func (s SQLite) handleInsert(ctx context.Context, stmt sqlite.InsertStatement) (sql.Result, error) {
-	return s.handleStatement(ctx, stmt, 1)
+	return s.handleStatement(ctx, stmt)
 }
 
 func (s SQLite) handleDelete(ctx context.Context, stmt sqlite.DeleteStatement) (sql.Result, error) {
-	return s.handleStatement(ctx, stmt, 1)
+	return s.handleStatement(ctx, stmt)
 }
 
-func (s SQLite) handleStatement(ctx context.Context, stmt sqlite.Statement, expectedRows int64) (sql.Result, error) {
+func (s SQLite) handleStatement(ctx context.Context, stmt sqlite.Statement) (sql.Result, error) {
 	log := logger.FromCtx(ctx)
-
 	var result sql.Result
+
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
+		log.Debug("failed to init transaction", zap.Error(err))
 		return result, err
 	}
 
@@ -105,19 +105,5 @@ func (s SQLite) handleStatement(ctx context.Context, stmt sqlite.Statement, expe
 		tx.Rollback()
 		return result, err
 	}
-
-	rows, err := result.RowsAffected()
-	if err != nil {
-		log.Debug("failed to get number of rows affected", zap.Error(err))
-		tx.Rollback()
-		return result, err
-	}
-
-	if rows != expectedRows {
-		log.Debug("unexpected number of rows effected", zap.Int64("rows", rows), zap.Int64("expected rows", expectedRows), zap.Error(err))
-		tx.Rollback()
-		return result, ErrNoRowsDeleted
-	}
-
 	return result, tx.Commit()
 }

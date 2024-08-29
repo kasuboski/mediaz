@@ -13,6 +13,7 @@ import (
 	"github.com/kasuboski/mediaz/pkg/logger"
 	"github.com/kasuboski/mediaz/pkg/prowlarr"
 	"github.com/kasuboski/mediaz/pkg/storage"
+	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/model"
 	"github.com/kasuboski/mediaz/pkg/tmdb"
 	"go.uber.org/zap"
 )
@@ -222,11 +223,7 @@ func (m MediaManager) SearchIndexers(ctx context.Context, indexers, categories [
 
 // AddIndexerRequest describes what is required to add an indexer
 type AddIndexerRequest struct {
-	URI      string `json:"uri"`
-	ApiKey   string `json:"apiKey"`
-	Name     string `json:"name"`
-	Priority int    `json:"priority"`
-	ID       int64  `json:"id"`
+	model.Indexers
 }
 
 // AddIndexer stores a new indexer in the database
@@ -237,12 +234,12 @@ func (m MediaManager) AddIndexer(ctx context.Context, request AddIndexerRequest)
 		return indexer, fmt.Errorf("indexer name is required")
 	}
 
-	id, err := m.storage.CreateIndexer(ctx, request.Name, request.URI, request.ApiKey, request.Priority)
+	id, err := m.storage.CreateIndexer(ctx, request.Name, request.URI, *request.ApiKey, int(request.Priority))
 	if err != nil {
 		return indexer, err
 	}
 
-	indexer.ID = id
+	indexer.ID = int32(id)
 
 	return indexer, nil
 }
