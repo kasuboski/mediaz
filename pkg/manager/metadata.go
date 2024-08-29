@@ -3,6 +3,7 @@ package manager
 import (
 	"context"
 
+	"github.com/kasuboski/mediaz/pkg/library"
 	"github.com/kasuboski/mediaz/pkg/logger"
 )
 
@@ -27,4 +28,14 @@ func (m MediaManager) IndexMovies(ctx context.Context) error {
 		log.Debugw("metadata", "id", res.ID, "title", res.Title)
 	}
 	return nil
+}
+
+func FromSearchMediaResult(resp SearchMediaResult) library.MovieMetadata {
+	return library.MovieMetadata{
+		TMDBID:   *resp.ID,
+		Images:   *resp.PosterPath,
+		Title:    *resp.Title,
+		Overview: *resp.Overview,
+		// Runtime: resp.,
+	}
 }

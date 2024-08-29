@@ -36,10 +36,10 @@ func New(movies fs.FS, tv fs.FS) Library {
 	}
 }
 
-func (l *Library) FindMovies(ctx context.Context) ([]Movie, error) {
+func (l *Library) FindMovies(ctx context.Context) ([]MovieFile, error) {
 	log := logger.FromCtx(ctx)
 
-	movies := []Movie{}
+	movies := []MovieFile{}
 	err := fs.WalkDir(l.movies, ".", func(path string, d fs.DirEntry, err error) error {
 		log.Debugw("movie walk", "path", path)
 		if err != nil {

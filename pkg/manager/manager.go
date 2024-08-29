@@ -141,7 +141,7 @@ func (m MediaManager) ListShowsInLibrary(ctx context.Context) ([]string, error) 
 	return m.library.FindEpisodes(ctx)
 }
 
-func (m MediaManager) ListMoviesInLibrary(ctx context.Context) ([]library.Movie, error) {
+func (m MediaManager) ListMoviesInLibrary(ctx context.Context) ([]library.MovieFile, error) {
 	return m.library.FindMovies(ctx)
 }
 
@@ -161,8 +161,20 @@ type AddMovieRequest struct {
 func (m MediaManager) AddMovieToLibrary(ctx context.Context, request AddMovieRequest) error {
 	log := logger.FromCtx(ctx)
 
+	res, err := m.SearchMovie(ctx, request.Query)
+	if err != nil {
+		return fmt.Errorf("couldn't search movie: %w", err)
+	}
+
+	r := res.Results
+	if len(r) == 0 {
+		return fmt.Errorf("no movie returned from search")
+	}
+
+	meta := FromSearchMediaResult(*r[0])
+
 	categories := []int32{MOVIE_CATEGORY}
-	releases, err := m.SearchIndexers(ctx, request.Indexers, categories, request.Query)
+	releases, err := m.SearchIndexers(ctx, request.Indexers, categories, meta.Title)
 	if err != nil {
 		log.Debug("failed to search indexer", zap.Error(err))
 		return err
