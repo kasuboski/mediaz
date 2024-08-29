@@ -59,12 +59,12 @@ var serveCmd = &cobra.Command{
 
 		schemas, err := readSchemaFiles(cfg.Storage.Schemas...)
 		if err != nil {
-			log.Fatal(err)
+			log.Fatal("failed to read schema files", zap.Error(err))
 		}
 
 		err = storage.Init(context.TODO(), schemas...)
 		if err != nil {
-			log.Fatal(err)
+			log.Fatal("failed to init database", zap.Error(err))
 		}
 
 		movieFS := os.DirFS(cfg.Library.MovieDir)
