@@ -22,14 +22,9 @@ var schemaCmd = &cobra.Command{
 	Short: "generate database code",
 	Long:  `generate database code`,
 	Run: func(cmd *cobra.Command, args []string) {
-		var schemas []string
-		for _, schema := range schemaFiles {
-			f, err := os.ReadFile(schema)
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			schemas = append(schemas, string(f))
+		schemas, err := readSchemaFiles(schemaFiles...)
+		if err != nil {
+			log.Fatal(err)
 		}
 
 		tmpStorage, err := sqlite.New("tmp.sqlite")

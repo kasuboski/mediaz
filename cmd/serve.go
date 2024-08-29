@@ -57,14 +57,9 @@ var serveCmd = &cobra.Command{
 			log.Fatal("failed to create storage connection", zap.Error(err))
 		}
 
-		var schemas []string
-		for _, schema := range cfg.Storage.Schemas {
-			f, err := os.ReadFile(schema)
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			schemas = append(schemas, string(f))
+		schemas, err := readSchemaFiles(cfg.Storage.Schemas...)
+		if err != nil {
+			log.Fatal(err)
 		}
 
 		err = storage.Init(context.TODO(), schemas...)
