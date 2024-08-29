@@ -3,7 +3,6 @@ package sqlite
 import (
 	"context"
 	"database/sql"
-	"errors"
 
 	"github.com/go-jet/jet/v2/sqlite"
 	"github.com/kasuboski/mediaz/pkg/logger"
@@ -12,10 +11,6 @@ import (
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/table"
 	_ "github.com/mattn/go-sqlite3"
 	"go.uber.org/zap"
-)
-
-var (
-	ErrNoRowsDeleted = errors.New("no rows deleted")
 )
 
 type SQLite struct {
