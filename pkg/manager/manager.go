@@ -219,3 +219,21 @@ func (m MediaManager) SearchIndexers(ctx context.Context, indexers, categories [
 
 	return releases, nil
 }
+
+// AddIndexerRequest describes what is required to add an indexer
+type AddIndexerRequest struct {
+	URI      string `json:"uri"`
+	ApiKey   string `json:"apiKey"`
+	Name     string `json:"name"`
+	Priority int    `json:"priority"`
+}
+
+func (m MediaManager) AddIndexer(ctx context.Context, request AddIndexerRequest) error {
+	indexer := request
+
+	if indexer.Name == "" {
+		return fmt.Errorf("indexer name is required")
+	}
+
+	return nil
+}

@@ -52,7 +52,7 @@ func (s SQLite) Init(ctx context.Context, schemas ...string) error {
 }
 
 // CreateIndexer stores a new indexer in the database
-func (s SQLite) CreateIndexer(ctx context.Context, name string, priority int) (int64, error) {
+func (s SQLite) CreateIndexer(ctx context.Context, name, uri, apiKey string, priority int) (int64, error) {
 	stmt := table.Indexers.INSERT(table.Indexers.Name, table.Indexers.Priority).VALUES(name, priority).ON_CONFLICT(table.Indexers.Name).DO_NOTHING()
 	_, err := s.handleInsert(ctx, stmt)
 	if err != nil {

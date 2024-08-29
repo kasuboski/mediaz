@@ -83,6 +83,7 @@ func (s Server) Serve(port int) error {
 	v1.HandleFunc("/discover/tv", s.SearchTV()).Methods(http.MethodGet)
 
 	v1.HandleFunc("/indexers", s.ListIndexers()).Methods(http.MethodGet)
+	v1.HandleFunc("/indexers", s.ListIndexers()).Methods(http.MethodPost)
 
 	corsHandler := handlers.CORS(
 		handlers.AllowedOrigins([]string{"*"}),
@@ -174,6 +175,40 @@ func (s Server) ListIndexers() http.HandlerFunc {
 			log.Error("failed to write response", zap.Error(err))
 			return
 		}
+	}
+}
+
+// ListIndexers creates an indexer
+func (s Server) CreateIndexer() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log := logger.FromCtx(r.Context())
+		b, err := io.ReadAll(r.Body)
+		if err != nil {
+			log.Debug("invalid request body", zap.Error(err))
+			http.Error(w, "invalid request body", http.StatusBadRequest)
+			return
+		}
+
+		var request manager.AddIndexerRequest
+		err = json.Unmarshal(b, &request)
+		if err != nil {
+			log.Debug("invalid request body", zap.ByteString("body", b))
+			http.Error(w, "invalid request body", http.StatusBadRequest)
+			return
+		}
+
+		log.Debug("adding indexer", zap.Any("request", request))
+		err = s.manager.AddIndexer(r.Context(), request)
+		if err != nil {
+			log.Debug("failed to create indexer", zap.Error(err))
+			writeErrorResponse(w, http.StatusInternalServerError, err)
+			return
+		}
+
+		log.Debug("succesfully added indexer")
+		writeResponse(w, http.StatusOK, GenericResponse{
+			Response: request,
+		})
 	}
 }
 
