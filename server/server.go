@@ -179,7 +179,7 @@ func (s Server) ListIndexers() http.HandlerFunc {
 	}
 }
 
-// ListIndexers creates an indexer
+// CreateIndexer creates an indexer
 func (s Server) CreateIndexer() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromCtx(r.Context())
