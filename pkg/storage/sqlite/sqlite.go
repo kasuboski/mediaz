@@ -4,10 +4,12 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"log"
 
 	"github.com/go-jet/jet/v2/sqlite"
 	"github.com/kasuboski/mediaz/pkg/logger"
 	"github.com/kasuboski/mediaz/pkg/storage"
+	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/model"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/table"
 	_ "github.com/mattn/go-sqlite3"
 	"go.uber.org/zap"
@@ -53,13 +55,20 @@ func (s SQLite) Init(ctx context.Context, schemas ...string) error {
 
 // CreateIndexer stores a new indexer in the database
 func (s SQLite) CreateIndexer(ctx context.Context, name, uri, apiKey string, priority int) (int64, error) {
-	stmt := table.Indexers.INSERT(table.Indexers.Name, table.Indexers.Priority).VALUES(name, priority).ON_CONFLICT(table.Indexers.Name).DO_NOTHING()
-	_, err := s.handleInsert(ctx, stmt)
+	indexer := model.Indexers{
+		Name:     name,
+		URI:      uri,
+		ApiKey:   &apiKey,
+		Priority: int32(priority),
+	}
+	stmt := table.Indexers.INSERT(table.Indexers.Name, table.Indexers.URI, table.Indexers.ApiKey, table.Indexers.Priority).MODEL(indexer).ON_CONFLICT(table.Indexers.Name).DO_NOTHING()
+	result, err := s.handleInsert(ctx, stmt)
 	if err != nil {
+		log.Println("HERE")
 		return 0, err
 	}
 
-	return 0, nil
+	return result.LastInsertId()
 }
 
 // DeleteIndexer deletes a stored indexer given the indexer ID
@@ -90,8 +99,7 @@ func (s SQLite) handleStatement(ctx context.Context, stmt sqlite.Statement, expe
 		return result, err
 	}
 
-	query, args := stmt.Sql()
-	result, err = tx.ExecContext(ctx, query, args)
+	result, err = stmt.ExecContext(ctx, tx)
 	if err != nil {
 		log.Debug("failed to execute statement", zap.String("query", stmt.DebugSql()), zap.Error(err))
 		tx.Rollback()

@@ -8,15 +8,9 @@
 package model
 
 type Indexers struct {
-	ID                      int32 `sql:"primary_key"`
-	Name                    string
-	Implementation          string
-	Settings                *string
-	ConfigContract          *string
-	EnableRss               *int32
-	EnableAutomaticSearch   *int32
-	EnableInteractiveSearch int32
-	Priority                int32
-	Tags                    *string
-	DownloadClientId        int32
+	ID       int32 `sql:"primary_key"`
+	Name     string
+	Priority int32
+	URI      string
+	ApiKey   *string
 }

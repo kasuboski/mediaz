@@ -226,14 +226,23 @@ type AddIndexerRequest struct {
 	ApiKey   string `json:"apiKey"`
 	Name     string `json:"name"`
 	Priority int    `json:"priority"`
+	ID       int64  `json:"id"`
 }
 
-func (m MediaManager) AddIndexer(ctx context.Context, request AddIndexerRequest) error {
+// AddIndexer stores a new indexer in the database
+func (m MediaManager) AddIndexer(ctx context.Context, request AddIndexerRequest) (AddIndexerRequest, error) {
 	indexer := request
 
 	if indexer.Name == "" {
-		return fmt.Errorf("indexer name is required")
+		return indexer, fmt.Errorf("indexer name is required")
 	}
 
-	return nil
+	id, err := m.storage.CreateIndexer(ctx, request.Name, request.URI, request.ApiKey, request.Priority)
+	if err != nil {
+		return indexer, err
+	}
+
+	indexer.ID = id
+
+	return indexer, nil
 }

@@ -59,4 +59,7 @@ func initConfig() {
 
 	viper.SetDefault("library.tv", "")
 	viper.SetDefault("library.movie", "")
+
+	viper.SetDefault("storage.filePath", "mediaz.sqlite")
+	viper.SetDefault("storage.schemas", []string{"schema.sql"})
 }

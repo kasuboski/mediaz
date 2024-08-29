@@ -17,17 +17,11 @@ type indexersTable struct {
 	sqlite.Table
 
 	// Columns
-	ID                      sqlite.ColumnInteger
-	Name                    sqlite.ColumnString
-	Implementation          sqlite.ColumnString
-	Settings                sqlite.ColumnString
-	ConfigContract          sqlite.ColumnString
-	EnableRss               sqlite.ColumnInteger
-	EnableAutomaticSearch   sqlite.ColumnInteger
-	EnableInteractiveSearch sqlite.ColumnInteger
-	Priority                sqlite.ColumnInteger
-	Tags                    sqlite.ColumnString
-	DownloadClientId        sqlite.ColumnInteger
+	ID       sqlite.ColumnInteger
+	Name     sqlite.ColumnString
+	Priority sqlite.ColumnInteger
+	URI      sqlite.ColumnString
+	ApiKey   sqlite.ColumnString
 
 	AllColumns     sqlite.ColumnList
 	MutableColumns sqlite.ColumnList
@@ -68,36 +62,24 @@ func newIndexersTable(schemaName, tableName, alias string) *IndexersTable {
 
 func newIndexersTableImpl(schemaName, tableName, alias string) indexersTable {
 	var (
-		IDColumn                      = sqlite.IntegerColumn("Id")
-		NameColumn                    = sqlite.StringColumn("Name")
-		ImplementationColumn          = sqlite.StringColumn("Implementation")
-		SettingsColumn                = sqlite.StringColumn("Settings")
-		ConfigContractColumn          = sqlite.StringColumn("ConfigContract")
-		EnableRssColumn               = sqlite.IntegerColumn("EnableRss")
-		EnableAutomaticSearchColumn   = sqlite.IntegerColumn("EnableAutomaticSearch")
-		EnableInteractiveSearchColumn = sqlite.IntegerColumn("EnableInteractiveSearch")
-		PriorityColumn                = sqlite.IntegerColumn("Priority")
-		TagsColumn                    = sqlite.StringColumn("Tags")
-		DownloadClientIdColumn        = sqlite.IntegerColumn("DownloadClientId")
-		allColumns                    = sqlite.ColumnList{IDColumn, NameColumn, ImplementationColumn, SettingsColumn, ConfigContractColumn, EnableRssColumn, EnableAutomaticSearchColumn, EnableInteractiveSearchColumn, PriorityColumn, TagsColumn, DownloadClientIdColumn}
-		mutableColumns                = sqlite.ColumnList{NameColumn, ImplementationColumn, SettingsColumn, ConfigContractColumn, EnableRssColumn, EnableAutomaticSearchColumn, EnableInteractiveSearchColumn, PriorityColumn, TagsColumn, DownloadClientIdColumn}
+		IDColumn       = sqlite.IntegerColumn("Id")
+		NameColumn     = sqlite.StringColumn("Name")
+		PriorityColumn = sqlite.IntegerColumn("Priority")
+		URIColumn      = sqlite.StringColumn("URI")
+		ApiKeyColumn   = sqlite.StringColumn("apiKey")
+		allColumns     = sqlite.ColumnList{IDColumn, NameColumn, PriorityColumn, URIColumn, ApiKeyColumn}
+		mutableColumns = sqlite.ColumnList{NameColumn, PriorityColumn, URIColumn, ApiKeyColumn}
 	)
 
 	return indexersTable{
 		Table: sqlite.NewTable(schemaName, tableName, alias, allColumns...),
 
 		//Columns
-		ID:                      IDColumn,
-		Name:                    NameColumn,
-		Implementation:          ImplementationColumn,
-		Settings:                SettingsColumn,
-		ConfigContract:          ConfigContractColumn,
-		EnableRss:               EnableRssColumn,
-		EnableAutomaticSearch:   EnableAutomaticSearchColumn,
-		EnableInteractiveSearch: EnableInteractiveSearchColumn,
-		Priority:                PriorityColumn,
-		Tags:                    TagsColumn,
-		DownloadClientId:        DownloadClientIdColumn,
+		ID:       IDColumn,
+		Name:     NameColumn,
+		Priority: PriorityColumn,
+		URI:      URIColumn,
+		ApiKey:   ApiKeyColumn,
 
 		AllColumns:     allColumns,
 		MutableColumns: mutableColumns,

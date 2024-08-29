@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"net/url"
 	"os"
 
@@ -54,6 +55,21 @@ var serveCmd = &cobra.Command{
 		storage, err := sqlite.New(cfg.Storage.FilePath)
 		if err != nil {
 			log.Fatal("failed to create storage connection", zap.Error(err))
+		}
+
+		var schemas []string
+		for _, schema := range cfg.Storage.Schemas {
+			f, err := os.ReadFile(schema)
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			schemas = append(schemas, string(f))
+		}
+
+		err = storage.Init(context.TODO(), schemas...)
+		if err != nil {
+			log.Fatal(err)
 		}
 
 		movieFS := os.DirFS(cfg.Library.MovieDir)
