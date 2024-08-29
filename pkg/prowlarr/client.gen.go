@@ -486,6 +486,7 @@ type HostConfigResource struct {
 	InstanceName              nullable.Nullable[string]   `json:"instanceName,omitempty"`
 	LaunchBrowser             *bool                       `json:"launchBrowser,omitempty"`
 	LogLevel                  nullable.Nullable[string]   `json:"logLevel,omitempty"`
+	LogSizeLimit              *int32                      `json:"logSizeLimit,omitempty"`
 	Password                  nullable.Nullable[string]   `json:"password,omitempty"`
 	PasswordConfirmation      nullable.Nullable[string]   `json:"passwordConfirmation,omitempty"`
 	Port                      *int32                      `json:"port,omitempty"`
@@ -1341,6 +1342,9 @@ func WithRequestEditorFn(fn RequestEditorFn) ClientOption {
 
 // The interface specification for the client above.
 type ClientInterface interface {
+	// Get request
+	Get(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GetAPI request
 	GetAPI(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -1802,6 +1806,18 @@ type ClientInterface interface {
 
 	// GetPath request
 	GetPath(ctx context.Context, path string, reqEditors ...RequestEditorFn) (*http.Response, error)
+}
+
+func (c *Client) Get(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
 }
 
 func (c *Client) GetAPI(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -3406,7 +3422,6 @@ func (c *Client) PostAPIV1SearchWithBody(ctx context.Context, contentType string
 		return nil, err
 	}
 	req = req.WithContext(ctx)
-
 	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
 		return nil, err
 	}
@@ -3807,6 +3822,33 @@ func (c *Client) GetPath(ctx context.Context, path string, reqEditors ...Request
 		return nil, err
 	}
 	return c.Client.Do(req)
+}
+
+// NewGetRequest generates requests for Get
+func NewGetRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
 }
 
 // NewGetAPIRequest generates requests for GetAPI
@@ -10214,6 +10256,9 @@ func WithBaseURL(baseURL string) ClientOption {
 
 // ClientWithResponsesInterface is the interface specification for the client with responses above.
 type ClientWithResponsesInterface interface {
+	// GetWithResponse request
+	GetWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetResponse, error)
+
 	// GetAPIWithResponse request
 	GetAPIWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetAPIResponse, error)
 
@@ -10675,6 +10720,27 @@ type ClientWithResponsesInterface interface {
 
 	// GetPathWithResponse request
 	GetPathWithResponse(ctx context.Context, path string, reqEditors ...RequestEditorFn) (*GetPathResponse, error)
+}
+
+type GetResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+}
+
+// Status returns HTTPResponse.Status
+func (r GetResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
 }
 
 type GetAPIResponse struct {
@@ -13446,6 +13512,15 @@ func (r GetPathResponse) StatusCode() int {
 	return 0
 }
 
+// GetWithResponse request returning *GetResponse
+func (c *ClientWithResponses) GetWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetResponse, error) {
+	rsp, err := c.Get(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetResponse(rsp)
+}
+
 // GetAPIWithResponse request returning *GetAPIResponse
 func (c *ClientWithResponses) GetAPIWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetAPIResponse, error) {
 	rsp, err := c.GetAPI(ctx, reqEditors...)
@@ -14908,6 +14983,22 @@ func (c *ClientWithResponses) GetPathWithResponse(ctx context.Context, path stri
 		return nil, err
 	}
 	return ParseGetPathResponse(rsp)
+}
+
+// ParseGetResponse parses an HTTP response from a GetWithResponse call
+func ParseGetResponse(rsp *http.Response) (*GetResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	return response, nil
 }
 
 // ParseGetAPIResponse parses an HTTP response from a GetAPIWithResponse call
