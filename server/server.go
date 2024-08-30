@@ -213,7 +213,7 @@ func (s Server) CreateIndexer() http.HandlerFunc {
 	}
 }
 
-// ListIndexers deletes an indexer
+// DeleteIndexer deletes an indexer
 func (s Server) DeleteIndexer() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromCtx(r.Context())
