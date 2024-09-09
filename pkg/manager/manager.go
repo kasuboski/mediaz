@@ -127,7 +127,7 @@ func parseMediaResult(res *http.Response) (*SearchMediaResponse, error) {
 	}
 
 	results := new(SearchMediaResponse)
-	err = json.Unmarshal(b, &results)
+	err = json.Unmarshal(b, results)
 	return results, err
 }
 
@@ -145,7 +145,7 @@ func (m MediaManager) ListShowsInLibrary(ctx context.Context) ([]string, error) 
 	return m.library.FindEpisodes(ctx)
 }
 
-func (m MediaManager) ListMoviesInLibrary(ctx context.Context) ([]library.Movie, error) {
+func (m MediaManager) ListMoviesInLibrary(ctx context.Context) ([]library.MovieFile, error) {
 	return m.library.FindMovies(ctx)
 }
 
@@ -165,16 +165,43 @@ type AddMovieRequest struct {
 func (m MediaManager) AddMovieToLibrary(ctx context.Context, request AddMovieRequest) error {
 	log := logger.FromCtx(ctx)
 
+	res, err := m.SearchMovie(ctx, request.Query)
+	if err != nil {
+		return fmt.Errorf("couldn't search movie: %w", err)
+	}
+
+	r := res.Results
+	if len(r) == 0 {
+		return fmt.Errorf("no movie returned from search")
+	}
+
+	meta := FromSearchMediaResult(*r[0])
+	det, err := m.GetMovieDetails(ctx, meta.TMDBID)
+	if err != nil {
+		return err
+	}
+
 	categories := []int32{MOVIE_CATEGORY}
-	releases, err := m.SearchIndexers(ctx, request.Indexers, categories, request.Query)
+	releases, err := m.SearchIndexers(ctx, request.Indexers, categories, meta.Title)
 	if err != nil {
 		log.Debug("failed to search indexer", zap.Error(err))
 		return err
 	}
 
+	// TODO: Get this dynamically
+	qs := QualitySize{
+		Quality:   "HDTV-720p",
+		Min:       17.1,
+		Preferred: 1999,
+		Max:       2000,
+	}
 	var chosenRelease *prowlarr.ReleaseResource
 	var maxSeeders int32
 	for _, r := range releases {
+		if !MeetsQualitySize(qs, uint64(*r.Size), uint64(*det.Revenue)) {
+			continue
+		}
+
 		seeders, err := r.Seeders.Get()
 		if err != nil {
 			log.Debug("failed to get seeders from release", zap.Any("release", r))
