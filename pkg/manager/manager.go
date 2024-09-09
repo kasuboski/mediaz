@@ -123,7 +123,7 @@ func parseMediaResult(res *http.Response) (*SearchMediaResponse, error) {
 	}
 
 	results := new(SearchMediaResponse)
-	err = json.Unmarshal(b, &results)
+	err = json.Unmarshal(b, results)
 	return results, err
 }
 

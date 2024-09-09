@@ -70,49 +70,57 @@ func parseMediaDetailsResponse(res *http.Response) (*MediaDetails, error) {
 	}
 
 	results := new(MediaDetails)
-	err = json.Unmarshal(b, &results)
+	err = json.Unmarshal(b, results)
 	return results, err
 }
 
 type MediaDetails struct {
-	Adult               *bool        `json:"adult,omitempty"`
-	BackdropPath        *string      `json:"backdrop_path,omitempty"`
-	BelongsToCollection *interface{} `json:"belongs_to_collection,omitempty"`
-	Budget              *int         `json:"budget,omitempty"`
-	Genres              *[]struct {
-		ID   *int    `json:"id,omitempty"`
-		Name *string `json:"name,omitempty"`
-	} `json:"genres,omitempty"`
-	Homepage            *string  `json:"homepage,omitempty"`
-	ID                  *int     `json:"id,omitempty"`
-	ImdbID              *string  `json:"imdb_id,omitempty"`
-	OriginalLanguage    *string  `json:"original_language,omitempty"`
-	OriginalTitle       *string  `json:"original_title,omitempty"`
-	Overview            *string  `json:"overview,omitempty"`
-	Popularity          *float32 `json:"popularity,omitempty"`
-	PosterPath          *string  `json:"poster_path,omitempty"`
-	ProductionCompanies *[]struct {
-		ID            *int    `json:"id,omitempty"`
-		LogoPath      *string `json:"logo_path,omitempty"`
-		Name          *string `json:"name,omitempty"`
-		OriginCountry *string `json:"origin_country,omitempty"`
-	} `json:"production_companies,omitempty"`
-	ProductionCountries *[]struct {
-		Iso31661 *string `json:"iso_3166_1,omitempty"`
-		Name     *string `json:"name,omitempty"`
-	} `json:"production_countries,omitempty"`
-	ReleaseDate     *string `json:"release_date,omitempty"`
-	Revenue         *int    `json:"revenue,omitempty"`
-	Runtime         *int    `json:"runtime,omitempty"`
-	SpokenLanguages *[]struct {
-		EnglishName *string `json:"english_name,omitempty"`
-		Iso6391     *string `json:"iso_639_1,omitempty"`
-		Name        *string `json:"name,omitempty"`
-	} `json:"spoken_languages,omitempty"`
-	Status      *string  `json:"status,omitempty"`
-	Tagline     *string  `json:"tagline,omitempty"`
-	Title       *string  `json:"title,omitempty"`
-	Video       *bool    `json:"video,omitempty"`
-	VoteAverage *float32 `json:"vote_average,omitempty"`
-	VoteCount   *int     `json:"vote_count,omitempty"`
+	Adult               *bool                `json:"adult,omitempty"`
+	BackdropPath        *string              `json:"backdrop_path,omitempty"`
+	BelongsToCollection *interface{}         `json:"belongs_to_collection,omitempty"`
+	Budget              *int                 `json:"budget,omitempty"`
+	Genres              *[]Genre             `json:"genres,omitempty"`
+	Homepage            *string              `json:"homepage,omitempty"`
+	ID                  *int                 `json:"id,omitempty"`
+	ImdbID              *string              `json:"imdb_id,omitempty"`
+	OriginalLanguage    *string              `json:"original_language,omitempty"`
+	OriginalTitle       *string              `json:"original_title,omitempty"`
+	Overview            *string              `json:"overview,omitempty"`
+	Popularity          *float32             `json:"popularity,omitempty"`
+	PosterPath          *string              `json:"poster_path,omitempty"`
+	ProductionCompanies *[]ProductionCompany `json:"production_companies,omitempty"`
+	ProductionCountries *[]ProductionCountry `json:"production_countries,omitempty"`
+	ReleaseDate         *string              `json:"release_date,omitempty"`
+	Revenue             *int                 `json:"revenue,omitempty"`
+	Runtime             *int                 `json:"runtime,omitempty"`
+	SpokenLanguages     *[]SpokenLanguage    `json:"spoken_languages,omitempty"`
+	Status              *string              `json:"status,omitempty"`
+	Tagline             *string              `json:"tagline,omitempty"`
+	Title               *string              `json:"title,omitempty"`
+	Video               *bool                `json:"video,omitempty"`
+	VoteAverage         *float32             `json:"vote_average,omitempty"`
+	VoteCount           *int                 `json:"vote_count,omitempty"`
+}
+
+type Genre struct {
+	ID   *int    `json:"id,omitempty"`
+	Name *string `json:"name,omitempty"`
+}
+
+type ProductionCompany struct {
+	ID            *int    `json:"id,omitempty"`
+	LogoPath      *string `json:"logo_path,omitempty"`
+	Name          *string `json:"name,omitempty"`
+	OriginCountry *string `json:"origin_country,omitempty"`
+}
+
+type ProductionCountry struct {
+	Iso31661 *string `json:"iso_3166_1,omitempty"`
+	Name     *string `json:"name,omitempty"`
+}
+
+type SpokenLanguage struct {
+	EnglishName *string `json:"english_name,omitempty"`
+	Iso6391     *string `json:"iso_639_1,omitempty"`
+	Name        *string `json:"name,omitempty"`
 }
