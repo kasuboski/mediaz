@@ -12,6 +12,8 @@ import (
 	"github.com/kasuboski/mediaz/pkg/library"
 	"github.com/kasuboski/mediaz/pkg/logger"
 	"github.com/kasuboski/mediaz/pkg/prowlarr"
+	"github.com/kasuboski/mediaz/pkg/storage"
+	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/model"
 	"github.com/kasuboski/mediaz/pkg/tmdb"
 	"go.uber.org/zap"
 )
@@ -23,21 +25,23 @@ type MediaManager struct {
 	tmdb    TMDBClientInterface
 	indexer IndexerStore
 	library library.Library
+	storage storage.Storage
 }
 
-func New(tmbdClient TMDBClientInterface, prowlarrClient ProwlarrClientInterface, library library.Library) MediaManager {
+func New(tmbdClient TMDBClientInterface, prowlarrClient ProwlarrClientInterface, library library.Library, storage storage.Storage) MediaManager {
 	return MediaManager{
 		tmdb:    tmbdClient,
 		indexer: NewIndexerStore(prowlarrClient),
 		library: library,
+		storage: storage,
 	}
 }
 
 type SearchMediaResponse struct {
 	Page         *int                 `json:"page,omitempty"`
-	Results      []*SearchMediaResult `json:"results,omitempty"`
 	TotalPages   *int                 `json:"total_pages,omitempty"`
 	TotalResults *int                 `json:"total_results,omitempty"`
+	Results      []*SearchMediaResult `json:"results,omitempty"`
 }
 
 type SearchMediaResult struct {
@@ -148,8 +152,8 @@ func (m MediaManager) ListMoviesInLibrary(ctx context.Context) ([]library.Movie,
 // AddMovieRequest describes what is required to add a movie
 // TODO: add quality profiles
 type AddMovieRequest struct {
-	Indexers []int32 `json:"indexers"`
 	Query    string  `json:"query"`
+	Indexers []int32 `json:"indexers"`
 }
 
 // AddMovieToLibrary adds a movie to be managed by mediaz
@@ -174,6 +178,7 @@ func (m MediaManager) AddMovieToLibrary(ctx context.Context, request AddMovieReq
 		seeders, err := r.Seeders.Get()
 		if err != nil {
 			log.Debug("failed to get seeders from release", zap.Any("release", r))
+			continue
 		}
 
 		if seeders > maxSeeders {
@@ -214,4 +219,41 @@ func (m MediaManager) SearchIndexers(ctx context.Context, indexers, categories [
 	}
 
 	return releases, nil
+}
+
+// AddIndexerRequest describes what is required to add an indexer
+type AddIndexerRequest struct {
+	model.Indexers
+}
+
+// AddIndexer stores a new indexer in the database
+func (m MediaManager) AddIndexer(ctx context.Context, request AddIndexerRequest) (AddIndexerRequest, error) {
+	indexer := request
+
+	if indexer.Name == "" {
+		return indexer, fmt.Errorf("indexer name is required")
+	}
+
+	id, err := m.storage.CreateIndexer(ctx, request.Name, request.URI, *request.ApiKey, int(request.Priority))
+	if err != nil {
+		return indexer, err
+	}
+
+	indexer.ID = int32(id)
+
+	return indexer, nil
+}
+
+// DeleteIndexerRequest describes what is required to delete an indexer
+type DeleteIndexerRequest struct {
+	ID *int `json:"id" yaml:"id" mapstructure:"id"`
+}
+
+// AddIndexer stores a new indexer in the database
+func (m MediaManager) DeleteIndexer(ctx context.Context, request DeleteIndexerRequest) error {
+	if request.ID == nil {
+		return fmt.Errorf("indexer id is required")
+	}
+
+	return m.storage.DeleteIndexer(ctx, int64(*request.ID))
 }
