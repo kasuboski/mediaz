@@ -261,7 +261,7 @@ func (m MediaManager) AddIndexer(ctx context.Context, request AddIndexerRequest)
 		return indexer, fmt.Errorf("indexer name is required")
 	}
 
-	id, err := m.storage.CreateIndexer(ctx, request.Name, request.URI, *request.ApiKey, int(request.Priority))
+	id, err := m.storage.CreateIndexer(ctx, indexer.Indexers)
 	if err != nil {
 		return indexer, err
 	}

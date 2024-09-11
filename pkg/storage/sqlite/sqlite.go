@@ -48,14 +48,7 @@ func (s SQLite) Init(ctx context.Context, schemas ...string) error {
 }
 
 // CreateIndexer stores a new indexer in the database
-func (s SQLite) CreateIndexer(ctx context.Context, name, uri, apiKey string, priority int) (int64, error) {
-	indexer := model.Indexers{
-		Name:     name,
-		URI:      uri,
-		ApiKey:   &apiKey,
-		Priority: int32(priority),
-	}
-
+func (s SQLite) CreateIndexer(ctx context.Context, indexer model.Indexers) (int64, error) {
 	stmt := table.Indexers.INSERT(table.Indexers.Name, table.Indexers.URI, table.Indexers.ApiKey, table.Indexers.Priority).MODEL(indexer).RETURNING(table.Indexers.AllColumns)
 	result, err := s.handleInsert(ctx, stmt)
 	if err != nil {
@@ -74,6 +67,20 @@ func (s SQLite) DeleteIndexer(ctx context.Context, id int64) error {
 	}
 
 	return nil
+}
+
+// ListIndexer lists the stored indexers
+func (s SQLite) ListIndexers(ctx context.Context) ([]*model.Indexers, error) {
+	log := logger.FromCtx(ctx)
+
+	indexers := make([]*model.Indexers, 0)
+
+	stmt := table.Indexers.SELECT(table.Indexers.AllColumns).FROM(table.Indexers).ORDER_BY(table.Indexers.Priority.DESC())
+	err := stmt.QueryContext(ctx, s.db, &indexers)
+	if err != nil {
+		log.Errorf("failed to list indexers: %w", err)
+	}
+	return indexers, nil
 }
 
 func (s SQLite) handleInsert(ctx context.Context, stmt sqlite.InsertStatement) (sql.Result, error) {

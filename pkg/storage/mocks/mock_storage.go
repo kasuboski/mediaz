@@ -13,6 +13,7 @@ import (
 	context "context"
 	reflect "reflect"
 
+	model "github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/model"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -40,18 +41,18 @@ func (m *MockStorage) EXPECT() *MockStorageMockRecorder {
 }
 
 // CreateIndexer mocks base method.
-func (m *MockStorage) CreateIndexer(arg0 context.Context, arg1 string, arg2 int) (int64, error) {
+func (m *MockStorage) CreateIndexer(arg0 context.Context, arg1 model.Indexers) (int64, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateIndexer", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "CreateIndexer", arg0, arg1)
 	ret0, _ := ret[0].(int64)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // CreateIndexer indicates an expected call of CreateIndexer.
-func (mr *MockStorageMockRecorder) CreateIndexer(arg0, arg1, arg2 any) *gomock.Call {
+func (mr *MockStorageMockRecorder) CreateIndexer(arg0, arg1 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateIndexer", reflect.TypeOf((*MockStorage)(nil).CreateIndexer), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateIndexer", reflect.TypeOf((*MockStorage)(nil).CreateIndexer), arg0, arg1)
 }
 
 // DeleteIndexer mocks base method.
@@ -85,4 +86,19 @@ func (mr *MockStorageMockRecorder) Init(arg0 any, arg1 ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	varargs := append([]any{arg0}, arg1...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Init", reflect.TypeOf((*MockStorage)(nil).Init), varargs...)
+}
+
+// ListIndexers mocks base method.
+func (m *MockStorage) ListIndexers(arg0 context.Context) ([]*model.Indexers, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListIndexers", arg0)
+	ret0, _ := ret[0].([]*model.Indexers)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListIndexers indicates an expected call of ListIndexers.
+func (mr *MockStorageMockRecorder) ListIndexers(arg0 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListIndexers", reflect.TypeOf((*MockStorage)(nil).ListIndexers), arg0)
 }
