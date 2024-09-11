@@ -19,8 +19,8 @@ import (
 )
 
 type GenericResponse struct {
-	Error    *error `json:"error,omitempty"`
-	Response any    `json:"response"`
+	Error    error `json:"error,omitempty"`
+	Response any   `json:"response"`
 }
 
 // Server houses all dependencies for the media server to work such as loggers, clients, configurations, etc.
@@ -37,13 +37,9 @@ func New(logger *zap.SugaredLogger, manager manager.MediaManager) Server {
 	}
 }
 
-func writeGenericResponse(w http.ResponseWriter, status int) error {
-	return writeResponse(w, status, GenericResponse{})
-}
-
 func writeErrorResponse(w http.ResponseWriter, status int, err error) error {
 	return writeResponse(w, status, GenericResponse{
-		Error: &err,
+		Error: err,
 	})
 }
 
@@ -308,9 +304,16 @@ func (s Server) AddMovieToLibrary() http.HandlerFunc {
 			return
 		}
 
-		err = s.manager.AddMovieToLibrary(r.Context(), request)
+		release, err := s.manager.AddMovieToLibrary(r.Context(), request)
 		if err != nil {
+			log.Errorw("couldn't add a movie", err)
 			writeErrorResponse(w, http.StatusInternalServerError, err)
+			return
+		}
+
+		err = writeResponse(w, http.StatusOK, GenericResponse{Response: release})
+		if err != nil {
+			log.Error("failed to write response", zap.Error(err))
 			return
 		}
 	}
