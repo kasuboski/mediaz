@@ -40,6 +40,10 @@ type Indexer struct {
 	Priority   int32                                         `json:"priority"`
 }
 
+func (i Indexer) String() string {
+	return fmt.Sprintf("%s (%d)", i.Name, i.ID)
+}
+
 func (i *IndexerStore) ListIndexers(ctx context.Context) []Indexer {
 	i.mutex.RLock()
 	defer i.mutex.RUnlock()
@@ -111,7 +115,7 @@ func (i *IndexerStore) searchIndexer(ctx context.Context, indexer int32, categor
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		log.Debug("unexpected response status", zap.Any("status", resp.Status), zap.String("body", string(b)))
+		log.Debug("unexpected response status", zap.String("status", resp.Status), zap.String("body", string(b)))
 		return nil, fmt.Errorf("unexpected status: %s", resp.Status)
 	}
 
