@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -82,6 +83,7 @@ func (i *IndexerStore) FetchIndexers(ctx context.Context) error {
 		return err
 	}
 
+	var storeErr error
 	for _, indexer := range indexers {
 		ret, err := FromProwlarrIndexer(indexer)
 		if err != nil {
@@ -91,9 +93,10 @@ func (i *IndexerStore) FetchIndexers(ctx context.Context) error {
 		_, err = i.storage.CreateIndexer(ctx, model)
 		if err != nil {
 			log.Errorw("error creating indexer", "error", err)
+			errors.Join(storeErr, err)
 		}
 	}
-	return nil
+	return storeErr
 }
 
 func (i *IndexerStore) searchIndexer(ctx context.Context, indexer int32, categories []int32, query string) ([]*prowlarr.ReleaseResource, error) {
