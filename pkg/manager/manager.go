@@ -1,12 +1,14 @@
 package manager
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"slices"
 	"sync"
 
 	"github.com/kasuboski/mediaz/pkg/library"
@@ -15,6 +17,7 @@ import (
 	"github.com/kasuboski/mediaz/pkg/storage"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
 	"github.com/kasuboski/mediaz/pkg/tmdb"
+	"github.com/oapi-codegen/nullable"
 	"go.uber.org/zap"
 )
 
@@ -136,7 +139,7 @@ func (m MediaManager) ListIndexers(ctx context.Context) ([]Indexer, error) {
 	log := logger.FromCtx(ctx)
 
 	if err := m.indexer.FetchIndexers(ctx); err != nil {
-		log.Error(err)
+		log.Error("couldn't fetch indexer", err)
 	}
 	return m.indexer.ListIndexers(ctx), nil
 }
@@ -152,8 +155,7 @@ func (m MediaManager) ListMoviesInLibrary(ctx context.Context) ([]library.MovieF
 // AddMovieRequest describes what is required to add a movie
 // TODO: add quality profiles
 type AddMovieRequest struct {
-	Query    string  `json:"query"`
-	Indexers []int32 `json:"indexers"`
+	TMDBID int `json:"tmdbid"`
 }
 
 // AddMovieToLibrary adds a movie to be managed by mediaz
@@ -162,32 +164,53 @@ type AddMovieRequest struct {
 // TODO: query each indexer asynchronously?
 // TODO: pass to torrent client
 // TODO: always write status to database for given movie (queue, downloaded, missing (error?), Unreleased)
-func (m MediaManager) AddMovieToLibrary(ctx context.Context, request AddMovieRequest) error {
+func (m MediaManager) AddMovieToLibrary(ctx context.Context, request AddMovieRequest) (*prowlarr.ReleaseResource, error) {
 	log := logger.FromCtx(ctx)
 
-	res, err := m.SearchMovie(ctx, request.Query)
+	det, err := m.GetMovieDetails(ctx, request.TMDBID)
 	if err != nil {
-		return fmt.Errorf("couldn't search movie: %w", err)
-	}
-
-	r := res.Results
-	if len(r) == 0 {
-		return fmt.Errorf("no movie returned from search")
-	}
-
-	meta := FromSearchMediaResult(*r[0])
-	det, err := m.GetMovieDetails(ctx, meta.TMDBID)
-	if err != nil {
-		return err
+		return nil, err
 	}
 
 	categories := []int32{MOVIE_CATEGORY}
-	releases, err := m.SearchIndexers(ctx, request.Indexers, categories, meta.Title)
+	indexers, err := m.ListIndexers(ctx)
 	if err != nil {
-		log.Debug("failed to search indexer", zap.Error(err))
-		return err
+		return nil, err
+	}
+	log.Debugw("listed indexers", "count", len(indexers))
+	if len(indexers) == 0 {
+		return nil, errors.New("no indexers available")
+	}
+	indexerIds := make([]int32, len(indexers))
+	for i, indexer := range indexers {
+		indexerIds[i] = indexer.ID
+	}
+	releases, err := m.SearchIndexers(ctx, indexerIds, categories, *det.Title)
+	if err != nil {
+		log.Debug("failed to search indexer", zap.Any("indexers", indexerIds), zap.Error(err))
+		return nil, err
 	}
 
+	log.Debugw("releases for consideration", "releases", len(releases))
+	releases = slices.DeleteFunc(releases, rejectReleaseFunc(ctx, det))
+	log.Debugw("releases after rejection", "releases", len(releases))
+	if len(releases) == 0 {
+		// TODO: This probably isn't really an error... just need to search again later
+		return nil, errors.New("no matching releases found")
+	}
+	slices.SortFunc(releases, sortReleaseFunc())
+	chosenRelease := releases[len(releases)-1]
+
+	b, _ := json.Marshal(chosenRelease)
+
+	log.Debug("found release", zap.String("release", string(b)))
+
+	return chosenRelease, nil
+}
+
+// rejectReleaseFunc returns a function that returns true if the given release should be rejected
+func rejectReleaseFunc(ctx context.Context, det *MediaDetails) func(*prowlarr.ReleaseResource) bool {
+	log := logger.FromCtx(ctx)
 	// TODO: Get this dynamically
 	qs := QualitySize{
 		Quality:   "HDTV-720p",
@@ -195,29 +218,24 @@ func (m MediaManager) AddMovieToLibrary(ctx context.Context, request AddMovieReq
 		Preferred: 1999,
 		Max:       2000,
 	}
-	var chosenRelease *prowlarr.ReleaseResource
-	var maxSeeders int32
-	for _, r := range releases {
-		if !MeetsQualitySize(qs, uint64(*r.Size), uint64(*det.Revenue)) {
-			continue
+	return func(r *prowlarr.ReleaseResource) bool {
+		// bytes to megabytes
+		sizeMB := *r.Size >> 20
+		metQuality := MeetsQualitySize(qs, uint64(sizeMB), uint64(*det.Runtime))
+		decision := !metQuality
+		if decision {
+			log.Debugw("rejecting release", "release", r.Title, "metQuality", metQuality, "size", r.Size, "runtime", det.Runtime)
 		}
-
-		seeders, err := r.Seeders.Get()
-		if err != nil {
-			log.Debug("failed to get seeders from release", zap.Any("release", r))
-			continue
-		}
-
-		if seeders > maxSeeders {
-			chosenRelease = r
-		}
+		return decision
 	}
+}
 
-	b, _ := json.Marshal(chosenRelease)
+// sortReleaseFunc returns a function that sorts releases by their number of seeders currently
+func sortReleaseFunc() func(*prowlarr.ReleaseResource, *prowlarr.ReleaseResource) int {
+	return func(r1 *prowlarr.ReleaseResource, r2 *prowlarr.ReleaseResource) int {
 
-	log.Debug("found release", zap.String("release", string(b)))
-
-	return nil
+		return cmp.Compare(nullableDefault(r1.Seeders), nullableDefault(r2.Seeders))
+	}
 }
 
 func (m MediaManager) SearchIndexers(ctx context.Context, indexers, categories []int32, query string) ([]*prowlarr.ReleaseResource, error) {
@@ -319,4 +337,14 @@ func (m MediaManager) DeleteQualityDefinition(ctx context.Context, request Delet
 // ListQualityDefinitions list stored quality definitions
 func (m MediaManager) ListQualityDefinitions(ctx context.Context) ([]*model.QualityDefinitions, error) {
 	return m.storage.ListQualityDefinitions(ctx)
+}
+
+func nullableDefault[T any](n nullable.Nullable[T]) T {
+	var def T
+	if n.IsSpecified() {
+		v, _ := n.Get()
+		return v
+	}
+
+	return def
 }

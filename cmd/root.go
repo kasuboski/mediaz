@@ -16,9 +16,6 @@ var rootCmd = &cobra.Command{
 	Use:   "mediaz",
 	Short: "mediaz cli",
 	Long:  `mediaz cli`,
-	Run: func(cmd *cobra.Command, args []string) {
-		log.Println("hello world")
-	},
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
