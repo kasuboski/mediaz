@@ -13,7 +13,7 @@ import (
 	"github.com/kasuboski/mediaz/pkg/logger"
 	"github.com/kasuboski/mediaz/pkg/prowlarr"
 	"github.com/kasuboski/mediaz/pkg/storage"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/model"
+	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
 	"github.com/kasuboski/mediaz/pkg/tmdb"
 	"go.uber.org/zap"
 )
@@ -91,7 +91,7 @@ func (m MediaManager) SearchMovie(ctx context.Context, query string) (*SearchMed
 	return result, nil
 }
 
-// SearchMovie querie tmdb for tv shows
+// SearchMovie query tmdb for tv shows
 func (m MediaManager) SearchTV(ctx context.Context, query string) (*SearchMediaResponse, error) {
 	log := logger.FromCtx(ctx)
 	if query == "" {
@@ -254,14 +254,14 @@ type AddIndexerRequest struct {
 }
 
 // AddIndexer stores a new indexer in the database
-func (m MediaManager) AddIndexer(ctx context.Context, request AddIndexerRequest) (AddIndexerRequest, error) {
-	indexer := request
+func (m MediaManager) AddIndexer(ctx context.Context, request AddIndexerRequest) (model.Indexers, error) {
+	indexer := request.Indexers
 
 	if indexer.Name == "" {
 		return indexer, fmt.Errorf("indexer name is required")
 	}
 
-	id, err := m.storage.CreateIndexer(ctx, indexer.Indexers)
+	id, err := m.storage.CreateIndexer(ctx, indexer)
 	if err != nil {
 		return indexer, err
 	}
@@ -271,9 +271,9 @@ func (m MediaManager) AddIndexer(ctx context.Context, request AddIndexerRequest)
 	return indexer, nil
 }
 
-// DeleteIndexerRequest describes what is required to delete an indexer
+// DeleteIndexerRequest request to delete an indexer
 type DeleteIndexerRequest struct {
-	ID *int `json:"id" yaml:"id" mapstructure:"id"`
+	ID *int `json:"id" yaml:"id"`
 }
 
 // AddIndexer stores a new indexer in the database
@@ -283,4 +283,40 @@ func (m MediaManager) DeleteIndexer(ctx context.Context, request DeleteIndexerRe
 	}
 
 	return m.storage.DeleteIndexer(ctx, int64(*request.ID))
+}
+
+type AddQualityDefinitionRequest struct {
+	model.QualityDefinitions
+}
+
+// AddQualityDefinition stores a new quality definition in the database
+func (m MediaManager) AddQualityDefinition(ctx context.Context, request AddQualityDefinitionRequest) (model.QualityDefinitions, error) {
+	definition := request.QualityDefinitions
+
+	id, err := m.storage.CreateQualityDefinition(ctx, request.QualityDefinitions)
+	if err != nil {
+		return definition, err
+	}
+
+	definition.ID = int32(id)
+	return definition, nil
+}
+
+// DeleteQualityDefinitionRequest request to delete a quality definition
+type DeleteQualityDefinitionRequest struct {
+	ID *int `json:"id" yaml:"id"`
+}
+
+// AddQualityDefinition stores a new quality definition in the database
+func (m MediaManager) DeleteQualityDefinition(ctx context.Context, request DeleteQualityDefinitionRequest) error {
+	if request.ID == nil {
+		return fmt.Errorf("indexer id is required")
+	}
+
+	return m.storage.DeleteQualityDefinition(ctx, int64(*request.ID))
+}
+
+// ListQualityDefinitions list stored quality definitions
+func (m MediaManager) ListQualityDefinitions(ctx context.Context) ([]*model.QualityDefinitions, error) {
+	return m.storage.ListQualityDefinitions(ctx)
 }

@@ -86,6 +86,10 @@ func (s Server) Serve(port int) error {
 	v1.HandleFunc("/indexers", s.CreateIndexer()).Methods(http.MethodPost)
 	v1.HandleFunc("/indexers", s.DeleteIndexer()).Methods(http.MethodDelete)
 
+	v1.HandleFunc("/quality/definitions", s.ListIndexers()).Methods(http.MethodGet)
+	v1.HandleFunc("/quality/definitions", s.CreateIndexer()).Methods(http.MethodPost)
+	v1.HandleFunc("/quality/definitions", s.DeleteIndexer()).Methods(http.MethodDelete)
+
 	corsHandler := handlers.CORS(
 		handlers.AllowedOrigins([]string{"*"}),
 	)(rtr)
@@ -241,6 +245,92 @@ func (s Server) DeleteIndexer() http.HandlerFunc {
 		}
 
 		log.Debug("succesfully deleted indexer")
+		writeResponse(w, http.StatusOK, GenericResponse{
+			Response: request,
+		})
+	}
+}
+
+// ListQualityDefinitions lists all stored quality definitions
+func (s Server) ListQualityDefinitions() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log := logger.FromCtx(r.Context())
+		result, err := s.manager.ListQualityDefinitions(r.Context())
+		if err != nil {
+			writeErrorResponse(w, http.StatusOK, err)
+			return
+		}
+
+		err = writeResponse(w, http.StatusOK, GenericResponse{Response: result})
+		if err != nil {
+			log.Error("failed to write response", zap.Error(err))
+			return
+		}
+	}
+}
+
+// CreateQualityDefinition creates a quality definition
+func (s Server) CreateQualityDefinition() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log := logger.FromCtx(r.Context())
+		b, err := io.ReadAll(r.Body)
+		if err != nil {
+			log.Debug("invalid request body", zap.Error(err))
+			http.Error(w, "invalid request body", http.StatusBadRequest)
+			return
+		}
+
+		var request manager.AddQualityDefinitionRequest
+		err = json.Unmarshal(b, &request)
+		if err != nil {
+			log.Debug("invalid request body", zap.ByteString("body", b))
+			http.Error(w, "invalid request body", http.StatusBadRequest)
+			return
+		}
+
+		log.Debug("adding indexer", zap.Any("request", request))
+		definition, err := s.manager.AddQualityDefinition(r.Context(), request)
+		if err != nil {
+			log.Debug("failed to create quality definition", zap.Error(err))
+			writeErrorResponse(w, http.StatusInternalServerError, err)
+			return
+		}
+
+		log.Debug("succesfully added quality definition")
+		writeResponse(w, http.StatusCreated, GenericResponse{
+			Response: definition,
+		})
+	}
+}
+
+// DeleteQualityDefinition deletes a quality definition
+func (s Server) DeleteQualityDefinition() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log := logger.FromCtx(r.Context())
+		b, err := io.ReadAll(r.Body)
+		if err != nil {
+			log.Debug("invalid request body", zap.Error(err))
+			http.Error(w, "invalid request body", http.StatusBadRequest)
+			return
+		}
+
+		var request manager.DeleteQualityDefinitionRequest
+		err = json.Unmarshal(b, &request)
+		if err != nil {
+			log.Debug("invalid request body", zap.ByteString("body", b))
+			http.Error(w, "invalid request body", http.StatusBadRequest)
+			return
+		}
+
+		log.Debug("adding indexer", zap.Any("request", request))
+		err = s.manager.DeleteQualityDefinition(r.Context(), request)
+		if err != nil {
+			log.Debug("failed to delete quality definition", zap.Error(err))
+			writeErrorResponse(w, http.StatusInternalServerError, err)
+			return
+		}
+
+		log.Debug("succesfully deleted quality definition")
 		writeResponse(w, http.StatusOK, GenericResponse{
 			Response: request,
 		})

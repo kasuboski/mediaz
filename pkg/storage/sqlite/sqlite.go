@@ -7,8 +7,8 @@ import (
 	"github.com/go-jet/jet/v2/sqlite"
 	"github.com/kasuboski/mediaz/pkg/logger"
 	"github.com/kasuboski/mediaz/pkg/storage"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/model"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/table"
+	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
+	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/table"
 	_ "github.com/mattn/go-sqlite3"
 	"go.uber.org/zap"
 )
@@ -62,11 +62,7 @@ func (s SQLite) CreateIndexer(ctx context.Context, indexer model.Indexers) (int6
 func (s SQLite) DeleteIndexer(ctx context.Context, id int64) error {
 	stmt := table.Indexers.DELETE().WHERE(table.Indexers.ID.EQ(sqlite.Int64(id))).RETURNING(table.Indexers.AllColumns)
 	_, err := s.handleDelete(ctx, stmt)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 
 // ListIndexer lists the stored indexers
@@ -79,8 +75,38 @@ func (s SQLite) ListIndexers(ctx context.Context) ([]*model.Indexers, error) {
 	err := stmt.QueryContext(ctx, s.db, &indexers)
 	if err != nil {
 		log.Errorf("failed to list indexers: %w", err)
+		return nil, err
 	}
+
 	return indexers, nil
+}
+
+// CreateIndexer stores a new indexer in the database
+func (s SQLite) CreateQualityDefinition(ctx context.Context, definition model.QualityDefinitions) (int64, error) {
+	stmt := table.QualityDefinitions.INSERT(table.QualityDefinitions.Name, table.QualityDefinitions.QualityId, table.QualityDefinitions.MinSize, table.QualityDefinitions.MaxSize).MODEL(definition).RETURNING(table.QualityDefinitions.AllColumns)
+	result, err := s.handleInsert(ctx, stmt)
+	if err != nil {
+		return 0, err
+	}
+
+	return result.LastInsertId()
+}
+
+// CreateIndexer stores a new indexer in the database
+func (s SQLite) ListQualityDefinitions(ctx context.Context) ([]*model.QualityDefinitions, error) {
+	definitions := make([]*model.QualityDefinitions, 0)
+	stmt := table.Indexers.SELECT(table.QualityDefinitions.AllColumns).FROM(table.QualityDefinitions).ORDER_BY(table.QualityDefinitions.ID.ASC())
+	err := stmt.QueryContext(ctx, s.db, &definitions)
+
+	return definitions, err
+}
+
+// CreateIndexer stores a new indexer in the database
+func (s SQLite) DeleteQualityDefinition(ctx context.Context, id int64) error {
+	stmt := table.Indexers.DELETE().WHERE(table.QualityDefinitions.ID.EQ(sqlite.Int64(id))).RETURNING(table.QualityDefinitions.AllColumns)
+	_, err := s.handleDelete(ctx, stmt)
+
+	return err
 }
 
 func (s SQLite) handleInsert(ctx context.Context, stmt sqlite.InsertStatement) (sql.Result, error) {

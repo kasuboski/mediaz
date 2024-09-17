@@ -13,7 +13,7 @@ import (
 	context "context"
 	reflect "reflect"
 
-	model "github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/model"
+	model "github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -55,6 +55,36 @@ func (mr *MockStorageMockRecorder) CreateIndexer(arg0, arg1 any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateIndexer", reflect.TypeOf((*MockStorage)(nil).CreateIndexer), arg0, arg1)
 }
 
+// CreateQualityDefinition mocks base method.
+func (m *MockStorage) CreateQualityDefinition(arg0 context.Context, arg1 model.QualityDefinitions) (int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateQualityDefinition", arg0, arg1)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CreateQualityDefinition indicates an expected call of CreateQualityDefinition.
+func (mr *MockStorageMockRecorder) CreateQualityDefinition(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateQualityDefinition", reflect.TypeOf((*MockStorage)(nil).CreateQualityDefinition), arg0, arg1)
+}
+
+// CreateQualityProfile mocks base method.
+func (m *MockStorage) CreateQualityProfile(arg0 context.Context, arg1 model.QualityProfiles) (int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateQualityProfile", arg0, arg1)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CreateQualityProfile indicates an expected call of CreateQualityProfile.
+func (mr *MockStorageMockRecorder) CreateQualityProfile(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateQualityProfile", reflect.TypeOf((*MockStorage)(nil).CreateQualityProfile), arg0, arg1)
+}
+
 // DeleteIndexer mocks base method.
 func (m *MockStorage) DeleteIndexer(arg0 context.Context, arg1 int64) error {
 	m.ctrl.T.Helper()
@@ -67,6 +97,49 @@ func (m *MockStorage) DeleteIndexer(arg0 context.Context, arg1 int64) error {
 func (mr *MockStorageMockRecorder) DeleteIndexer(arg0, arg1 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteIndexer", reflect.TypeOf((*MockStorage)(nil).DeleteIndexer), arg0, arg1)
+}
+
+// DeleteQualityDefinition mocks base method.
+func (m *MockStorage) DeleteQualityDefinition(arg0 context.Context, arg1 int64) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteQualityDefinition", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteQualityDefinition indicates an expected call of DeleteQualityDefinition.
+func (mr *MockStorageMockRecorder) DeleteQualityDefinition(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteQualityDefinition", reflect.TypeOf((*MockStorage)(nil).DeleteQualityDefinition), arg0, arg1)
+}
+
+// DeleteQualityProfile mocks base method.
+func (m *MockStorage) DeleteQualityProfile(arg0 context.Context, arg1 int64) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteQualityProfile", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteQualityProfile indicates an expected call of DeleteQualityProfile.
+func (mr *MockStorageMockRecorder) DeleteQualityProfile(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteQualityProfile", reflect.TypeOf((*MockStorage)(nil).DeleteQualityProfile), arg0, arg1)
+}
+
+// GetQualityProfile mocks base method.
+func (m *MockStorage) GetQualityProfile(arg0 context.Context, arg1 int64) (*model.QualityProfiles, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetQualityProfile", arg0, arg1)
+	ret0, _ := ret[0].(*model.QualityProfiles)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetQualityProfile indicates an expected call of GetQualityProfile.
+func (mr *MockStorageMockRecorder) GetQualityProfile(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetQualityProfile", reflect.TypeOf((*MockStorage)(nil).GetQualityProfile), arg0, arg1)
 }
 
 // Init mocks base method.
@@ -101,4 +174,34 @@ func (m *MockStorage) ListIndexers(arg0 context.Context) ([]*model.Indexers, err
 func (mr *MockStorageMockRecorder) ListIndexers(arg0 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListIndexers", reflect.TypeOf((*MockStorage)(nil).ListIndexers), arg0)
+}
+
+// ListQualityDefinitions mocks base method.
+func (m *MockStorage) ListQualityDefinitions(arg0 context.Context) ([]*model.QualityDefinitions, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListQualityDefinitions", arg0)
+	ret0, _ := ret[0].([]*model.QualityDefinitions)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListQualityDefinitions indicates an expected call of ListQualityDefinitions.
+func (mr *MockStorageMockRecorder) ListQualityDefinitions(arg0 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListQualityDefinitions", reflect.TypeOf((*MockStorage)(nil).ListQualityDefinitions), arg0)
+}
+
+// ListQualityProfile mocks base method.
+func (m *MockStorage) ListQualityProfile(arg0 context.Context) ([]*model.QualityProfiles, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListQualityProfile", arg0)
+	ret0, _ := ret[0].([]*model.QualityProfiles)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListQualityProfile indicates an expected call of ListQualityProfile.
+func (mr *MockStorageMockRecorder) ListQualityProfile(arg0 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListQualityProfile", reflect.TypeOf((*MockStorage)(nil).ListQualityProfile), arg0)
 }

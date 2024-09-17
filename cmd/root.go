@@ -61,7 +61,8 @@ func initConfig() {
 	viper.SetDefault("library.movie", "")
 
 	viper.SetDefault("storage.filePath", "mediaz.sqlite")
-	viper.SetDefault("storage.schemas", []string{"schema.sql"})
+	viper.SetDefault("storage.schemas", []string{"./pkg/storage/sqlite/schema/schema.sql"})
+	viper.SetDefault("storage.tableValueSchemas", []string{"./pkg/storage/sqlite/schema/defaults.sql"})
 }
 
 func readSchemaFiles(files ...string) ([]string, error) {

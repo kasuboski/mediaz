@@ -49,6 +49,6 @@ var schemaCmd = &cobra.Command{
 
 func init() {
 	generateCmd.AddCommand(schemaCmd)
-	schemaCmd.Flags().StringSliceVarP(&schemaFiles, "schemas", "s", []string{"./schema.sql"}, "list of schema files to generate code from")
-	schemaCmd.Flags().StringVarP(&outputDirectory, "out", "o", "./pkg/storage/sqlite/schema", "directory to output generated code to")
+	schemaCmd.Flags().StringSliceVarP(&schemaFiles, "schemas", "s", []string{"./pkg/storage/sqlite/schema/schema.sql"}, "list of schema files to generate code from")
+	schemaCmd.Flags().StringVarP(&outputDirectory, "out", "o", "./pkg/storage/sqlite/schema/gen", "directory to output generated code to")
 }

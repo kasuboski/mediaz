@@ -11,4 +11,6 @@ package table
 // this method only once at the beginning of the program.
 func UseSchema(schema string) {
 	Indexers = Indexers.FromSchema(schema)
+	QualityDefinitions = QualityDefinitions.FromSchema(schema)
+	QualityProfiles = QualityProfiles.FromSchema(schema)
 }

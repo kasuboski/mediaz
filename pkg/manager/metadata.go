@@ -55,7 +55,6 @@ func FromSearchMediaResult(resp SearchMediaResult) library.MovieMetadata {
 		Images:   *resp.PosterPath,
 		Title:    *resp.Title,
 		Overview: *resp.Overview,
-		// Runtime: resp.,
 	}
 }
 
