@@ -13,7 +13,8 @@ import (
 	"github.com/kasuboski/mediaz/pkg/library"
 	"github.com/kasuboski/mediaz/pkg/prowlarr"
 	prowlMock "github.com/kasuboski/mediaz/pkg/prowlarr/mocks"
-	storeMock "github.com/kasuboski/mediaz/pkg/storage/mocks"
+	"github.com/kasuboski/mediaz/pkg/storage"
+	"github.com/kasuboski/mediaz/pkg/storage/sqlite"
 	"github.com/kasuboski/mediaz/pkg/tmdb/mocks"
 	"github.com/oapi-codegen/nullable"
 	"github.com/stretchr/testify/assert"
@@ -32,13 +33,25 @@ func TestAddMovietoLibrary(t *testing.T) {
 	releases := []*prowlarr.ReleaseResource{{ID: intPtr(123), Title: nullable.NewNullableWithValue("test movie"), Size: sizeGBToBytes(23)}, {ID: intPtr(124), Title: nullable.NewNullableWithValue("test movie - very small"), Size: sizeGBToBytes(1)}}
 	prowlarrMock.EXPECT().GetAPIV1Search(gomock.Any(), gomock.Any()).Return(searchIndexersResponse(t, releases), nil).Times(len(indexers))
 
-	storageMock := storeMock.NewMockStorage(ctrl)
+	store, err := sqlite.New(":memory:")
+	assert.Nil(t, err)
+
+	schemas, err := storage.ReadSchemaFiles("../../schema.sql")
+	assert.Nil(t, err)
+
+	ctx := context.Background()
+	err = store.Init(ctx, schemas...)
+	assert.Nil(t, err)
+
 	movieFS := fstest.MapFS{}
 	tvFS := fstest.MapFS{}
 	lib := library.New(movieFS, tvFS)
-	m := New(tmdbMock, prowlarrMock, lib, storageMock)
+	pClient, err := prowlarr.New(":", "1234")
+	pClient.ClientInterface = prowlarrMock
+	assert.Nil(t, err)
+	m := New(tmdbMock, pClient, lib, store)
 	assert.NotNil(t, m)
-	ctx := context.Background()
+
 	req := AddMovieRequest{
 		TMDBID: 1234,
 	}

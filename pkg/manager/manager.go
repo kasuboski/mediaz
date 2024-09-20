@@ -21,7 +21,6 @@ import (
 	"go.uber.org/zap"
 )
 
-type ProwlarrClientInterface prowlarr.ClientInterface
 type TMDBClientInterface tmdb.ClientInterface
 
 type MediaManager struct {
@@ -31,10 +30,10 @@ type MediaManager struct {
 	storage storage.Storage
 }
 
-func New(tmbdClient TMDBClientInterface, prowlarrClient ProwlarrClientInterface, library library.Library, storage storage.Storage) MediaManager {
+func New(tmbdClient TMDBClientInterface, prowlarrClient prowlarr.IProwlarr, library library.Library, storage storage.Storage) MediaManager {
 	return MediaManager{
 		tmdb:    tmbdClient,
-		indexer: NewIndexerStore(prowlarrClient),
+		indexer: NewIndexerStore(prowlarrClient, storage),
 		library: library,
 		storage: storage,
 	}
@@ -141,7 +140,7 @@ func (m MediaManager) ListIndexers(ctx context.Context) ([]Indexer, error) {
 	if err := m.indexer.FetchIndexers(ctx); err != nil {
 		log.Error("couldn't fetch indexer", err)
 	}
-	return m.indexer.ListIndexers(ctx), nil
+	return m.indexer.ListIndexers(ctx)
 }
 
 func (m MediaManager) ListShowsInLibrary(ctx context.Context) ([]string, error) {

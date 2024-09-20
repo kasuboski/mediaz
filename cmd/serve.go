@@ -10,6 +10,7 @@ import (
 	"github.com/kasuboski/mediaz/pkg/logger"
 	"github.com/kasuboski/mediaz/pkg/manager"
 	"github.com/kasuboski/mediaz/pkg/prowlarr"
+	"github.com/kasuboski/mediaz/pkg/storage"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite"
 	"github.com/kasuboski/mediaz/pkg/tmdb"
 	"github.com/kasuboski/mediaz/server"
@@ -47,22 +48,22 @@ var serveCmd = &cobra.Command{
 			Host:   cfg.Prowlarr.Host,
 		}
 
-		prowlarrClient, err := prowlarr.NewClient(prowlarrURL.String(), prowlarr.WithRequestEditorFn(prowlarr.SetRequestAPIKey(cfg.Prowlarr.APIKey)))
+		prowlarrClient, err := prowlarr.New(prowlarrURL.String(), cfg.Prowlarr.APIKey)
 		if err != nil {
 			log.Fatal("failed to create prowlarr client", zap.Error(err))
 		}
 
-		storage, err := sqlite.New(cfg.Storage.FilePath)
+		store, err := sqlite.New(cfg.Storage.FilePath)
 		if err != nil {
 			log.Fatal("failed to create storage connection", zap.Error(err))
 		}
 
-		schemas, err := readSchemaFiles(cfg.Storage.Schemas...)
+		schemas, err := storage.ReadSchemaFiles(cfg.Storage.Schemas...)
 		if err != nil {
 			log.Fatal("failed to read schema files", zap.Error(err))
 		}
 
-		err = storage.Init(context.TODO(), schemas...)
+		err = store.Init(context.TODO(), schemas...)
 		if err != nil {
 			log.Fatal("failed to init database", zap.Error(err))
 		}
@@ -71,7 +72,7 @@ var serveCmd = &cobra.Command{
 		tvFS := os.DirFS(cfg.Library.TVDir)
 		library := library.New(movieFS, tvFS)
 
-		manager := manager.New(tmdbClient, prowlarrClient, library, storage)
+		manager := manager.New(tmdbClient, prowlarrClient, library, store)
 		server := server.New(log, manager)
 		log.Error(server.Serve(cfg.Server.Port))
 	},

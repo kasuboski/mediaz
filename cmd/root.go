@@ -60,17 +60,3 @@ func initConfig() {
 	viper.SetDefault("storage.filePath", "mediaz.sqlite")
 	viper.SetDefault("storage.schemas", []string{"schema.sql"})
 }
-
-func readSchemaFiles(files ...string) ([]string, error) {
-	var schemas []string
-	for _, f := range files {
-		f, err := os.ReadFile(f)
-		if err != nil {
-			return schemas, err
-		}
-
-		schemas = append(schemas, string(f))
-	}
-
-	return schemas, nil
-}
