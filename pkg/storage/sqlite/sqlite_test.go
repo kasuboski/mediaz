@@ -3,6 +3,7 @@ package sqlite
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/kasuboski/mediaz/pkg/storage"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/model"
@@ -94,6 +95,9 @@ func TestMovieStorage(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Len(t, files, 1)
 	actualFile := files[0]
+	assert.NotEmpty(t, actualFile.DateAdded)
+	// clear non-deterministic date field
+	actualFile.DateAdded = time.Time{}
 	assert.Equal(t, &file, actualFile)
 
 	err = store.DeleteMovieFile(ctx, id)

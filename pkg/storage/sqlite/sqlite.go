@@ -84,7 +84,7 @@ func (s SQLite) ListIndexers(ctx context.Context) ([]*model.Indexers, error) {
 }
 
 // CreateMovie stores a movie
-func (s SQLite) CreateMovie(ctx context.Context, movie model.Movies) (int64, error) {
+func (s SQLite) CreateMovie(ctx context.Context, movie model.Movies) (int32, error) {
 	// log := logger.FromCtx(ctx)
 
 	stmt := table.Movies.INSERT(table.Movies.MutableColumns).RETURNING(table.Movies.ID).MODEL(movie).ON_CONFLICT(table.Movies.ID).DO_NOTHING()
@@ -93,7 +93,13 @@ func (s SQLite) CreateMovie(ctx context.Context, movie model.Movies) (int64, err
 		return 0, err
 	}
 
-	return result.LastInsertId()
+	inserted, err := result.LastInsertId()
+	if err != nil {
+		return 0, err
+	}
+	// hope for the best I guess
+	res := int32(inserted)
+	return res, nil
 }
 
 // DeleteMovie removes a movie by id
@@ -121,14 +127,21 @@ func (s SQLite) ListMovies(ctx context.Context) ([]*model.Movies, error) {
 }
 
 // CreateMovieFile stores a movie file
-func (s SQLite) CreateMovieFile(ctx context.Context, file model.MovieFiles) (int64, error) {
-	stmt := table.MovieFiles.INSERT(table.MovieFiles.MutableColumns).RETURNING(table.MovieFiles.ID).MODEL(file)
+func (s SQLite) CreateMovieFile(ctx context.Context, file model.MovieFiles) (int32, error) {
+	// Exclude DateAdded so that the default is used
+	stmt := table.MovieFiles.INSERT(table.MovieFiles.MutableColumns.Except(table.MovieFiles.DateAdded)).RETURNING(table.MovieFiles.ID).MODEL(file)
 	result, err := s.handleInsert(ctx, stmt)
 	if err != nil {
 		return 0, err
 	}
 
-	return result.LastInsertId()
+	inserted, err := result.LastInsertId()
+	if err != nil {
+		return 0, err
+	}
+	// hope for the best I guess
+	res := int32(inserted)
+	return res, nil
 }
 
 // DeleteMovieFile removes a movie file by id

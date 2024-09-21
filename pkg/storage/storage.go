@@ -20,11 +20,11 @@ type IndexerStorage interface {
 }
 
 type MovieStorage interface {
-	CreateMovie(ctx context.Context, movie model.Movies) (int64, error)
+	CreateMovie(ctx context.Context, movie model.Movies) (int32, error)
 	DeleteMovie(ctx context.Context, id int64) error
 	ListMovies(ctx context.Context) ([]*model.Movies, error)
 
-	CreateMovieFile(ctx context.Context, movieFile model.MovieFiles) (int64, error)
+	CreateMovieFile(ctx context.Context, movieFile model.MovieFiles) (int32, error)
 	DeleteMovieFile(ctx context.Context, id int64) error
 	ListMovieFiles(ctx context.Context) ([]*model.MovieFiles, error)
 }

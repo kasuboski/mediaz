@@ -15,7 +15,7 @@ type MovieFiles struct {
 	ID               int32 `sql:"primary_key"`
 	MovieId          int32
 	Quality          string
-	Size             int32
+	Size             int64
 	DateAdded        time.Time
 	SceneName        *string
 	MediaInfo        *string

@@ -18,6 +18,7 @@ import (
 	"github.com/kasuboski/mediaz/pkg/tmdb/mocks"
 	"github.com/oapi-codegen/nullable"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
 
@@ -34,23 +35,23 @@ func TestAddMovietoLibrary(t *testing.T) {
 	prowlarrMock.EXPECT().GetAPIV1Search(gomock.Any(), gomock.Any()).Return(searchIndexersResponse(t, releases), nil).Times(len(indexers))
 
 	store, err := sqlite.New(":memory:")
-	assert.Nil(t, err)
+	require.Nil(t, err)
 
 	schemas, err := storage.ReadSchemaFiles("../../schema.sql")
-	assert.Nil(t, err)
+	require.Nil(t, err)
 
 	ctx := context.Background()
 	err = store.Init(ctx, schemas...)
-	assert.Nil(t, err)
+	require.Nil(t, err)
 
 	movieFS := fstest.MapFS{}
 	tvFS := fstest.MapFS{}
 	lib := library.New(movieFS, tvFS)
 	pClient, err := prowlarr.New(":", "1234")
 	pClient.ClientInterface = prowlarrMock
-	assert.Nil(t, err)
+	require.Nil(t, err)
 	m := New(tmdbMock, pClient, lib, store)
-	assert.NotNil(t, m)
+	require.NotNil(t, m)
 
 	req := AddMovieRequest{
 		TMDBID: 1234,
@@ -60,6 +61,44 @@ func TestAddMovietoLibrary(t *testing.T) {
 
 	assert.NotNil(t, release)
 	assert.Equal(t, int32(123), *release.ID)
+}
+
+func TestIndexMovieLibrary(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	tmdbMock := mocks.NewMockClientInterface(ctrl)
+	prowlarrMock := prowlMock.NewMockClientInterface(ctrl)
+	store, err := sqlite.New(":memory:")
+	require.Nil(t, err)
+
+	schemas, err := storage.ReadSchemaFiles("../../schema.sql")
+	require.Nil(t, err)
+
+	ctx := context.Background()
+	err = store.Init(ctx, schemas...)
+	require.Nil(t, err)
+
+	movieFS, expectedMovies := library.MovieFSFromFile(t, "../library/test_movies.txt")
+	require.NotEmpty(t, expectedMovies)
+	tvFS, expectedEpisodes := library.TVFSFromFile(t, "../library/test_episodes.txt")
+	require.NotEmpty(t, expectedEpisodes)
+
+	lib := library.New(movieFS, tvFS)
+	pClient, err := prowlarr.New(":", "1234")
+	pClient.ClientInterface = prowlarrMock
+	assert.Nil(t, err)
+	m := New(tmdbMock, pClient, lib, store)
+	require.NotNil(t, m)
+
+	err = m.IndexMovieLibrary(ctx)
+	require.Nil(t, err)
+
+	mfs, err := store.ListMovieFiles(ctx)
+	assert.Nil(t, err)
+	assert.Len(t, mfs, len(expectedMovies))
+
+	ms, err := store.ListMovies(ctx)
+	assert.Nil(t, err)
+	assert.Len(t, ms, len(expectedMovies))
 }
 
 func searchIndexersResponse(t *testing.T, releases []*prowlarr.ReleaseResource) *http.Response {
