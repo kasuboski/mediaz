@@ -48,8 +48,8 @@ func (s SQLite) Init(ctx context.Context, schemas ...string) error {
 }
 
 // CreateIndexer stores a new indexer in the database
-func (s SQLite) CreateIndexer(ctx context.Context, indexer model.Indexers) (int64, error) {
-	stmt := table.Indexers.INSERT(table.Indexers.Name, table.Indexers.URI, table.Indexers.ApiKey, table.Indexers.Priority).MODEL(indexer).RETURNING(table.Indexers.AllColumns)
+func (s SQLite) CreateIndexer(ctx context.Context, indexer model.Indexer) (int64, error) {
+	stmt := table.Indexer.INSERT(table.Indexer.Name, table.Indexer.URI, table.Indexer.APIKey, table.Indexer.Priority).MODEL(indexer).RETURNING(table.Indexer.AllColumns)
 	result, err := s.handleInsert(ctx, stmt)
 	if err != nil {
 		return 0, err
@@ -60,18 +60,18 @@ func (s SQLite) CreateIndexer(ctx context.Context, indexer model.Indexers) (int6
 
 // DeleteIndexer deletes a stored indexer given the indexer ID
 func (s SQLite) DeleteIndexer(ctx context.Context, id int64) error {
-	stmt := table.Indexers.DELETE().WHERE(table.Indexers.ID.EQ(sqlite.Int64(id))).RETURNING(table.Indexers.AllColumns)
+	stmt := table.Indexer.DELETE().WHERE(table.Indexer.ID.EQ(sqlite.Int64(id))).RETURNING(table.Indexer.AllColumns)
 	_, err := s.handleDelete(ctx, stmt)
 	return err
 }
 
 // ListIndexer lists the stored indexers
-func (s SQLite) ListIndexers(ctx context.Context) ([]*model.Indexers, error) {
+func (s SQLite) ListIndexers(ctx context.Context) ([]*model.Indexer, error) {
 	log := logger.FromCtx(ctx)
 
-	indexers := make([]*model.Indexers, 0)
+	indexers := make([]*model.Indexer, 0)
 
-	stmt := table.Indexers.SELECT(table.Indexers.AllColumns).FROM(table.Indexers).ORDER_BY(table.Indexers.Priority.DESC())
+	stmt := table.Indexer.SELECT(table.Indexer.AllColumns).FROM(table.Indexer).ORDER_BY(table.Indexer.Priority.DESC())
 	err := stmt.QueryContext(ctx, s.db, &indexers)
 	if err != nil {
 		log.Errorf("failed to list indexers: %w", err)
@@ -82,8 +82,8 @@ func (s SQLite) ListIndexers(ctx context.Context) ([]*model.Indexers, error) {
 }
 
 // CreateIndexer stores a new indexer in the database
-func (s SQLite) CreateQualityDefinition(ctx context.Context, definition model.QualityDefinitions) (int64, error) {
-	stmt := table.QualityDefinitions.INSERT(table.QualityDefinitions.Name, table.QualityDefinitions.QualityId, table.QualityDefinitions.MinSize, table.QualityDefinitions.MaxSize).MODEL(definition).RETURNING(table.QualityDefinitions.AllColumns)
+func (s SQLite) CreateQualityDefinition(ctx context.Context, definition model.QualityDefinition) (int64, error) {
+	stmt := table.QualityDefinition.INSERT(table.QualityDefinition.Name, table.QualityDefinition.QualityID, table.QualityDefinition.MinSize, table.QualityDefinition.MaxSize).MODEL(definition).RETURNING(table.QualityDefinition.AllColumns)
 	result, err := s.handleInsert(ctx, stmt)
 	if err != nil {
 		return 0, err
@@ -93,20 +93,92 @@ func (s SQLite) CreateQualityDefinition(ctx context.Context, definition model.Qu
 }
 
 // CreateIndexer stores a new indexer in the database
-func (s SQLite) ListQualityDefinitions(ctx context.Context) ([]*model.QualityDefinitions, error) {
-	definitions := make([]*model.QualityDefinitions, 0)
-	stmt := table.Indexers.SELECT(table.QualityDefinitions.AllColumns).FROM(table.QualityDefinitions).ORDER_BY(table.QualityDefinitions.ID.ASC())
+func (s SQLite) ListQualityDefinitions(ctx context.Context) ([]*model.QualityDefinition, error) {
+	definitions := make([]*model.QualityDefinition, 0)
+	stmt := table.Indexer.SELECT(table.QualityDefinition.AllColumns).FROM(table.QualityDefinition).ORDER_BY(table.QualityDefinition.ID.ASC())
 	err := stmt.QueryContext(ctx, s.db, &definitions)
-
 	return definitions, err
 }
 
 // CreateIndexer stores a new indexer in the database
 func (s SQLite) DeleteQualityDefinition(ctx context.Context, id int64) error {
-	stmt := table.Indexers.DELETE().WHERE(table.QualityDefinitions.ID.EQ(sqlite.Int64(id))).RETURNING(table.QualityDefinitions.AllColumns)
+	stmt := table.Indexer.DELETE().WHERE(table.QualityDefinition.ID.EQ(sqlite.Int64(id))).RETURNING(table.QualityDefinition.AllColumns)
 	_, err := s.handleDelete(ctx, stmt)
-
 	return err
+}
+
+func (s SQLite) GetQualityProfile(ctx context.Context, id int64) (storage.QualityProfile, error) {
+	stmt := sqlite.SELECT(
+		table.QualityProfile.ID.AS("profile_id"),
+		table.QualityProfile.Name.AS("profile_name"),
+		table.QualityProfile.Cutoff,
+		table.QualityProfile.UpgradeAllowed,
+		table.QualityItem.ID.AS("quality_item_id"),
+		table.QualityItem.Name.AS("quality_item_name"),
+		table.QualityItem.Allowed,
+		table.QualityItem.ParentID,
+	).FROM(
+		table.QualityProfile.INNER_JOIN(table.ProfileQualityItem, table.QualityProfile.ID.EQ(table.ProfileQualityItem.ProfileID)).INNER_JOIN(table.QualityItem, table.ProfileQualityItem.QualityItemID.EQ(table.QualityItem.ID)),
+	).WHERE(
+		table.QualityProfile.ID.EQ(sqlite.Int(id)),
+	)
+
+	var result storage.QualityProfile
+	err := stmt.QueryContext(ctx, s.db, &result)
+	return result, err
+}
+
+func (s SQLite) ListQualityProfiles(ctx context.Context) ([]storage.QualityProfile, error) {
+	// stmt := sqlite.SELECT(
+	// 	table.QualityProfile.ID.AS("profile_id"),
+	// 	table.QualityProfile.Name.AS("profile_name"),
+	// 	table.QualityProfile.Cutoff,
+	// 	table.QualityProfile.UpgradeAllowed,
+	// 	table.QualityItem.ID.AS("quality_item_id"),
+	// 	table.QualityItem.Name.AS("quality_item_name"),
+	// 	table.QualityItem.Allowed,
+	// 	table.QualityItem.ParentID,
+	// 	table.QualityDefinition.ID.AS("quality_definition_id"),
+	// 	table.QualityDefinition.Name.AS("quality_definition_name"),
+	// 	table.QualityDefinition.PreferredSize,
+	// 	table.QualityDefinition.MinSize,
+	// 	table.QualityDefinition.MaxSize,
+	// 	table.QualityDefinition.MediaType,
+	// ).
+	// 	FROM(
+	// 		table.QualityProfile.
+	// 			LEFT_JOIN(table.ProfileQualityItem, table.QualityProfile.ID.EQ(table.ProfileQualityItem.ProfileID)).
+	// 			LEFT_JOIN(table.QualityItem, table.ProfileQualityItem.QualityItemID.EQ(table.QualityItem.ID)).
+	// 			LEFT_JOIN(table.QualityDefinition, table.QualityItem.QualityID.EQ(table.QualityDefinition.ID)),
+	// 	)
+
+	log := logger.FromCtx(ctx)
+	// log.Debug(zap.String("query", stmt.DebugSql()))
+
+	// var result []storage.QualityProfileResult
+	// err := stmt.QueryContext(ctx, s.db, &result)
+	// log.Debug(zap.Error(err))
+	// log.Debug(zap.Any("result", result))
+	stmt := sqlite.SELECT(
+		table.QualityProfile.ID,
+		table.QualityProfile.Name,
+		table.QualityProfile.Cutoff,
+		table.QualityProfile.UpgradeAllowed,
+		table.ProfileQualityItem.ID.AS("profile_quality_id"),
+	).FROM(
+		table.QualityProfile.INNER_JOIN(table.ProfileQualityItem, table.ProfileQualityItem.ProfileID.EQ(table.QualityProfile.ID)),
+	)
+
+	log.Debug("SQL Query: ", stmt.DebugSql())
+	result := make([]storage.QualityProfile, 0)
+	err := stmt.QueryContext(ctx, s.db, &result)
+	if err != nil {
+		log.Error(err)
+		return nil, err
+	}
+
+	log.Debugw("result", result)
+	return result, nil
 }
 
 func (s SQLite) handleInsert(ctx context.Context, stmt sqlite.InsertStatement) (sql.Result, error) {

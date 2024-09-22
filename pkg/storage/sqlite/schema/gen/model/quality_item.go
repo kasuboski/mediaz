@@ -7,10 +7,10 @@
 
 package model
 
-type Indexers struct {
-	ID       int32 `sql:"primary_key"`
-	Name     string
-	Priority int32
-	URI      string
-	ApiKey   *string
+type QualityItem struct {
+	ID        int32 `sql:"primary_key"`
+	QualityID int32
+	Name      string
+	Allowed   bool
+	ParentID  *int32
 }

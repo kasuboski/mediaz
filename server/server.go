@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"time"
 
 	"github.com/kasuboski/mediaz/pkg/logger"
@@ -85,6 +86,9 @@ func (s Server) Serve(port int) error {
 	v1.HandleFunc("/quality/definitions", s.ListIndexers()).Methods(http.MethodGet)
 	v1.HandleFunc("/quality/definitions", s.CreateIndexer()).Methods(http.MethodPost)
 	v1.HandleFunc("/quality/definitions", s.DeleteIndexer()).Methods(http.MethodDelete)
+
+	v1.HandleFunc("/quality/profile/{id}", s.GetQualityProfile()).Methods(http.MethodGet)
+	v1.HandleFunc("/quality/profile", s.ListQualityProfiles()).Methods(http.MethodGet)
 
 	corsHandler := handlers.CORS(
 		handlers.AllowedOrigins([]string{"*"}),
@@ -406,5 +410,54 @@ func (s Server) AddMovieToLibrary() http.HandlerFunc {
 			log.Error("failed to write response", zap.Error(err))
 			return
 		}
+	}
+}
+
+// GetQualityProfile gets a quality profile given an id
+func (s Server) GetQualityProfile() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("content-type", "application/json")
+		log := logger.FromCtx(r.Context())
+		vars := mux.Vars(r)
+		idVar := vars["id"]
+
+		id, err := strconv.ParseInt(idVar, 10, 64)
+		if err != nil {
+			http.Error(w, "Invalid ID format", http.StatusBadRequest)
+			return
+		}
+
+		profile, err := s.manager.GetQualityProfile(r.Context(), id)
+		if err != nil {
+			log.Error("failed to get quality profile", zap.Error(err))
+			http.Error(w, "failed to get quality profile", http.StatusInternalServerError)
+			return
+		}
+
+		resp := GenericResponse{
+			Response: profile,
+		}
+
+		writeResponse(w, http.StatusOK, resp)
+	}
+}
+
+// ListQualityProfiles lists all quality profiles
+func (s Server) ListQualityProfiles() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("content-type", "application/json")
+		log := logger.FromCtx(r.Context())
+		profile, err := s.manager.ListQualityProfiles(r.Context())
+		if err != nil {
+			log.Errorw("failed to list quality profile", zap.Error(err))
+			http.Error(w, "failed to list quality profile", http.StatusInternalServerError)
+			return
+		}
+
+		resp := GenericResponse{
+			Response: profile,
+		}
+
+		writeResponse(w, http.StatusOK, resp)
 	}
 }

@@ -7,8 +7,8 @@
 
 package model
 
-type QualityProfiles struct {
-	ID     int32 `sql:"primary_key"`
-	Name   string
-	Cutoff *int32
+type ProfileQualityItem struct {
+	ID            *int32 `sql:"primary_key"`
+	ProfileID     int32
+	QualityItemID int32
 }

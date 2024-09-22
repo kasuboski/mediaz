@@ -43,6 +43,8 @@
 
             # https://github.com/go-jet/jet
             go-jet
+
+            sqlite
           ];
 
           shellHook = ''

@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"testing"
+
+	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
 )
 
 func TestQualitySizeExample(t *testing.T) {
@@ -12,11 +14,11 @@ func TestQualitySizeExample(t *testing.T) {
 }
 
 func TestQualitySizeCutoff(t *testing.T) {
-	qs := QualitySize{
-		Quality:   "HDTV-720p",
-		Min:       17.1,
-		Preferred: 1999,
-		Max:       2000,
+	qs := model.QualityDefinition{
+		Name:          "HDTV-720p",
+		MinSize:       17.1,
+		PreferredSize: 1999,
+		MaxSize:       2000,
 	}
 
 	tests := []struct {

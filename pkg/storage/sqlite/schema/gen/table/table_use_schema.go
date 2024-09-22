@@ -10,7 +10,10 @@ package table
 // UseSchema sets a new schema name for all generated table SQL builder types. It is recommended to invoke
 // this method only once at the beginning of the program.
 func UseSchema(schema string) {
-	Indexers = Indexers.FromSchema(schema)
-	QualityDefinitions = QualityDefinitions.FromSchema(schema)
-	QualityProfiles = QualityProfiles.FromSchema(schema)
+	Indexer = Indexer.FromSchema(schema)
+	ProfileQualityItem = ProfileQualityItem.FromSchema(schema)
+	QualityDefinition = QualityDefinition.FromSchema(schema)
+	QualityItem = QualityItem.FromSchema(schema)
+	QualityProfile = QualityProfile.FromSchema(schema)
+	SubQualityItem = SubQualityItem.FromSchema(schema)
 }

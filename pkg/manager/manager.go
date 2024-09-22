@@ -153,9 +153,9 @@ func (m MediaManager) ListMoviesInLibrary(ctx context.Context) ([]library.MovieF
 }
 
 // AddMovieRequest describes what is required to add a movie
-// TODO: add quality profiles
 type AddMovieRequest struct {
-	TMDBID int `json:"tmdbid"`
+	TMDBID           int   `json:"tmdbid"`
+	QualityProfileID int64 `json:"qualityProfileID"`
 }
 
 // AddMovieToLibrary adds a movie to be managed by mediaz
@@ -212,12 +212,13 @@ func (m MediaManager) AddMovieToLibrary(ctx context.Context, request AddMovieReq
 func rejectReleaseFunc(ctx context.Context, det *MediaDetails) func(*prowlarr.ReleaseResource) bool {
 	log := logger.FromCtx(ctx)
 	// TODO: Get this dynamically
-	qs := QualitySize{
-		Quality:   "HDTV-720p",
-		Min:       17.1,
-		Preferred: 1999,
-		Max:       2000,
+	qs := model.QualityDefinition{
+		Name:          "HDTV-720p",
+		MinSize:       17.1,
+		PreferredSize: 1999,
+		MaxSize:       2000,
 	}
+
 	return func(r *prowlarr.ReleaseResource) bool {
 		// bytes to megabytes
 		sizeMB := *r.Size >> 20
@@ -268,12 +269,12 @@ func (m MediaManager) SearchIndexers(ctx context.Context, indexers, categories [
 
 // AddIndexerRequest describes what is required to add an indexer
 type AddIndexerRequest struct {
-	model.Indexers
+	model.Indexer
 }
 
 // AddIndexer stores a new indexer in the database
-func (m MediaManager) AddIndexer(ctx context.Context, request AddIndexerRequest) (model.Indexers, error) {
-	indexer := request.Indexers
+func (m MediaManager) AddIndexer(ctx context.Context, request AddIndexerRequest) (model.Indexer, error) {
+	indexer := request.Indexer
 
 	if indexer.Name == "" {
 		return indexer, fmt.Errorf("indexer name is required")
@@ -304,14 +305,14 @@ func (m MediaManager) DeleteIndexer(ctx context.Context, request DeleteIndexerRe
 }
 
 type AddQualityDefinitionRequest struct {
-	model.QualityDefinitions
+	model.QualityDefinition
 }
 
 // AddQualityDefinition stores a new quality definition in the database
-func (m MediaManager) AddQualityDefinition(ctx context.Context, request AddQualityDefinitionRequest) (model.QualityDefinitions, error) {
-	definition := request.QualityDefinitions
+func (m MediaManager) AddQualityDefinition(ctx context.Context, request AddQualityDefinitionRequest) (model.QualityDefinition, error) {
+	definition := request.QualityDefinition
 
-	id, err := m.storage.CreateQualityDefinition(ctx, request.QualityDefinitions)
+	id, err := m.storage.CreateQualityDefinition(ctx, request.QualityDefinition)
 	if err != nil {
 		return definition, err
 	}
@@ -335,8 +336,16 @@ func (m MediaManager) DeleteQualityDefinition(ctx context.Context, request Delet
 }
 
 // ListQualityDefinitions list stored quality definitions
-func (m MediaManager) ListQualityDefinitions(ctx context.Context) ([]*model.QualityDefinitions, error) {
+func (m MediaManager) ListQualityDefinitions(ctx context.Context) ([]*model.QualityDefinition, error) {
 	return m.storage.ListQualityDefinitions(ctx)
+}
+
+func (m MediaManager) GetQualityProfile(ctx context.Context, id int64) (storage.QualityProfile, error) {
+	return m.storage.GetQualityProfile(ctx, id)
+}
+
+func (m MediaManager) ListQualityProfiles(ctx context.Context) ([]storage.QualityProfile, error) {
+	return m.storage.ListQualityProfiles(ctx)
 }
 
 func nullableDefault[T any](n nullable.Nullable[T]) T {
