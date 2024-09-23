@@ -180,7 +180,7 @@ func (m MediaManager) AddMovieToLibrary(ctx context.Context, request AddMovieReq
 	if err != nil {
 		return nil, err
 	}
-	log.Debug("listed indexers", zap.Int("count", len(indexers)))
+	log.Debug("listed indexers", "count", len(indexers))
 	if len(indexers) == 0 {
 		return nil, errors.New("no indexers available")
 	}
@@ -190,13 +190,13 @@ func (m MediaManager) AddMovieToLibrary(ctx context.Context, request AddMovieReq
 	}
 	releases, err := m.SearchIndexers(ctx, indexerIds, categories, *det.Title)
 	if err != nil {
-		log.Debug("failed to search indexer", zap.Any("indexers", indexerIds), zap.Error(err))
+		log.Debug("failed to search indexer", "indexers", indexerIds, zap.Error(err))
 		return nil, err
 	}
 
-	log.Debug("releases for consideration", zap.Int("releases", len(releases)))
+	log.Debug("releases for consideration", "releases", len(releases))
 	releases = slices.DeleteFunc(releases, rejectReleaseFunc(ctx, det, profile))
-	log.Debug("releases after rejection", zap.Int("releases", len(releases)))
+	log.Debug("releases after rejection", "releases", len(releases))
 	if len(releases) == 0 {
 		// TODO: This probably isn't really an error... just need to search again later
 		return nil, errors.New("no matching releases found")
@@ -204,7 +204,7 @@ func (m MediaManager) AddMovieToLibrary(ctx context.Context, request AddMovieReq
 
 	slices.SortFunc(releases, sortReleaseFunc())
 	chosenRelease := releases[len(releases)-1]
-	log.Info("found release", zap.Any("title", chosenRelease.Title))
+	log.Info("found release", "title", chosenRelease.Title)
 	return chosenRelease, nil
 }
 
@@ -219,17 +219,17 @@ func rejectReleaseFunc(ctx context.Context, det *MediaDetails, profile storage.Q
 		// items are assumed to be sorted quality so the highest media quality avaiable is selected
 		for _, item := range profile.Items {
 			metQuality := MeetsQualitySize(item.QualityDefinition, uint64(sizeMB), uint64(*det.Runtime))
-			decision := !metQuality
-			if decision {
-				log.Debug("rejecting release", "release", r.Title, "metQuality", metQuality, "size", r.Size, "runtime", det.Runtime)
+			// try again with the next item in the profile
+			if !metQuality {
+				log.Infow("rejecting release", "release", r.Title, "metQuality", metQuality, "size", r.Size, "runtime", det.Runtime)
 				continue
 			}
 
-			log.Debug("accepting release", "release", r.Title, "metQuality", metQuality, "size", r.Size, "runtime", det.Runtime)
-			return decision
+			log.Infow("accepting release", "release", r.Title, "metQuality", metQuality, "size", r.Size, "runtime", det.Runtime)
+			return false
 		}
 
-		return false
+		return true
 	}
 }
 

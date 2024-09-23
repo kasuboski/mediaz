@@ -11,7 +11,6 @@ import (
 	"strings"
 
 	"github.com/kasuboski/mediaz/pkg/logger"
-	"go.uber.org/zap"
 )
 
 const (
@@ -42,7 +41,7 @@ func (l *Library) FindMovies(ctx context.Context) ([]MovieFile, error) {
 
 	movies := []MovieFile{}
 	err := fs.WalkDir(l.movies, ".", func(path string, d fs.DirEntry, err error) error {
-		log.Debug("movie walk", zap.String("path", path))
+		log.Debugw("movie walk", "path", path)
 		if err != nil {
 			// just skip this dir for now if there's an issue
 			return fs.SkipDir
@@ -52,7 +51,7 @@ func (l *Library) FindMovies(ctx context.Context) ([]MovieFile, error) {
 		nesting := levelsOfNesting(path)
 		if d.IsDir() {
 			if nesting > 0 || (!match && d.Name() != ".") {
-				log.Debug("skipping", "dir", d.Name())
+				log.Debugw("skipping", "dir", d.Name())
 				return fs.SkipDir
 			}
 			return nil
@@ -84,7 +83,7 @@ func (l *Library) FindEpisodes(ctx context.Context) ([]string, error) {
 	log := logger.FromCtx(ctx)
 	episodes := []string{}
 	err := fs.WalkDir(l.tv, ".", func(path string, d fs.DirEntry, err error) error {
-		log.Debug("episode walk", "path", path)
+		log.Debugw("episode walk", "path", path)
 		if err != nil {
 			// just skip this dir for now if there's an issue
 			return fs.SkipDir
@@ -97,7 +96,7 @@ func (l *Library) FindEpisodes(ctx context.Context) ([]string, error) {
 				return nil
 			}
 			if nesting > 2 || (!match && d.Name() != ".") {
-				log.Debug("skipping", "dir", d.Name())
+				log.Debugw("skipping", "dir", d.Name())
 				return fs.SkipDir
 			}
 			return nil

@@ -15,10 +15,13 @@ func MeetsQualitySize(qs storage.QualityDefinition, fileSize uint64, runtime uin
 	log.Println("quality ratio max", qs.MaxSize)
 	fileRatio := float64(fileSize) / float64(runtime)
 	log.Println("file ratio", fileRatio)
+
+	log.Println("comparing file ratio to min size", fileRatio, "<", qs.MinSize)
 	if fileRatio < qs.MinSize {
 		return false
 	}
 
+	log.Println("comparing file ratio to min size", fileRatio, ">", qs.MaxSize)
 	if fileRatio > qs.MaxSize {
 		return false
 	}

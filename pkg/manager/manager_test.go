@@ -36,7 +36,7 @@ func TestAddMovietoLibrary(t *testing.T) {
 	smallSeeders := nullable.NewNullNullable[int32]()
 	smallSeeders.Set(10)
 
-	releases := []*prowlarr.ReleaseResource{{ID: intPtr(123), Title: nullable.NewNullableWithValue("test movie"), Size: sizeGBToBytes(23), Seeders: bigSeeders}, {ID: intPtr(124), Title: nullable.NewNullableWithValue("test movie - very small"), Size: sizeGBToBytes(1), Seeders: smallSeeders}}
+	releases := []*prowlarr.ReleaseResource{{ID: intPtr(123), Title: nullable.NewNullableWithValue("test movie"), Size: sizeGBToBytes(23)}, {ID: intPtr(124), Title: nullable.NewNullableWithValue("test movie - very small"), Size: sizeGBToBytes(1)}}
 	prowlarrMock.EXPECT().GetAPIV1Search(gomock.Any(), gomock.Any()).Return(searchIndexersResponse(t, releases), nil).Times(len(indexers))
 
 	store, err := sqlite.New(":memory:")
@@ -60,7 +60,7 @@ func TestAddMovietoLibrary(t *testing.T) {
 
 	req := AddMovieRequest{
 		TMDBID:           1234,
-		QualityProfileID: 2,
+		QualityProfileID: 1,
 	}
 	release, err := m.AddMovieToLibrary(ctx, req)
 	assert.Nil(t, err)

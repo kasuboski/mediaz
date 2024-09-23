@@ -38,12 +38,6 @@ VALUES
 (12, 'Bluray-2160p', TRUE, NULL),
 (13, 'Remux-2160p', TRUE, NULL);
 
-
-INSERT INTO "sub_quality_item" ("quality_id", "name", "allowed", "parent_id") 
-VALUES 
-(3, 'HDTV-720p Extended Cut', TRUE, 3),
-(6, 'HDTV-1080p Extended Cut', TRUE, 6);
-
 -- Inserting into the profile_quality_item table
 INSERT INTO "profile_quality_item" ("profile_id", "quality_item_id") 
 VALUES 

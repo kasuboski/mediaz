@@ -121,7 +121,7 @@ func (s SQLite) GetQualityProfile(ctx context.Context, id int64) (storage.Qualit
 			table.ProfileQualityItem, table.ProfileQualityItem.ProfileID.EQ(table.QualityProfile.ID)).INNER_JOIN(
 			table.QualityItem, table.ProfileQualityItem.QualityItemID.EQ(table.QualityItem.ID)).INNER_JOIN(
 			table.QualityDefinition, table.QualityItem.QualityID.EQ(table.QualityDefinition.ID)),
-	).WHERE(table.QualityProfile.ID.EQ(sqlite.Int(id))).ORDER_BY(table.QualityItem.QualityID.DESC())
+	).WHERE(table.QualityProfile.ID.EQ(sqlite.Int(id))).ORDER_BY(table.QualityDefinition.MinSize.DESC())
 
 	var result storage.QualityProfile
 	err := stmt.QueryContext(ctx, s.db, &result)

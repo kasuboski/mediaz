@@ -15,5 +15,4 @@ func UseSchema(schema string) {
 	QualityDefinition = QualityDefinition.FromSchema(schema)
 	QualityItem = QualityItem.FromSchema(schema)
 	QualityProfile = QualityProfile.FromSchema(schema)
-	SubQualityItem = SubQualityItem.FromSchema(schema)
 }
