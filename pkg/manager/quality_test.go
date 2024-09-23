@@ -1,73 +1,61 @@
 package manager
 
 import (
-	"encoding/json"
 	"fmt"
-	"os"
 	"testing"
 
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
+	"github.com/kasuboski/mediaz/pkg/storage"
 )
 
-func TestQualitySizeExample(t *testing.T) {
-	readMovieFile(t)
-}
-
 func TestQualitySizeCutoff(t *testing.T) {
-	qs := model.QualityDefinition{
-		Name:          "HDTV-720p",
-		MinSize:       17.1,
-		PreferredSize: 1999,
-		MaxSize:       2000,
-	}
-
 	tests := []struct {
-		size    uint64
-		runtime uint64
-		want    bool
+		name       string
+		size       uint64
+		runtime    uint64
+		want       bool
+		definition storage.QualityDefinition
 	}{
 		{
-			1000,
-			60,
-			false,
+			name:    "does not meet minimum size",
+			size:    1000,
+			runtime: 60,
+			definition: storage.QualityDefinition{
+				MinSize:       17,
+				MaxSize:       2000,
+				PreferredSize: 1999,
+			},
+			want: false,
 		},
 		{
-			1026,
-			60,
-			true,
+			name:    "meets criteria",
+			size:    1026,
+			runtime: 60,
+			definition: storage.QualityDefinition{
+				MinSize:       17.0,
+				MaxSize:       2000,
+				PreferredSize: 1999,
+			},
+			want: true,
 		},
+
 		{
-			120_000,
-			60,
-			true,
-		},
-		{
-			120_001,
-			60,
-			false,
+			name:    "ratio too big",
+			size:    120_001,
+			runtime: 60,
+			definition: storage.QualityDefinition{
+				MinSize:       17.0,
+				MaxSize:       2000,
+				PreferredSize: 1999,
+			},
+			want: false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(fmt.Sprintf("%d,%d", tt.size, tt.runtime), func(t *testing.T) {
-			if got := MeetsQualitySize(qs, tt.size, tt.runtime); got != tt.want {
+			if got := MeetsQualitySize(tt.definition, tt.size, tt.runtime); got != tt.want {
 				t.Errorf("got %v; want %v", got, tt.want)
 			}
 		})
 	}
-}
-
-func readMovieFile(t *testing.T) QualitySizes {
-	// https://github.com/TRaSH-Guides/Guides/blob/b7e72827ad96aa3158f479523c07e257ab6cbb09/docs/json/radarr/quality-size/movie.json
-	b, err := os.ReadFile("./movieQualitySize.json")
-	if err != nil {
-		t.Error(err)
-	}
-
-	var qs QualitySizes
-	err = json.Unmarshal(b, &qs)
-	if err != nil {
-		t.Error(err)
-	}
-	return qs
 }

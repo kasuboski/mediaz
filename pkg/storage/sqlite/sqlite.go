@@ -49,7 +49,10 @@ func (s SQLite) Init(ctx context.Context, schemas ...string) error {
 
 // CreateIndexer stores a new indexer in the database
 func (s SQLite) CreateIndexer(ctx context.Context, indexer model.Indexer) (int64, error) {
-	stmt := table.Indexer.INSERT(table.Indexer.Name, table.Indexer.URI, table.Indexer.APIKey, table.Indexer.Priority).MODEL(indexer).RETURNING(table.Indexer.AllColumns)
+	stmt := table.Indexer.INSERT(
+		table.Indexer.Name,
+		table.Indexer.URI, table.Indexer.APIKey,
+		table.Indexer.Priority).MODEL(indexer).ON_CONFLICT(table.Indexer.Name).DO_NOTHING().RETURNING(table.Indexer.AllColumns)
 	result, err := s.handleInsert(ctx, stmt)
 	if err != nil {
 		return 0, err
@@ -107,6 +110,7 @@ func (s SQLite) DeleteQualityDefinition(ctx context.Context, id int64) error {
 	return err
 }
 
+// GetQualityProfile gets a quality profile and all associated quality items given a quality profile id
 func (s SQLite) GetQualityProfile(ctx context.Context, id int64) (storage.QualityProfile, error) {
 	stmt := sqlite.SELECT(
 		table.QualityProfile.AllColumns,
@@ -117,13 +121,14 @@ func (s SQLite) GetQualityProfile(ctx context.Context, id int64) (storage.Qualit
 			table.ProfileQualityItem, table.ProfileQualityItem.ProfileID.EQ(table.QualityProfile.ID)).INNER_JOIN(
 			table.QualityItem, table.ProfileQualityItem.QualityItemID.EQ(table.QualityItem.ID)).INNER_JOIN(
 			table.QualityDefinition, table.QualityItem.QualityID.EQ(table.QualityDefinition.ID)),
-	).WHERE(table.QualityProfile.ID.EQ(sqlite.Int(id)))
+	).WHERE(table.QualityProfile.ID.EQ(sqlite.Int(id))).ORDER_BY(table.QualityItem.QualityID.DESC())
 
 	var result storage.QualityProfile
 	err := stmt.QueryContext(ctx, s.db, &result)
 	return result, err
 }
 
+// ListQualityProfiles lists all quality profiles and their associated quality items
 func (s SQLite) ListQualityProfiles(ctx context.Context) ([]storage.QualityProfile, error) {
 	stmt := sqlite.SELECT(
 		table.QualityProfile.AllColumns,
@@ -134,7 +139,7 @@ func (s SQLite) ListQualityProfiles(ctx context.Context) ([]storage.QualityProfi
 			table.ProfileQualityItem, table.ProfileQualityItem.ProfileID.EQ(table.QualityProfile.ID)).INNER_JOIN(
 			table.QualityItem, table.ProfileQualityItem.QualityItemID.EQ(table.QualityItem.ID)).INNER_JOIN(
 			table.QualityDefinition, table.QualityItem.QualityID.EQ(table.QualityDefinition.ID)),
-	)
+	).ORDER_BY(table.QualityItem.QualityID.DESC())
 
 	result := make([]storage.QualityProfile, 0)
 	err := stmt.QueryContext(ctx, s.db, &result)

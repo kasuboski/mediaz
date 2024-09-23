@@ -4,14 +4,16 @@ import (
 	"cmp"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"slices"
-	"sync"
 
 	"github.com/kasuboski/mediaz/pkg/logger"
 	"github.com/kasuboski/mediaz/pkg/prowlarr"
+	"github.com/kasuboski/mediaz/pkg/storage"
+	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
 	"github.com/oapi-codegen/nullable"
 	"go.uber.org/zap"
 )
@@ -19,16 +21,14 @@ import (
 type IndexerStatus = prowlarr.IndexerStatusResource
 
 type IndexerStore struct {
-	prowlarr prowlarr.ClientInterface
-	mutex    *sync.RWMutex
-	indexers map[int32]*Indexer
+	prowlarr prowlarr.IProwlarr
+	storage  storage.IndexerStorage
 }
 
-func NewIndexerStore(prowlarr prowlarr.ClientInterface) IndexerStore {
+func NewIndexerStore(prowlarr prowlarr.IProwlarr, storage storage.IndexerStorage) IndexerStore {
 	return IndexerStore{
-		indexers: make(map[int32]*Indexer),
-		prowlarr: prowlarr,
-		mutex:    new(sync.RWMutex),
+		prowlarr,
+		storage,
 	}
 }
 
@@ -44,16 +44,18 @@ func (i Indexer) String() string {
 	return fmt.Sprintf("%s (%d)", i.Name, i.ID)
 }
 
-func (i *IndexerStore) ListIndexers(ctx context.Context) []Indexer {
-	i.mutex.RLock()
-	defer i.mutex.RUnlock()
-
-	ret := make([]Indexer, 0, len(i.indexers))
-	for _, v := range i.indexers {
-		ret = append(ret, *v)
+func (i *IndexerStore) ListIndexers(ctx context.Context) ([]Indexer, error) {
+	dbIndexers, err := i.storage.ListIndexers(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("listing indexers failed: %w", err)
+	}
+	ret := make([]Indexer, 0, len(dbIndexers))
+	for _, v := range dbIndexers {
+		indexer := fromStorageIndexer(*v)
+		ret = append(ret, indexer)
 	}
 	sortIndexers(ret)
-	return ret
+	return ret, nil
 }
 
 func (i *IndexerStore) FetchIndexers(ctx context.Context) error {
@@ -81,18 +83,20 @@ func (i *IndexerStore) FetchIndexers(ctx context.Context) error {
 		return err
 	}
 
-	i.mutex.Lock()
-	defer i.mutex.Unlock()
-
+	var storeErr error
 	for _, indexer := range indexers {
 		ret, err := FromProwlarrIndexer(indexer)
 		if err != nil {
 			return err
 		}
-
-		i.indexers[ret.ID] = ret
+		model := toStorageIndexer(*ret, i.prowlarr.GetAPIURL(), i.prowlarr.GetAPIKey())
+		_, err = i.storage.CreateIndexer(ctx, model)
+		if err != nil {
+			log.Errorw("error creating indexer", "error", err)
+			errors.Join(storeErr, err)
+		}
 	}
-	return nil
+	return storeErr
 }
 
 func (i *IndexerStore) searchIndexer(ctx context.Context, indexer int32, categories []int32, query string) ([]*prowlarr.ReleaseResource, error) {
@@ -141,6 +145,27 @@ func FromProwlarrIndexer(prowlarr prowlarr.IndexerResource) (*Indexer, error) {
 		Priority:   *prowlarr.Priority,
 		Status:     nullableStatus(prowlarr.Status),
 	}, nil
+}
+
+func fromStorageIndexer(mi model.Indexer) Indexer {
+	return Indexer{
+		ID:   mi.ID,
+		Name: mi.Name,
+		// TODO: Maybe we should store the category?
+		Categories: nullable.NewNullNullable[[]prowlarr.IndexerCategory](),
+		Priority:   mi.Priority,
+		Status:     nullableStatus(nil),
+	}
+}
+
+func toStorageIndexer(indexer Indexer, uri, key string) model.Indexer {
+	return model.Indexer{
+		ID:       indexer.ID,
+		Name:     indexer.Name,
+		Priority: indexer.Priority,
+		URI:      uri,
+		APIKey:   &key,
+	}
 }
 
 func nullableStatus(s *prowlarr.IndexerStatusResource) nullable.Nullable[IndexerStatus] {

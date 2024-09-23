@@ -83,7 +83,7 @@ var searchIndexerCmd = &cobra.Command{
 			Host:   cfg.Prowlarr.Host,
 		}
 
-		prowlarrClient, err := prowlarr.NewClient(u.String(), prowlarr.WithRequestEditorFn(prowlarr.SetRequestAPIKey(cfg.Prowlarr.APIKey)))
+		prowlarrClient, err := prowlarr.New(u.String(), cfg.Prowlarr.APIKey)
 		if err != nil {
 			log.Fatalf("failed to create client: %v", err)
 		}
@@ -113,7 +113,7 @@ var searchIndexerCmd = &cobra.Command{
 		indexers := make([]int32, len(idx))
 		for i, indexer := range idx {
 			indexers[i] = indexer.ID
-			log.Debugw("will search", "indexer", indexer.Name)
+			log.Debug("will search", "indexer", indexer.Name)
 		}
 
 		query := args[0]

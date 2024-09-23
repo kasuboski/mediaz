@@ -1,9 +1,3 @@
--- Inserting into the indexer table
-INSERT INTO "indexer" ("name", "priority", "uri", "api_key") VALUES 
-('Indexer1', 10, 'http://example.com/api', 'apikey1'),
-('Indexer2', 20, 'http://example.com/api2', 'apikey2'),
-('Indexer3', 25, 'http://example.com/api3', NULL);
-
 -- Inserting into the quality_definition table
 INSERT INTO quality_definition (quality_id, name, preferred_size, min_size, max_size, media_type) 
 VALUES 

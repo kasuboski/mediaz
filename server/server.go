@@ -393,14 +393,14 @@ func (s Server) AddMovieToLibrary() http.HandlerFunc {
 		var request manager.AddMovieRequest
 		err = json.Unmarshal(b, &request)
 		if err != nil {
-			log.Debug("invalid request body", zap.ByteString("body", b))
+			log.Debug("invalid request body", zap.String("body", string(b)))
 			http.Error(w, "invalid request body", http.StatusBadRequest)
 			return
 		}
 
 		release, err := s.manager.AddMovieToLibrary(r.Context(), request)
 		if err != nil {
-			log.Errorw("couldn't add a movie", err)
+			log.Error("couldn't add a movie", zap.Error(err))
 			writeErrorResponse(w, http.StatusInternalServerError, err)
 			return
 		}

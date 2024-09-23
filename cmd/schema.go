@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 
+	"github.com/kasuboski/mediaz/pkg/storage"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite"
 	"github.com/spf13/cobra"
 
@@ -22,7 +23,7 @@ var schemaCmd = &cobra.Command{
 	Short: "generate database code",
 	Long:  `generate database code`,
 	Run: func(cmd *cobra.Command, args []string) {
-		schemas, err := readSchemaFiles(schemaFiles...)
+		schemas, err := storage.ReadSchemaFiles(schemaFiles...)
 		if err != nil {
 			log.Fatal(err)
 		}

@@ -29,7 +29,7 @@ func (m MediaManager) IndexMovies(ctx context.Context) error {
 			continue
 		}
 		res := resp.Results[0]
-		log.Debugw("metadata", "id", res.ID, "title", res.Title)
+		log.Debug("metadata", "id", res.ID, "title", res.Title)
 	}
 	return nil
 }

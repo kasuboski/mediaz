@@ -61,17 +61,3 @@ func initConfig() {
 	viper.SetDefault("storage.schemas", []string{"./pkg/storage/sqlite/schema/schema.sql"})
 	viper.SetDefault("storage.tableValueSchemas", []string{"./pkg/storage/sqlite/schema/defaults.sql"})
 }
-
-func readSchemaFiles(files ...string) ([]string, error) {
-	var schemas []string
-	for _, f := range files {
-		f, err := os.ReadFile(f)
-		if err != nil {
-			return schemas, err
-		}
-
-		schemas = append(schemas, string(f))
-	}
-
-	return schemas, nil
-}

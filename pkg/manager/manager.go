@@ -21,7 +21,6 @@ import (
 	"go.uber.org/zap"
 )
 
-type ProwlarrClientInterface prowlarr.ClientInterface
 type TMDBClientInterface tmdb.ClientInterface
 
 type MediaManager struct {
@@ -31,10 +30,10 @@ type MediaManager struct {
 	storage storage.Storage
 }
 
-func New(tmbdClient TMDBClientInterface, prowlarrClient ProwlarrClientInterface, library library.Library, storage storage.Storage) MediaManager {
+func New(tmbdClient TMDBClientInterface, prowlarrClient prowlarr.IProwlarr, library library.Library, storage storage.Storage) MediaManager {
 	return MediaManager{
 		tmdb:    tmbdClient,
-		indexer: NewIndexerStore(prowlarrClient),
+		indexer: NewIndexerStore(prowlarrClient, storage),
 		library: library,
 		storage: storage,
 	}
@@ -141,7 +140,7 @@ func (m MediaManager) ListIndexers(ctx context.Context) ([]Indexer, error) {
 	if err := m.indexer.FetchIndexers(ctx); err != nil {
 		log.Error("couldn't fetch indexer", err)
 	}
-	return m.indexer.ListIndexers(ctx), nil
+	return m.indexer.ListIndexers(ctx)
 }
 
 func (m MediaManager) ListShowsInLibrary(ctx context.Context) ([]string, error) {
@@ -154,18 +153,22 @@ func (m MediaManager) ListMoviesInLibrary(ctx context.Context) ([]library.MovieF
 
 // AddMovieRequest describes what is required to add a movie
 type AddMovieRequest struct {
-	TMDBID           int   `json:"tmdbid"`
-	QualityProfileID int64 `json:"qualityProfileID"`
+	TMDBID           int   `json:"tmdbID"`
+	QualityProfileID int32 `json:"qualityProfileID"`
 }
 
 // AddMovieToLibrary adds a movie to be managed by mediaz
 // TODO: fetch trackers from indexer
-// TODO: decide tracker based on quality profile (part of request.. ui will have to do a lookup here before request)
 // TODO: query each indexer asynchronously?
 // TODO: pass to torrent client
 // TODO: always write status to database for given movie (queue, downloaded, missing (error?), Unreleased)
 func (m MediaManager) AddMovieToLibrary(ctx context.Context, request AddMovieRequest) (*prowlarr.ReleaseResource, error) {
 	log := logger.FromCtx(ctx)
+
+	profile, err := m.storage.GetQualityProfile(ctx, int64(request.QualityProfileID))
+	if err != nil {
+		return nil, err
+	}
 
 	det, err := m.GetMovieDetails(ctx, request.TMDBID)
 	if err != nil {
@@ -177,7 +180,7 @@ func (m MediaManager) AddMovieToLibrary(ctx context.Context, request AddMovieReq
 	if err != nil {
 		return nil, err
 	}
-	log.Debugw("listed indexers", "count", len(indexers))
+	log.Debug("listed indexers", zap.Int("count", len(indexers)))
 	if len(indexers) == 0 {
 		return nil, errors.New("no indexers available")
 	}
@@ -191,43 +194,42 @@ func (m MediaManager) AddMovieToLibrary(ctx context.Context, request AddMovieReq
 		return nil, err
 	}
 
-	log.Debugw("releases for consideration", "releases", len(releases))
-	releases = slices.DeleteFunc(releases, rejectReleaseFunc(ctx, det))
-	log.Debugw("releases after rejection", "releases", len(releases))
+	log.Debug("releases for consideration", zap.Int("releases", len(releases)))
+	releases = slices.DeleteFunc(releases, rejectReleaseFunc(ctx, det, profile))
+	log.Debug("releases after rejection", zap.Int("releases", len(releases)))
 	if len(releases) == 0 {
 		// TODO: This probably isn't really an error... just need to search again later
 		return nil, errors.New("no matching releases found")
 	}
+
 	slices.SortFunc(releases, sortReleaseFunc())
 	chosenRelease := releases[len(releases)-1]
-
-	b, _ := json.Marshal(chosenRelease)
-
-	log.Debug("found release", zap.String("release", string(b)))
-
+	log.Info("found release", zap.Any("title", chosenRelease.Title))
 	return chosenRelease, nil
 }
 
 // rejectReleaseFunc returns a function that returns true if the given release should be rejected
-func rejectReleaseFunc(ctx context.Context, det *MediaDetails) func(*prowlarr.ReleaseResource) bool {
+func rejectReleaseFunc(ctx context.Context, det *MediaDetails, profile storage.QualityProfile) func(*prowlarr.ReleaseResource) bool {
 	log := logger.FromCtx(ctx)
-	// TODO: Get this dynamically
-	qs := model.QualityDefinition{
-		Name:          "HDTV-720p",
-		MinSize:       17.1,
-		PreferredSize: 1999,
-		MaxSize:       2000,
-	}
 
 	return func(r *prowlarr.ReleaseResource) bool {
 		// bytes to megabytes
 		sizeMB := *r.Size >> 20
-		metQuality := MeetsQualitySize(qs, uint64(sizeMB), uint64(*det.Runtime))
-		decision := !metQuality
-		if decision {
-			log.Debugw("rejecting release", "release", r.Title, "metQuality", metQuality, "size", r.Size, "runtime", det.Runtime)
+
+		// items are assumed to be sorted quality so the highest media quality avaiable is selected
+		for _, item := range profile.Items {
+			metQuality := MeetsQualitySize(item.QualityDefinition, uint64(sizeMB), uint64(*det.Runtime))
+			decision := !metQuality
+			if decision {
+				log.Debug("rejecting release", "release", r.Title, "metQuality", metQuality, "size", r.Size, "runtime", det.Runtime)
+				continue
+			}
+
+			log.Debug("accepting release", "release", r.Title, "metQuality", metQuality, "size", r.Size, "runtime", det.Runtime)
+			return decision
 		}
-		return decision
+
+		return false
 	}
 }
 

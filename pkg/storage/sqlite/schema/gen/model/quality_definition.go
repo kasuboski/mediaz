@@ -9,10 +9,10 @@ package model
 
 type QualityDefinition struct {
 	ID            int32 `sql:"primary_key"`
-	QualityID     *int32
+	QualityID     int32
 	Name          string
-	PreferredSize float32
-	MinSize       float32
-	MaxSize       float32
+	PreferredSize float64
+	MinSize       float64
+	MaxSize       float64
 	MediaType     string
 }

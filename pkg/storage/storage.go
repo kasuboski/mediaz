@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"os"
 
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
 )
@@ -53,4 +54,18 @@ type QualityDefinition struct {
 	PreferredSize float64 `alias:"quality_definition.preferred_size" json:"preferredSize"`
 	MinSize       float64 `alias:"quality_definition.min_size" json:"minSize"`
 	MaxSize       float64 `alias:"quality_definition.max_size" json:"maxSize"`
+}
+
+func ReadSchemaFiles(files ...string) ([]string, error) {
+	var schemas []string
+	for _, f := range files {
+		f, err := os.ReadFile(f)
+		if err != nil {
+			return schemas, err
+		}
+
+		schemas = append(schemas, string(f))
+	}
+
+	return schemas, nil
 }
