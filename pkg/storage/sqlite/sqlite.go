@@ -85,8 +85,6 @@ func (s SQLite) ListIndexers(ctx context.Context) ([]*model.Indexers, error) {
 
 // CreateMovie stores a movie
 func (s SQLite) CreateMovie(ctx context.Context, movie model.Movies) (int32, error) {
-	// log := logger.FromCtx(ctx)
-
 	stmt := table.Movies.INSERT(table.Movies.MutableColumns).RETURNING(table.Movies.ID).MODEL(movie).ON_CONFLICT(table.Movies.ID).DO_NOTHING()
 	result, err := s.handleInsert(ctx, stmt)
 	if err != nil {

@@ -177,7 +177,7 @@ func (m MediaManager) IndexMovieLibrary(ctx context.Context) error {
 		}
 		_, err = m.storage.CreateMovie(ctx, mov)
 		if err != nil {
-			log.Errorf("couldn' add movie to db: %w", err)
+			log.Errorf("couldn't add movie to db: %w", err)
 		}
 	}
 
