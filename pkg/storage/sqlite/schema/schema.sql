@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS "indexer" (
 
 CREATE TABLE IF NOT EXISTS "quality_definition" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-    "quality_id" INTEGER,
+    "quality_id" INTEGER NOT NULL,
     "name" TEXT NOT NULL,
     "preferred_size" NUMERIC NOT NULL,
     "min_size" NUMERIC NOT NULL,
@@ -25,13 +25,13 @@ CREATE TABLE IF NOT EXISTS "quality_profile" (
 
 CREATE TABLE IF NOT EXISTS "quality_item" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-    "quality_id" INTEGER NOT NULL, -- quality_definition table id
+    "quality_id" INTEGER NOT NULL,
     "name" TEXT NOT NULL,
     "allowed" BOOLEAN NOT NULL,
     "parent_id" INTEGER DEFAULT NULL,
     FOREIGN KEY ("parent_id") REFERENCES "quality_item" ("id"),
-    FOREIGN KEY ("quality_id") REFERENCES "quality_definition"("id")
-);  -- Removed trailing comma here
+    FOREIGN KEY ("quality_id") REFERENCES "quality_definition" ("id")
+);
 
 CREATE TABLE IF NOT EXISTS "sub_quality_item" (  -- Changed table name to singular
     "id" INTEGER PRIMARY KEY AUTOINCREMENT,

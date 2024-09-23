@@ -44,6 +44,7 @@
             # https://github.com/go-jet/jet
             go-jet
 
+            # https://github.com/sqlite/sqlite
             sqlite
           ];
 

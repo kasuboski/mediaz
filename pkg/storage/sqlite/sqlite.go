@@ -109,19 +109,15 @@ func (s SQLite) DeleteQualityDefinition(ctx context.Context, id int64) error {
 
 func (s SQLite) GetQualityProfile(ctx context.Context, id int64) (storage.QualityProfile, error) {
 	stmt := sqlite.SELECT(
-		table.QualityProfile.ID.AS("profile_id"),
-		table.QualityProfile.Name.AS("profile_name"),
-		table.QualityProfile.Cutoff,
-		table.QualityProfile.UpgradeAllowed,
-		table.QualityItem.ID.AS("quality_item_id"),
-		table.QualityItem.Name.AS("quality_item_name"),
-		table.QualityItem.Allowed,
-		table.QualityItem.ParentID,
+		table.QualityProfile.AllColumns,
+		table.QualityItem.AllColumns,
+		table.QualityDefinition.AllColumns,
 	).FROM(
-		table.QualityProfile.INNER_JOIN(table.ProfileQualityItem, table.QualityProfile.ID.EQ(table.ProfileQualityItem.ProfileID)).INNER_JOIN(table.QualityItem, table.ProfileQualityItem.QualityItemID.EQ(table.QualityItem.ID)),
-	).WHERE(
-		table.QualityProfile.ID.EQ(sqlite.Int(id)),
-	)
+		table.QualityProfile.INNER_JOIN(
+			table.ProfileQualityItem, table.ProfileQualityItem.ProfileID.EQ(table.QualityProfile.ID)).INNER_JOIN(
+			table.QualityItem, table.ProfileQualityItem.QualityItemID.EQ(table.QualityItem.ID)).INNER_JOIN(
+			table.QualityDefinition, table.QualityItem.QualityID.EQ(table.QualityDefinition.ID)),
+	).WHERE(table.QualityProfile.ID.EQ(sqlite.Int(id)))
 
 	var result storage.QualityProfile
 	err := stmt.QueryContext(ctx, s.db, &result)
@@ -129,56 +125,20 @@ func (s SQLite) GetQualityProfile(ctx context.Context, id int64) (storage.Qualit
 }
 
 func (s SQLite) ListQualityProfiles(ctx context.Context) ([]storage.QualityProfile, error) {
-	// stmt := sqlite.SELECT(
-	// 	table.QualityProfile.ID.AS("profile_id"),
-	// 	table.QualityProfile.Name.AS("profile_name"),
-	// 	table.QualityProfile.Cutoff,
-	// 	table.QualityProfile.UpgradeAllowed,
-	// 	table.QualityItem.ID.AS("quality_item_id"),
-	// 	table.QualityItem.Name.AS("quality_item_name"),
-	// 	table.QualityItem.Allowed,
-	// 	table.QualityItem.ParentID,
-	// 	table.QualityDefinition.ID.AS("quality_definition_id"),
-	// 	table.QualityDefinition.Name.AS("quality_definition_name"),
-	// 	table.QualityDefinition.PreferredSize,
-	// 	table.QualityDefinition.MinSize,
-	// 	table.QualityDefinition.MaxSize,
-	// 	table.QualityDefinition.MediaType,
-	// ).
-	// 	FROM(
-	// 		table.QualityProfile.
-	// 			LEFT_JOIN(table.ProfileQualityItem, table.QualityProfile.ID.EQ(table.ProfileQualityItem.ProfileID)).
-	// 			LEFT_JOIN(table.QualityItem, table.ProfileQualityItem.QualityItemID.EQ(table.QualityItem.ID)).
-	// 			LEFT_JOIN(table.QualityDefinition, table.QualityItem.QualityID.EQ(table.QualityDefinition.ID)),
-	// 	)
-
-	log := logger.FromCtx(ctx)
-	// log.Debug(zap.String("query", stmt.DebugSql()))
-
-	// var result []storage.QualityProfileResult
-	// err := stmt.QueryContext(ctx, s.db, &result)
-	// log.Debug(zap.Error(err))
-	// log.Debug(zap.Any("result", result))
 	stmt := sqlite.SELECT(
-		table.QualityProfile.ID,
-		table.QualityProfile.Name,
-		table.QualityProfile.Cutoff,
-		table.QualityProfile.UpgradeAllowed,
-		table.ProfileQualityItem.ID.AS("profile_quality_id"),
+		table.QualityProfile.AllColumns,
+		table.QualityItem.AllColumns,
+		table.QualityDefinition.AllColumns,
 	).FROM(
-		table.QualityProfile.INNER_JOIN(table.ProfileQualityItem, table.ProfileQualityItem.ProfileID.EQ(table.QualityProfile.ID)),
+		table.QualityProfile.INNER_JOIN(
+			table.ProfileQualityItem, table.ProfileQualityItem.ProfileID.EQ(table.QualityProfile.ID)).INNER_JOIN(
+			table.QualityItem, table.ProfileQualityItem.QualityItemID.EQ(table.QualityItem.ID)).INNER_JOIN(
+			table.QualityDefinition, table.QualityItem.QualityID.EQ(table.QualityDefinition.ID)),
 	)
 
-	log.Debug("SQL Query: ", stmt.DebugSql())
 	result := make([]storage.QualityProfile, 0)
 	err := stmt.QueryContext(ctx, s.db, &result)
-	if err != nil {
-		log.Error(err)
-		return nil, err
-	}
-
-	log.Debugw("result", result)
-	return result, nil
+	return result, err
 }
 
 func (s SQLite) handleInsert(ctx context.Context, stmt sqlite.InsertStatement) (sql.Result, error) {

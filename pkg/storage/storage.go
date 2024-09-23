@@ -31,9 +31,26 @@ type QualityProfileStorage interface {
 }
 
 type QualityProfile struct {
-	ID               int32 `sql:"id,primary_key"`
-	Name             string
-	Cutoff           int32
-	UpgradeAllowed   bool
-	ProfileQualityID int32 `sql:"profile_quality_id"`
+	Name           string        `json:"name"`
+	Items          []QualityItem `json:"items"`
+	ID             int32         `sql:"primary_key" json:"id"`
+	Cutoff         int32         `json:"cutoff"`
+	UpgradeAllowed bool          `json:"upgradeAllowed"`
+}
+
+type QualityItem struct {
+	ParentID          *int32            `alias:"quality_item.parent_id" json:"parentID"`
+	Name              string            `alias:"quality_item.name" json:"name"`
+	QualityDefinition QualityDefinition `json:"quality"`
+	ID                int32             `alias:"quality_item.id" json:"id"`
+	Allowed           bool              `alias:"quality_item.allowed" json:"allowed"`
+}
+
+type QualityDefinition struct {
+	QualityID     *int32  `alias:"quality_definition.quality_id" json:"-"`
+	Name          string  `alias:"quality_definition.name" json:"name"`
+	MediaType     string  `alias:"quality_definition.media_type" json:"type"`
+	PreferredSize float64 `alias:"quality_definition.preferred_size" json:"preferredSize"`
+	MinSize       float64 `alias:"quality_definition.min_size" json:"minSize"`
+	MaxSize       float64 `alias:"quality_definition.max_size" json:"maxSize"`
 }
