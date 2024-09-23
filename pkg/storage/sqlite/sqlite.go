@@ -3,6 +3,7 @@ package sqlite
 import (
 	"context"
 	"database/sql"
+	"fmt"
 
 	"github.com/go-jet/jet/v2/sqlite"
 	"github.com/kasuboski/mediaz/pkg/logger"
@@ -71,14 +72,12 @@ func (s SQLite) DeleteIndexer(ctx context.Context, id int64) error {
 
 // ListIndexer lists the stored indexers
 func (s SQLite) ListIndexers(ctx context.Context) ([]*model.Indexers, error) {
-	log := logger.FromCtx(ctx)
-
 	indexers := make([]*model.Indexers, 0)
 
 	stmt := table.Indexers.SELECT(table.Indexers.AllColumns).FROM(table.Indexers).ORDER_BY(table.Indexers.Priority.DESC())
 	err := stmt.QueryContext(ctx, s.db, &indexers)
 	if err != nil {
-		log.Errorf("failed to list indexers: %w", err)
+		return nil, fmt.Errorf("failed to list indexers: %w", err)
 	}
 	return indexers, nil
 }
@@ -112,13 +111,11 @@ func (s SQLite) DeleteMovie(ctx context.Context, id int64) error {
 
 // ListMovies lists the stored movies
 func (s SQLite) ListMovies(ctx context.Context) ([]*model.Movies, error) {
-	log := logger.FromCtx(ctx)
-
 	movies := make([]*model.Movies, 0)
 	stmt := table.Movies.SELECT(table.Movies.AllColumns).FROM(table.Movies).ORDER_BY(table.Movies.Added.ASC())
 	err := stmt.QueryContext(ctx, s.db, &movies)
 	if err != nil {
-		log.Errorf("failed to list indexer: %w", err)
+		return nil, fmt.Errorf("failed to list indexer: %w", err)
 	}
 
 	return movies, nil
@@ -154,13 +151,11 @@ func (s SQLite) DeleteMovieFile(ctx context.Context, id int64) error {
 
 // ListMovieFiles lists the stored movie files
 func (s SQLite) ListMovieFiles(ctx context.Context) ([]*model.MovieFiles, error) {
-	log := logger.FromCtx(ctx)
-
 	movieFiles := make([]*model.MovieFiles, 0)
 	stmt := table.MovieFiles.SELECT(table.MovieFiles.AllColumns).FROM(table.MovieFiles).ORDER_BY(table.MovieFiles.ID.ASC())
 	err := stmt.QueryContext(ctx, s.db, &movieFiles)
 	if err != nil {
-		log.Errorf("failed to list movie files: %w", err)
+		return nil, fmt.Errorf("failed to list movie files: %w", err)
 	}
 
 	return movieFiles, nil
