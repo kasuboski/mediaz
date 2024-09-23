@@ -219,14 +219,14 @@ func rejectReleaseFunc(ctx context.Context, det *MediaDetails, profile storage.Q
 		// items are assumed to be sorted quality so the highest media quality avaiable is selected
 		for _, item := range profile.Items {
 			metQuality := MeetsQualitySize(item.QualityDefinition, uint64(sizeMB), uint64(*det.Runtime))
-			// try again with the next item in the profile
-			if !metQuality {
-				log.Infow("rejecting release", "release", r.Title, "metQuality", metQuality, "size", r.Size, "runtime", det.Runtime)
-				continue
+
+			if metQuality {
+				log.Infow("accepting release", "release", r.Title, "metQuality", metQuality, "size", r.Size, "runtime", det.Runtime)
+				return false
 			}
 
-			log.Infow("accepting release", "release", r.Title, "metQuality", metQuality, "size", r.Size, "runtime", det.Runtime)
-			return false
+			// try again with the next quality definition in the profile
+			log.Infow("rejecting release", "release", r.Title, "metQuality", metQuality, "size", r.Size, "runtime", det.Runtime)
 		}
 
 		return true
@@ -236,7 +236,6 @@ func rejectReleaseFunc(ctx context.Context, det *MediaDetails, profile storage.Q
 // sortReleaseFunc returns a function that sorts releases by their number of seeders currently
 func sortReleaseFunc() func(*prowlarr.ReleaseResource, *prowlarr.ReleaseResource) int {
 	return func(r1 *prowlarr.ReleaseResource, r2 *prowlarr.ReleaseResource) int {
-
 		return cmp.Compare(nullableDefault(r1.Seeders), nullableDefault(r2.Seeders))
 	}
 }
