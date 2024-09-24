@@ -3,6 +3,7 @@ package sqlite
 import (
 	"context"
 	"database/sql"
+	"fmt"
 
 	"github.com/go-jet/jet/v2/sqlite"
 	"github.com/kasuboski/mediaz/pkg/logger"
@@ -71,16 +72,93 @@ func (s SQLite) DeleteIndexer(ctx context.Context, id int64) error {
 
 // ListIndexer lists the stored indexers
 func (s SQLite) ListIndexers(ctx context.Context) ([]*model.Indexers, error) {
-	log := logger.FromCtx(ctx)
-
 	indexers := make([]*model.Indexers, 0)
 
 	stmt := table.Indexers.SELECT(table.Indexers.AllColumns).FROM(table.Indexers).ORDER_BY(table.Indexers.Priority.DESC())
 	err := stmt.QueryContext(ctx, s.db, &indexers)
 	if err != nil {
-		log.Errorf("failed to list indexers: %w", err)
+		return nil, fmt.Errorf("failed to list indexers: %w", err)
 	}
 	return indexers, nil
+}
+
+// CreateMovie stores a movie
+func (s SQLite) CreateMovie(ctx context.Context, movie model.Movies) (int32, error) {
+	stmt := table.Movies.INSERT(table.Movies.MutableColumns).RETURNING(table.Movies.ID).MODEL(movie).ON_CONFLICT(table.Movies.ID).DO_NOTHING()
+	result, err := s.handleInsert(ctx, stmt)
+	if err != nil {
+		return 0, err
+	}
+
+	inserted, err := result.LastInsertId()
+	if err != nil {
+		return 0, err
+	}
+	// hope for the best I guess
+	res := int32(inserted)
+	return res, nil
+}
+
+// DeleteMovie removes a movie by id
+func (s SQLite) DeleteMovie(ctx context.Context, id int64) error {
+	stmt := table.Movies.DELETE().WHERE(table.Movies.ID.EQ(sqlite.Int64(id))).RETURNING(table.Movies.ID)
+	_, err := s.handleDelete(ctx, stmt)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// ListMovies lists the stored movies
+func (s SQLite) ListMovies(ctx context.Context) ([]*model.Movies, error) {
+	movies := make([]*model.Movies, 0)
+	stmt := table.Movies.SELECT(table.Movies.AllColumns).FROM(table.Movies).ORDER_BY(table.Movies.Added.ASC())
+	err := stmt.QueryContext(ctx, s.db, &movies)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list movies: %w", err)
+	}
+
+	return movies, nil
+}
+
+// CreateMovieFile stores a movie file
+func (s SQLite) CreateMovieFile(ctx context.Context, file model.MovieFiles) (int32, error) {
+	// Exclude DateAdded so that the default is used
+	stmt := table.MovieFiles.INSERT(table.MovieFiles.MutableColumns.Except(table.MovieFiles.DateAdded)).RETURNING(table.MovieFiles.ID).MODEL(file)
+	result, err := s.handleInsert(ctx, stmt)
+	if err != nil {
+		return 0, err
+	}
+
+	inserted, err := result.LastInsertId()
+	if err != nil {
+		return 0, err
+	}
+	// hope for the best I guess
+	res := int32(inserted)
+	return res, nil
+}
+
+// DeleteMovieFile removes a movie file by id
+func (s SQLite) DeleteMovieFile(ctx context.Context, id int64) error {
+	stmt := table.MovieFiles.DELETE().WHERE(table.MovieFiles.ID.EQ(sqlite.Int64(id))).RETURNING(table.MovieFiles.ID)
+	_, err := s.handleDelete(ctx, stmt)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// ListMovieFiles lists the stored movie files
+func (s SQLite) ListMovieFiles(ctx context.Context) ([]*model.MovieFiles, error) {
+	movieFiles := make([]*model.MovieFiles, 0)
+	stmt := table.MovieFiles.SELECT(table.MovieFiles.AllColumns).FROM(table.MovieFiles).ORDER_BY(table.MovieFiles.ID.ASC())
+	err := stmt.QueryContext(ctx, s.db, &movieFiles)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list movie files: %w", err)
+	}
+
+	return movieFiles, nil
 }
 
 func (s SQLite) handleInsert(ctx context.Context, stmt sqlite.InsertStatement) (sql.Result, error) {

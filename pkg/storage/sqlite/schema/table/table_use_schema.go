@@ -11,4 +11,7 @@ package table
 // this method only once at the beginning of the program.
 func UseSchema(schema string) {
 	Indexers = Indexers.FromSchema(schema)
+	MovieFiles = MovieFiles.FromSchema(schema)
+	MovieMetadata = MovieMetadata.FromSchema(schema)
+	Movies = Movies.FromSchema(schema)
 }

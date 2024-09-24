@@ -151,6 +151,39 @@ func (m MediaManager) ListMoviesInLibrary(ctx context.Context) ([]library.MovieF
 	return m.library.FindMovies(ctx)
 }
 
+func (m MediaManager) IndexMovieLibrary(ctx context.Context) error {
+	// TODO: this probably shouldn't be synchronous... meaning kick if it off and check back
+	log := logger.FromCtx(ctx)
+	files, err := m.library.FindMovies(ctx)
+	if err != nil {
+		return fmt.Errorf("failed indexing movie library: %w", err)
+	}
+
+	for _, f := range files {
+		mf := model.MovieFiles{
+			RelativePath: &f.Path, // TODO: make sure it's actually relative
+			Size:         f.Size,
+		}
+		mfID, err := m.storage.CreateMovieFile(ctx, mf)
+		if err != nil {
+			log.Errorf("couldn't add movie to db: %w", err)
+			continue
+		}
+
+		mov := model.Movies{
+			Path:        f.Path,
+			Monitored:   0,
+			MovieFileId: mfID,
+		}
+		_, err = m.storage.CreateMovie(ctx, mov)
+		if err != nil {
+			log.Errorf("couldn't add movie to db: %w", err)
+		}
+	}
+
+	return nil
+}
+
 // AddMovieRequest describes what is required to add a movie
 // TODO: add quality profiles
 type AddMovieRequest struct {

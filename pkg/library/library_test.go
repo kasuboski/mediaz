@@ -1,17 +1,14 @@
 package library
 
 import (
-	"bufio"
 	"context"
-	"os"
-	"path/filepath"
 	"slices"
 	"testing"
 	"testing/fstest"
 )
 
 func TestMatchMovie(t *testing.T) {
-	_, expected := fsFromFile(t, "./test_movies.txt", dirName)
+	_, expected := MovieFSFromFile(t, "./test_movies.txt")
 
 	for _, m := range expected {
 		matched := matchMovie(m)
@@ -22,7 +19,7 @@ func TestMatchMovie(t *testing.T) {
 }
 
 func TestMatchEpisode(t *testing.T) {
-	_, expected := fsFromFile(t, "./test_episodes.txt", filepath.Base)
+	_, expected := TVFSFromFile(t, "./test_episodes.txt")
 
 	for _, m := range expected {
 		matched := matchEpisode(m)
@@ -39,7 +36,7 @@ func TestFindMovies(t *testing.T) {
 		"Batman Begins (2005)/Batman Begins (2005).en.srt": {},
 		"My Movie/Uh Oh/My Movie.mp4":                      {},
 	}
-	fs, expected := fsFromFile(t, "./test_movies.txt", dirName)
+	fs, expected := MovieFSFromFile(t, "./test_movies.txt")
 	for k, v := range negatives {
 		fs[k] = v
 	}
@@ -61,7 +58,7 @@ func TestFindMovies(t *testing.T) {
 
 func TestFindEpisodes(t *testing.T) {
 	ctx := context.Background()
-	fs, expected := fsFromFile(t, "./test_episodes.txt", filepath.Base)
+	fs, expected := TVFSFromFile(t, "./test_episodes.txt")
 	fs["myfile.txt"] = &fstest.MapFile{}
 
 	l := New(nil, fs)
@@ -72,29 +69,6 @@ func TestFindEpisodes(t *testing.T) {
 	if !slices.Equal(expected, episodes) {
 		t.Fatalf("wanted %v; got %v", expected, episodes)
 	}
-}
-
-func fsFromFile(t *testing.T, path string, toExpected func(string) string) (fstest.MapFS, []string) {
-	f, err := os.Open(path)
-	if err != nil {
-		t.Fatalf("couldn't open file: %v", err)
-	}
-	defer f.Close()
-
-	testfs := fstest.MapFS{}
-	names := []string{}
-	scanner := bufio.NewScanner(f)
-	for scanner.Scan() {
-		path := scanner.Text()
-		testfs[path] = &fstest.MapFile{}
-		names = append(names, toExpected(path))
-	}
-
-	if err := scanner.Err(); err != nil {
-		t.Fatal(err)
-	}
-
-	return testfs, names
 }
 
 func Test_fileSizeToString(t *testing.T) {

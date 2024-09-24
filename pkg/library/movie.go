@@ -1,12 +1,18 @@
 package library
 
-import "time"
+import (
+	"fmt"
+	"time"
+)
 
 type MovieFile struct {
-	ID   string `json:"id"`
 	Name string `json:"name"`
 	Path string `json:"path"`
-	Size string `json:"size"`
+	Size int64  `json:"size"`
+}
+
+func (mf MovieFile) String() string {
+	return fmt.Sprintf("name: %s, path: %s, size: %s", mf.Name, mf.Path, fileSizeToString(mf.Size))
 }
 
 func FromPath(path string) MovieFile {
