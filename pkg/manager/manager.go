@@ -225,7 +225,7 @@ func rejectReleaseFunc(ctx context.Context, det *MediaDetails, profile storage.Q
 				return false
 			}
 
-			// try again with the next quality definition in the profile
+			// try again with the next quality definition associated with the currently quality item in the profile
 			log.Infow("rejecting release", "release", r.Title, "metQuality", metQuality, "size", r.Size, "runtime", det.Runtime)
 		}
 

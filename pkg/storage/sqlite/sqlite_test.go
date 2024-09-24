@@ -53,7 +53,7 @@ func initSqlite(t *testing.T, ctx context.Context) storage.Storage {
 	store, err := New(":memory:")
 	assert.Nil(t, err)
 
-	schemas, err := storage.ReadSchemaFiles("../../../schema.sql")
+	schemas, err := storage.ReadSchemaFiles("./schema/schema.sql")
 	assert.Nil(t, err)
 
 	err = store.Init(ctx, schemas...)
