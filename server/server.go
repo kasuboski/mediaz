@@ -87,8 +87,8 @@ func (s Server) Serve(port int) error {
 	v1.HandleFunc("/quality/definitions", s.CreateIndexer()).Methods(http.MethodPost)
 	v1.HandleFunc("/quality/definitions", s.DeleteIndexer()).Methods(http.MethodDelete)
 
-	v1.HandleFunc("/quality/profile/{id}", s.GetQualityProfile()).Methods(http.MethodGet)
-	v1.HandleFunc("/quality/profile", s.ListQualityProfiles()).Methods(http.MethodGet)
+	v1.HandleFunc("/quality/profiles/{id}", s.GetQualityProfile()).Methods(http.MethodGet)
+	v1.HandleFunc("/quality/profiles", s.ListQualityProfiles()).Methods(http.MethodGet)
 
 	corsHandler := handlers.CORS(
 		handlers.AllowedOrigins([]string{"*"}),
