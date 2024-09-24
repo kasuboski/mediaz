@@ -33,10 +33,17 @@ func TestAddMovietoLibrary(t *testing.T) {
 	bigSeeders := nullable.NewNullNullable[int32]()
 	bigSeeders.Set(23)
 
-	smallSeeders := nullable.NewNullNullable[int32]()
-	smallSeeders.Set(10)
+	smallerSeeders := nullable.NewNullNullable[int32]()
+	smallerSeeders.Set(15)
 
-	releases := []*prowlarr.ReleaseResource{{ID: intPtr(123), Title: nullable.NewNullableWithValue("test movie"), Size: sizeGBToBytes(23), Seeders: bigSeeders}, {ID: intPtr(124), Title: nullable.NewNullableWithValue("test movie - very small"), Size: sizeGBToBytes(1), Seeders: smallSeeders}}
+	smallestSeeders := nullable.NewNullNullable[int32]()
+	smallestSeeders.Set(10)
+
+	wantRelease := &prowlarr.ReleaseResource{ID: intPtr(123), Title: nullable.NewNullableWithValue("test movie"), Size: sizeGBToBytes(23), Seeders: bigSeeders}
+	doNotWantRelease := &prowlarr.ReleaseResource{ID: intPtr(124), Title: nullable.NewNullableWithValue("test movie"), Size: sizeGBToBytes(23), Seeders: smallerSeeders}
+	smallMovie := &prowlarr.ReleaseResource{ID: intPtr(125), Title: nullable.NewNullableWithValue("test movie - very small"), Size: sizeGBToBytes(1), Seeders: smallestSeeders}
+
+	releases := []*prowlarr.ReleaseResource{doNotWantRelease, wantRelease, smallMovie}
 	prowlarrMock.EXPECT().GetAPIV1Search(gomock.Any(), gomock.Any()).Return(searchIndexersResponse(t, releases), nil).Times(len(indexers))
 
 	store, err := sqlite.New(":memory:")
