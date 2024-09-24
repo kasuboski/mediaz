@@ -12,6 +12,7 @@ type Storage interface {
 	IndexerStorage
 	QualityDefinitionStorage
 	QualityProfileStorage
+	MovieStorage
 }
 
 type IndexerStorage interface {
@@ -54,6 +55,16 @@ type QualityDefinition struct {
 	PreferredSize float64 `alias:"quality_definition.preferred_size" json:"preferredSize"`
 	MinSize       float64 `alias:"quality_definition.min_size" json:"minSize"`
 	MaxSize       float64 `alias:"quality_definition.max_size" json:"maxSize"`
+}
+
+type MovieStorage interface {
+	CreateMovie(ctx context.Context, movie model.Movies) (int32, error)
+	DeleteMovie(ctx context.Context, id int64) error
+	ListMovies(ctx context.Context) ([]*model.Movies, error)
+
+	CreateMovieFile(ctx context.Context, movieFile model.MovieFiles) (int32, error)
+	DeleteMovieFile(ctx context.Context, id int64) error
+	ListMovieFiles(ctx context.Context) ([]*model.MovieFiles, error)
 }
 
 func ReadSchemaFiles(files ...string) ([]string, error) {

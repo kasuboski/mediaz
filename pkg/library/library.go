@@ -64,7 +64,7 @@ func (l *Library) FindMovies(ctx context.Context) ([]MovieFile, error) {
 		movie := FromPath(path)
 		info, err := d.Info()
 		if err == nil {
-			movie.Size = fileSizeToString(info.Size())
+			movie.Size = info.Size()
 		}
 
 		movies = append(movies, movie)
