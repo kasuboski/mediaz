@@ -162,7 +162,18 @@ func (s SQLite) ListMovieFiles(ctx context.Context) ([]*model.MovieFiles, error)
 	return movieFiles, nil
 }
 
-// CreateIndexer stores a new indexer in the database
+// CreateQualityDefinition store a new quality definition
+func (s SQLite) CreateQualityDefinition(ctx context.Context, definition model.QualityDefinition) (int64, error) {
+	stmt := table.QualityDefinition.INSERT(table.QualityDefinition.Name, table.QualityDefinition.QualityID, table.QualityDefinition.MinSize, table.QualityDefinition.MaxSize).MODEL(definition).RETURNING(table.QualityDefinition.AllColumns)
+	result, err := s.handleInsert(ctx, stmt)
+	if err != nil {
+		return 0, err
+	}
+
+	return result.LastInsertId()
+}
+
+// ListQualityDefinitions lists all quality definitions
 func (s SQLite) ListQualityDefinitions(ctx context.Context) ([]*model.QualityDefinition, error) {
 	definitions := make([]*model.QualityDefinition, 0)
 	stmt := table.Indexer.SELECT(table.QualityDefinition.AllColumns).FROM(table.QualityDefinition).ORDER_BY(table.QualityDefinition.ID.ASC())
@@ -170,7 +181,7 @@ func (s SQLite) ListQualityDefinitions(ctx context.Context) ([]*model.QualityDef
 	return definitions, err
 }
 
-// CreateIndexer stores a new indexer in the database
+// DeleteQualityDefinition deletes a quality definition
 func (s SQLite) DeleteQualityDefinition(ctx context.Context, id int64) error {
 	stmt := table.Indexer.DELETE().WHERE(table.QualityDefinition.ID.EQ(sqlite.Int64(id))).RETURNING(table.QualityDefinition.AllColumns)
 	_, err := s.handleDelete(ctx, stmt)
