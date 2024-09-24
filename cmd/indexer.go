@@ -113,7 +113,7 @@ var searchIndexerCmd = &cobra.Command{
 		indexers := make([]int32, len(idx))
 		for i, indexer := range idx {
 			indexers[i] = indexer.ID
-			log.Debug("will search", "indexer", indexer.Name)
+			log.Debugw("will search", "indexer", indexer.Name)
 		}
 
 		query := args[0]

@@ -180,7 +180,7 @@ func (m MediaManager) AddMovieToLibrary(ctx context.Context, request AddMovieReq
 	if err != nil {
 		return nil, err
 	}
-	log.Debug("listed indexers", "count", len(indexers))
+	log.Debugw("listed indexers", "count", len(indexers))
 	if len(indexers) == 0 {
 		return nil, errors.New("no indexers available")
 	}
@@ -190,13 +190,13 @@ func (m MediaManager) AddMovieToLibrary(ctx context.Context, request AddMovieReq
 	}
 	releases, err := m.SearchIndexers(ctx, indexerIds, categories, *det.Title)
 	if err != nil {
-		log.Debug("failed to search indexer", "indexers", indexerIds, zap.Error(err))
+		log.Debugw("failed to search indexer", "indexers", indexerIds, zap.Error(err))
 		return nil, err
 	}
 
-	log.Debug("releases for consideration", "releases", len(releases))
+	log.Debugw("releases for consideration", "releases", len(releases))
 	releases = slices.DeleteFunc(releases, rejectReleaseFunc(ctx, det, profile))
-	log.Debug("releases after rejection", "releases", len(releases))
+	log.Debugw("releases after rejection", "releases", len(releases))
 	if len(releases) == 0 {
 		// TODO: This probably isn't really an error... just need to search again later
 		return nil, errors.New("no matching releases found")
@@ -225,7 +225,7 @@ func rejectReleaseFunc(ctx context.Context, det *MediaDetails, profile storage.Q
 				return false
 			}
 
-			// try again with the next quality definition associated with the currently quality item in the profile
+			// try again with the next item
 			log.Infow("rejecting release", "release", r.Title, "metQuality", metQuality, "size", r.Size, "runtime", det.Runtime)
 		}
 
