@@ -115,7 +115,7 @@ func (s SQLite) ListMovies(ctx context.Context) ([]*model.Movies, error) {
 	stmt := table.Movies.SELECT(table.Movies.AllColumns).FROM(table.Movies).ORDER_BY(table.Movies.Added.ASC())
 	err := stmt.QueryContext(ctx, s.db, &movies)
 	if err != nil {
-		return nil, fmt.Errorf("failed to list indexer: %w", err)
+		return nil, fmt.Errorf("failed to list movies: %w", err)
 	}
 
 	return movies, nil
