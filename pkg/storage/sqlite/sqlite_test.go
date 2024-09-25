@@ -55,12 +55,12 @@ func TestMovieStorage(t *testing.T) {
 	store := initSqlite(t, ctx)
 	assert.NotNil(t, store)
 
-	movie := model.Movies{
+	movie := model.Movie{
 		ID:              1,
 		Path:            "Title/Title.mkv",
 		Monitored:       1,
-		MovieFileId:     1,
-		MovieMetadataId: 1,
+		MovieFileID:     1,
+		MovieMetadataID: 1,
 	}
 	res, err := store.CreateMovie(ctx, movie)
 	assert.Nil(t, err)
@@ -80,11 +80,11 @@ func TestMovieStorage(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Empty(t, movies)
 
-	file := model.MovieFiles{
+	file := model.MovieFile{
 		ID:      1,
 		Quality: "HDTV-720p",
 		Size:    1_000_000_000,
-		MovieId: 1,
+		MovieID: 1,
 	}
 	res, err = store.CreateMovieFile(ctx, file)
 	assert.Nil(t, err)

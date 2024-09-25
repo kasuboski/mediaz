@@ -11,9 +11,9 @@ import (
 	"time"
 )
 
-type MovieFiles struct {
+type MovieFile struct {
 	ID               int32 `sql:"primary_key"`
-	MovieId          int32
+	MovieID          int32
 	Quality          string
 	Size             int64
 	DateAdded        time.Time

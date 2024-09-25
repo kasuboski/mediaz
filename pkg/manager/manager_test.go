@@ -84,7 +84,7 @@ func TestIndexMovieLibrary(t *testing.T) {
 	store, err := sqlite.New(":memory:")
 	require.Nil(t, err)
 
-	schemas, err := storage.ReadSchemaFiles("../../schema.sql")
+	schemas, err := storage.ReadSchemaFiles("../storage/sqlite/schema/schema.sql")
 	require.Nil(t, err)
 
 	ctx := context.Background()

@@ -11,11 +11,11 @@ package table
 // this method only once at the beginning of the program.
 func UseSchema(schema string) {
 	Indexer = Indexer.FromSchema(schema)
+	Movie = Movie.FromSchema(schema)
+	MovieFile = MovieFile.FromSchema(schema)
+	MovieMetadata = MovieMetadata.FromSchema(schema)
 	ProfileQualityItem = ProfileQualityItem.FromSchema(schema)
 	QualityDefinition = QualityDefinition.FromSchema(schema)
 	QualityItem = QualityItem.FromSchema(schema)
 	QualityProfile = QualityProfile.FromSchema(schema)
-	MovieFiles = MovieFiles.FromSchema(schema)
-	MovieMetadata = MovieMetadata.FromSchema(schema)
-	Movies = Movies.FromSchema(schema)
 }

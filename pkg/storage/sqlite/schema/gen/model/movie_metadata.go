@@ -13,8 +13,8 @@ import (
 
 type MovieMetadata struct {
 	ID                 int32 `sql:"primary_key"`
-	TmdbId             int32
-	ImdbId             *string
+	TmdbID             int32
+	ImdbID             *string
 	Images             string
 	Genres             *string
 	Title              string
@@ -34,11 +34,11 @@ type MovieMetadata struct {
 	Ratings            *string
 	Recommendations    string
 	Certification      *string
-	YouTubeTrailerId   *string
+	YoutubeTrailerID   *string
 	Studio             *string
 	Overview           *string
 	Website            *string
 	Popularity         *float64
-	CollectionTmdbId   *int32
+	CollectionTmdbID   *int32
 	CollectionTitle    *string
 }

@@ -83,8 +83,8 @@ func (s SQLite) ListIndexers(ctx context.Context) ([]*model.Indexer, error) {
 }
 
 // CreateMovie stores a movie
-func (s SQLite) CreateMovie(ctx context.Context, movie model.Movies) (int32, error) {
-	stmt := table.Movies.INSERT(table.Movies.MutableColumns).RETURNING(table.Movies.ID).MODEL(movie).ON_CONFLICT(table.Movies.ID).DO_NOTHING()
+func (s SQLite) CreateMovie(ctx context.Context, movie model.Movie) (int32, error) {
+	stmt := table.Movie.INSERT(table.Movie.MutableColumns).RETURNING(table.Movie.ID).MODEL(movie).ON_CONFLICT(table.Movie.ID).DO_NOTHING()
 	result, err := s.handleInsert(ctx, stmt)
 	if err != nil {
 		return 0, err
@@ -102,7 +102,7 @@ func (s SQLite) CreateMovie(ctx context.Context, movie model.Movies) (int32, err
 
 // DeleteMovie removes a movie by id
 func (s SQLite) DeleteMovie(ctx context.Context, id int64) error {
-	stmt := table.Movies.DELETE().WHERE(table.Movies.ID.EQ(sqlite.Int64(id))).RETURNING(table.Movies.ID)
+	stmt := table.Movie.DELETE().WHERE(table.Movie.ID.EQ(sqlite.Int64(id))).RETURNING(table.Movie.ID)
 	_, err := s.handleDelete(ctx, stmt)
 	if err != nil {
 		return err
@@ -111,9 +111,9 @@ func (s SQLite) DeleteMovie(ctx context.Context, id int64) error {
 }
 
 // ListMovies lists the stored movies
-func (s SQLite) ListMovies(ctx context.Context) ([]*model.Movies, error) {
-	movies := make([]*model.Movies, 0)
-	stmt := table.Movies.SELECT(table.Movies.AllColumns).FROM(table.Movies).ORDER_BY(table.Movies.Added.ASC())
+func (s SQLite) ListMovies(ctx context.Context) ([]*model.Movie, error) {
+	movies := make([]*model.Movie, 0)
+	stmt := table.Movie.SELECT(table.Movie.AllColumns).FROM(table.Movie).ORDER_BY(table.Movie.Added.ASC())
 	err := stmt.QueryContext(ctx, s.db, &movies)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list movies: %w", err)
@@ -123,9 +123,9 @@ func (s SQLite) ListMovies(ctx context.Context) ([]*model.Movies, error) {
 }
 
 // CreateMovieFile stores a movie file
-func (s SQLite) CreateMovieFile(ctx context.Context, file model.MovieFiles) (int32, error) {
+func (s SQLite) CreateMovieFile(ctx context.Context, file model.MovieFile) (int32, error) {
 	// Exclude DateAdded so that the default is used
-	stmt := table.MovieFiles.INSERT(table.MovieFiles.MutableColumns.Except(table.MovieFiles.DateAdded)).RETURNING(table.MovieFiles.ID).MODEL(file)
+	stmt := table.MovieFile.INSERT(table.MovieFile.MutableColumns.Except(table.MovieFile.DateAdded)).RETURNING(table.MovieFile.ID).MODEL(file)
 	result, err := s.handleInsert(ctx, stmt)
 	if err != nil {
 		return 0, err
@@ -142,7 +142,7 @@ func (s SQLite) CreateMovieFile(ctx context.Context, file model.MovieFiles) (int
 
 // DeleteMovieFile removes a movie file by id
 func (s SQLite) DeleteMovieFile(ctx context.Context, id int64) error {
-	stmt := table.MovieFiles.DELETE().WHERE(table.MovieFiles.ID.EQ(sqlite.Int64(id))).RETURNING(table.MovieFiles.ID)
+	stmt := table.MovieFile.DELETE().WHERE(table.MovieFile.ID.EQ(sqlite.Int64(id))).RETURNING(table.MovieFile.ID)
 	_, err := s.handleDelete(ctx, stmt)
 	if err != nil {
 		return err
@@ -151,9 +151,9 @@ func (s SQLite) DeleteMovieFile(ctx context.Context, id int64) error {
 }
 
 // ListMovieFiles lists the stored movie files
-func (s SQLite) ListMovieFiles(ctx context.Context) ([]*model.MovieFiles, error) {
-	movieFiles := make([]*model.MovieFiles, 0)
-	stmt := table.MovieFiles.SELECT(table.MovieFiles.AllColumns).FROM(table.MovieFiles).ORDER_BY(table.MovieFiles.ID.ASC())
+func (s SQLite) ListMovieFiles(ctx context.Context) ([]*model.MovieFile, error) {
+	movieFiles := make([]*model.MovieFile, 0)
+	stmt := table.MovieFile.SELECT(table.MovieFile.AllColumns).FROM(table.MovieFile).ORDER_BY(table.MovieFile.ID.ASC())
 	err := stmt.QueryContext(ctx, s.db, &movieFiles)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list movie files: %w", err)
@@ -181,7 +181,7 @@ func (s SQLite) ListQualityDefinitions(ctx context.Context) ([]*model.QualityDef
 	return definitions, err
 }
 
-// DeleteQualityDefinition deletes a quality definition
+// DeleteQualityDefinition deletes a quality
 func (s SQLite) DeleteQualityDefinition(ctx context.Context, id int64) error {
 	stmt := table.Indexer.DELETE().WHERE(table.QualityDefinition.ID.EQ(sqlite.Int64(id))).RETURNING(table.QualityDefinition.AllColumns)
 	_, err := s.handleDelete(ctx, stmt)

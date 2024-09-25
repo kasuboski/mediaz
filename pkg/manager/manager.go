@@ -160,7 +160,7 @@ func (m MediaManager) IndexMovieLibrary(ctx context.Context) error {
 	}
 
 	for _, f := range files {
-		mf := model.MovieFiles{
+		mf := model.MovieFile{
 			RelativePath: &f.Path, // TODO: make sure it's actually relative
 			Size:         f.Size,
 		}
@@ -170,10 +170,10 @@ func (m MediaManager) IndexMovieLibrary(ctx context.Context) error {
 			continue
 		}
 
-		mov := model.Movies{
+		mov := model.Movie{
 			Path:        f.Path,
 			Monitored:   0,
-			MovieFileId: mfID,
+			MovieFileID: mfID,
 		}
 		_, err = m.storage.CreateMovie(ctx, mov)
 		if err != nil {
