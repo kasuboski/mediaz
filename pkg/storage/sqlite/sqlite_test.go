@@ -15,6 +15,18 @@ func TestInit(t *testing.T) {
 	assert.NotNil(t, store)
 }
 
+func initSqlite(t *testing.T, ctx context.Context) storage.Storage {
+	store, err := New(":memory:")
+	assert.Nil(t, err)
+
+	schemas, err := storage.ReadSchemaFiles("./schema/schema.sql")
+	assert.Nil(t, err)
+
+	err = store.Init(ctx, schemas...)
+	assert.Nil(t, err)
+	return store
+}
+
 func TestIndexerStorage(t *testing.T) {
 	ctx := context.Background()
 	store := initSqlite(t, ctx)
@@ -108,14 +120,80 @@ func TestMovieStorage(t *testing.T) {
 	assert.Empty(t, files)
 }
 
-func initSqlite(t *testing.T, ctx context.Context) storage.Storage {
-	store, err := New(":memory:")
-	assert.Nil(t, err)
+func TestGetQualityProfile(t *testing.T) {
+	ctx := context.Background()
+	store := initSqlite(t, ctx)
 
-	schemas, err := storage.ReadSchemaFiles("./schema/schema.sql")
-	assert.Nil(t, err)
+	testProfile := model.QualityProfile{
+		Name:            "test profile",
+		UpgradeAllowed:  true,
+		CutoffQualityID: 3,
+	}
 
-	err = store.Init(ctx, schemas...)
+	id, err := store.CreateQualityProfile(ctx, testProfile)
 	assert.Nil(t, err)
-	return store
+	assert.Equal(t, int64(1), id)
+
+	firstDefinition := model.QualityDefinition{
+		QualityID:     1,
+		Name:          "test quality definition 2",
+		PreferredSize: 1499,
+		MinSize:       10,
+		MaxSize:       1500,
+		MediaType:     "movie",
+	}
+	id, err = store.CreateQualityDefinition(ctx, firstDefinition)
+	assert.Nil(t, err)
+	assert.Equal(t, int64(1), id)
+
+	secondDefinition := model.QualityDefinition{
+		QualityID:     2,
+		Name:          "test quality definition 2",
+		PreferredSize: 1499,
+		MinSize:       10,
+		MaxSize:       1500,
+		MediaType:     "movie",
+	}
+	id, err = store.CreateQualityDefinition(ctx, secondDefinition)
+	assert.Nil(t, err)
+	assert.Equal(t, int64(2), id)
+
+	id, err = store.CreateProfileQualityItem(ctx, model.ProfileQualityItem{
+		ProfileID: 1,
+		QualityID: 1,
+	})
+	assert.Nil(t, err)
+	assert.Equal(t, int64(1), id)
+
+	id, err = store.CreateProfileQualityItem(ctx, model.ProfileQualityItem{
+		ProfileID: 1,
+		QualityID: 2,
+	})
+	assert.Nil(t, err)
+	assert.Equal(t, int64(2), id)
+
+	profile, err := store.GetQualityProfile(ctx, 1)
+	assert.Nil(t, err)
+	assert.Equal(t, "test profile", profile.Name)
+	assert.Equal(t, true, profile.UpgradeAllowed)
+	assert.Equal(t, int32(3), profile.CutoffQualityID)
+
+	assert.ElementsMatch(t, []storage.QualityDefinition{
+		{
+			QualityID:     1,
+			Name:          "test quality definition 2",
+			PreferredSize: 1499,
+			MinSize:       10,
+			MaxSize:       1500,
+			MediaType:     "movie",
+		},
+		{
+			QualityID:     2,
+			Name:          "test quality definition 2",
+			PreferredSize: 1499,
+			MinSize:       10,
+			MaxSize:       1500,
+			MediaType:     "movie",
+		},
+	}, profile.Qualities)
 }

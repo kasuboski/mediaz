@@ -173,7 +173,7 @@ func (m MediaManager) IndexMovieLibrary(ctx context.Context) error {
 		mov := model.Movie{
 			Path:        f.Path,
 			Monitored:   0,
-			MovieFileID: mfID,
+			MovieFileID: int32(mfID),
 		}
 		_, err = m.storage.CreateMovie(ctx, mov)
 		if err != nil {
@@ -378,7 +378,7 @@ func (m MediaManager) GetQualityProfile(ctx context.Context, id int64) (storage.
 	return m.storage.GetQualityProfile(ctx, id)
 }
 
-func (m MediaManager) ListQualityProfiles(ctx context.Context) ([]storage.QualityProfile, error) {
+func (m MediaManager) ListQualityProfiles(ctx context.Context) ([]*storage.QualityProfile, error) {
 	return m.storage.ListQualityProfiles(ctx)
 }
 

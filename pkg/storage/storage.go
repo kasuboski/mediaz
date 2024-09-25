@@ -10,8 +10,7 @@ import (
 type Storage interface {
 	Init(ctx context.Context, schemas ...string) error
 	IndexerStorage
-	QualityDefinitionStorage
-	QualityProfileStorage
+	QualityStorage
 	MovieStorage
 }
 
@@ -21,23 +20,29 @@ type IndexerStorage interface {
 	ListIndexers(ctx context.Context) ([]*model.Indexer, error)
 }
 
-type QualityDefinitionStorage interface {
+type QualityStorage interface {
+	CreateQualityProfile(ctx context.Context, profile model.QualityProfile) (int64, error)
+	GetQualityProfile(ctx context.Context, id int64) (QualityProfile, error)
+	ListQualityProfiles(ctx context.Context) ([]*QualityProfile, error)
+	DeleteQualityProfile(ctx context.Context, id int64) error //TODO: do we cascade associated items?
+
+	CreateProfileQualityItem(ctx context.Context, item model.ProfileQualityItem) (int64, error)
+	DeleteProfileQualityItem(ctx context.Context, id int64) error
+	GetProfileQualityItem(ctx context.Context, id int64) (model.ProfileQualityItem, error)
+	ListProfileQualityItems(ctx context.Context) ([]*model.ProfileQualityItem, error)
+
 	CreateQualityDefinition(ctx context.Context, definition model.QualityDefinition) (int64, error)
+	GetQualityDefinition(ctx context.Context, id int64) (model.QualityDefinition, error)
 	ListQualityDefinitions(ctx context.Context) ([]*model.QualityDefinition, error)
 	DeleteQualityDefinition(ctx context.Context, id int64) error
 }
 
-type QualityProfileStorage interface {
-	GetQualityProfile(ctx context.Context, id int64) (QualityProfile, error)
-	ListQualityProfiles(ctx context.Context) ([]QualityProfile, error)
-}
-
 type MovieStorage interface {
-	CreateMovie(ctx context.Context, movie model.Movie) (int32, error)
+	CreateMovie(ctx context.Context, movie model.Movie) (int64, error)
 	DeleteMovie(ctx context.Context, id int64) error
 	ListMovies(ctx context.Context) ([]*model.Movie, error)
 
-	CreateMovieFile(ctx context.Context, movieFile model.MovieFile) (int32, error)
+	CreateMovieFile(ctx context.Context, movieFile model.MovieFile) (int64, error)
 	DeleteMovieFile(ctx context.Context, id int64) error
 	ListMovieFiles(ctx context.Context) ([]*model.MovieFile, error)
 }
@@ -51,12 +56,12 @@ type QualityProfile struct {
 }
 
 type QualityDefinition struct {
-	QualityID     *int32  `alias:"quality_definition.quality_id" json:"-"`
 	Name          string  `alias:"quality_definition.name" json:"name"`
 	MediaType     string  `alias:"quality_definition.media_type" json:"type"`
 	PreferredSize float64 `alias:"quality_definition.preferred_size" json:"preferredSize"`
 	MinSize       float64 `alias:"quality_definition.min_size" json:"minSize"`
 	MaxSize       float64 `alias:"quality_definition.max_size" json:"maxSize"`
+	QualityID     int32   `alias:"quality_definition.quality_id" json:"-"`
 }
 
 func ReadSchemaFiles(files ...string) ([]string, error) {

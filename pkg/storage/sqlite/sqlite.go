@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log"
 
 	"github.com/go-jet/jet/v2/sqlite"
 	"github.com/kasuboski/mediaz/pkg/logger"
@@ -50,10 +51,7 @@ func (s SQLite) Init(ctx context.Context, schemas ...string) error {
 
 // CreateIndexer stores a new indexer in the database
 func (s SQLite) CreateIndexer(ctx context.Context, indexer model.Indexer) (int64, error) {
-	stmt := table.Indexer.INSERT(
-		table.Indexer.Name,
-		table.Indexer.URI, table.Indexer.APIKey,
-		table.Indexer.Priority).MODEL(indexer).ON_CONFLICT(table.Indexer.Name).DO_NOTHING().RETURNING(table.Indexer.AllColumns)
+	stmt := table.Indexer.INSERT(table.Indexer.AllColumns.Except(table.Indexer.ID)).MODEL(indexer).ON_CONFLICT(table.Indexer.Name).DO_NOTHING().RETURNING(table.Indexer.AllColumns)
 	result, err := s.handleInsert(ctx, stmt)
 	if err != nil {
 		return 0, err
@@ -83,7 +81,7 @@ func (s SQLite) ListIndexers(ctx context.Context) ([]*model.Indexer, error) {
 }
 
 // CreateMovie stores a movie
-func (s SQLite) CreateMovie(ctx context.Context, movie model.Movie) (int32, error) {
+func (s SQLite) CreateMovie(ctx context.Context, movie model.Movie) (int64, error) {
 	stmt := table.Movie.INSERT(table.Movie.MutableColumns).RETURNING(table.Movie.ID).MODEL(movie).ON_CONFLICT(table.Movie.ID).DO_NOTHING()
 	result, err := s.handleInsert(ctx, stmt)
 	if err != nil {
@@ -94,9 +92,8 @@ func (s SQLite) CreateMovie(ctx context.Context, movie model.Movie) (int32, erro
 	if err != nil {
 		return 0, err
 	}
-	// hope for the best I guess
-	res := int32(inserted)
-	return res, nil
+
+	return inserted, nil
 
 }
 
@@ -123,9 +120,9 @@ func (s SQLite) ListMovies(ctx context.Context) ([]*model.Movie, error) {
 }
 
 // CreateMovieFile stores a movie file
-func (s SQLite) CreateMovieFile(ctx context.Context, file model.MovieFile) (int32, error) {
+func (s SQLite) CreateMovieFile(ctx context.Context, file model.MovieFile) (int64, error) {
 	// Exclude DateAdded so that the default is used
-	stmt := table.MovieFile.INSERT(table.MovieFile.MutableColumns.Except(table.MovieFile.DateAdded)).RETURNING(table.MovieFile.ID).MODEL(file)
+	stmt := table.MovieFile.INSERT(table.MovieFile.MutableColumns.Except(table.MovieFile.DateAdded).Except(table.MovieFile.ID)).RETURNING(table.MovieFile.ID).MODEL(file)
 	result, err := s.handleInsert(ctx, stmt)
 	if err != nil {
 		return 0, err
@@ -135,9 +132,8 @@ func (s SQLite) CreateMovieFile(ctx context.Context, file model.MovieFile) (int3
 	if err != nil {
 		return 0, err
 	}
-	// hope for the best I guess
-	res := int32(inserted)
-	return res, nil
+
+	return inserted, nil
 }
 
 // DeleteMovieFile removes a movie file by id
@@ -164,13 +160,26 @@ func (s SQLite) ListMovieFiles(ctx context.Context) ([]*model.MovieFile, error) 
 
 // CreateQualityDefinition store a new quality definition
 func (s SQLite) CreateQualityDefinition(ctx context.Context, definition model.QualityDefinition) (int64, error) {
-	stmt := table.QualityDefinition.INSERT(table.QualityDefinition.Name, table.QualityDefinition.QualityID, table.QualityDefinition.MinSize, table.QualityDefinition.MaxSize).MODEL(definition).RETURNING(table.QualityDefinition.AllColumns)
+	stmt := table.QualityDefinition.INSERT(table.QualityDefinition.AllColumns.Except(table.QualityDefinition.ID)).MODEL(definition).RETURNING(table.QualityDefinition.ID)
 	result, err := s.handleInsert(ctx, stmt)
 	if err != nil {
 		return 0, err
 	}
 
-	return result.LastInsertId()
+	inserted, err := result.LastInsertId()
+	if err != nil {
+		return 0, err
+	}
+
+	return inserted, nil
+}
+
+// GetQualityDefinition gets a quality definition
+func (s SQLite) GetQualityDefinition(ctx context.Context, id int64) (model.QualityDefinition, error) {
+	stmt := table.QualityDefinition.SELECT(table.QualityDefinition.AllColumns).FROM(table.QualityDefinition).WHERE(table.QualityDefinition.ID.EQ(sqlite.Int64(id))).ORDER_BY(table.QualityDefinition.ID.ASC())
+	var result model.QualityDefinition
+	err := stmt.QueryContext(ctx, s.db, &result)
+	return result, err
 }
 
 // ListQualityDefinitions lists all quality definitions
@@ -183,9 +192,63 @@ func (s SQLite) ListQualityDefinitions(ctx context.Context) ([]*model.QualityDef
 
 // DeleteQualityDefinition deletes a quality
 func (s SQLite) DeleteQualityDefinition(ctx context.Context, id int64) error {
-	stmt := table.Indexer.DELETE().WHERE(table.QualityDefinition.ID.EQ(sqlite.Int64(id))).RETURNING(table.QualityDefinition.AllColumns)
+	stmt := table.QualityDefinition.DELETE().WHERE(table.QualityDefinition.ID.EQ(sqlite.Int64(id))).RETURNING(table.QualityDefinition.AllColumns)
 	_, err := s.handleDelete(ctx, stmt)
 	return err
+}
+
+func (s SQLite) CreateProfileQualityItem(ctx context.Context, item model.ProfileQualityItem) (int64, error) {
+	stmt := table.ProfileQualityItem.INSERT(table.ProfileQualityItem.AllColumns.Except(table.ProfileQualityItem.ID)).RETURNING(table.ProfileQualityItem.ID).MODEL(item)
+	result, err := s.handleInsert(ctx, stmt)
+	if err != nil {
+		return 0, err
+	}
+
+	inserted, err := result.LastInsertId()
+	if err != nil {
+		return 0, err
+	}
+
+	return inserted, nil
+}
+
+// GetProfileQualityItem gets a quality item that belongs to a profile
+func (s SQLite) GetProfileQualityItem(ctx context.Context, id int64) (model.ProfileQualityItem, error) {
+	stmt := table.ProfileQualityItem.SELECT(table.QualityDefinition.AllColumns).FROM(table.ProfileQualityItem).WHERE(table.ProfileQualityItem.ID.EQ(sqlite.Int64(id)))
+	var result model.ProfileQualityItem
+	err := stmt.QueryContext(ctx, s.db, &result)
+	return result, err
+}
+
+// ListProfileQualityItem lists all quality definitions
+func (s SQLite) ListProfileQualityItems(ctx context.Context) ([]*model.ProfileQualityItem, error) {
+	items := make([]*model.ProfileQualityItem, 0)
+	stmt := table.Indexer.SELECT(table.ProfileQualityItem.AllColumns).FROM(table.ProfileQualityItem).ORDER_BY(table.ProfileQualityItem.ID.ASC())
+	err := stmt.QueryContext(ctx, s.db, &items)
+	return items, err
+}
+
+// DeleteQualityDefinition deletes a quality
+func (s SQLite) DeleteProfileQualityItem(ctx context.Context, id int64) error {
+	stmt := table.ProfileQualityItem.DELETE().WHERE(table.ProfileQualityItem.ID.EQ(sqlite.Int64(id))).RETURNING(table.ProfileQualityItem.AllColumns)
+	_, err := s.handleDelete(ctx, stmt)
+	return err
+}
+
+func (s SQLite) CreateQualityProfile(ctx context.Context, profile model.QualityProfile) (int64, error) {
+	stmt := table.QualityProfile.INSERT(table.QualityProfile.AllColumns.Except(table.QualityProfile.ID)).MODEL(profile).RETURNING(table.QualityProfile.ID)
+	log.Println(stmt.DebugSql())
+	result, err := s.handleInsert(ctx, stmt)
+	if err != nil {
+		return 0, err
+	}
+
+	inserted, err := result.LastInsertId()
+	if err != nil {
+		return 0, err
+	}
+
+	return inserted, nil
 }
 
 // GetQualityProfile gets a quality profile and all associated quality items given a quality profile id
@@ -206,7 +269,7 @@ func (s SQLite) GetQualityProfile(ctx context.Context, id int64) (storage.Qualit
 }
 
 // ListQualityProfiles lists all quality profiles and their associated quality items
-func (s SQLite) ListQualityProfiles(ctx context.Context) ([]storage.QualityProfile, error) {
+func (s SQLite) ListQualityProfiles(ctx context.Context) ([]*storage.QualityProfile, error) {
 	stmt := sqlite.SELECT(
 		table.QualityProfile.AllColumns,
 		table.QualityDefinition.AllColumns,
@@ -216,9 +279,16 @@ func (s SQLite) ListQualityProfiles(ctx context.Context) ([]storage.QualityProfi
 			table.QualityDefinition, table.ProfileQualityItem.QualityID.EQ(table.QualityDefinition.ID)),
 	).ORDER_BY(table.QualityDefinition.MinSize.DESC())
 
-	result := make([]storage.QualityProfile, 0)
+	result := make([]*storage.QualityProfile, 0)
 	err := stmt.QueryContext(ctx, s.db, &result)
 	return result, err
+}
+
+// DeleteQualityProfile delete a quality profile
+func (s SQLite) DeleteQualityProfile(ctx context.Context, id int64) error {
+	stmt := table.Indexer.DELETE().WHERE(table.QualityProfile.ID.EQ(sqlite.Int64(id))).RETURNING(table.QualityProfile.AllColumns)
+	_, err := s.handleDelete(ctx, stmt)
+	return err
 }
 
 func (s SQLite) handleInsert(ctx context.Context, stmt sqlite.InsertStatement) (sql.Result, error) {
