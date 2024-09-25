@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS "quality_profile" (
     "upgrade_allowed" BOOLEAN NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS "profile_quality_item" (
+CREATE TABLE IF NOT EXISTS "quality_profile_item" (
     "id" INTEGER PRIMARY KEY AUTOINCREMENT,
     "profile_id" INTEGER NOT NULL,
     "quality_id" INTEGER NOT NULL,
