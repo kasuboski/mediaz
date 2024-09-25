@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"net/url"
 	"os"
 
@@ -53,12 +54,20 @@ var serveCmd = &cobra.Command{
 			log.Fatal("failed to create prowlarr client", zap.Error(err))
 		}
 
+		defaultSchemas := cfg.Storage.Schemas
+		if _, err := os.Stat(cfg.Storage.FilePath); err != nil {
+			if errors.Is(err, os.ErrNotExist) {
+				log.Debug("database does not exist, defaulting table values", zap.Any("schemas", cfg.Storage.TableValueSchemas))
+				defaultSchemas = append(defaultSchemas, cfg.Storage.TableValueSchemas...)
+			}
+		}
+
 		store, err := sqlite.New(cfg.Storage.FilePath)
 		if err != nil {
 			log.Fatal("failed to create storage connection", zap.Error(err))
 		}
 
-		schemas, err := storage.ReadSchemaFiles(cfg.Storage.Schemas...)
+		schemas, err := storage.ReadSchemaFiles(defaultSchemas...)
 		if err != nil {
 			log.Fatal("failed to read schema files", zap.Error(err))
 		}

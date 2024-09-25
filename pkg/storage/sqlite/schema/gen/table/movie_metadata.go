@@ -11,15 +11,15 @@ import (
 	"github.com/go-jet/jet/v2/sqlite"
 )
 
-var MovieMetadata = newMovieMetadataTable("", "MovieMetadata", "")
+var MovieMetadata = newMovieMetadataTable("", "movie_metadata", "")
 
 type movieMetadataTable struct {
 	sqlite.Table
 
 	// Columns
 	ID                 sqlite.ColumnInteger
-	TmdbId             sqlite.ColumnInteger
-	ImdbId             sqlite.ColumnString
+	TmdbID             sqlite.ColumnInteger
+	ImdbID             sqlite.ColumnString
 	Images             sqlite.ColumnString
 	Genres             sqlite.ColumnString
 	Title              sqlite.ColumnString
@@ -39,12 +39,12 @@ type movieMetadataTable struct {
 	Ratings            sqlite.ColumnString
 	Recommendations    sqlite.ColumnString
 	Certification      sqlite.ColumnString
-	YouTubeTrailerId   sqlite.ColumnString
+	YoutubeTrailerID   sqlite.ColumnString
 	Studio             sqlite.ColumnString
 	Overview           sqlite.ColumnString
 	Website            sqlite.ColumnString
 	Popularity         sqlite.ColumnFloat
-	CollectionTmdbId   sqlite.ColumnInteger
+	CollectionTmdbID   sqlite.ColumnInteger
 	CollectionTitle    sqlite.ColumnString
 
 	AllColumns     sqlite.ColumnList
@@ -86,37 +86,37 @@ func newMovieMetadataTable(schemaName, tableName, alias string) *MovieMetadataTa
 
 func newMovieMetadataTableImpl(schemaName, tableName, alias string) movieMetadataTable {
 	var (
-		IDColumn                 = sqlite.IntegerColumn("Id")
-		TmdbIdColumn             = sqlite.IntegerColumn("TmdbId")
-		ImdbIdColumn             = sqlite.StringColumn("ImdbId")
-		ImagesColumn             = sqlite.StringColumn("Images")
-		GenresColumn             = sqlite.StringColumn("Genres")
-		TitleColumn              = sqlite.StringColumn("Title")
-		SortTitleColumn          = sqlite.StringColumn("SortTitle")
-		CleanTitleColumn         = sqlite.StringColumn("CleanTitle")
-		OriginalTitleColumn      = sqlite.StringColumn("OriginalTitle")
-		CleanOriginalTitleColumn = sqlite.StringColumn("CleanOriginalTitle")
-		OriginalLanguageColumn   = sqlite.IntegerColumn("OriginalLanguage")
-		StatusColumn             = sqlite.IntegerColumn("Status")
-		LastInfoSyncColumn       = sqlite.TimestampColumn("LastInfoSync")
-		RuntimeColumn            = sqlite.IntegerColumn("Runtime")
-		InCinemasColumn          = sqlite.TimestampColumn("InCinemas")
-		PhysicalReleaseColumn    = sqlite.TimestampColumn("PhysicalRelease")
-		DigitalReleaseColumn     = sqlite.TimestampColumn("DigitalRelease")
-		YearColumn               = sqlite.IntegerColumn("Year")
-		SecondaryYearColumn      = sqlite.IntegerColumn("SecondaryYear")
-		RatingsColumn            = sqlite.StringColumn("Ratings")
-		RecommendationsColumn    = sqlite.StringColumn("Recommendations")
-		CertificationColumn      = sqlite.StringColumn("Certification")
-		YouTubeTrailerIdColumn   = sqlite.StringColumn("YouTubeTrailerId")
-		StudioColumn             = sqlite.StringColumn("Studio")
-		OverviewColumn           = sqlite.StringColumn("Overview")
-		WebsiteColumn            = sqlite.StringColumn("Website")
-		PopularityColumn         = sqlite.FloatColumn("Popularity")
-		CollectionTmdbIdColumn   = sqlite.IntegerColumn("CollectionTmdbId")
-		CollectionTitleColumn    = sqlite.StringColumn("CollectionTitle")
-		allColumns               = sqlite.ColumnList{IDColumn, TmdbIdColumn, ImdbIdColumn, ImagesColumn, GenresColumn, TitleColumn, SortTitleColumn, CleanTitleColumn, OriginalTitleColumn, CleanOriginalTitleColumn, OriginalLanguageColumn, StatusColumn, LastInfoSyncColumn, RuntimeColumn, InCinemasColumn, PhysicalReleaseColumn, DigitalReleaseColumn, YearColumn, SecondaryYearColumn, RatingsColumn, RecommendationsColumn, CertificationColumn, YouTubeTrailerIdColumn, StudioColumn, OverviewColumn, WebsiteColumn, PopularityColumn, CollectionTmdbIdColumn, CollectionTitleColumn}
-		mutableColumns           = sqlite.ColumnList{TmdbIdColumn, ImdbIdColumn, ImagesColumn, GenresColumn, TitleColumn, SortTitleColumn, CleanTitleColumn, OriginalTitleColumn, CleanOriginalTitleColumn, OriginalLanguageColumn, StatusColumn, LastInfoSyncColumn, RuntimeColumn, InCinemasColumn, PhysicalReleaseColumn, DigitalReleaseColumn, YearColumn, SecondaryYearColumn, RatingsColumn, RecommendationsColumn, CertificationColumn, YouTubeTrailerIdColumn, StudioColumn, OverviewColumn, WebsiteColumn, PopularityColumn, CollectionTmdbIdColumn, CollectionTitleColumn}
+		IDColumn                 = sqlite.IntegerColumn("id")
+		TmdbIDColumn             = sqlite.IntegerColumn("tmdb_id")
+		ImdbIDColumn             = sqlite.StringColumn("imdb_id")
+		ImagesColumn             = sqlite.StringColumn("images")
+		GenresColumn             = sqlite.StringColumn("genres")
+		TitleColumn              = sqlite.StringColumn("title")
+		SortTitleColumn          = sqlite.StringColumn("sort_title")
+		CleanTitleColumn         = sqlite.StringColumn("clean_title")
+		OriginalTitleColumn      = sqlite.StringColumn("original_title")
+		CleanOriginalTitleColumn = sqlite.StringColumn("clean_original_title")
+		OriginalLanguageColumn   = sqlite.IntegerColumn("original_language")
+		StatusColumn             = sqlite.IntegerColumn("status")
+		LastInfoSyncColumn       = sqlite.TimestampColumn("last_info_sync")
+		RuntimeColumn            = sqlite.IntegerColumn("runtime")
+		InCinemasColumn          = sqlite.TimestampColumn("in_cinemas")
+		PhysicalReleaseColumn    = sqlite.TimestampColumn("physical_release")
+		DigitalReleaseColumn     = sqlite.TimestampColumn("digital_release")
+		YearColumn               = sqlite.IntegerColumn("year")
+		SecondaryYearColumn      = sqlite.IntegerColumn("secondary_year")
+		RatingsColumn            = sqlite.StringColumn("ratings")
+		RecommendationsColumn    = sqlite.StringColumn("recommendations")
+		CertificationColumn      = sqlite.StringColumn("certification")
+		YoutubeTrailerIDColumn   = sqlite.StringColumn("youtube_trailer_id")
+		StudioColumn             = sqlite.StringColumn("studio")
+		OverviewColumn           = sqlite.StringColumn("overview")
+		WebsiteColumn            = sqlite.StringColumn("website")
+		PopularityColumn         = sqlite.FloatColumn("popularity")
+		CollectionTmdbIDColumn   = sqlite.IntegerColumn("collection_tmdb_id")
+		CollectionTitleColumn    = sqlite.StringColumn("collection_title")
+		allColumns               = sqlite.ColumnList{IDColumn, TmdbIDColumn, ImdbIDColumn, ImagesColumn, GenresColumn, TitleColumn, SortTitleColumn, CleanTitleColumn, OriginalTitleColumn, CleanOriginalTitleColumn, OriginalLanguageColumn, StatusColumn, LastInfoSyncColumn, RuntimeColumn, InCinemasColumn, PhysicalReleaseColumn, DigitalReleaseColumn, YearColumn, SecondaryYearColumn, RatingsColumn, RecommendationsColumn, CertificationColumn, YoutubeTrailerIDColumn, StudioColumn, OverviewColumn, WebsiteColumn, PopularityColumn, CollectionTmdbIDColumn, CollectionTitleColumn}
+		mutableColumns           = sqlite.ColumnList{TmdbIDColumn, ImdbIDColumn, ImagesColumn, GenresColumn, TitleColumn, SortTitleColumn, CleanTitleColumn, OriginalTitleColumn, CleanOriginalTitleColumn, OriginalLanguageColumn, StatusColumn, LastInfoSyncColumn, RuntimeColumn, InCinemasColumn, PhysicalReleaseColumn, DigitalReleaseColumn, YearColumn, SecondaryYearColumn, RatingsColumn, RecommendationsColumn, CertificationColumn, YoutubeTrailerIDColumn, StudioColumn, OverviewColumn, WebsiteColumn, PopularityColumn, CollectionTmdbIDColumn, CollectionTitleColumn}
 	)
 
 	return movieMetadataTable{
@@ -124,8 +124,8 @@ func newMovieMetadataTableImpl(schemaName, tableName, alias string) movieMetadat
 
 		//Columns
 		ID:                 IDColumn,
-		TmdbId:             TmdbIdColumn,
-		ImdbId:             ImdbIdColumn,
+		TmdbID:             TmdbIDColumn,
+		ImdbID:             ImdbIDColumn,
 		Images:             ImagesColumn,
 		Genres:             GenresColumn,
 		Title:              TitleColumn,
@@ -145,12 +145,12 @@ func newMovieMetadataTableImpl(schemaName, tableName, alias string) movieMetadat
 		Ratings:            RatingsColumn,
 		Recommendations:    RecommendationsColumn,
 		Certification:      CertificationColumn,
-		YouTubeTrailerId:   YouTubeTrailerIdColumn,
+		YoutubeTrailerID:   YoutubeTrailerIDColumn,
 		Studio:             StudioColumn,
 		Overview:           OverviewColumn,
 		Website:            WebsiteColumn,
 		Popularity:         PopularityColumn,
-		CollectionTmdbId:   CollectionTmdbIdColumn,
+		CollectionTmdbID:   CollectionTmdbIDColumn,
 		CollectionTitle:    CollectionTitleColumn,
 
 		AllColumns:     allColumns,

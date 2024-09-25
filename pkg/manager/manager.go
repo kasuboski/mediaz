@@ -15,7 +15,7 @@ import (
 	"github.com/kasuboski/mediaz/pkg/logger"
 	"github.com/kasuboski/mediaz/pkg/prowlarr"
 	"github.com/kasuboski/mediaz/pkg/storage"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/model"
+	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
 	"github.com/kasuboski/mediaz/pkg/tmdb"
 	"github.com/oapi-codegen/nullable"
 	"go.uber.org/zap"
@@ -93,7 +93,7 @@ func (m MediaManager) SearchMovie(ctx context.Context, query string) (*SearchMed
 	return result, nil
 }
 
-// SearchMovie querie tmdb for tv shows
+// SearchMovie query tmdb for tv shows
 func (m MediaManager) SearchTV(ctx context.Context, query string) (*SearchMediaResponse, error) {
 	log := logger.FromCtx(ctx)
 	if query == "" {
@@ -160,7 +160,7 @@ func (m MediaManager) IndexMovieLibrary(ctx context.Context) error {
 	}
 
 	for _, f := range files {
-		mf := model.MovieFiles{
+		mf := model.MovieFile{
 			RelativePath: &f.Path, // TODO: make sure it's actually relative
 			Size:         f.Size,
 		}
@@ -170,10 +170,10 @@ func (m MediaManager) IndexMovieLibrary(ctx context.Context) error {
 			continue
 		}
 
-		mov := model.Movies{
+		mov := model.Movie{
 			Path:        f.Path,
 			Monitored:   0,
-			MovieFileId: mfID,
+			MovieFileID: int32(mfID),
 		}
 		_, err = m.storage.CreateMovie(ctx, mov)
 		if err != nil {
@@ -185,19 +185,23 @@ func (m MediaManager) IndexMovieLibrary(ctx context.Context) error {
 }
 
 // AddMovieRequest describes what is required to add a movie
-// TODO: add quality profiles
 type AddMovieRequest struct {
-	TMDBID int `json:"tmdbid"`
+	TMDBID           int   `json:"tmdbID"`
+	QualityProfileID int32 `json:"qualityProfileID"`
 }
 
 // AddMovieToLibrary adds a movie to be managed by mediaz
 // TODO: fetch trackers from indexer
-// TODO: decide tracker based on quality profile (part of request.. ui will have to do a lookup here before request)
 // TODO: query each indexer asynchronously?
 // TODO: pass to torrent client
 // TODO: always write status to database for given movie (queue, downloaded, missing (error?), Unreleased)
 func (m MediaManager) AddMovieToLibrary(ctx context.Context, request AddMovieRequest) (*prowlarr.ReleaseResource, error) {
 	log := logger.FromCtx(ctx)
+
+	profile, err := m.storage.GetQualityProfile(ctx, int64(request.QualityProfileID))
+	if err != nil {
+		return nil, err
+	}
 
 	det, err := m.GetMovieDetails(ctx, request.TMDBID)
 	if err != nil {
@@ -219,53 +223,52 @@ func (m MediaManager) AddMovieToLibrary(ctx context.Context, request AddMovieReq
 	}
 	releases, err := m.SearchIndexers(ctx, indexerIds, categories, *det.Title)
 	if err != nil {
-		log.Debug("failed to search indexer", zap.Any("indexers", indexerIds), zap.Error(err))
+		log.Debugw("failed to search indexer", "indexers", indexerIds, zap.Error(err))
 		return nil, err
 	}
 
 	log.Debugw("releases for consideration", "releases", len(releases))
-	releases = slices.DeleteFunc(releases, rejectReleaseFunc(ctx, det))
+	releases = slices.DeleteFunc(releases, rejectReleaseFunc(ctx, det, profile))
 	log.Debugw("releases after rejection", "releases", len(releases))
 	if len(releases) == 0 {
 		// TODO: This probably isn't really an error... just need to search again later
 		return nil, errors.New("no matching releases found")
 	}
+
 	slices.SortFunc(releases, sortReleaseFunc())
 	chosenRelease := releases[len(releases)-1]
-
-	b, _ := json.Marshal(chosenRelease)
-
-	log.Debug("found release", zap.String("release", string(b)))
-
+	log.Info("found release", "title", chosenRelease.Title)
 	return chosenRelease, nil
 }
 
 // rejectReleaseFunc returns a function that returns true if the given release should be rejected
-func rejectReleaseFunc(ctx context.Context, det *MediaDetails) func(*prowlarr.ReleaseResource) bool {
+func rejectReleaseFunc(ctx context.Context, det *MediaDetails, profile storage.QualityProfile) func(*prowlarr.ReleaseResource) bool {
 	log := logger.FromCtx(ctx)
-	// TODO: Get this dynamically
-	qs := QualitySize{
-		Quality:   "HDTV-720p",
-		Min:       17.1,
-		Preferred: 1999,
-		Max:       2000,
-	}
+
 	return func(r *prowlarr.ReleaseResource) bool {
 		// bytes to megabytes
 		sizeMB := *r.Size >> 20
-		metQuality := MeetsQualitySize(qs, uint64(sizeMB), uint64(*det.Runtime))
-		decision := !metQuality
-		if decision {
+
+		// items are assumed to be sorted quality so the highest media quality available is selected
+		for _, quality := range profile.Qualities {
+			metQuality := MeetsQualitySize(quality, uint64(sizeMB), uint64(*det.Runtime))
+
+			if metQuality {
+				log.Debugw("accepting release", "release", r.Title, "metQuality", metQuality, "size", r.Size, "runtime", det.Runtime)
+				return false
+			}
+
+			// try again with the next item
 			log.Debugw("rejecting release", "release", r.Title, "metQuality", metQuality, "size", r.Size, "runtime", det.Runtime)
 		}
-		return decision
+
+		return true
 	}
 }
 
 // sortReleaseFunc returns a function that sorts releases by their number of seeders currently
 func sortReleaseFunc() func(*prowlarr.ReleaseResource, *prowlarr.ReleaseResource) int {
 	return func(r1 *prowlarr.ReleaseResource, r2 *prowlarr.ReleaseResource) int {
-
 		return cmp.Compare(nullableDefault(r1.Seeders), nullableDefault(r2.Seeders))
 	}
 }
@@ -300,18 +303,18 @@ func (m MediaManager) SearchIndexers(ctx context.Context, indexers, categories [
 
 // AddIndexerRequest describes what is required to add an indexer
 type AddIndexerRequest struct {
-	model.Indexers
+	model.Indexer
 }
 
 // AddIndexer stores a new indexer in the database
-func (m MediaManager) AddIndexer(ctx context.Context, request AddIndexerRequest) (AddIndexerRequest, error) {
-	indexer := request
+func (m MediaManager) AddIndexer(ctx context.Context, request AddIndexerRequest) (model.Indexer, error) {
+	indexer := request.Indexer
 
 	if indexer.Name == "" {
 		return indexer, fmt.Errorf("indexer name is required")
 	}
 
-	id, err := m.storage.CreateIndexer(ctx, indexer.Indexers)
+	id, err := m.storage.CreateIndexer(ctx, indexer)
 	if err != nil {
 		return indexer, err
 	}
@@ -321,9 +324,9 @@ func (m MediaManager) AddIndexer(ctx context.Context, request AddIndexerRequest)
 	return indexer, nil
 }
 
-// DeleteIndexerRequest describes what is required to delete an indexer
+// DeleteIndexerRequest request to delete an indexer
 type DeleteIndexerRequest struct {
-	ID *int `json:"id" yaml:"id" mapstructure:"id"`
+	ID *int `json:"id" yaml:"id"`
 }
 
 // AddIndexer stores a new indexer in the database
@@ -333,6 +336,50 @@ func (m MediaManager) DeleteIndexer(ctx context.Context, request DeleteIndexerRe
 	}
 
 	return m.storage.DeleteIndexer(ctx, int64(*request.ID))
+}
+
+type AddQualityDefinitionRequest struct {
+	model.QualityDefinition
+}
+
+// AddQualityDefinition stores a new quality definition in the database
+func (m MediaManager) AddQualityDefinition(ctx context.Context, request AddQualityDefinitionRequest) (model.QualityDefinition, error) {
+	definition := request.QualityDefinition
+
+	id, err := m.storage.CreateQualityDefinition(ctx, request.QualityDefinition)
+	if err != nil {
+		return definition, err
+	}
+
+	definition.ID = int32(id)
+	return definition, nil
+}
+
+// DeleteQualityDefinitionRequest request to delete a quality definition
+type DeleteQualityDefinitionRequest struct {
+	ID *int `json:"id" yaml:"id"`
+}
+
+// AddQualityDefinition stores a new quality definition in the database
+func (m MediaManager) DeleteQualityDefinition(ctx context.Context, request DeleteQualityDefinitionRequest) error {
+	if request.ID == nil {
+		return fmt.Errorf("indexer id is required")
+	}
+
+	return m.storage.DeleteQualityDefinition(ctx, int64(*request.ID))
+}
+
+// ListQualityDefinitions list stored quality definitions
+func (m MediaManager) ListQualityDefinitions(ctx context.Context) ([]*model.QualityDefinition, error) {
+	return m.storage.ListQualityDefinitions(ctx)
+}
+
+func (m MediaManager) GetQualityProfile(ctx context.Context, id int64) (storage.QualityProfile, error) {
+	return m.storage.GetQualityProfile(ctx, id)
+}
+
+func (m MediaManager) ListQualityProfiles(ctx context.Context) ([]*storage.QualityProfile, error) {
+	return m.storage.ListQualityProfiles(ctx)
 }
 
 func nullableDefault[T any](n nullable.Nullable[T]) T {

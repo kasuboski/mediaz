@@ -13,7 +13,7 @@ import (
 	"github.com/kasuboski/mediaz/pkg/logger"
 	"github.com/kasuboski/mediaz/pkg/prowlarr"
 	"github.com/kasuboski/mediaz/pkg/storage"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/model"
+	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
 	"github.com/oapi-codegen/nullable"
 	"go.uber.org/zap"
 )
@@ -147,7 +147,7 @@ func FromProwlarrIndexer(prowlarr prowlarr.IndexerResource) (*Indexer, error) {
 	}, nil
 }
 
-func fromStorageIndexer(mi model.Indexers) Indexer {
+func fromStorageIndexer(mi model.Indexer) Indexer {
 	return Indexer{
 		ID:   mi.ID,
 		Name: mi.Name,
@@ -158,13 +158,13 @@ func fromStorageIndexer(mi model.Indexers) Indexer {
 	}
 }
 
-func toStorageIndexer(indexer Indexer, uri, key string) model.Indexers {
-	return model.Indexers{
+func toStorageIndexer(indexer Indexer, uri, key string) model.Indexer {
+	return model.Indexer{
 		ID:       indexer.ID,
 		Name:     indexer.Name,
 		Priority: indexer.Priority,
 		URI:      uri,
-		ApiKey:   &key,
+		APIKey:   &key,
 	}
 }
 

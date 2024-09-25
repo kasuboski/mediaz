@@ -31,14 +31,27 @@ func TestAddMovietoLibrary(t *testing.T) {
 	indexers := []Indexer{{ID: 1, Name: "test", Priority: 1}, {ID: 3, Name: "test2", Priority: 10}}
 	prowlarrMock.EXPECT().GetAPIV1Indexer(gomock.Any()).Return(indexersResponse(t, indexers), nil).Times(1)
 
-	releases := []*prowlarr.ReleaseResource{{ID: intPtr(123), Title: nullable.NewNullableWithValue("test movie"), Size: sizeGBToBytes(23)}, {ID: intPtr(124), Title: nullable.NewNullableWithValue("test movie - very small"), Size: sizeGBToBytes(1)}}
+	bigSeeders := nullable.NewNullNullable[int32]()
+	bigSeeders.Set(23)
+
+	smallerSeeders := nullable.NewNullNullable[int32]()
+	smallerSeeders.Set(15)
+
+	smallestSeeders := nullable.NewNullNullable[int32]()
+	smallestSeeders.Set(10)
+
+	wantRelease := &prowlarr.ReleaseResource{ID: intPtr(123), Title: nullable.NewNullableWithValue("test movie"), Size: sizeGBToBytes(23), Seeders: bigSeeders}
+	doNotWantRelease := &prowlarr.ReleaseResource{ID: intPtr(124), Title: nullable.NewNullableWithValue("test movie"), Size: sizeGBToBytes(23), Seeders: smallerSeeders}
+	smallMovie := &prowlarr.ReleaseResource{ID: intPtr(125), Title: nullable.NewNullableWithValue("test movie - very small"), Size: sizeGBToBytes(1), Seeders: smallestSeeders}
+
+	releases := []*prowlarr.ReleaseResource{doNotWantRelease, wantRelease, smallMovie}
 	prowlarrMock.EXPECT().GetAPIV1Search(gomock.Any(), gomock.Any()).Return(searchIndexersResponse(t, releases), nil).Times(len(indexers))
 
 	store, err := sqlite.New(":memory:")
 	require.Nil(t, err)
 
-	schemas, err := storage.ReadSchemaFiles("../../schema.sql")
-	require.Nil(t, err)
+	schemas, err := storage.ReadSchemaFiles("../storage/sqlite/schema/schema.sql", "../storage/sqlite/schema/defaults.sql")
+	assert.Nil(t, err)
 
 	ctx := context.Background()
 	err = store.Init(ctx, schemas...)
@@ -54,7 +67,8 @@ func TestAddMovietoLibrary(t *testing.T) {
 	require.NotNil(t, m)
 
 	req := AddMovieRequest{
-		TMDBID: 1234,
+		TMDBID:           1234,
+		QualityProfileID: 1,
 	}
 	release, err := m.AddMovieToLibrary(ctx, req)
 	assert.Nil(t, err)
@@ -70,7 +84,7 @@ func TestIndexMovieLibrary(t *testing.T) {
 	store, err := sqlite.New(":memory:")
 	require.Nil(t, err)
 
-	schemas, err := storage.ReadSchemaFiles("../../schema.sql")
+	schemas, err := storage.ReadSchemaFiles("../storage/sqlite/schema/schema.sql")
 	require.Nil(t, err)
 
 	ctx := context.Background()

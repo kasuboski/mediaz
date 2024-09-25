@@ -35,8 +35,9 @@ type Prowlarr struct {
 
 // Storage configuration is assumed to be for sqlite database only currently
 type Storage struct {
-	FilePath string   `json:"filePath" yaml:"filePath" mapstructure:"filePath"`
-	Schemas  []string `json:"schemas"  yaml:"schemas" mapstructure:"schemas"`
+	FilePath          string   `json:"filePath" yaml:"filePath" mapstructure:"filePath"`
+	Schemas           []string `json:"schemas"  yaml:"schemas" mapstructure:"schemas"`
+	TableValueSchemas []string `json:"tableValueSchemas" yaml:"tableValueSchemas" mapstructure:"tableValueSchemas"`
 }
 
 type ConfigUnmarshaler interface {

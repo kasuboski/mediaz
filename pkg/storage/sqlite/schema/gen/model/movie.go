@@ -11,16 +11,16 @@ import (
 	"time"
 )
 
-type Movies struct {
+type Movie struct {
 	ID                  int32 `sql:"primary_key"`
 	Path                string
 	Monitored           int32
-	QualityProfileId    int32
+	QualityProfileID    int32
 	Added               *time.Time
 	Tags                *string
 	AddOptions          *string
-	MovieFileId         int32
+	MovieFileID         int32
 	MinimumAvailability int32
-	MovieMetadataId     int32
+	MovieMetadataID     int32
 	LastSearchTime      *time.Time
 }

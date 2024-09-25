@@ -52,25 +52,24 @@ func Get() *zap.SugaredLogger {
 			encoder = zapcore.NewJSONEncoder(productionCfg)
 		}
 
+		core := zapcore.NewCore(encoder, stdout, logLevel)
+
 		var gitRevision string
 
 		buildInfo, ok := debug.ReadBuildInfo()
 		if ok {
+			var fields []zapcore.Field
+			fields = append(fields, zap.String("go_version", buildInfo.GoVersion))
 			for _, v := range buildInfo.Settings {
 				if v.Key == "vcs.revision" {
 					gitRevision = v.Value[0:7]
+					fields = append(fields, zap.String("git_revision", gitRevision))
 					break
 				}
 			}
-		}
 
-		core := zapcore.NewCore(encoder, stdout, logLevel).
-			With(
-				[]zapcore.Field{
-					zap.String("git_revision", gitRevision),
-					zap.String("go_version", buildInfo.GoVersion),
-				},
-			)
+			core = core.With(fields)
+		}
 
 		logger = zap.New(core).Sugar()
 	})

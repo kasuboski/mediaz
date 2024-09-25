@@ -25,20 +25,19 @@ func FromPath(path string) MovieFile {
 }
 
 type Movie struct {
+	Added           time.Time `json:"added"`
+	LastSearch      time.Time `json:"last_search"`
 	ID              string    `json:"id"`
 	MovieFileID     string    `json:"movie_file_id"`
 	MovieMetadataID string    `json:"movie_metadata_id"`
-	Added           time.Time `json:"added"`
-	LastSearch      time.Time `json:"last_search"`
 }
 
 type MovieMetadata struct {
-	ID     string `json:"id"`
-	TMDBID int    `json:"tmdb_id"`
-	Images string `json:"images"`
-	// Genres string `json:"genres"`
-	Title        string    `json:"title"`
 	LastInfoSync time.Time `json:"last_info_sync"`
-	Runtime      int       `json:"runtime"`
+	ID           string    `json:"id"`
+	Images       string    `json:"images"`
+	Title        string    `json:"title"`
 	Overview     string    `json:"overview"`
+	TMDBID       int       `json:"tmdb_id"`
+	Runtime      int       `json:"runtime"`
 }
