@@ -174,37 +174,37 @@ func TestGetQualityStorage(t *testing.T) {
 		&definitionOne, &definitionTwo,
 	}, definitions)
 
-	firstQualityItem := model.ProfileQualityItem{
+	firstQualityItem := model.QualityProfileItem{
 		ProfileID: 1,
 		QualityID: 1,
 	}
-	id, err = store.CreateProfileQualityItem(ctx, firstQualityItem)
+	id, err = store.CreateQualityProfileItem(ctx, firstQualityItem)
 	assert.Nil(t, err)
 	assert.Equal(t, int64(1), id)
 
-	firstItem, err := store.GetProfileQualityItem(ctx, 1)
+	firstItem, err := store.GetQualityProfileItem(ctx, 1)
 	assert.Nil(t, err)
 	i32ID := int32(id)
 	firstQualityItem.ID = &i32ID
 	assert.Equal(t, firstQualityItem, firstItem)
 
-	secondQualityItem := model.ProfileQualityItem{
+	secondQualityItem := model.QualityProfileItem{
 		ProfileID: 1,
 		QualityID: 2,
 	}
-	id, err = store.CreateProfileQualityItem(ctx, secondQualityItem)
+	id, err = store.CreateQualityProfileItem(ctx, secondQualityItem)
 	assert.Nil(t, err)
 	assert.Equal(t, int64(2), id)
 
-	secondItem, err := store.GetProfileQualityItem(ctx, 2)
+	secondItem, err := store.GetQualityProfileItem(ctx, 2)
 	assert.Nil(t, err)
 	i32ID = int32(id)
 	secondQualityItem.ID = &i32ID
 	assert.Equal(t, secondQualityItem, secondItem)
 
-	items, err := store.ListProfileQualityItems(ctx)
+	items, err := store.ListQualityProfileItems(ctx)
 	assert.Nil(t, err)
-	assert.ElementsMatch(t, []*model.ProfileQualityItem{
+	assert.ElementsMatch(t, []*model.QualityProfileItem{
 		&firstItem, &secondItem,
 	}, items)
 
@@ -267,10 +267,10 @@ func TestGetQualityStorage(t *testing.T) {
 	err = store.DeleteQualityDefinition(ctx, 2)
 	assert.Nil(t, err)
 
-	err = store.DeleteProfileQualityItem(ctx, 1)
+	err = store.DeleteQualityProfileItem(ctx, 1)
 	assert.Nil(t, err)
 
-	err = store.DeleteProfileQualityItem(ctx, 2)
+	err = store.DeleteQualityProfileItem(ctx, 2)
 	assert.Nil(t, err)
 
 	err = store.DeleteQualityProfile(ctx, 1)

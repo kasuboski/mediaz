@@ -197,8 +197,8 @@ func (s SQLite) DeleteQualityDefinition(ctx context.Context, id int64) error {
 	return err
 }
 
-func (s SQLite) CreateProfileQualityItem(ctx context.Context, item model.ProfileQualityItem) (int64, error) {
-	stmt := table.ProfileQualityItem.INSERT(table.ProfileQualityItem.AllColumns.Except(table.ProfileQualityItem.ID)).RETURNING(table.ProfileQualityItem.ID).MODEL(item)
+func (s SQLite) CreateQualityProfileItem(ctx context.Context, item model.QualityProfileItem) (int64, error) {
+	stmt := table.QualityProfileItem.INSERT(table.QualityProfileItem.AllColumns.Except(table.QualityProfileItem.ID)).RETURNING(table.QualityProfileItem.ID).MODEL(item)
 	result, err := s.handleInsert(ctx, stmt)
 	if err != nil {
 		return 0, err
@@ -212,25 +212,25 @@ func (s SQLite) CreateProfileQualityItem(ctx context.Context, item model.Profile
 	return inserted, nil
 }
 
-// GetProfileQualityItem gets a quality item that belongs to a profile
-func (s SQLite) GetProfileQualityItem(ctx context.Context, id int64) (model.ProfileQualityItem, error) {
-	stmt := table.ProfileQualityItem.SELECT(table.ProfileQualityItem.AllColumns).FROM(table.ProfileQualityItem).WHERE(table.ProfileQualityItem.ID.EQ(sqlite.Int64(id)))
-	var result model.ProfileQualityItem
+// GetQualityProfileItem gets a quality item that belongs to a profile
+func (s SQLite) GetQualityProfileItem(ctx context.Context, id int64) (model.QualityProfileItem, error) {
+	stmt := table.QualityProfileItem.SELECT(table.QualityProfileItem.AllColumns).FROM(table.QualityProfileItem).WHERE(table.QualityProfileItem.ID.EQ(sqlite.Int64(id)))
+	var result model.QualityProfileItem
 	err := stmt.QueryContext(ctx, s.db, &result)
 	return result, err
 }
 
-// ListProfileQualityItem lists all quality definitions
-func (s SQLite) ListProfileQualityItems(ctx context.Context) ([]*model.ProfileQualityItem, error) {
-	items := make([]*model.ProfileQualityItem, 0)
-	stmt := table.Indexer.SELECT(table.ProfileQualityItem.AllColumns).FROM(table.ProfileQualityItem).ORDER_BY(table.ProfileQualityItem.ID.ASC())
+// ListQualityProfileItem lists all quality definitions
+func (s SQLite) ListQualityProfileItems(ctx context.Context) ([]*model.QualityProfileItem, error) {
+	items := make([]*model.QualityProfileItem, 0)
+	stmt := table.Indexer.SELECT(table.QualityProfileItem.AllColumns).FROM(table.QualityProfileItem).ORDER_BY(table.QualityProfileItem.ID.ASC())
 	err := stmt.QueryContext(ctx, s.db, &items)
 	return items, err
 }
 
 // DeleteQualityDefinition deletes a quality
-func (s SQLite) DeleteProfileQualityItem(ctx context.Context, id int64) error {
-	stmt := table.ProfileQualityItem.DELETE().WHERE(table.ProfileQualityItem.ID.EQ(sqlite.Int64(id))).RETURNING(table.ProfileQualityItem.AllColumns)
+func (s SQLite) DeleteQualityProfileItem(ctx context.Context, id int64) error {
+	stmt := table.QualityProfileItem.DELETE().WHERE(table.QualityProfileItem.ID.EQ(sqlite.Int64(id))).RETURNING(table.QualityProfileItem.AllColumns)
 	_, err := s.handleDelete(ctx, stmt)
 	return err
 }
@@ -255,12 +255,12 @@ func (s SQLite) CreateQualityProfile(ctx context.Context, profile model.QualityP
 func (s SQLite) GetQualityProfile(ctx context.Context, id int64) (storage.QualityProfile, error) {
 	stmt := sqlite.SELECT(
 		table.QualityProfile.AllColumns,
-		table.ProfileQualityItem.AllColumns,
+		table.QualityProfileItem.AllColumns,
 		table.QualityDefinition.AllColumns,
 	).FROM(
 		table.QualityProfile.INNER_JOIN(
-			table.ProfileQualityItem, table.ProfileQualityItem.ProfileID.EQ(table.QualityProfile.ID)).INNER_JOIN(
-			table.QualityDefinition, table.ProfileQualityItem.QualityID.EQ(table.QualityDefinition.ID)),
+			table.QualityProfileItem, table.QualityProfileItem.ProfileID.EQ(table.QualityProfile.ID)).INNER_JOIN(
+			table.QualityDefinition, table.QualityProfileItem.QualityID.EQ(table.QualityDefinition.ID)),
 	).WHERE(table.QualityProfile.ID.EQ(sqlite.Int(id))).ORDER_BY(table.QualityDefinition.MinSize.DESC())
 
 	var result storage.QualityProfile
@@ -275,8 +275,8 @@ func (s SQLite) ListQualityProfiles(ctx context.Context) ([]*storage.QualityProf
 		table.QualityDefinition.AllColumns,
 	).FROM(
 		table.QualityProfile.INNER_JOIN(
-			table.ProfileQualityItem, table.ProfileQualityItem.ProfileID.EQ(table.QualityProfile.ID)).INNER_JOIN(
-			table.QualityDefinition, table.ProfileQualityItem.QualityID.EQ(table.QualityDefinition.ID)),
+			table.QualityProfileItem, table.QualityProfileItem.ProfileID.EQ(table.QualityProfile.ID)).INNER_JOIN(
+			table.QualityDefinition, table.QualityProfileItem.QualityID.EQ(table.QualityDefinition.ID)),
 	).ORDER_BY(table.QualityDefinition.MinSize.DESC())
 
 	result := make([]*storage.QualityProfile, 0)

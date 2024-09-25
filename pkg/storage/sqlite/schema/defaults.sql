@@ -31,9 +31,9 @@ VALUES
     ('High Definition', 8, TRUE),
     ('Ultra High Definition', 13, FALSE);
 
--- Inserting into the profile_quality_item table
+-- Inserting into the quality_profile_item table
 INSERT INTO
-    "profile_quality_item" ("profile_id", "quality_id")
+    "quality_profile_item" ("profile_id", "quality_id")
 VALUES
     -- Standard Definition includes SDTV
     (1, 1),
