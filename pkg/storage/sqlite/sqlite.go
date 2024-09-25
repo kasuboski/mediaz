@@ -214,7 +214,7 @@ func (s SQLite) CreateProfileQualityItem(ctx context.Context, item model.Profile
 
 // GetProfileQualityItem gets a quality item that belongs to a profile
 func (s SQLite) GetProfileQualityItem(ctx context.Context, id int64) (model.ProfileQualityItem, error) {
-	stmt := table.ProfileQualityItem.SELECT(table.QualityDefinition.AllColumns).FROM(table.ProfileQualityItem).WHERE(table.ProfileQualityItem.ID.EQ(sqlite.Int64(id)))
+	stmt := table.ProfileQualityItem.SELECT(table.ProfileQualityItem.AllColumns).FROM(table.ProfileQualityItem).WHERE(table.ProfileQualityItem.ID.EQ(sqlite.Int64(id)))
 	var result model.ProfileQualityItem
 	err := stmt.QueryContext(ctx, s.db, &result)
 	return result, err
@@ -286,7 +286,7 @@ func (s SQLite) ListQualityProfiles(ctx context.Context) ([]*storage.QualityProf
 
 // DeleteQualityProfile delete a quality profile
 func (s SQLite) DeleteQualityProfile(ctx context.Context, id int64) error {
-	stmt := table.Indexer.DELETE().WHERE(table.QualityProfile.ID.EQ(sqlite.Int64(id))).RETURNING(table.QualityProfile.AllColumns)
+	stmt := table.QualityProfile.DELETE().WHERE(table.QualityProfile.ID.EQ(sqlite.Int64(id))).RETURNING(table.QualityProfile.AllColumns)
 	_, err := s.handleDelete(ctx, stmt)
 	return err
 }

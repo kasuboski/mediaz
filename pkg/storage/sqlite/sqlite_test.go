@@ -120,7 +120,7 @@ func TestMovieStorage(t *testing.T) {
 	assert.Empty(t, files)
 }
 
-func TestGetQualityProfile(t *testing.T) {
+func TestGetQualityStorage(t *testing.T) {
 	ctx := context.Background()
 	store := initSqlite(t, ctx)
 
@@ -136,15 +136,20 @@ func TestGetQualityProfile(t *testing.T) {
 
 	firstDefinition := model.QualityDefinition{
 		QualityID:     1,
-		Name:          "test quality definition 2",
-		PreferredSize: 1499,
-		MinSize:       10,
-		MaxSize:       1500,
+		Name:          "test quality definition 1",
+		PreferredSize: 1999,
+		MinSize:       15,
+		MaxSize:       2000,
 		MediaType:     "movie",
 	}
 	id, err = store.CreateQualityDefinition(ctx, firstDefinition)
 	assert.Nil(t, err)
 	assert.Equal(t, int64(1), id)
+
+	definitionOne, err := store.GetQualityDefinition(ctx, 1)
+	assert.Nil(t, err)
+	firstDefinition.ID = int32(id)
+	assert.Equal(t, firstDefinition, definitionOne)
 
 	secondDefinition := model.QualityDefinition{
 		QualityID:     2,
@@ -158,33 +163,63 @@ func TestGetQualityProfile(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, int64(2), id)
 
-	id, err = store.CreateProfileQualityItem(ctx, model.ProfileQualityItem{
+	definitionTwo, err := store.GetQualityDefinition(ctx, 2)
+	assert.Nil(t, err)
+	secondDefinition.ID = int32(id)
+	assert.Equal(t, secondDefinition, definitionTwo)
+
+	definitions, err := store.ListQualityDefinitions(ctx)
+	assert.Nil(t, err)
+	assert.ElementsMatch(t, []*model.QualityDefinition{
+		&definitionOne, &definitionTwo,
+	}, definitions)
+
+	firstQualityItem := model.ProfileQualityItem{
 		ProfileID: 1,
 		QualityID: 1,
-	})
+	}
+	id, err = store.CreateProfileQualityItem(ctx, firstQualityItem)
 	assert.Nil(t, err)
 	assert.Equal(t, int64(1), id)
 
-	id, err = store.CreateProfileQualityItem(ctx, model.ProfileQualityItem{
+	firstItem, err := store.GetProfileQualityItem(ctx, 1)
+	assert.Nil(t, err)
+	i32ID := int32(id)
+	firstQualityItem.ID = &i32ID
+	assert.Equal(t, firstQualityItem, firstItem)
+
+	secondQualityItem := model.ProfileQualityItem{
 		ProfileID: 1,
 		QualityID: 2,
-	})
+	}
+	id, err = store.CreateProfileQualityItem(ctx, secondQualityItem)
 	assert.Nil(t, err)
 	assert.Equal(t, int64(2), id)
+
+	secondItem, err := store.GetProfileQualityItem(ctx, 2)
+	assert.Nil(t, err)
+	i32ID = int32(id)
+	secondQualityItem.ID = &i32ID
+	assert.Equal(t, secondQualityItem, secondItem)
+
+	items, err := store.ListProfileQualityItems(ctx)
+	assert.Nil(t, err)
+	assert.ElementsMatch(t, []*model.ProfileQualityItem{
+		&firstItem, &secondItem,
+	}, items)
 
 	profile, err := store.GetQualityProfile(ctx, 1)
 	assert.Nil(t, err)
 	assert.Equal(t, "test profile", profile.Name)
 	assert.Equal(t, true, profile.UpgradeAllowed)
 	assert.Equal(t, int32(3), profile.CutoffQualityID)
-
 	assert.ElementsMatch(t, []storage.QualityDefinition{
 		{
 			QualityID:     1,
-			Name:          "test quality definition 2",
-			PreferredSize: 1499,
-			MinSize:       10,
-			MaxSize:       1500,
+			Name:          "test quality definition 1",
+			PreferredSize: 1999,
+			MinSize:       15,
+			MaxSize:       2000,
 			MediaType:     "movie",
 		},
 		{
@@ -196,4 +231,48 @@ func TestGetQualityProfile(t *testing.T) {
 			MediaType:     "movie",
 		},
 	}, profile.Qualities)
+
+	profiles, err := store.ListQualityProfiles(ctx)
+	assert.Nil(t, err)
+	assert.ElementsMatch(t, []*storage.QualityProfile{
+		{
+			ID:              1,
+			Name:            "test profile",
+			UpgradeAllowed:  true,
+			CutoffQualityID: 3,
+			Qualities: []storage.QualityDefinition{
+				{
+					QualityID:     1,
+					Name:          "test quality definition 1",
+					PreferredSize: 1999,
+					MinSize:       15,
+					MaxSize:       2000,
+					MediaType:     "movie",
+				},
+				{
+					QualityID:     2,
+					Name:          "test quality definition 2",
+					PreferredSize: 1499,
+					MinSize:       10,
+					MaxSize:       1500,
+					MediaType:     "movie",
+				},
+			},
+		},
+	}, profiles)
+
+	err = store.DeleteQualityDefinition(ctx, 1)
+	assert.Nil(t, err)
+
+	err = store.DeleteQualityDefinition(ctx, 2)
+	assert.Nil(t, err)
+
+	err = store.DeleteProfileQualityItem(ctx, 1)
+	assert.Nil(t, err)
+
+	err = store.DeleteProfileQualityItem(ctx, 2)
+	assert.Nil(t, err)
+
+	err = store.DeleteQualityProfile(ctx, 1)
+	assert.Nil(t, err)
 }
