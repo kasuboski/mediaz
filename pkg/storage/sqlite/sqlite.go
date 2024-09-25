@@ -192,13 +192,12 @@ func (s SQLite) DeleteQualityDefinition(ctx context.Context, id int64) error {
 func (s SQLite) GetQualityProfile(ctx context.Context, id int64) (storage.QualityProfile, error) {
 	stmt := sqlite.SELECT(
 		table.QualityProfile.AllColumns,
-		table.QualityItem.AllColumns,
+		table.ProfileQualityItem.AllColumns,
 		table.QualityDefinition.AllColumns,
 	).FROM(
 		table.QualityProfile.INNER_JOIN(
 			table.ProfileQualityItem, table.ProfileQualityItem.ProfileID.EQ(table.QualityProfile.ID)).INNER_JOIN(
-			table.QualityItem, table.ProfileQualityItem.QualityItemID.EQ(table.QualityItem.ID)).INNER_JOIN(
-			table.QualityDefinition, table.QualityItem.QualityID.EQ(table.QualityDefinition.ID)),
+			table.QualityDefinition, table.ProfileQualityItem.QualityID.EQ(table.QualityDefinition.ID)),
 	).WHERE(table.QualityProfile.ID.EQ(sqlite.Int(id))).ORDER_BY(table.QualityDefinition.MinSize.DESC())
 
 	var result storage.QualityProfile
@@ -210,14 +209,12 @@ func (s SQLite) GetQualityProfile(ctx context.Context, id int64) (storage.Qualit
 func (s SQLite) ListQualityProfiles(ctx context.Context) ([]storage.QualityProfile, error) {
 	stmt := sqlite.SELECT(
 		table.QualityProfile.AllColumns,
-		table.QualityItem.AllColumns,
 		table.QualityDefinition.AllColumns,
 	).FROM(
 		table.QualityProfile.INNER_JOIN(
 			table.ProfileQualityItem, table.ProfileQualityItem.ProfileID.EQ(table.QualityProfile.ID)).INNER_JOIN(
-			table.QualityItem, table.ProfileQualityItem.QualityItemID.EQ(table.QualityItem.ID)).INNER_JOIN(
-			table.QualityDefinition, table.QualityItem.QualityID.EQ(table.QualityDefinition.ID)),
-	).ORDER_BY(table.QualityItem.QualityID.DESC())
+			table.QualityDefinition, table.ProfileQualityItem.QualityID.EQ(table.QualityDefinition.ID)),
+	).ORDER_BY(table.QualityDefinition.MinSize.DESC())
 
 	result := make([]storage.QualityProfile, 0)
 	err := stmt.QueryContext(ctx, s.db, &result)

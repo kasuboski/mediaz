@@ -17,9 +17,9 @@ type profileQualityItemTable struct {
 	sqlite.Table
 
 	// Columns
-	ID            sqlite.ColumnInteger
-	ProfileID     sqlite.ColumnInteger
-	QualityItemID sqlite.ColumnInteger
+	ID        sqlite.ColumnInteger
+	ProfileID sqlite.ColumnInteger
+	QualityID sqlite.ColumnInteger
 
 	AllColumns     sqlite.ColumnList
 	MutableColumns sqlite.ColumnList
@@ -60,20 +60,20 @@ func newProfileQualityItemTable(schemaName, tableName, alias string) *ProfileQua
 
 func newProfileQualityItemTableImpl(schemaName, tableName, alias string) profileQualityItemTable {
 	var (
-		IDColumn            = sqlite.IntegerColumn("id")
-		ProfileIDColumn     = sqlite.IntegerColumn("profile_id")
-		QualityItemIDColumn = sqlite.IntegerColumn("quality_item_id")
-		allColumns          = sqlite.ColumnList{IDColumn, ProfileIDColumn, QualityItemIDColumn}
-		mutableColumns      = sqlite.ColumnList{ProfileIDColumn, QualityItemIDColumn}
+		IDColumn        = sqlite.IntegerColumn("id")
+		ProfileIDColumn = sqlite.IntegerColumn("profile_id")
+		QualityIDColumn = sqlite.IntegerColumn("quality_id")
+		allColumns      = sqlite.ColumnList{IDColumn, ProfileIDColumn, QualityIDColumn}
+		mutableColumns  = sqlite.ColumnList{ProfileIDColumn, QualityIDColumn}
 	)
 
 	return profileQualityItemTable{
 		Table: sqlite.NewTable(schemaName, tableName, alias, allColumns...),
 
 		//Columns
-		ID:            IDColumn,
-		ProfileID:     ProfileIDColumn,
-		QualityItemID: QualityItemIDColumn,
+		ID:        IDColumn,
+		ProfileID: ProfileIDColumn,
+		QualityID: QualityIDColumn,
 
 		AllColumns:     allColumns,
 		MutableColumns: mutableColumns,

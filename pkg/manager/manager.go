@@ -250,8 +250,8 @@ func rejectReleaseFunc(ctx context.Context, det *MediaDetails, profile storage.Q
 		sizeMB := *r.Size >> 20
 
 		// items are assumed to be sorted quality so the highest media quality avaiable is selected
-		for _, item := range profile.Items {
-			metQuality := MeetsQualitySize(item.QualityDefinition, uint64(sizeMB), uint64(*det.Runtime))
+		for _, quality := range profile.Qualities {
+			metQuality := MeetsQualitySize(quality, uint64(sizeMB), uint64(*det.Runtime))
 
 			if metQuality {
 				log.Infow("accepting release", "release", r.Title, "metQuality", metQuality, "size", r.Size, "runtime", det.Runtime)

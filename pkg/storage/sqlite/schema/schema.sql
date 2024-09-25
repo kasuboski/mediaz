@@ -19,26 +19,16 @@ CREATE TABLE IF NOT EXISTS "quality_definition" (
 CREATE TABLE IF NOT EXISTS "quality_profile" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     "name" TEXT NOT NULL,
-    "cutoff" INTEGER NOT NULL,
+    "cutoff_quality_id" INTEGER NOT NULL,
     "upgrade_allowed" BOOLEAN NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS "quality_item" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-    "quality_id" INTEGER NOT NULL,
-    "name" TEXT NOT NULL,
-    "allowed" BOOLEAN NOT NULL,
-    "parent_id" INTEGER DEFAULT NULL,
-    FOREIGN KEY ("parent_id") REFERENCES "quality_item" ("id"),
-    FOREIGN KEY ("quality_id") REFERENCES "quality_definition" ("id")
 );
 
 CREATE TABLE IF NOT EXISTS "profile_quality_item" (
     "id" INTEGER PRIMARY KEY AUTOINCREMENT,
     "profile_id" INTEGER NOT NULL,
-    "quality_item_id" INTEGER NOT NULL,
+    "quality_id" INTEGER NOT NULL,
     FOREIGN KEY ("profile_id") REFERENCES "quality_profile" ("id"),
-    FOREIGN KEY ("quality_item_id") REFERENCES "quality_item" ("id")
+    FOREIGN KEY ("quality_id") REFERENCES "quality_definition" ("quality_id")
 );
 
 CREATE TABLE IF NOT EXISTS "movie_file" (

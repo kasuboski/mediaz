@@ -43,19 +43,11 @@ type MovieStorage interface {
 }
 
 type QualityProfile struct {
-	Name           string        `json:"name"`
-	Items          []QualityItem `json:"items"`
-	ID             int32         `sql:"primary_key" json:"id"`
-	Cutoff         int32         `json:"cutoff"`
-	UpgradeAllowed bool          `json:"upgradeAllowed"`
-}
-
-type QualityItem struct {
-	ParentID          *int32            `alias:"quality_item.parent_id" json:"parentID"`
-	Name              string            `alias:"quality_item.name" json:"name"`
-	QualityDefinition QualityDefinition `json:"quality"`
-	ID                int32             `alias:"quality_item.id" json:"id"`
-	Allowed           bool              `alias:"quality_item.allowed" json:"allowed"`
+	Name            string              `json:"name"`
+	Qualities       []QualityDefinition `json:"qualities"`
+	ID              int32               `sql:"primary_key" json:"id"`
+	CutoffQualityID int32               `alias:"cutoff_quality_id" json:"cutoff_quality_id"`
+	UpgradeAllowed  bool                `json:"upgradeAllowed"`
 }
 
 type QualityDefinition struct {

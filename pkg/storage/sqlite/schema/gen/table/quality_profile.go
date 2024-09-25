@@ -17,10 +17,10 @@ type qualityProfileTable struct {
 	sqlite.Table
 
 	// Columns
-	ID             sqlite.ColumnInteger
-	Name           sqlite.ColumnString
-	Cutoff         sqlite.ColumnInteger
-	UpgradeAllowed sqlite.ColumnBool
+	ID              sqlite.ColumnInteger
+	Name            sqlite.ColumnString
+	CutoffQualityID sqlite.ColumnInteger
+	UpgradeAllowed  sqlite.ColumnBool
 
 	AllColumns     sqlite.ColumnList
 	MutableColumns sqlite.ColumnList
@@ -61,22 +61,22 @@ func newQualityProfileTable(schemaName, tableName, alias string) *QualityProfile
 
 func newQualityProfileTableImpl(schemaName, tableName, alias string) qualityProfileTable {
 	var (
-		IDColumn             = sqlite.IntegerColumn("id")
-		NameColumn           = sqlite.StringColumn("name")
-		CutoffColumn         = sqlite.IntegerColumn("cutoff")
-		UpgradeAllowedColumn = sqlite.BoolColumn("upgrade_allowed")
-		allColumns           = sqlite.ColumnList{IDColumn, NameColumn, CutoffColumn, UpgradeAllowedColumn}
-		mutableColumns       = sqlite.ColumnList{NameColumn, CutoffColumn, UpgradeAllowedColumn}
+		IDColumn              = sqlite.IntegerColumn("id")
+		NameColumn            = sqlite.StringColumn("name")
+		CutoffQualityIDColumn = sqlite.IntegerColumn("cutoff_quality_id")
+		UpgradeAllowedColumn  = sqlite.BoolColumn("upgrade_allowed")
+		allColumns            = sqlite.ColumnList{IDColumn, NameColumn, CutoffQualityIDColumn, UpgradeAllowedColumn}
+		mutableColumns        = sqlite.ColumnList{NameColumn, CutoffQualityIDColumn, UpgradeAllowedColumn}
 	)
 
 	return qualityProfileTable{
 		Table: sqlite.NewTable(schemaName, tableName, alias, allColumns...),
 
 		//Columns
-		ID:             IDColumn,
-		Name:           NameColumn,
-		Cutoff:         CutoffColumn,
-		UpgradeAllowed: UpgradeAllowedColumn,
+		ID:              IDColumn,
+		Name:            NameColumn,
+		CutoffQualityID: CutoffQualityIDColumn,
+		UpgradeAllowed:  UpgradeAllowedColumn,
 
 		AllColumns:     allColumns,
 		MutableColumns: mutableColumns,

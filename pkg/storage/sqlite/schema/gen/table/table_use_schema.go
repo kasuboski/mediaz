@@ -16,6 +16,5 @@ func UseSchema(schema string) {
 	MovieMetadata = MovieMetadata.FromSchema(schema)
 	ProfileQualityItem = ProfileQualityItem.FromSchema(schema)
 	QualityDefinition = QualityDefinition.FromSchema(schema)
-	QualityItem = QualityItem.FromSchema(schema)
 	QualityProfile = QualityProfile.FromSchema(schema)
 }
