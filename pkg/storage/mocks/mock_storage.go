@@ -56,6 +56,51 @@ func (mr *MockStorageMockRecorder) CreateIndexer(arg0, arg1 any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateIndexer", reflect.TypeOf((*MockStorage)(nil).CreateIndexer), arg0, arg1)
 }
 
+// CreateMovie mocks base method.
+func (m *MockStorage) CreateMovie(arg0 context.Context, arg1 model.Movie) (int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateMovie", arg0, arg1)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CreateMovie indicates an expected call of CreateMovie.
+func (mr *MockStorageMockRecorder) CreateMovie(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateMovie", reflect.TypeOf((*MockStorage)(nil).CreateMovie), arg0, arg1)
+}
+
+// CreateMovieFile mocks base method.
+func (m *MockStorage) CreateMovieFile(arg0 context.Context, arg1 model.MovieFile) (int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateMovieFile", arg0, arg1)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CreateMovieFile indicates an expected call of CreateMovieFile.
+func (mr *MockStorageMockRecorder) CreateMovieFile(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateMovieFile", reflect.TypeOf((*MockStorage)(nil).CreateMovieFile), arg0, arg1)
+}
+
+// CreateProfileQualityItem mocks base method.
+func (m *MockStorage) CreateProfileQualityItem(arg0 context.Context, arg1 model.ProfileQualityItem) (int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateProfileQualityItem", arg0, arg1)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CreateProfileQualityItem indicates an expected call of CreateProfileQualityItem.
+func (mr *MockStorageMockRecorder) CreateProfileQualityItem(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateProfileQualityItem", reflect.TypeOf((*MockStorage)(nil).CreateProfileQualityItem), arg0, arg1)
+}
+
 // CreateQualityDefinition mocks base method.
 func (m *MockStorage) CreateQualityDefinition(arg0 context.Context, arg1 model.QualityDefinition) (int64, error) {
 	m.ctrl.T.Helper()
@@ -69,6 +114,21 @@ func (m *MockStorage) CreateQualityDefinition(arg0 context.Context, arg1 model.Q
 func (mr *MockStorageMockRecorder) CreateQualityDefinition(arg0, arg1 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateQualityDefinition", reflect.TypeOf((*MockStorage)(nil).CreateQualityDefinition), arg0, arg1)
+}
+
+// CreateQualityProfile mocks base method.
+func (m *MockStorage) CreateQualityProfile(arg0 context.Context, arg1 model.QualityProfile) (int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateQualityProfile", arg0, arg1)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CreateQualityProfile indicates an expected call of CreateQualityProfile.
+func (mr *MockStorageMockRecorder) CreateQualityProfile(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateQualityProfile", reflect.TypeOf((*MockStorage)(nil).CreateQualityProfile), arg0, arg1)
 }
 
 // DeleteIndexer mocks base method.
@@ -85,6 +145,48 @@ func (mr *MockStorageMockRecorder) DeleteIndexer(arg0, arg1 any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteIndexer", reflect.TypeOf((*MockStorage)(nil).DeleteIndexer), arg0, arg1)
 }
 
+// DeleteMovie mocks base method.
+func (m *MockStorage) DeleteMovie(arg0 context.Context, arg1 int64) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteMovie", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteMovie indicates an expected call of DeleteMovie.
+func (mr *MockStorageMockRecorder) DeleteMovie(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteMovie", reflect.TypeOf((*MockStorage)(nil).DeleteMovie), arg0, arg1)
+}
+
+// DeleteMovieFile mocks base method.
+func (m *MockStorage) DeleteMovieFile(arg0 context.Context, arg1 int64) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteMovieFile", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteMovieFile indicates an expected call of DeleteMovieFile.
+func (mr *MockStorageMockRecorder) DeleteMovieFile(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteMovieFile", reflect.TypeOf((*MockStorage)(nil).DeleteMovieFile), arg0, arg1)
+}
+
+// DeleteProfileQualityItem mocks base method.
+func (m *MockStorage) DeleteProfileQualityItem(arg0 context.Context, arg1 int64) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteProfileQualityItem", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteProfileQualityItem indicates an expected call of DeleteProfileQualityItem.
+func (mr *MockStorageMockRecorder) DeleteProfileQualityItem(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteProfileQualityItem", reflect.TypeOf((*MockStorage)(nil).DeleteProfileQualityItem), arg0, arg1)
+}
+
 // DeleteQualityDefinition mocks base method.
 func (m *MockStorage) DeleteQualityDefinition(arg0 context.Context, arg1 int64) error {
 	m.ctrl.T.Helper()
@@ -97,6 +199,50 @@ func (m *MockStorage) DeleteQualityDefinition(arg0 context.Context, arg1 int64) 
 func (mr *MockStorageMockRecorder) DeleteQualityDefinition(arg0, arg1 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteQualityDefinition", reflect.TypeOf((*MockStorage)(nil).DeleteQualityDefinition), arg0, arg1)
+}
+
+// DeleteQualityProfile mocks base method.
+func (m *MockStorage) DeleteQualityProfile(arg0 context.Context, arg1 int64) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteQualityProfile", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteQualityProfile indicates an expected call of DeleteQualityProfile.
+func (mr *MockStorageMockRecorder) DeleteQualityProfile(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteQualityProfile", reflect.TypeOf((*MockStorage)(nil).DeleteQualityProfile), arg0, arg1)
+}
+
+// GetProfileQualityItem mocks base method.
+func (m *MockStorage) GetProfileQualityItem(arg0 context.Context, arg1 int64) (model.ProfileQualityItem, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetProfileQualityItem", arg0, arg1)
+	ret0, _ := ret[0].(model.ProfileQualityItem)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetProfileQualityItem indicates an expected call of GetProfileQualityItem.
+func (mr *MockStorageMockRecorder) GetProfileQualityItem(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetProfileQualityItem", reflect.TypeOf((*MockStorage)(nil).GetProfileQualityItem), arg0, arg1)
+}
+
+// GetQualityDefinition mocks base method.
+func (m *MockStorage) GetQualityDefinition(arg0 context.Context, arg1 int64) (model.QualityDefinition, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetQualityDefinition", arg0, arg1)
+	ret0, _ := ret[0].(model.QualityDefinition)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetQualityDefinition indicates an expected call of GetQualityDefinition.
+func (mr *MockStorageMockRecorder) GetQualityDefinition(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetQualityDefinition", reflect.TypeOf((*MockStorage)(nil).GetQualityDefinition), arg0, arg1)
 }
 
 // GetQualityProfile mocks base method.
@@ -148,6 +294,51 @@ func (mr *MockStorageMockRecorder) ListIndexers(arg0 any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListIndexers", reflect.TypeOf((*MockStorage)(nil).ListIndexers), arg0)
 }
 
+// ListMovieFiles mocks base method.
+func (m *MockStorage) ListMovieFiles(arg0 context.Context) ([]*model.MovieFile, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListMovieFiles", arg0)
+	ret0, _ := ret[0].([]*model.MovieFile)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListMovieFiles indicates an expected call of ListMovieFiles.
+func (mr *MockStorageMockRecorder) ListMovieFiles(arg0 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListMovieFiles", reflect.TypeOf((*MockStorage)(nil).ListMovieFiles), arg0)
+}
+
+// ListMovies mocks base method.
+func (m *MockStorage) ListMovies(arg0 context.Context) ([]*model.Movie, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListMovies", arg0)
+	ret0, _ := ret[0].([]*model.Movie)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListMovies indicates an expected call of ListMovies.
+func (mr *MockStorageMockRecorder) ListMovies(arg0 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListMovies", reflect.TypeOf((*MockStorage)(nil).ListMovies), arg0)
+}
+
+// ListProfileQualityItems mocks base method.
+func (m *MockStorage) ListProfileQualityItems(arg0 context.Context) ([]*model.ProfileQualityItem, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListProfileQualityItems", arg0)
+	ret0, _ := ret[0].([]*model.ProfileQualityItem)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListProfileQualityItems indicates an expected call of ListProfileQualityItems.
+func (mr *MockStorageMockRecorder) ListProfileQualityItems(arg0 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListProfileQualityItems", reflect.TypeOf((*MockStorage)(nil).ListProfileQualityItems), arg0)
+}
+
 // ListQualityDefinitions mocks base method.
 func (m *MockStorage) ListQualityDefinitions(arg0 context.Context) ([]*model.QualityDefinition, error) {
 	m.ctrl.T.Helper()
@@ -164,10 +355,10 @@ func (mr *MockStorageMockRecorder) ListQualityDefinitions(arg0 any) *gomock.Call
 }
 
 // ListQualityProfiles mocks base method.
-func (m *MockStorage) ListQualityProfiles(arg0 context.Context) ([]storage.QualityProfile, error) {
+func (m *MockStorage) ListQualityProfiles(arg0 context.Context) ([]*storage.QualityProfile, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListQualityProfiles", arg0)
-	ret0, _ := ret[0].([]storage.QualityProfile)
+	ret0, _ := ret[0].([]*storage.QualityProfile)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
