@@ -59,7 +59,7 @@ func Get() *zap.SugaredLogger {
 		buildInfo, ok := debug.ReadBuildInfo()
 		if ok {
 			fields := make([]zapcore.Field, 0)
-			fields = append(fields, zap.String("git_revision", gitRevision))
+			fields = append(fields, zap.String("go_version", buildInfo.GoVersion))
 			for _, v := range buildInfo.Settings {
 				if v.Key == "vcs.revision" {
 					gitRevision = v.Value[0:7]
