@@ -66,7 +66,7 @@ var listMovieCmd = &cobra.Command{
 	Short:      "List movies found at a path",
 	Long:       `List movies found at a path`,
 	Args:       cobra.ExactArgs(1),
-	ArgAliases: []string{"path to movies"},
+	ArgAliases: []string{"path to movies rm"},
 	Run: func(cmd *cobra.Command, args []string) {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
