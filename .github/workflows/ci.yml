@@ -12,7 +12,11 @@ jobs:
         uses: DeterminateSystems/nix-installer-action@v4
 
       - name: Run unit tests
-        run: nix develop --command go test -v -cover ./...
+        run: nix develop --command go test -v -coverprofile=coverage.txt ./...
+      - name: Upload results to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
 
       - name: Build binary
         run: nix develop --command go build .
