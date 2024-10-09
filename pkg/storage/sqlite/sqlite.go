@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"log"
 
 	"github.com/go-jet/jet/v2/sqlite"
 	"github.com/kasuboski/mediaz/pkg/logger"
@@ -237,7 +236,6 @@ func (s SQLite) DeleteQualityProfileItem(ctx context.Context, id int64) error {
 
 func (s SQLite) CreateQualityProfile(ctx context.Context, profile model.QualityProfile) (int64, error) {
 	stmt := table.QualityProfile.INSERT(table.QualityProfile.AllColumns.Except(table.QualityProfile.ID)).MODEL(profile).RETURNING(table.QualityProfile.ID)
-	log.Println(stmt.DebugSql())
 	result, err := s.handleInsert(ctx, stmt)
 	if err != nil {
 		return 0, err
@@ -317,4 +315,42 @@ func (s SQLite) handleStatement(ctx context.Context, stmt sqlite.Statement) (sql
 	}
 
 	return result, tx.Commit()
+}
+
+// GetQualityProfileItem gets a quality item that belongs to a profile
+func (s SQLite) GetDownloadClient(ctx context.Context, id int64) (model.DownloadClient, error) {
+	stmt := table.DownloadClient.SELECT(table.DownloadClient.AllColumns).FROM(table.DownloadClient).WHERE(table.DownloadClient.ID.EQ(sqlite.Int64(id)))
+	var result model.DownloadClient
+	err := stmt.QueryContext(ctx, s.db, &result)
+	return result, err
+}
+
+// ListQualityProfileItem lists all quality definitions
+func (s SQLite) ListDownloadClients(ctx context.Context) ([]*model.DownloadClient, error) {
+	items := make([]*model.DownloadClient, 0)
+	stmt := table.Indexer.SELECT(table.DownloadClient.AllColumns).FROM(table.DownloadClient).ORDER_BY(table.DownloadClient.ID.ASC())
+	err := stmt.QueryContext(ctx, s.db, &items)
+	return items, err
+}
+
+// DeleteQualityDefinition deletes a quality
+func (s SQLite) DeleteDownloadClient(ctx context.Context, id int64) error {
+	stmt := table.DownloadClient.DELETE().WHERE(table.DownloadClient.ID.EQ(sqlite.Int64(id))).RETURNING(table.DownloadClient.AllColumns)
+	_, err := s.handleDelete(ctx, stmt)
+	return err
+}
+
+func (s SQLite) CreateDownloadClient(ctx context.Context, profile model.DownloadClient) (int64, error) {
+	stmt := table.DownloadClient.INSERT(table.DownloadClient.AllColumns.Except(table.DownloadClient.ID)).MODEL(profile).RETURNING(table.DownloadClient.ID)
+	result, err := s.handleInsert(ctx, stmt)
+	if err != nil {
+		return 0, err
+	}
+
+	inserted, err := result.LastInsertId()
+	if err != nil {
+		return 0, err
+	}
+
+	return inserted, nil
 }

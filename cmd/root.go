@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"log"
 	"os"
 	"strings"
 
@@ -35,7 +34,6 @@ func init() {
 
 // initConfig sets viper configurations and default values
 func initConfig() {
-	log.Print(cfgFile)
 	if cfgFile != "" {
 		viper.SetConfigFile(cfgFile)
 	}
