@@ -83,9 +83,9 @@ func (s Server) Serve(port int) error {
 	v1.HandleFunc("/indexers", s.CreateIndexer()).Methods(http.MethodPost)
 	v1.HandleFunc("/indexers", s.DeleteIndexer()).Methods(http.MethodDelete)
 
-	v1.HandleFunc("/quality/definitions", s.ListIndexers()).Methods(http.MethodGet)
-	v1.HandleFunc("/quality/definitions", s.CreateIndexer()).Methods(http.MethodPost)
-	v1.HandleFunc("/quality/definitions", s.DeleteIndexer()).Methods(http.MethodDelete)
+	v1.HandleFunc("/quality/definitions", s.ListQualityDefinitions()).Methods(http.MethodGet)
+	v1.HandleFunc("/quality/definitions", s.CreateQualityDefinition()).Methods(http.MethodPost)
+	v1.HandleFunc("/quality/definitions", s.DeleteQualityDefinition()).Methods(http.MethodDelete)
 
 	v1.HandleFunc("/quality/profiles/{id}", s.GetQualityProfile()).Methods(http.MethodGet)
 	v1.HandleFunc("/quality/profiles", s.ListQualityProfiles()).Methods(http.MethodGet)
