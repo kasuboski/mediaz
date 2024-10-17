@@ -12,7 +12,6 @@ import (
 	"sync"
 
 	"github.com/kasuboski/mediaz/pkg/download"
-	"github.com/kasuboski/mediaz/pkg/download/torrent/transmission"
 	"github.com/kasuboski/mediaz/pkg/library"
 	"github.com/kasuboski/mediaz/pkg/logger"
 	"github.com/kasuboski/mediaz/pkg/prowlarr"
@@ -30,14 +29,16 @@ type MediaManager struct {
 	indexer IndexerStore
 	library library.Library
 	storage storage.Storage
+	factory download.Factory
 }
 
-func New(tmbdClient TMDBClientInterface, prowlarrClient prowlarr.IProwlarr, library library.Library, storage storage.Storage) MediaManager {
+func New(tmbdClient TMDBClientInterface, prowlarrClient prowlarr.IProwlarr, library library.Library, storage storage.Storage, factory download.Factory) MediaManager {
 	return MediaManager{
 		tmdb:    tmbdClient,
 		indexer: NewIndexerStore(prowlarrClient, storage),
 		library: library,
 		storage: storage,
+		factory: factory,
 	}
 }
 
@@ -186,7 +187,7 @@ func (m MediaManager) IndexMovieLibrary(ctx context.Context) error {
 	return nil
 }
 
-// AddMovieRequest describes what is required to add a movie
+// AddMovieRequest describes what is required to add a movie to a library
 type AddMovieRequest struct {
 	TMDBID           int   `json:"tmdbID"`
 	QualityProfileID int32 `json:"qualityProfileID"`
@@ -194,6 +195,7 @@ type AddMovieRequest struct {
 }
 
 // AddMovieToLibrary adds a movie to be managed by mediaz
+// TODO: check status of movie before doing anything else.. do we already have it tracked? is it downloaded or already discovered? error state?
 // TODO: query each indexer asynchronously?
 // TODO: always write status to database for given movie (queue, downloaded, missing (error?), Unreleased)
 func (m MediaManager) AddMovieToLibrary(ctx context.Context, request AddMovieRequest) (*download.Status, error) {
@@ -251,7 +253,13 @@ func (m MediaManager) AddMovieToLibrary(ctx context.Context, request AddMovieReq
 		Release: chosenRelease,
 	}
 
-	return downloadClient.Add(ctx, downloadRequest)
+	status, err := downloadClient.Add(ctx, downloadRequest)
+	if err != nil {
+		log.Debug("failed to add movie download request", zap.Error(err))
+		return nil, err
+	}
+
+	return &status, nil
 }
 
 // rejectReleaseFunc returns a function that returns true if the given release should be rejected
@@ -412,19 +420,13 @@ func (m MediaManager) CreateDownloadClient(ctx context.Context, request AddDownl
 	return downloadClient, nil
 }
 
-func (m MediaManager) GetDownloadClient(ctx context.Context, id int64) (download.Client, error) {
+func (m MediaManager) GetDownloadClient(ctx context.Context, id int64) (download.DownloadClient, error) {
 	client, err := m.storage.GetDownloadClient(ctx, id)
 	if err != nil {
 		return nil, err
 	}
 
-	switch client.Implementation {
-	case "transmission":
-		// TODO: store client opts in db I guess
-		return transmission.NewClient(http.DefaultClient, client.Scheme, client.Host, int(client.Port)), nil
-	default:
-		return nil, fmt.Errorf("unsupported client implementation: %s", client.Implementation)
-	}
+	return m.factory.NewDownloadClient(client)
 }
 
 func (m MediaManager) ListDownloadClients(ctx context.Context) ([]*model.DownloadClient, error) {

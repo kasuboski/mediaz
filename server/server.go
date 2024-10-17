@@ -86,6 +86,7 @@ func (s Server) Serve(port int) error {
 	v1.HandleFunc("/downloadclients", s.ListDownloadClients()).Methods(http.MethodGet)
 	v1.HandleFunc("/downloadclients/{id}", s.GetDownloadClient()).Methods(http.MethodGet)
 	v1.HandleFunc("/downloadclients", s.CreateDownloadClient()).Methods(http.MethodPost)
+	v1.HandleFunc("/downloadclients/{id}", s.DeleteDownloadClient()).Methods(http.MethodDelete)
 
 	v1.HandleFunc("/quality/definitions", s.ListIndexers()).Methods(http.MethodGet)
 	v1.HandleFunc("/quality/definitions", s.CreateIndexer()).Methods(http.MethodPost)
@@ -521,6 +522,33 @@ func (s Server) GetDownloadClient() http.HandlerFunc {
 
 		writeResponse(w, http.StatusCreated, GenericResponse{
 			Response: downloadClient,
+		})
+	}
+}
+
+// DeleDownloadClient deletes a download client from storage
+func (s Server) DeleteDownloadClient() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log := logger.FromCtx(r.Context())
+		vars := mux.Vars(r)
+		idVar := vars["id"]
+
+		id, err := strconv.ParseInt(idVar, 10, 64)
+		if err != nil {
+			log.Debug("invalid id provided", zap.Error(err), zap.Any("id", id))
+			http.Error(w, "Invalid ID format", http.StatusBadRequest)
+			return
+		}
+
+		err = s.manager.DeleteDownloadClient(r.Context(), id)
+		if err != nil {
+			log.Debug("failed to get download client", zap.Error(err))
+			writeErrorResponse(w, http.StatusInternalServerError, err)
+			return
+		}
+
+		writeResponse(w, http.StatusOK, GenericResponse{
+			Response: id,
 		})
 	}
 }

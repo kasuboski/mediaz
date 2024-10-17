@@ -99,7 +99,8 @@ CREATE TABLE IF NOT EXISTS "download_client" (
     "implementation" TEXT NOT NULL,
     "scheme" TEXT NOT NULL,
     "host" TEXT NOT NULL,
-    "port" INTEGER NOT NULL
+    "port" INTEGER NOT NULL,
+    "directory" TEXT NOT NULL
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS "ix_indexer_name" ON "indexer" ("name" ASC);
