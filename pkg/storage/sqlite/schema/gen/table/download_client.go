@@ -23,7 +23,6 @@ type downloadClientTable struct {
 	Scheme         sqlite.ColumnString
 	Host           sqlite.ColumnString
 	Port           sqlite.ColumnInteger
-	Directory      sqlite.ColumnString
 
 	AllColumns     sqlite.ColumnList
 	MutableColumns sqlite.ColumnList
@@ -70,9 +69,8 @@ func newDownloadClientTableImpl(schemaName, tableName, alias string) downloadCli
 		SchemeColumn         = sqlite.StringColumn("scheme")
 		HostColumn           = sqlite.StringColumn("host")
 		PortColumn           = sqlite.IntegerColumn("port")
-		DirectoryColumn      = sqlite.StringColumn("directory")
-		allColumns           = sqlite.ColumnList{IDColumn, TypeColumn, ImplementationColumn, SchemeColumn, HostColumn, PortColumn, DirectoryColumn}
-		mutableColumns       = sqlite.ColumnList{TypeColumn, ImplementationColumn, SchemeColumn, HostColumn, PortColumn, DirectoryColumn}
+		allColumns           = sqlite.ColumnList{IDColumn, TypeColumn, ImplementationColumn, SchemeColumn, HostColumn, PortColumn}
+		mutableColumns       = sqlite.ColumnList{TypeColumn, ImplementationColumn, SchemeColumn, HostColumn, PortColumn}
 	)
 
 	return downloadClientTable{
@@ -85,7 +83,6 @@ func newDownloadClientTableImpl(schemaName, tableName, alias string) downloadCli
 		Scheme:         SchemeColumn,
 		Host:           HostColumn,
 		Port:           PortColumn,
-		Directory:      DirectoryColumn,
 
 		AllColumns:     allColumns,
 		MutableColumns: mutableColumns,
