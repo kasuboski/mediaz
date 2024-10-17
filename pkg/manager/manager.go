@@ -374,6 +374,11 @@ func (m MediaManager) ListQualityDefinitions(ctx context.Context) ([]*model.Qual
 	return m.storage.ListQualityDefinitions(ctx)
 }
 
+// ListQualityDefinitions list stored quality definitions
+func (m MediaManager) GetQualityDefinition(ctx context.Context, id int64) (model.QualityDefinition, error) {
+	return m.storage.GetQualityDefinition(ctx, id)
+}
+
 func (m MediaManager) GetQualityProfile(ctx context.Context, id int64) (storage.QualityProfile, error) {
 	return m.storage.GetQualityProfile(ctx, id)
 }

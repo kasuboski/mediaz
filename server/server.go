@@ -269,6 +269,33 @@ func (s Server) ListQualityDefinitions() http.HandlerFunc {
 	}
 }
 
+// ListQualityDefinitions lists all stored quality definitions
+func (s Server) GetQualityDefinition() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log := logger.FromCtx(r.Context())
+		vars := mux.Vars(r)
+		idVar := vars["id"]
+
+		id, err := strconv.ParseInt(idVar, 10, 64)
+		if err != nil {
+			http.Error(w, "Invalid ID format", http.StatusBadRequest)
+			return
+		}
+
+		result, err := s.manager.GetQualityDefinition(r.Context(), id)
+		if err != nil {
+			writeErrorResponse(w, http.StatusOK, err)
+			return
+		}
+
+		err = writeResponse(w, http.StatusOK, GenericResponse{Response: result})
+		if err != nil {
+			log.Error("failed to write response", zap.Error(err))
+			return
+		}
+	}
+}
+
 // CreateQualityDefinition creates a quality definition
 func (s Server) CreateQualityDefinition() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
