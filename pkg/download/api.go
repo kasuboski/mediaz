@@ -38,7 +38,7 @@ func (DownloadClientFactory) NewDownloadClient(config model.DownloadClient) (Dow
 		// TODO: Replace default http client with stored configurations
 		return NewTransmissionClient(http.DefaultClient, config.Scheme, config.Host, int(config.Port)), nil
 	default:
-		return nil, fmt.Errorf("unknown download client implementation: %v", config.Implementation)
+		return nil, fmt.Errorf("unsupported client implementation: %v", config.Implementation)
 	}
 }
 
