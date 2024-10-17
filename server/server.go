@@ -83,10 +83,10 @@ func (s Server) Serve(port int) error {
 	v1.HandleFunc("/indexers", s.CreateIndexer()).Methods(http.MethodPost)
 	v1.HandleFunc("/indexers", s.DeleteIndexer()).Methods(http.MethodDelete)
 
-	v1.HandleFunc("/downloadclients", s.ListDownloadClients()).Methods(http.MethodGet)
-	v1.HandleFunc("/downloadclients/{id}", s.GetDownloadClient()).Methods(http.MethodGet)
-	v1.HandleFunc("/downloadclients", s.CreateDownloadClient()).Methods(http.MethodPost)
-	v1.HandleFunc("/downloadclients/{id}", s.DeleteDownloadClient()).Methods(http.MethodDelete)
+	v1.HandleFunc("/download/clients", s.ListDownloadClients()).Methods(http.MethodGet)
+	v1.HandleFunc("/download/clients/{id}", s.GetDownloadClient()).Methods(http.MethodGet)
+	v1.HandleFunc("/download/clients", s.CreateDownloadClient()).Methods(http.MethodPost)
+	v1.HandleFunc("/download/clients/{id}", s.DeleteDownloadClient()).Methods(http.MethodDelete)
 
 	v1.HandleFunc("/quality/definitions", s.ListIndexers()).Methods(http.MethodGet)
 	v1.HandleFunc("/quality/definitions", s.CreateIndexer()).Methods(http.MethodPost)
