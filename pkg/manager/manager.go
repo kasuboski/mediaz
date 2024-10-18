@@ -360,7 +360,7 @@ type DeleteQualityDefinitionRequest struct {
 	ID *int `json:"id" yaml:"id"`
 }
 
-// AddQualityDefinition stores a new quality definition in the database
+// AddQualityDefinition deletes a quality definition
 func (m MediaManager) DeleteQualityDefinition(ctx context.Context, request DeleteQualityDefinitionRequest) error {
 	if request.ID == nil {
 		return fmt.Errorf("indexer id is required")
@@ -374,7 +374,7 @@ func (m MediaManager) ListQualityDefinitions(ctx context.Context) ([]*model.Qual
 	return m.storage.ListQualityDefinitions(ctx)
 }
 
-// ListQualityDefinitions list stored quality definitions
+// ListQualityDefinitions get a stored quality definitions
 func (m MediaManager) GetQualityDefinition(ctx context.Context, id int64) (model.QualityDefinition, error) {
 	return m.storage.GetQualityDefinition(ctx, id)
 }
