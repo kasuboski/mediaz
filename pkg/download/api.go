@@ -50,18 +50,6 @@ type GetRequest struct {
 	ID int
 }
 
-type DeleteRequest struct {
-	ID int
-}
-
-type PauseRequest struct {
-	ID int
-}
-
-type StartRequest struct {
-	ID int
-}
-
 type Status struct {
 	ID       string        `json:"id"`
 	Name     string        `json:"name"`
