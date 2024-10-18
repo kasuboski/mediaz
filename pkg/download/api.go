@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/kasuboski/mediaz/pkg/prowlarr"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
@@ -51,10 +50,9 @@ type GetRequest struct {
 }
 
 type Status struct {
-	ID       string        `json:"id"`
-	Name     string        `json:"name"`
-	Progress float64       `json:"progress"` // percentage
-	Speed    int64         `json:"speed"`    // assumed mb/s
-	Size     int64         `json:"size"`     // assumed mb
-	ETA      time.Duration `json:"eta"`
+	ID       string  `json:"id"`
+	Name     string  `json:"name"`
+	Progress float64 `json:"progress"` // percentage
+	Speed    int64   `json:"speed"`    // assumed mb/s
+	Size     int64   `json:"size"`     // assumed mb
 }
