@@ -55,13 +55,14 @@ func Get() *zap.SugaredLogger {
 		core := zapcore.NewCore(encoder, stdout, logLevel)
 
 		var gitRevision string
-
 		buildInfo, ok := debug.ReadBuildInfo()
 		if ok {
 			var fields []zapcore.Field
-			fields = append(fields, zap.String("go_version", buildInfo.GoVersion))
+			if buildInfo.GoVersion != "" {
+				fields = append(fields, zap.String("go_version", buildInfo.GoVersion))
+			}
 			for _, v := range buildInfo.Settings {
-				if v.Key == "vcs.revision" {
+				if v.Key == "vcs.revision" && v.Value != "" {
 					gitRevision = v.Value[0:7]
 					fields = append(fields, zap.String("git_revision", gitRevision))
 					break
@@ -81,13 +82,16 @@ func Get() *zap.SugaredLogger {
 // is associated, the default logger is returned, unless it is nil
 // in which case a disabled logger is returned.
 func FromCtx(ctx context.Context, with ...any) *zap.SugaredLogger {
-	if l, ok := ctx.Value(ctxKey{}).(*zap.SugaredLogger); ok {
-		return l.With(with)
-	} else if l := logger; l != nil {
-		return l.With(with)
+	l, ok := ctx.Value(ctxKey{}).(*zap.SugaredLogger)
+	if ok {
+		return l
 	}
 
-	return Get().With(with)
+	if l := logger; logger != nil {
+		return l
+	}
+
+	return Get()
 }
 
 // WithCtx returns a copy of ctx with the Logger attached.

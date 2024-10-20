@@ -88,9 +88,10 @@ func (s Server) Serve(port int) error {
 	v1.HandleFunc("/download/clients", s.CreateDownloadClient()).Methods(http.MethodPost)
 	v1.HandleFunc("/download/clients/{id}", s.DeleteDownloadClient()).Methods(http.MethodDelete)
 
-	v1.HandleFunc("/quality/definitions", s.ListIndexers()).Methods(http.MethodGet)
-	v1.HandleFunc("/quality/definitions", s.CreateIndexer()).Methods(http.MethodPost)
-	v1.HandleFunc("/quality/definitions", s.DeleteIndexer()).Methods(http.MethodDelete)
+	v1.HandleFunc("/quality/definitions", s.ListQualityDefinitions()).Methods(http.MethodGet)
+	v1.HandleFunc("/quality/definitions/{id}", s.GetQualityDefinition()).Methods(http.MethodGet)
+	v1.HandleFunc("/quality/definitions", s.CreateQualityDefinition()).Methods(http.MethodPost)
+	v1.HandleFunc("/quality/definitions", s.DeleteQualityDefinition()).Methods(http.MethodDelete)
 
 	v1.HandleFunc("/quality/profiles/{id}", s.GetQualityProfile()).Methods(http.MethodGet)
 	v1.HandleFunc("/quality/profiles", s.ListQualityProfiles()).Methods(http.MethodGet)
@@ -261,6 +262,33 @@ func (s Server) ListQualityDefinitions() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromCtx(r.Context())
 		result, err := s.manager.ListQualityDefinitions(r.Context())
+		if err != nil {
+			writeErrorResponse(w, http.StatusOK, err)
+			return
+		}
+
+		err = writeResponse(w, http.StatusOK, GenericResponse{Response: result})
+		if err != nil {
+			log.Error("failed to write response", zap.Error(err))
+			return
+		}
+	}
+}
+
+// ListQualityDefinitions lists all stored quality definitions
+func (s Server) GetQualityDefinition() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log := logger.FromCtx(r.Context())
+		vars := mux.Vars(r)
+		idVar := vars["id"]
+
+		id, err := strconv.ParseInt(idVar, 10, 64)
+		if err != nil {
+			http.Error(w, "Invalid ID format", http.StatusBadRequest)
+			return
+		}
+
+		result, err := s.manager.GetQualityDefinition(r.Context(), id)
 		if err != nil {
 			writeErrorResponse(w, http.StatusOK, err)
 			return
