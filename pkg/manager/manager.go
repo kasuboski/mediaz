@@ -11,6 +11,7 @@ import (
 	"slices"
 	"sync"
 
+	"github.com/kasuboski/mediaz/pkg/download"
 	"github.com/kasuboski/mediaz/pkg/library"
 	"github.com/kasuboski/mediaz/pkg/logger"
 	"github.com/kasuboski/mediaz/pkg/prowlarr"
@@ -28,14 +29,16 @@ type MediaManager struct {
 	indexer IndexerStore
 	library library.Library
 	storage storage.Storage
+	factory download.Factory
 }
 
-func New(tmbdClient TMDBClientInterface, prowlarrClient prowlarr.IProwlarr, library library.Library, storage storage.Storage) MediaManager {
+func New(tmbdClient TMDBClientInterface, prowlarrClient prowlarr.IProwlarr, library library.Library, storage storage.Storage, factory download.Factory) MediaManager {
 	return MediaManager{
 		tmdb:    tmbdClient,
 		indexer: NewIndexerStore(prowlarrClient, storage),
 		library: library,
 		storage: storage,
+		factory: factory,
 	}
 }
 
@@ -184,18 +187,18 @@ func (m MediaManager) IndexMovieLibrary(ctx context.Context) error {
 	return nil
 }
 
-// AddMovieRequest describes what is required to add a movie
+// AddMovieRequest describes what is required to add a movie to a library
 type AddMovieRequest struct {
 	TMDBID           int   `json:"tmdbID"`
 	QualityProfileID int32 `json:"qualityProfileID"`
+	DownloadClientID int32 `json:"downloadClientID"`
 }
 
 // AddMovieToLibrary adds a movie to be managed by mediaz
-// TODO: fetch trackers from indexer
+// TODO: check status of movie before doing anything else.. do we already have it tracked? is it downloaded or already discovered? error state?
 // TODO: query each indexer asynchronously?
-// TODO: pass to torrent client
 // TODO: always write status to database for given movie (queue, downloaded, missing (error?), Unreleased)
-func (m MediaManager) AddMovieToLibrary(ctx context.Context, request AddMovieRequest) (*prowlarr.ReleaseResource, error) {
+func (m MediaManager) AddMovieToLibrary(ctx context.Context, request AddMovieRequest) (*download.Status, error) {
 	log := logger.FromCtx(ctx)
 
 	profile, err := m.storage.GetQualityProfile(ctx, int64(request.QualityProfileID))
@@ -237,8 +240,26 @@ func (m MediaManager) AddMovieToLibrary(ctx context.Context, request AddMovieReq
 
 	slices.SortFunc(releases, sortReleaseFunc())
 	chosenRelease := releases[len(releases)-1]
+
 	log.Info("found release", "title", chosenRelease.Title)
-	return chosenRelease, nil
+
+	downloadClient, err := m.GetDownloadClient(ctx, int64(request.DownloadClientID)) // yolo cast?
+	if err != nil {
+		log.Debugw("failed to get download client", "id", request.DownloadClientID, zap.Error(err))
+		return nil, err
+	}
+
+	downloadRequest := download.AddRequest{
+		Release: chosenRelease,
+	}
+
+	status, err := downloadClient.Add(ctx, downloadRequest)
+	if err != nil {
+		log.Debug("failed to add movie download request", zap.Error(err))
+		return nil, err
+	}
+
+	return &status, nil
 }
 
 // rejectReleaseFunc returns a function that returns true if the given release should be rejected
@@ -385,6 +406,40 @@ func (m MediaManager) GetQualityProfile(ctx context.Context, id int64) (storage.
 
 func (m MediaManager) ListQualityProfiles(ctx context.Context) ([]*storage.QualityProfile, error) {
 	return m.storage.ListQualityProfiles(ctx)
+}
+
+// AddDownloadClientRequest describes what is required to add a download client
+type AddDownloadClientRequest struct {
+	model.DownloadClient
+}
+
+func (m MediaManager) CreateDownloadClient(ctx context.Context, request AddDownloadClientRequest) (model.DownloadClient, error) {
+	downloadClient := request.DownloadClient
+
+	id, err := m.storage.CreateDownloadClient(ctx, request.DownloadClient)
+	if err != nil {
+		return downloadClient, err
+	}
+
+	downloadClient.ID = int32(id)
+	return downloadClient, nil
+}
+
+func (m MediaManager) GetDownloadClient(ctx context.Context, id int64) (download.DownloadClient, error) {
+	client, err := m.storage.GetDownloadClient(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	return m.factory.NewDownloadClient(client)
+}
+
+func (m MediaManager) ListDownloadClients(ctx context.Context) ([]*model.DownloadClient, error) {
+	return m.storage.ListDownloadClients(ctx)
+}
+
+func (m MediaManager) DeleteDownloadClient(ctx context.Context, id int64) error {
+	return m.storage.DeleteDownloadClient(ctx, id)
 }
 
 func nullableDefault[T any](n nullable.Nullable[T]) T {

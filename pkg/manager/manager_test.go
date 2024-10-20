@@ -10,11 +10,14 @@ import (
 	"testing"
 	"testing/fstest"
 
+	"github.com/kasuboski/mediaz/pkg/download"
+	downloadMock "github.com/kasuboski/mediaz/pkg/download/mocks"
 	"github.com/kasuboski/mediaz/pkg/library"
 	"github.com/kasuboski/mediaz/pkg/prowlarr"
 	prowlMock "github.com/kasuboski/mediaz/pkg/prowlarr/mocks"
 	"github.com/kasuboski/mediaz/pkg/storage"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite"
+	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
 	"github.com/kasuboski/mediaz/pkg/tmdb/mocks"
 	"github.com/oapi-codegen/nullable"
 	"github.com/stretchr/testify/assert"
@@ -57,24 +60,50 @@ func TestAddMovietoLibrary(t *testing.T) {
 	err = store.Init(ctx, schemas...)
 	require.Nil(t, err)
 
+	downloadClient := model.DownloadClient{
+		Implementation: "transmission",
+		Type:           "torrent",
+		Port:           8080,
+		Host:           "transmission",
+		Scheme:         "http",
+	}
+
+	downloadClientID, err := store.CreateDownloadClient(ctx, downloadClient)
+	assert.Nil(t, err)
+
+	downloadClient.ID = int32(downloadClientID)
+
 	movieFS := fstest.MapFS{}
 	tvFS := fstest.MapFS{}
 	lib := library.New(movieFS, tvFS)
 	pClient, err := prowlarr.New(":", "1234")
 	pClient.ClientInterface = prowlarrMock
 	require.Nil(t, err)
-	m := New(tmdbMock, pClient, lib, store)
+
+	mockFactory := downloadMock.NewMockFactory(ctrl)
+	mockDownloadClient := downloadMock.NewMockDownloadClient(ctrl)
+	mockDownloadClient.EXPECT().Add(ctx, download.AddRequest{Release: wantRelease}).Times(1).Return(download.Status{
+		ID:   "123",
+		Name: "test download",
+	}, nil)
+
+	mockFactory.EXPECT().NewDownloadClient(downloadClient).Times(1).Return(mockDownloadClient, nil)
+
+	m := New(tmdbMock, pClient, lib, store, mockFactory)
 	require.NotNil(t, m)
 
 	req := AddMovieRequest{
 		TMDBID:           1234,
 		QualityProfileID: 1,
+		DownloadClientID: 1,
 	}
-	release, err := m.AddMovieToLibrary(ctx, req)
-	assert.Nil(t, err)
 
-	assert.NotNil(t, release)
-	assert.Equal(t, int32(123), *release.ID)
+	status, err := m.AddMovieToLibrary(ctx, req)
+	assert.Nil(t, err)
+	assert.NotNil(t, status)
+
+	assert.Equal(t, status.ID, "123")
+	assert.Equal(t, status.Name, "test download")
 }
 
 func TestIndexMovieLibrary(t *testing.T) {
@@ -100,7 +129,8 @@ func TestIndexMovieLibrary(t *testing.T) {
 	pClient, err := prowlarr.New(":", "1234")
 	pClient.ClientInterface = prowlarrMock
 	assert.Nil(t, err)
-	m := New(tmdbMock, pClient, lib, store)
+	mockFactory := downloadMock.NewMockFactory(ctrl)
+	m := New(tmdbMock, pClient, lib, store, mockFactory)
 	require.NotNil(t, m)
 
 	err = m.IndexMovieLibrary(ctx)

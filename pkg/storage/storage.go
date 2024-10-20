@@ -12,6 +12,7 @@ type Storage interface {
 	IndexerStorage
 	QualityStorage
 	MovieStorage
+	DownloadClientStorage
 }
 
 type IndexerStorage interface {
@@ -45,6 +46,13 @@ type MovieStorage interface {
 	CreateMovieFile(ctx context.Context, movieFile model.MovieFile) (int64, error)
 	DeleteMovieFile(ctx context.Context, id int64) error
 	ListMovieFiles(ctx context.Context) ([]*model.MovieFile, error)
+}
+
+type DownloadClientStorage interface {
+	CreateDownloadClient(ctx context.Context, client model.DownloadClient) (int64, error)
+	GetDownloadClient(ctx context.Context, id int64) (model.DownloadClient, error)
+	ListDownloadClients(ctx context.Context) ([]*model.DownloadClient, error)
+	DeleteDownloadClient(ctx context.Context, id int64) error
 }
 
 type QualityProfile struct {
