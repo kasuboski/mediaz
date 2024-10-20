@@ -317,7 +317,7 @@ func (s SQLite) handleStatement(ctx context.Context, stmt sqlite.Statement) (sql
 	return result, tx.Commit()
 }
 
-// GetQualityProfileItem gets a quality item that belongs to a profile
+// GetDownloadClient gets a stored download client given an id
 func (s SQLite) GetDownloadClient(ctx context.Context, id int64) (model.DownloadClient, error) {
 	stmt := table.DownloadClient.SELECT(table.DownloadClient.AllColumns).FROM(table.DownloadClient).WHERE(table.DownloadClient.ID.EQ(sqlite.Int64(id)))
 	var result model.DownloadClient
@@ -325,7 +325,7 @@ func (s SQLite) GetDownloadClient(ctx context.Context, id int64) (model.Download
 	return result, err
 }
 
-// ListQualityProfileItem lists all quality definitions
+// ListDownloadClients lists all stored download clients
 func (s SQLite) ListDownloadClients(ctx context.Context) ([]*model.DownloadClient, error) {
 	items := make([]*model.DownloadClient, 0)
 	stmt := table.Indexer.SELECT(table.DownloadClient.AllColumns).FROM(table.DownloadClient).ORDER_BY(table.DownloadClient.ID.ASC())
@@ -333,13 +333,14 @@ func (s SQLite) ListDownloadClients(ctx context.Context) ([]*model.DownloadClien
 	return items, err
 }
 
-// DeleteQualityDefinition deletes a quality
+// DeleteDownloadClient deletes a download client given an id
 func (s SQLite) DeleteDownloadClient(ctx context.Context, id int64) error {
-	stmt := table.DownloadClient.DELETE().WHERE(table.DownloadClient.ID.EQ(sqlite.Int64(id))).RETURNING(table.DownloadClient.AllColumns)
+	stmt := table.DownloadClient.DELETE().WHERE(table.DownloadClient.ID.EQ(sqlite.Int64(id)))
 	_, err := s.handleDelete(ctx, stmt)
 	return err
 }
 
+// CreateDownloadClient stores a new download client
 func (s SQLite) CreateDownloadClient(ctx context.Context, profile model.DownloadClient) (int64, error) {
 	stmt := table.DownloadClient.INSERT(table.DownloadClient.AllColumns.Except(table.DownloadClient.ID)).MODEL(profile).RETURNING(table.DownloadClient.ID)
 	result, err := s.handleInsert(ctx, stmt)
