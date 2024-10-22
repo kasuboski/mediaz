@@ -83,6 +83,11 @@ func (s Server) Serve(port int) error {
 	v1.HandleFunc("/indexers", s.CreateIndexer()).Methods(http.MethodPost)
 	v1.HandleFunc("/indexers", s.DeleteIndexer()).Methods(http.MethodDelete)
 
+	v1.HandleFunc("/download/clients", s.ListDownloadClients()).Methods(http.MethodGet)
+	v1.HandleFunc("/download/clients/{id}", s.GetDownloadClient()).Methods(http.MethodGet)
+	v1.HandleFunc("/download/clients", s.CreateDownloadClient()).Methods(http.MethodPost)
+	v1.HandleFunc("/download/clients/{id}", s.DeleteDownloadClient()).Methods(http.MethodDelete)
+
 	v1.HandleFunc("/quality/definitions", s.ListQualityDefinitions()).Methods(http.MethodGet)
 	v1.HandleFunc("/quality/definitions/{id}", s.GetQualityDefinition()).Methods(http.MethodGet)
 	v1.HandleFunc("/quality/definitions", s.CreateQualityDefinition()).Methods(http.MethodPost)
@@ -444,7 +449,6 @@ func (s Server) AddMovieToLibrary() http.HandlerFunc {
 // GetQualityProfile gets a quality profile given an id
 func (s Server) GetQualityProfile() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("content-type", "application/json")
 		log := logger.FromCtx(r.Context())
 		vars := mux.Vars(r)
 		idVar := vars["id"]
@@ -473,7 +477,6 @@ func (s Server) GetQualityProfile() http.HandlerFunc {
 // ListQualityProfiles lists all quality profiles
 func (s Server) ListQualityProfiles() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("content-type", "application/json")
 		log := logger.FromCtx(r.Context())
 		profile, err := s.manager.ListQualityProfiles(r.Context())
 		if err != nil {
@@ -487,5 +490,111 @@ func (s Server) ListQualityProfiles() http.HandlerFunc {
 		}
 
 		writeResponse(w, http.StatusOK, resp)
+	}
+}
+
+// CreateDownloadClient stores a download client
+func (s Server) CreateDownloadClient() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log := logger.FromCtx(r.Context())
+
+		b, err := io.ReadAll(r.Body)
+		if err != nil {
+			log.Debug("invalid request body", zap.Error(err))
+			http.Error(w, "invalid request body", http.StatusBadRequest)
+			return
+		}
+
+		var request manager.AddDownloadClientRequest
+		err = json.Unmarshal(b, &request)
+		if err != nil {
+			log.Debug("invalid request body", zap.String("body", string(b)))
+			http.Error(w, "invalid request body", http.StatusBadRequest)
+			return
+		}
+
+		result, err := s.manager.CreateDownloadClient(r.Context(), request)
+		if err != nil {
+			writeErrorResponse(w, http.StatusOK, err)
+			return
+		}
+
+		err = writeResponse(w, http.StatusOK, GenericResponse{Response: result})
+		if err != nil {
+			log.Error("failed to write response", zap.Error(err))
+			return
+		}
+	}
+}
+
+// GetDownloadClient gets a download client
+func (s Server) GetDownloadClient() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log := logger.FromCtx(r.Context())
+		vars := mux.Vars(r)
+		idVar := vars["id"]
+
+		id, err := strconv.ParseInt(idVar, 10, 64)
+		if err != nil {
+			log.Debug("invalid id provided", zap.Error(err), zap.Any("id", id))
+			http.Error(w, "Invalid ID format", http.StatusBadRequest)
+			return
+		}
+
+		downloadClient, err := s.manager.GetDownloadClient(r.Context(), id)
+		if err != nil {
+			log.Debug("failed to get download client", zap.Error(err))
+			writeErrorResponse(w, http.StatusInternalServerError, err)
+			return
+		}
+
+		writeResponse(w, http.StatusCreated, GenericResponse{
+			Response: downloadClient,
+		})
+	}
+}
+
+// DeleDownloadClient deletes a download client from storage
+func (s Server) DeleteDownloadClient() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log := logger.FromCtx(r.Context())
+		vars := mux.Vars(r)
+		idVar := vars["id"]
+
+		id, err := strconv.ParseInt(idVar, 10, 64)
+		if err != nil {
+			log.Debug("invalid id provided", zap.Error(err), zap.Any("id", id))
+			http.Error(w, "Invalid ID format", http.StatusBadRequest)
+			return
+		}
+
+		err = s.manager.DeleteDownloadClient(r.Context(), id)
+		if err != nil {
+			log.Debug("failed to get download client", zap.Error(err))
+			writeErrorResponse(w, http.StatusInternalServerError, err)
+			return
+		}
+
+		writeResponse(w, http.StatusOK, GenericResponse{
+			Response: id,
+		})
+	}
+}
+
+// ListDownloadClients lists all download client
+func (s Server) ListDownloadClients() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log := logger.FromCtx(r.Context())
+
+		downloadClient, err := s.manager.ListDownloadClients(r.Context())
+		if err != nil {
+			log.Debug("failed to get download client", zap.Error(err))
+			writeErrorResponse(w, http.StatusInternalServerError, err)
+			return
+		}
+
+		writeResponse(w, http.StatusCreated, GenericResponse{
+			Response: downloadClient,
+		})
 	}
 }

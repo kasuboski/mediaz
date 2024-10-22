@@ -276,3 +276,91 @@ func TestGetQualityStorage(t *testing.T) {
 	err = store.DeleteQualityProfile(ctx, 1)
 	assert.Nil(t, err)
 }
+
+func TestDownloadClientStorage(t *testing.T) {
+	ctx := context.Background()
+	store := initSqlite(t, ctx)
+
+	clientOne := model.DownloadClient{
+		Type:           "torrent",
+		Implementation: "transmission",
+		Host:           "transmission",
+		Scheme:         "http",
+		Port:           9091,
+	}
+
+	id, err := store.CreateDownloadClient(ctx, clientOne)
+	assert.Nil(t, err)
+	assert.Equal(t, int64(1), id)
+
+	storedClient, err := store.GetDownloadClient(ctx, id)
+	assert.Nil(t, err)
+	assert.Equal(t, clientOne.Type, storedClient.Type)
+	assert.Equal(t, clientOne.Implementation, storedClient.Implementation)
+	assert.Equal(t, clientOne.Host, storedClient.Host)
+	assert.Equal(t, clientOne.Scheme, storedClient.Scheme)
+	assert.Equal(t, clientOne.Port, storedClient.Port)
+
+	clientTwo := model.DownloadClient{
+		Type:           "usenet",
+		Implementation: "something",
+		Host:           "host",
+		Scheme:         "http",
+		Port:           8080,
+	}
+
+	id, err = store.CreateDownloadClient(ctx, clientTwo)
+	assert.Nil(t, err)
+	assert.Equal(t, int64(2), id)
+
+	storedClient, err = store.GetDownloadClient(ctx, id)
+	assert.Nil(t, err)
+	assert.Equal(t, clientTwo.Type, storedClient.Type)
+	assert.Equal(t, clientTwo.Implementation, storedClient.Implementation)
+	assert.Equal(t, clientTwo.Host, storedClient.Host)
+	assert.Equal(t, clientTwo.Scheme, storedClient.Scheme)
+	assert.Equal(t, clientTwo.Port, storedClient.Port)
+
+	clients, err := store.ListDownloadClients(ctx)
+	assert.Nil(t, err)
+	expectedClients := []*model.DownloadClient{
+		{
+			ID:             1,
+			Type:           "torrent",
+			Implementation: "transmission",
+			Host:           "transmission",
+			Scheme:         "http",
+			Port:           9091,
+		},
+		{
+			ID:             2,
+			Type:           "usenet",
+			Implementation: "something",
+			Host:           "host",
+			Scheme:         "http",
+			Port:           8080,
+		},
+	}
+
+	assert.ElementsMatch(t, expectedClients, clients)
+
+	err = store.DeleteDownloadClient(ctx, 1)
+	assert.Nil(t, err)
+
+	clients, err = store.ListDownloadClients(ctx)
+	assert.Nil(t, err)
+	expectedClients = []*model.DownloadClient{
+		{
+			ID:             2,
+			Type:           "usenet",
+			Implementation: "something",
+			Host:           "host",
+			Scheme:         "http",
+			Port:           8080,
+		},
+	}
+	assert.ElementsMatch(t, expectedClients, clients)
+
+	err = store.DeleteDownloadClient(ctx, 2)
+	assert.Nil(t, err)
+}

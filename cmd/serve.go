@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/kasuboski/mediaz/config"
+	"github.com/kasuboski/mediaz/pkg/download"
 	"github.com/kasuboski/mediaz/pkg/library"
 	"github.com/kasuboski/mediaz/pkg/logger"
 	"github.com/kasuboski/mediaz/pkg/manager"
@@ -81,7 +82,8 @@ var serveCmd = &cobra.Command{
 		tvFS := os.DirFS(cfg.Library.TVDir)
 		library := library.New(movieFS, tvFS)
 
-		manager := manager.New(tmdbClient, prowlarrClient, library, store)
+		factory := download.NewDownloadClientFactory()
+		manager := manager.New(tmdbClient, prowlarrClient, library, store, factory)
 		server := server.New(log, manager)
 		log.Error(server.Serve(cfg.Server.Port))
 	},
