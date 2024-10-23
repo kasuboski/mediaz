@@ -58,7 +58,7 @@ func TestSabnzbdClient_Add(t *testing.T) {
 		ctx := context.Background()
 
 		addRequest := AddRequest{
-			Release: &prowlarr.ReleaseResource{GUID: nullable.NewNullableWithValue[string]("http://example.com/group")},
+			Release: &prowlarr.ReleaseResource{DownloadURL: nullable.NewNullableWithValue[string]("http://example.com/group")},
 		}
 
 		getResponse := QueueResponse{
@@ -115,7 +115,7 @@ func TestSabnzbdClient_Add(t *testing.T) {
 		ctx := context.Background()
 
 		addRequest := AddRequest{
-			Release: &prowlarr.ReleaseResource{GUID: nullable.NewNullNullable[string]()},
+			Release: &prowlarr.ReleaseResource{DownloadURL: nullable.NewNullNullable[string]()},
 		}
 
 		status, err := client.Add(ctx, addRequest)
@@ -130,7 +130,7 @@ func TestSabnzbdClient_Add(t *testing.T) {
 		ctx := context.Background()
 
 		addRequest := AddRequest{
-			Release: &prowlarr.ReleaseResource{GUID: nullable.NewNullableWithValue[string]("http://example.com/torrent")},
+			Release: &prowlarr.ReleaseResource{DownloadURL: nullable.NewNullableWithValue[string]("http://example.com/torrent")},
 		}
 
 		mockHttp.EXPECT().Do(gomock.Any()).Return(nil, fmt.Errorf("http error"))
@@ -147,7 +147,7 @@ func TestSabnzbdClient_Add(t *testing.T) {
 		ctx := context.Background()
 
 		addRequest := AddRequest{
-			Release: &prowlarr.ReleaseResource{GUID: nullable.NewNullableWithValue[string]("http://example.com/torrent")},
+			Release: &prowlarr.ReleaseResource{DownloadURL: nullable.NewNullableWithValue[string]("http://example.com/torrent")},
 		}
 
 		addResponse := AddNewsResponse{}
@@ -172,7 +172,7 @@ func TestSabnzbdClient_Add(t *testing.T) {
 		ctx := context.Background()
 
 		addRequest := AddRequest{
-			Release: &prowlarr.ReleaseResource{GUID: nullable.NewNullableWithValue[string]("http://example.com/group")},
+			Release: &prowlarr.ReleaseResource{DownloadURL: nullable.NewNullableWithValue[string]("http://example.com/group")},
 		}
 
 		// Mock the successful Add response
@@ -446,7 +446,7 @@ const testQueueResponse = `{
                 "sizeleft": "1.2 GB",
                 "filename": "TV.Show.S04E11.720p.HDTV.x264",
                 "labels": [],
-                "priority": "Normal",
+                "priority": 1,
                 "cat": "tv",
                 "timeleft": "0:16:44",
                 "percentage": "2.5",
@@ -470,7 +470,7 @@ const testQueueResponse = `{
                     "TOO LARGE",
                     "DUPLICATE"
                 ],
-                "priority": "Normal",
+                "priority": 1,
                 "cat": "tv",
                 "timeleft": "0:00:00",
                 "percentage": "50",
