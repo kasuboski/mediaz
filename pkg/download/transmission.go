@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"sync"
 
 	"github.com/kasuboski/mediaz/pkg/logger"
@@ -16,12 +17,11 @@ import (
 )
 
 type TransmissionClient struct {
-	http              HTTPClient
-	scheme            string
-	host              string
-	downloadDirectory string
-	mutex             *sync.Mutex
-	session           string
+	http    HTTPClient
+	scheme  string
+	host    string
+	mutex   *sync.Mutex
+	session string
 }
 
 type TransmissionRequest struct {
@@ -244,7 +244,7 @@ func (c *TransmissionClient) Get(ctx context.Context, request GetRequest) (Statu
 	var status Status
 	arguments := make(map[string]any)
 	arguments["fields"] = torrentFields
-	arguments["ids"] = []int{request.ID}
+	arguments["ids"] = []string{request.ID}
 
 	transmissionRequest := &TransmissionRequest{
 		Method:    GetTorrentMethod,
@@ -279,7 +279,7 @@ func (c *TransmissionClient) Get(ctx context.Context, request GetRequest) (Statu
 
 	torrents := response.ToTorrents()
 	if len(torrents) == 0 {
-		return status, fmt.Errorf("no torrent found for %d", request.ID)
+		return status, fmt.Errorf("no torrent found for %s", request.ID)
 	}
 
 	return torrents[0], nil
@@ -390,7 +390,7 @@ func (c *TransmissionClient) Add(ctx context.Context, request AddRequest) (Statu
 
 	}
 
-	return c.Get(ctx, GetRequest{ID: response.Arguments.TorrentAdded.ID})
+	return c.Get(ctx, GetRequest{ID: strconv.Itoa(response.Arguments.TorrentAdded.ID)})
 }
 
 const (

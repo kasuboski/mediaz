@@ -46,7 +46,7 @@ type AddRequest struct {
 }
 
 type GetRequest struct {
-	ID int
+	ID string
 }
 
 type Status struct {
