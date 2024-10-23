@@ -8,5 +8,6 @@ coverage:
         base: auto
 ignore:
   - "**/gen"
+  - "**/*.gen.*"
   - "**/mocks"
   - "cmd/*"
