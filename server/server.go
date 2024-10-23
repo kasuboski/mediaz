@@ -519,7 +519,7 @@ func (s Server) CreateDownloadClient() http.HandlerFunc {
 			return
 		}
 
-		err = writeResponse(w, http.StatusOK, GenericResponse{Response: result})
+		err = writeResponse(w, http.StatusCreated, GenericResponse{Response: result})
 		if err != nil {
 			log.Error("failed to write response", zap.Error(err))
 			return
@@ -548,7 +548,7 @@ func (s Server) GetDownloadClient() http.HandlerFunc {
 			return
 		}
 
-		writeResponse(w, http.StatusCreated, GenericResponse{
+		writeResponse(w, http.StatusOK, GenericResponse{
 			Response: downloadClient,
 		})
 	}
@@ -593,7 +593,7 @@ func (s Server) ListDownloadClients() http.HandlerFunc {
 			return
 		}
 
-		writeResponse(w, http.StatusCreated, GenericResponse{
+		writeResponse(w, http.StatusOK, GenericResponse{
 			Response: downloadClient,
 		})
 	}

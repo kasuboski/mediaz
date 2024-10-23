@@ -191,7 +191,6 @@ func (m MediaManager) IndexMovieLibrary(ctx context.Context) error {
 type AddMovieRequest struct {
 	TMDBID           int   `json:"tmdbID"`
 	QualityProfileID int32 `json:"qualityProfileID"`
-	DownloadClientID int32 `json:"downloadClientID"`
 }
 
 // AddMovieToLibrary adds a movie to be managed by mediaz
@@ -205,6 +204,13 @@ func (m MediaManager) AddMovieToLibrary(ctx context.Context, request AddMovieReq
 	if err != nil {
 		return nil, err
 	}
+
+	dcs, err := m.ListDownloadClients(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	protocolsAvailable := availableProtocols(dcs)
 
 	det, err := m.GetMovieDetails(ctx, request.TMDBID)
 	if err != nil {
@@ -231,7 +237,7 @@ func (m MediaManager) AddMovieToLibrary(ctx context.Context, request AddMovieReq
 	}
 
 	log.Debugw("releases for consideration", "releases", len(releases))
-	releases = slices.DeleteFunc(releases, rejectReleaseFunc(ctx, det, profile))
+	releases = slices.DeleteFunc(releases, rejectReleaseFunc(ctx, det, profile, protocolsAvailable))
 	log.Debugw("releases after rejection", "releases", len(releases))
 	if len(releases) == 0 {
 		// TODO: This probably isn't really an error... just need to search again later
@@ -241,18 +247,20 @@ func (m MediaManager) AddMovieToLibrary(ctx context.Context, request AddMovieReq
 	slices.SortFunc(releases, sortReleaseFunc())
 	chosenRelease := releases[len(releases)-1]
 
-	log.Info("found release", "title", chosenRelease.Title)
-
-	downloadClient, err := m.GetDownloadClient(ctx, int64(request.DownloadClientID)) // yolo cast?
-	if err != nil {
-		log.Debugw("failed to get download client", "id", request.DownloadClientID, zap.Error(err))
-		return nil, err
-	}
+	log.Infow("found release", "title", chosenRelease.Title, "proto", *chosenRelease.Protocol)
 
 	downloadRequest := download.AddRequest{
 		Release: chosenRelease,
 	}
 
+	c := clientForProtocol(dcs, *chosenRelease.Protocol)
+	if c == nil {
+		return nil, errors.New("couldn't get client for release protocol")
+	}
+	downloadClient, err := m.factory.NewDownloadClient(*c)
+	if err != nil {
+		return nil, err
+	}
 	status, err := downloadClient.Add(ctx, downloadRequest)
 	if err != nil {
 		log.Debug("failed to add movie download request", zap.Error(err))
@@ -263,10 +271,16 @@ func (m MediaManager) AddMovieToLibrary(ctx context.Context, request AddMovieReq
 }
 
 // rejectReleaseFunc returns a function that returns true if the given release should be rejected
-func rejectReleaseFunc(ctx context.Context, det *MediaDetails, profile storage.QualityProfile) func(*prowlarr.ReleaseResource) bool {
+func rejectReleaseFunc(ctx context.Context, det *MediaDetails, profile storage.QualityProfile, protocolsAvailable map[string]struct{}) func(*prowlarr.ReleaseResource) bool {
 	log := logger.FromCtx(ctx)
 
 	return func(r *prowlarr.ReleaseResource) bool {
+		if r.Protocol != nil {
+			// reject if we don't have a download client for it
+			if _, has := protocolsAvailable[string(*r.Protocol)]; !has {
+				return true
+			}
+		}
 		// bytes to megabytes
 		sizeMB := *r.Size >> 20
 
@@ -440,6 +454,25 @@ func (m MediaManager) ListDownloadClients(ctx context.Context) ([]*model.Downloa
 
 func (m MediaManager) DeleteDownloadClient(ctx context.Context, id int64) error {
 	return m.storage.DeleteDownloadClient(ctx, id)
+}
+
+func availableProtocols(clients []*model.DownloadClient) map[string]struct{} {
+	ret := make(map[string]struct{})
+	for _, c := range clients {
+		ret[c.Type] = struct{}{}
+	}
+
+	return ret
+}
+
+func clientForProtocol(clients []*model.DownloadClient, proto prowlarr.DownloadProtocol) *model.DownloadClient {
+	for _, c := range clients {
+		if c.Type == string(proto) {
+			return c
+		}
+	}
+
+	return nil
 }
 
 func nullableDefault[T any](n nullable.Nullable[T]) T {

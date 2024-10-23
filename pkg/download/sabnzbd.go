@@ -39,7 +39,8 @@ type AddNewsResponse struct {
 func (c *SabnzbdClient) Add(ctx context.Context, request AddRequest) (Status, error) {
 	var status Status
 	log := logger.FromCtx(ctx)
-	uri, err := request.Release.GUID.Get()
+
+	uri, err := request.Release.DownloadURL.Get()
 	if err != nil {
 		log.Warn("failed to get uri from release", zap.Error(err))
 		return status, err
@@ -51,8 +52,10 @@ func (c *SabnzbdClient) Add(ctx context.Context, request AddRequest) (Status, er
 		Path:   "/sabnzbd/api",
 	}
 
-	url.Query().Add("mode", "addurl")
-	url.Query().Add("name", uri)
+	q := url.Query()
+	q.Add("mode", "addurl")
+	q.Add("name", uri)
+	url.RawQuery = q.Encode()
 
 	b, err := c.do(ctx, &url)
 	if err != nil {
@@ -126,7 +129,7 @@ type Slot struct {
 	Sizeleft     string   `json:"sizeleft"`
 	Filename     string   `json:"filename"`
 	Labels       []string `json:"labels"`
-	Priority     string   `json:"priority"`
+	Priority     int      `json:"priority"`
 	Cat          string   `json:"cat"`
 	Timeleft     string   `json:"timeleft"`
 	Percentage   string   `json:"percentage"`
@@ -208,6 +211,7 @@ func queueToStatus(queue Queue) ([]Status, error) {
 }
 
 func (c *SabnzbdClient) do(ctx context.Context, url *url.URL) ([]byte, error) {
+	log := logger.FromCtx(ctx)
 	if c.http == nil {
 		return nil, errors.New("http client is nil")
 	}
@@ -217,11 +221,14 @@ func (c *SabnzbdClient) do(ctx context.Context, url *url.URL) ([]byte, error) {
 	}
 
 	q := url.Query()
-	q.Add("apiKey", c.apiKey)
+	q.Add("apikey", c.apiKey)
 	q.Add("output", "json")
 	url.RawQuery = q.Encode()
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url.String(), nil)
+	u := url.String()
+	log.Debugw("sabnzbd do", "url", u)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
 	if err != nil {
 		return nil, err
 	}
