@@ -95,11 +95,12 @@ CREATE TABLE IF NOT EXISTS "movie" (
 
 CREATE TABLE IF NOT EXISTS "download_client" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-    "type" TEXT NOT NULL,
+    "type" TEXT NOT NULL, -- usenet or torrent
     "implementation" TEXT NOT NULL,
     "scheme" TEXT NOT NULL,
     "host" TEXT NOT NULL,
-    "port" INTEGER NOT NULL
+    "port" INTEGER NOT NULL,
+    "api_key" TEXT
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS "ix_indexer_name" ON "indexer" ("name" ASC);

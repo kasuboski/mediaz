@@ -20,6 +20,30 @@ func TestDownloadClientFactory_NewDownloadClient(t *testing.T) {
 		assert.Nil(t, err)
 	})
 
+	t.Run("sabnzbd client", func(t *testing.T) {
+		factory := NewDownloadClientFactory()
+
+		apiKey := "hello"
+		client, err := factory.NewDownloadClient(model.DownloadClient{
+			Implementation: "sabnzbd",
+			APIKey:         &apiKey,
+		})
+		_, ok := client.(*SabnzbdClient)
+		assert.True(t, ok, "client should be of type *SabnzbdClient")
+
+		assert.Nil(t, err)
+	})
+
+	t.Run("sabnzbd client missing api key", func(t *testing.T) {
+		factory := NewDownloadClientFactory()
+
+		_, err := factory.NewDownloadClient(model.DownloadClient{
+			Implementation: "sabnzbd",
+		})
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "missing api key")
+	})
+
 	t.Run("unsupported client", func(t *testing.T) {
 		factory := NewDownloadClientFactory()
 

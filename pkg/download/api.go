@@ -2,6 +2,7 @@ package download
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -36,6 +37,11 @@ func (DownloadClientFactory) NewDownloadClient(config model.DownloadClient) (Dow
 	case "transmission":
 		// TODO: Replace default http client with stored configurations
 		return NewTransmissionClient(http.DefaultClient, config.Scheme, config.Host, int(config.Port)), nil
+	case "sabnzbd":
+		if config.APIKey == nil {
+			return nil, errors.New("missing api key")
+		}
+		return NewSabnzbdClient(http.DefaultClient, config.Scheme, config.Host, *config.APIKey), nil
 	default:
 		return nil, fmt.Errorf("unsupported client implementation: %v", config.Implementation)
 	}
@@ -46,7 +52,7 @@ type AddRequest struct {
 }
 
 type GetRequest struct {
-	ID int
+	ID string
 }
 
 type Status struct {

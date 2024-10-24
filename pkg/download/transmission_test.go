@@ -214,7 +214,7 @@ func TestTransmissionClient_Get(t *testing.T) {
 		ctx := context.Background()
 
 		getRequest := GetRequest{
-			ID: 1,
+			ID: "1",
 		}
 
 		getResponse := TransmissionListTorrentsResponse{
@@ -253,7 +253,7 @@ func TestTransmissionClient_Get(t *testing.T) {
 		ctx := context.Background()
 
 		getRequest := GetRequest{
-			ID: 1,
+			ID: "1",
 		}
 
 		mockHttp.EXPECT().Do(gomock.Any()).Return(nil, fmt.Errorf("http error"))
@@ -270,7 +270,7 @@ func TestTransmissionClient_Get(t *testing.T) {
 		ctx := context.Background()
 
 		getRequest := GetRequest{
-			ID: 1,
+			ID: "1",
 		}
 
 		getResponse := TransmissionListTorrentsResponse{
