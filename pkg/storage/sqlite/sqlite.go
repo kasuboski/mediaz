@@ -126,6 +126,9 @@ func (s SQLite) GetMovieByMetadataID(ctx context.Context, metadataID int) (*mode
 	stmt := table.Movie.SELECT(table.Movie.AllColumns).FROM(table.Movie).WHERE(table.Movie.MovieMetadataID.EQ(sqlite.Int(int64(metadataID)))).ORDER_BY(table.Movie.Added.ASC())
 	err := stmt.QueryContext(ctx, s.db, movie)
 	if err != nil {
+		if errors.Is(err, qrm.ErrNoRows) {
+			return nil, storage.ErrNotFound
+		}
 		return nil, fmt.Errorf("failed to lookup movie: %w", err)
 	}
 

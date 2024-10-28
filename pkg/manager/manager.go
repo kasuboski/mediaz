@@ -210,6 +210,26 @@ func (m MediaManager) AddMovieToLibrary(ctx context.Context, request AddMovieReq
 		return nil, err
 	}
 
+	movie := &model.Movie{}
+	movie, err = m.storage.GetMovieByMetadataID(ctx, int(det.ID))
+	if err != nil {
+		if !errors.Is(err, storage.ErrNotFound) {
+			return nil, err
+		}
+		movie = &model.Movie{
+			MovieMetadataID:  det.ID,
+			QualityProfileID: profile.ID,
+			Monitored:        1,
+		}
+		id, err := m.storage.CreateMovie(ctx, *movie)
+		if err != nil {
+			return nil, err
+		}
+		movie.ID = int32(id)
+	}
+	_ = movie
+	// everything after this is about actually downloading the movie
+
 	dcs, err := m.ListDownloadClients(ctx)
 	if err != nil {
 		return nil, err
