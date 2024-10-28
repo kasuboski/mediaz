@@ -22,7 +22,7 @@ import (
 	"go.uber.org/zap"
 )
 
-type TMDBClientInterface tmdb.ClientInterface
+type TMDBClientInterface tmdb.ITmdb
 
 type MediaManager struct {
 	tmdb    TMDBClientInterface
@@ -205,17 +205,17 @@ func (m MediaManager) AddMovieToLibrary(ctx context.Context, request AddMovieReq
 		return nil, err
 	}
 
+	det, err := m.GetMovieMetadata(ctx, request.TMDBID)
+	if err != nil {
+		return nil, err
+	}
+
 	dcs, err := m.ListDownloadClients(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	protocolsAvailable := availableProtocols(dcs)
-
-	det, err := m.GetMovieDetails(ctx, request.TMDBID)
-	if err != nil {
-		return nil, err
-	}
 
 	categories := []int32{MOVIE_CATEGORY}
 	indexers, err := m.ListIndexers(ctx)
@@ -230,7 +230,7 @@ func (m MediaManager) AddMovieToLibrary(ctx context.Context, request AddMovieReq
 	for i, indexer := range indexers {
 		indexerIds[i] = indexer.ID
 	}
-	releases, err := m.SearchIndexers(ctx, indexerIds, categories, *det.Title)
+	releases, err := m.SearchIndexers(ctx, indexerIds, categories, det.Title)
 	if err != nil {
 		log.Debugw("failed to search indexer", "indexers", indexerIds, zap.Error(err))
 		return nil, err
@@ -271,7 +271,7 @@ func (m MediaManager) AddMovieToLibrary(ctx context.Context, request AddMovieReq
 }
 
 // rejectReleaseFunc returns a function that returns true if the given release should be rejected
-func rejectReleaseFunc(ctx context.Context, det *MediaDetails, profile storage.QualityProfile, protocolsAvailable map[string]struct{}) func(*prowlarr.ReleaseResource) bool {
+func rejectReleaseFunc(ctx context.Context, det *model.MovieMetadata, profile storage.QualityProfile, protocolsAvailable map[string]struct{}) func(*prowlarr.ReleaseResource) bool {
 	log := logger.FromCtx(ctx)
 
 	return func(r *prowlarr.ReleaseResource) bool {
@@ -286,7 +286,7 @@ func rejectReleaseFunc(ctx context.Context, det *MediaDetails, profile storage.Q
 
 		// items are assumed to be sorted quality so the highest media quality available is selected
 		for _, quality := range profile.Qualities {
-			metQuality := MeetsQualitySize(quality, uint64(sizeMB), uint64(*det.Runtime))
+			metQuality := MeetsQualitySize(quality, uint64(sizeMB), uint64(det.Runtime))
 
 			if metQuality {
 				log.Debugw("accepting release", "release", r.Title, "metQuality", metQuality, "size", r.Size, "runtime", det.Runtime)

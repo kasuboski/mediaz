@@ -2,11 +2,14 @@ package storage
 
 import (
 	"context"
+	"errors"
 	"os"
 
 	"github.com/go-jet/jet/v2/sqlite"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
 )
+
+var ErrNotFound = errors.New("not found in storage")
 
 type Storage interface {
 	Init(ctx context.Context, schemas ...string) error

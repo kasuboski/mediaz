@@ -18,6 +18,7 @@ import (
 	"github.com/kasuboski/mediaz/pkg/storage"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
+	"github.com/kasuboski/mediaz/pkg/tmdb"
 	"github.com/kasuboski/mediaz/pkg/tmdb/mocks"
 	"github.com/oapi-codegen/nullable"
 	"github.com/stretchr/testify/assert"
@@ -82,7 +83,11 @@ func TestAddMovietoLibrary(t *testing.T) {
 	lib := library.New(movieFS, tvFS)
 	pClient, err := prowlarr.New(":", "1234")
 	pClient.ClientInterface = prowlarrMock
-	require.Nil(t, err)
+	require.NoError(t, err)
+
+	tClient, err := tmdb.New(":", "1234")
+	tClient.ClientInterface = tmdbMock
+	require.NoError(t, err)
 
 	mockFactory := downloadMock.NewMockFactory(ctrl)
 	mockDownloadClient := downloadMock.NewMockDownloadClient(ctrl)
@@ -93,7 +98,7 @@ func TestAddMovietoLibrary(t *testing.T) {
 
 	mockFactory.EXPECT().NewDownloadClient(downloadClient).Times(1).Return(mockDownloadClient, nil)
 
-	m := New(tmdbMock, pClient, lib, store, mockFactory)
+	m := New(tClient, pClient, lib, store, mockFactory)
 	require.NotNil(t, m)
 
 	req := AddMovieRequest{
@@ -131,9 +136,14 @@ func TestIndexMovieLibrary(t *testing.T) {
 	lib := library.New(movieFS, tvFS)
 	pClient, err := prowlarr.New(":", "1234")
 	pClient.ClientInterface = prowlarrMock
-	assert.Nil(t, err)
+	require.NoError(t, err)
+
+	tClient, err := tmdb.New(":", "1234")
+	tClient.ClientInterface = tmdbMock
+	require.NoError(t, err)
+
 	mockFactory := downloadMock.NewMockFactory(ctrl)
-	m := New(tmdbMock, pClient, lib, store, mockFactory)
+	m := New(tClient, pClient, lib, store, mockFactory)
 	require.NotNil(t, m)
 
 	err = m.IndexMovieLibrary(ctx)

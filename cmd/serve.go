@@ -40,7 +40,7 @@ var serveCmd = &cobra.Command{
 			Host:   cfg.TMDB.Host,
 		}
 
-		tmdbClient, err := tmdb.NewClient(tmdbURL.String(), tmdb.WithRequestEditorFn(tmdb.SetRequestAPIKey(cfg.TMDB.APIKey)))
+		tmdbClient, err := tmdb.New(tmdbURL.String(), cfg.TMDB.APIKey)
 		if err != nil {
 			log.Fatal("failed to create tmdb client", zap.Error(err))
 		}

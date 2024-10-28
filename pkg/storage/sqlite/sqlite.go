@@ -3,8 +3,10 @@ package sqlite
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 
+	"github.com/go-jet/jet/v2/qrm"
 	"github.com/go-jet/jet/v2/sqlite"
 	"github.com/kasuboski/mediaz/pkg/logger"
 	"github.com/kasuboski/mediaz/pkg/storage"
@@ -213,6 +215,9 @@ func (s SQLite) GetMovieMetadata(ctx context.Context, where sqlite.BoolExpressio
 	stmt := table.Movie.SELECT(table.MovieMetadata.AllColumns).FROM(table.MovieMetadata).WHERE(where).LIMIT(1)
 	err := stmt.QueryContext(ctx, s.db, meta)
 	if err != nil {
+		if errors.Is(err, qrm.ErrNoRows) {
+			return nil, storage.ErrNotFound
+		}
 		return nil, fmt.Errorf("failed to list movies: %w", err)
 	}
 

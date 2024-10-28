@@ -152,6 +152,10 @@ func TestMovieMetadataStorage(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, one)
 
+	notFound, err := store.GetMovieMetadata(ctx, table.MovieMetadata.TmdbID.EQ(sqlite.Int(124)))
+	assert.ErrorIs(t, err, storage.ErrNotFound)
+	assert.Nil(t, notFound)
+
 	err = store.DeleteMovieMetadata(ctx, id)
 	assert.NoError(t, err)
 
