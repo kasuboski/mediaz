@@ -118,6 +118,18 @@ func (s SQLite) ListMovies(ctx context.Context) ([]*model.Movie, error) {
 	return movies, nil
 }
 
+// GetMovieByTmdb checks if there's a movie already associated with the given tmdb id
+func (s SQLite) GetMovieByMetadataID(ctx context.Context, metadataID int) (*model.Movie, error) {
+	movie := &model.Movie{}
+	stmt := table.Movie.SELECT(table.Movie.AllColumns).FROM(table.Movie).WHERE(table.Movie.MovieMetadataID.EQ(sqlite.Int(int64(metadataID)))).ORDER_BY(table.Movie.Added.ASC())
+	err := stmt.QueryContext(ctx, s.db, movie)
+	if err != nil {
+		return nil, fmt.Errorf("failed to lookup movie: %w", err)
+	}
+
+	return movie, nil
+}
+
 // CreateMovieFile stores a movie file
 func (s SQLite) CreateMovieFile(ctx context.Context, file model.MovieFile) (int64, error) {
 	// Exclude DateAdded so that the default is used
@@ -155,6 +167,56 @@ func (s SQLite) ListMovieFiles(ctx context.Context) ([]*model.MovieFile, error) 
 	}
 
 	return movieFiles, nil
+}
+
+// CreateMovieMetadata creates the given movieMeta
+func (s SQLite) CreateMovieMetadata(ctx context.Context, movieMeta model.MovieMetadata) (int64, error) {
+	stmt := table.MovieMetadata.INSERT(table.MovieMetadata.MutableColumns).MODEL(movieMeta).ON_CONFLICT(table.MovieMetadata.ID).DO_NOTHING()
+	result, err := s.handleInsert(ctx, stmt)
+	if err != nil {
+		return 0, err
+	}
+
+	inserted, err := result.LastInsertId()
+	if err != nil {
+		return 0, err
+	}
+
+	return inserted, nil
+}
+
+// DeleteMovieMetadata deletes a movie metadata by id
+func (s SQLite) DeleteMovieMetadata(ctx context.Context, id int64) error {
+	stmt := table.MovieMetadata.DELETE().WHERE(table.MovieMetadata.ID.EQ(sqlite.Int64(id))).RETURNING(table.MovieMetadata.ID)
+	_, err := s.handleDelete(ctx, stmt)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// ListMovieMetadata lists all movie metadata
+func (s SQLite) ListMovieMetadata(ctx context.Context) ([]*model.MovieMetadata, error) {
+	movies := make([]*model.MovieMetadata, 0)
+	stmt := table.Movie.SELECT(table.MovieMetadata.AllColumns).FROM(table.MovieMetadata).ORDER_BY(table.MovieMetadata.LastInfoSync.ASC())
+	err := stmt.QueryContext(ctx, s.db, &movies)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list movies: %w", err)
+	}
+
+	return movies, nil
+}
+
+// GetMovieMetadata get a movie metadata for the given where
+func (s SQLite) GetMovieMetadata(ctx context.Context, where sqlite.BoolExpression) (*model.MovieMetadata, error) {
+	meta := &model.MovieMetadata{}
+	stmt := table.Movie.SELECT(table.MovieMetadata.AllColumns).FROM(table.MovieMetadata).WHERE(where).LIMIT(1)
+	err := stmt.QueryContext(ctx, s.db, meta)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list movies: %w", err)
+	}
+
+	return meta, nil
 }
 
 // CreateQualityDefinition store a new quality definition

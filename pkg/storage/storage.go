@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 
+	"github.com/go-jet/jet/v2/sqlite"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
 )
 
@@ -12,6 +13,7 @@ type Storage interface {
 	IndexerStorage
 	QualityStorage
 	MovieStorage
+	MovieMetadataStorage
 	DownloadClientStorage
 }
 
@@ -42,10 +44,18 @@ type MovieStorage interface {
 	CreateMovie(ctx context.Context, movie model.Movie) (int64, error)
 	DeleteMovie(ctx context.Context, id int64) error
 	ListMovies(ctx context.Context) ([]*model.Movie, error)
+	GetMovieByMetadataID(ctx context.Context, metadataID int) (*model.Movie, error)
 
 	CreateMovieFile(ctx context.Context, movieFile model.MovieFile) (int64, error)
 	DeleteMovieFile(ctx context.Context, id int64) error
 	ListMovieFiles(ctx context.Context) ([]*model.MovieFile, error)
+}
+
+type MovieMetadataStorage interface {
+	CreateMovieMetadata(ctx context.Context, movieMeta model.MovieMetadata) (int64, error)
+	DeleteMovieMetadata(ctx context.Context, id int64) error
+	ListMovieMetadata(ctx context.Context) ([]*model.MovieMetadata, error)
+	GetMovieMetadata(ctx context.Context, where sqlite.BoolExpression) (*model.MovieMetadata, error)
 }
 
 type DownloadClientStorage interface {
