@@ -166,7 +166,6 @@ func (m MediaManager) IndexMovieLibrary(ctx context.Context) error {
 		mov := model.Movie{
 			Path:      &f.Path,
 			Monitored: 0,
-			// MovieFileID: int32(mfID),
 		}
 		movID, err := m.storage.CreateMovie(ctx, mov)
 		if err != nil {
