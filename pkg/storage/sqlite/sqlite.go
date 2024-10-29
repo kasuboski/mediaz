@@ -83,7 +83,18 @@ func (s SQLite) ListIndexers(ctx context.Context) ([]*model.Indexer, error) {
 
 // CreateMovie stores a movie
 func (s SQLite) CreateMovie(ctx context.Context, movie model.Movie) (int64, error) {
-	stmt := table.Movie.INSERT(table.Movie.MutableColumns).RETURNING(table.Movie.ID).MODEL(movie).ON_CONFLICT(table.Movie.ID).DO_NOTHING()
+	setColumns := make([]sqlite.Expression, len(table.Movie.MutableColumns))
+	for i, c := range table.Movie.MutableColumns {
+		setColumns[i] = c
+	}
+	// don't insert a zeroed ID
+	insertColumns := table.Movie.MutableColumns
+	if movie.ID != 0 {
+		insertColumns = table.Movie.AllColumns
+	}
+	stmt := table.Movie.INSERT(insertColumns).RETURNING(table.Movie.ID).MODEL(movie).ON_CONFLICT(table.Movie.ID).DO_UPDATE(sqlite.SET(
+		table.Movie.MutableColumns.SET(sqlite.ROW(setColumns...)),
+	))
 	result, err := s.handleInsert(ctx, stmt)
 	if err != nil {
 		return 0, err

@@ -70,12 +70,13 @@ func TestMovieStorage(t *testing.T) {
 	store := initSqlite(t, ctx)
 	assert.NotNil(t, store)
 
+	path := "Title/Title.mkv"
 	movie := model.Movie{
 		ID:              1,
-		Path:            "Title/Title.mkv",
+		Path:            &path,
 		Monitored:       1,
-		MovieFileID:     1,
-		MovieMetadataID: 1,
+		MovieFileID:     intPtr(1),
+		MovieMetadataID: intPtr(1),
 	}
 	res, err := store.CreateMovie(ctx, movie)
 	assert.Nil(t, err)
@@ -407,4 +408,8 @@ func TestDownloadClientStorage(t *testing.T) {
 
 	err = store.DeleteDownloadClient(ctx, 2)
 	assert.Nil(t, err)
+}
+
+func intPtr(i int32) *int32 {
+	return &i
 }

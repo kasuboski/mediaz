@@ -33,14 +33,14 @@ CREATE TABLE IF NOT EXISTS "quality_profile_item" (
 
 CREATE TABLE IF NOT EXISTS "movie_file" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-    "movie_id" INTEGER NOT NULL,
+    "movie_id" INTEGER UNIQUE NOT NULL,
     "quality" TEXT NOT NULL,
     "size" BIGINT NOT NULL,
     "date_added" DATETIME NOT NULL DEFAULT current_timestamp,
     "scene_name" TEXT,
     "media_info" TEXT,
     "release_group" TEXT,
-    "relative_path" TEXT,
+    "relative_path" TEXT UNIQUE,
     "edition" TEXT,
     "languages" TEXT NOT NULL,
     "indexer_flags" INTEGER NOT NULL,
@@ -81,15 +81,15 @@ CREATE TABLE IF NOT EXISTS "movie_metadata" (
 
 CREATE TABLE IF NOT EXISTS "movie" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-    "path" TEXT NOT NULL,
+    "path" TEXT,
     "monitored" INTEGER NOT NULL,
     "quality_profile_id" INTEGER NOT NULL,
     "added" DATETIME,
     "tags" TEXT,
     "add_options" TEXT,
-    "movie_file_id" INTEGER NOT NULL,
+    "movie_file_id" INTEGER,
     "minimum_availability" INTEGER NOT NULL,
-    "movie_metadata_id" INTEGER NOT NULL,
+    "movie_metadata_id" INTEGER UNIQUE,
     "last_search_time" DATETIME
 );
 

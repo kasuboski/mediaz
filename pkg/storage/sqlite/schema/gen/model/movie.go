@@ -13,14 +13,14 @@ import (
 
 type Movie struct {
 	ID                  int32 `sql:"primary_key"`
-	Path                string
+	Path                *string
 	Monitored           int32
 	QualityProfileID    int32
 	Added               *time.Time
 	Tags                *string
 	AddOptions          *string
-	MovieFileID         int32
+	MovieFileID         *int32
 	MinimumAvailability int32
-	MovieMetadataID     int32
+	MovieMetadataID     *int32
 	LastSearchTime      *time.Time
 }

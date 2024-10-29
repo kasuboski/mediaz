@@ -163,24 +163,32 @@ func (m MediaManager) IndexMovieLibrary(ctx context.Context) error {
 	}
 
 	for _, f := range files {
+		mov := model.Movie{
+			Path:      &f.Path,
+			Monitored: 0,
+			// MovieFileID: int32(mfID),
+		}
+		movID, err := m.storage.CreateMovie(ctx, mov)
+		if err != nil {
+			log.Errorf("couldn't add movie to db: %w", err)
+		}
+		movieID := int32(movID)
 		mf := model.MovieFile{
 			RelativePath: &f.Path, // TODO: make sure it's actually relative
 			Size:         f.Size,
+			MovieID:      movieID,
 		}
 		mfID, err := m.storage.CreateMovieFile(ctx, mf)
 		if err != nil {
-			log.Errorf("couldn't add movie to db: %w", err)
+			log.Errorf("couldn't add movie file %s to db: %w", mf, err)
 			continue
 		}
-
-		mov := model.Movie{
-			Path:        f.Path,
-			Monitored:   0,
-			MovieFileID: int32(mfID),
-		}
+		fileID := int32(mfID)
+		mov.MovieFileID = &fileID
+		mov.ID = movieID
 		_, err = m.storage.CreateMovie(ctx, mov)
 		if err != nil {
-			log.Errorf("couldn't add movie to db: %w", err)
+			log.Errorf("couldn't update movie to db: %w", err)
 		}
 	}
 
@@ -217,7 +225,7 @@ func (m MediaManager) AddMovieToLibrary(ctx context.Context, request AddMovieReq
 			return nil, err
 		}
 		movie = &model.Movie{
-			MovieMetadataID:  det.ID,
+			MovieMetadataID:  &det.ID,
 			QualityProfileID: profile.ID,
 			Monitored:        1,
 		}
