@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"testing"
 	"testing/fstest"
+	"time"
 
 	"github.com/kasuboski/mediaz/pkg/download"
 	downloadMock "github.com/kasuboski/mediaz/pkg/download/mocks"
@@ -106,14 +107,15 @@ func TestAddMovietoLibrary(t *testing.T) {
 		QualityProfileID: 1,
 	}
 
-	status, err := m.AddMovieToLibrary(ctx, req)
+	mov, err := m.AddMovieToLibrary(ctx, req)
 	assert.Nil(t, err)
-	assert.NotNil(t, status)
+	assert.NotNil(t, mov)
 
-	assert.Equal(t, status.ID, "123")
-	assert.Equal(t, status.Name, "test download")
+	assert.Equal(t, int32(1), mov.ID)
+
+	err = m.ReconcileMovies(ctx)
+	assert.NoError(t, err)
 }
-
 func TestIndexMovieLibrary(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	tmdbMock := mocks.NewMockClientInterface(ctrl)
@@ -156,6 +158,44 @@ func TestIndexMovieLibrary(t *testing.T) {
 	ms, err := store.ListMovies(ctx)
 	assert.Nil(t, err)
 	assert.Len(t, ms, len(expectedMovies))
+}
+
+func TestRun(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	tmdbMock := mocks.NewMockClientInterface(ctrl)
+	prowlarrMock := prowlMock.NewMockClientInterface(ctrl)
+	store, err := sqlite.New(":memory:")
+	require.Nil(t, err)
+
+	schemas, err := storage.ReadSchemaFiles("../storage/sqlite/schema/schema.sql")
+	require.Nil(t, err)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
+	defer cancel()
+	err = store.Init(ctx, schemas...)
+	require.Nil(t, err)
+
+	movieFS, expectedMovies := library.MovieFSFromFile(t, "../library/test_movies.txt")
+	require.NotEmpty(t, expectedMovies)
+	tvFS, expectedEpisodes := library.TVFSFromFile(t, "../library/test_episodes.txt")
+	require.NotEmpty(t, expectedEpisodes)
+
+	lib := library.New(movieFS, tvFS)
+	pClient, err := prowlarr.New(":", "1234")
+	pClient.ClientInterface = prowlarrMock
+	require.NoError(t, err)
+
+	tClient, err := tmdb.New(":", "1234")
+	tClient.ClientInterface = tmdbMock
+	require.NoError(t, err)
+
+	mockFactory := downloadMock.NewMockFactory(ctrl)
+	m := New(tClient, pClient, lib, store, mockFactory)
+	require.NotNil(t, m)
+
+	err = m.Run(ctx)
+	assert.ErrorIs(t, err, context.DeadlineExceeded)
+
 }
 
 func searchIndexersResponse(t *testing.T, releases []*prowlarr.ReleaseResource) *http.Response {

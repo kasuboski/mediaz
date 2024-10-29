@@ -10,13 +10,16 @@ import (
 	"net/http"
 	"slices"
 	"sync"
+	"time"
 
+	"github.com/go-jet/jet/v2/sqlite"
 	"github.com/kasuboski/mediaz/pkg/download"
 	"github.com/kasuboski/mediaz/pkg/library"
 	"github.com/kasuboski/mediaz/pkg/logger"
 	"github.com/kasuboski/mediaz/pkg/prowlarr"
 	"github.com/kasuboski/mediaz/pkg/storage"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
+	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/table"
 	"github.com/kasuboski/mediaz/pkg/tmdb"
 	"github.com/oapi-codegen/nullable"
 	"go.uber.org/zap"
@@ -154,6 +157,34 @@ func (m MediaManager) ListMoviesInLibrary(ctx context.Context) ([]library.MovieF
 	return m.library.FindMovies(ctx)
 }
 
+func (m MediaManager) Run(ctx context.Context) error {
+	log := logger.FromCtx(ctx)
+
+	movieIndexTicker := time.NewTicker(time.Minute * 10)
+	defer movieIndexTicker.Stop()
+	movieReconcileTicker := time.NewTicker(time.Minute * 20)
+	defer movieReconcileTicker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-movieIndexTicker.C:
+			err := m.IndexMovieLibrary(ctx)
+			if err != nil {
+				log.Errorf("movie indexing failed: %w", err)
+				continue
+			}
+		case <-movieReconcileTicker.C:
+			err := m.ReconcileMovies(ctx)
+			if err != nil {
+				log.Errorf("movie reconciling failed: %w", err)
+				continue
+			}
+		}
+	}
+}
+
 func (m MediaManager) IndexMovieLibrary(ctx context.Context) error {
 	// TODO: this probably shouldn't be synchronous... meaning kick if it off and check back
 	log := logger.FromCtx(ctx)
@@ -202,9 +233,8 @@ type AddMovieRequest struct {
 
 // AddMovieToLibrary adds a movie to be managed by mediaz
 // TODO: check status of movie before doing anything else.. do we already have it tracked? is it downloaded or already discovered? error state?
-// TODO: query each indexer asynchronously?
 // TODO: always write status to database for given movie (queue, downloaded, missing (error?), Unreleased)
-func (m MediaManager) AddMovieToLibrary(ctx context.Context, request AddMovieRequest) (*download.Status, error) {
+func (m MediaManager) AddMovieToLibrary(ctx context.Context, request AddMovieRequest) (*model.Movie, error) {
 	log := logger.FromCtx(ctx)
 
 	profile, err := m.storage.GetQualityProfile(ctx, int64(request.QualityProfileID))
@@ -221,6 +251,7 @@ func (m MediaManager) AddMovieToLibrary(ctx context.Context, request AddMovieReq
 	movie, err = m.storage.GetMovieByMetadataID(ctx, int(det.ID))
 	if err != nil {
 		if !errors.Is(err, storage.ErrNotFound) {
+			log.Warnw("couldn't find movie by metadata", "meta_id", det.ID)
 			return nil, err
 		}
 		movie = &model.Movie{
@@ -230,16 +261,20 @@ func (m MediaManager) AddMovieToLibrary(ctx context.Context, request AddMovieReq
 		}
 		id, err := m.storage.CreateMovie(ctx, *movie)
 		if err != nil {
+			log.Warnw("failed to create movie", "err", err)
 			return nil, err
 		}
 		movie.ID = int32(id)
 	}
-	_ = movie
-	// everything after this is about actually downloading the movie
+	return movie, nil
+}
+
+func (m MediaManager) ReconcileMovies(ctx context.Context) error {
+	log := logger.FromCtx(ctx)
 
 	dcs, err := m.ListDownloadClients(ctx)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	protocolsAvailable := availableProtocols(dcs)
@@ -247,54 +282,84 @@ func (m MediaManager) AddMovieToLibrary(ctx context.Context, request AddMovieReq
 	categories := []int32{MOVIE_CATEGORY}
 	indexers, err := m.ListIndexers(ctx)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	log.Debugw("listed indexers", "count", len(indexers))
 	if len(indexers) == 0 {
-		return nil, errors.New("no indexers available")
+		return errors.New("no indexers available")
 	}
 	indexerIds := make([]int32, len(indexers))
 	for i, indexer := range indexers {
 		indexerIds[i] = indexer.ID
 	}
-	releases, err := m.SearchIndexers(ctx, indexerIds, categories, det.Title)
+
+	// TODO: filter to only eligible movies in the query
+	movies, err := m.storage.ListMovies(ctx)
 	if err != nil {
-		log.Debugw("failed to search indexer", "indexers", indexerIds, zap.Error(err))
-		return nil, err
+		return fmt.Errorf("couldn't list movies during reconcile: %w", err)
 	}
 
-	log.Debugw("releases for consideration", "releases", len(releases))
-	releases = slices.DeleteFunc(releases, rejectReleaseFunc(ctx, det, profile, protocolsAvailable))
-	log.Debugw("releases after rejection", "releases", len(releases))
-	if len(releases) == 0 {
-		// TODO: This probably isn't really an error... just need to search again later
-		return nil, errors.New("no matching releases found")
+	for _, mov := range movies {
+		if mov.MovieMetadataID == nil || mov.QualityProfileID == 0 || mov.Monitored == 0 {
+			continue
+		}
+
+		if mov.MovieFileID != nil {
+			// TODO: this probably needs to check if the existing file meets the quality cutoff
+			continue
+		}
+
+		det, err := m.storage.GetMovieMetadata(ctx, table.MovieMetadata.ID.EQ(sqlite.Int32(*mov.MovieMetadataID)))
+		if err != nil {
+			log.Debugw("failed to find movie metadata", "meta_id", *mov.MovieMetadataID)
+			continue
+		}
+
+		profile, err := m.storage.GetQualityProfile(ctx, int64(mov.QualityProfileID))
+		if err != nil {
+			log.Warnw("failed to find movie qualityprofile", "quality_id", mov.QualityProfileID)
+			continue
+		}
+
+		releases, err := m.SearchIndexers(ctx, indexerIds, categories, det.Title)
+		if err != nil {
+			log.Debugw("failed to search indexer", "indexers", indexerIds, zap.Error(err))
+			continue
+		}
+
+		log.Debugw("releases for consideration", "releases", len(releases))
+		releases = slices.DeleteFunc(releases, rejectReleaseFunc(ctx, det, profile, protocolsAvailable))
+		log.Debugw("releases after rejection", "releases", len(releases))
+		if len(releases) == 0 {
+			// move on the next movie
+			continue
+		}
+
+		slices.SortFunc(releases, sortReleaseFunc())
+		chosenRelease := releases[len(releases)-1]
+
+		log.Infow("found release", "title", chosenRelease.Title, "proto", *chosenRelease.Protocol)
+
+		downloadRequest := download.AddRequest{
+			Release: chosenRelease,
+		}
+
+		c := clientForProtocol(dcs, *chosenRelease.Protocol)
+		if c == nil {
+			continue
+		}
+		downloadClient, err := m.factory.NewDownloadClient(*c)
+		if err != nil {
+			continue
+		}
+		_, err = downloadClient.Add(ctx, downloadRequest)
+		if err != nil {
+			log.Debug("failed to add movie download request", zap.Error(err))
+			continue
+		}
 	}
 
-	slices.SortFunc(releases, sortReleaseFunc())
-	chosenRelease := releases[len(releases)-1]
-
-	log.Infow("found release", "title", chosenRelease.Title, "proto", *chosenRelease.Protocol)
-
-	downloadRequest := download.AddRequest{
-		Release: chosenRelease,
-	}
-
-	c := clientForProtocol(dcs, *chosenRelease.Protocol)
-	if c == nil {
-		return nil, errors.New("couldn't get client for release protocol")
-	}
-	downloadClient, err := m.factory.NewDownloadClient(*c)
-	if err != nil {
-		return nil, err
-	}
-	status, err := downloadClient.Add(ctx, downloadRequest)
-	if err != nil {
-		log.Debug("failed to add movie download request", zap.Error(err))
-		return nil, err
-	}
-
-	return &status, nil
+	return nil
 }
 
 // rejectReleaseFunc returns a function that returns true if the given release should be rejected
