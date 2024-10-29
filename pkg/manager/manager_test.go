@@ -74,7 +74,7 @@ func TestAddMovietoLibrary(t *testing.T) {
 	}
 
 	downloadClientID, err := store.CreateDownloadClient(ctx, downloadClient)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	downloadClient.ID = int32(downloadClientID)
 
@@ -227,7 +227,7 @@ func mediaDetailsResponse(title string, runtime int) *http.Response {
 		Header:     make(map[string][]string),
 	}
 
-	resp.Body = io.NopCloser(bytes.NewBufferString(`{"title":"` + title + `","runtime":` + strconv.Itoa(runtime) + `}`))
+	resp.Body = io.NopCloser(bytes.NewBufferString(`{"id": 1, "title":"` + title + `","runtime":` + strconv.Itoa(runtime) + `}`))
 	return resp
 
 }

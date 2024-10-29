@@ -3,6 +3,7 @@ package tmdb
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -60,8 +61,14 @@ func parseMediaDetailsResponse(res *http.Response) (*MediaDetails, error) {
 		return nil, err
 	}
 
+	if len(b) == 0 || (len(b) == 2 && string(b) == "{}") {
+		return nil, errors.New("empty media details body")
+	}
 	results := new(MediaDetails)
 	err = json.Unmarshal(b, results)
+	if results.ID == 0 {
+		return nil, errors.New("unable to parse media details response")
+	}
 	return results, err
 }
 
