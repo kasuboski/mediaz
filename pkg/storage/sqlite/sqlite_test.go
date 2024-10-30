@@ -5,9 +5,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-jet/jet/v2/sqlite"
 	"github.com/kasuboski/mediaz/pkg/storage"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
+	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/table"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestInit(t *testing.T) {
@@ -67,12 +70,13 @@ func TestMovieStorage(t *testing.T) {
 	store := initSqlite(t, ctx)
 	assert.NotNil(t, store)
 
+	path := "Title/Title.mkv"
 	movie := model.Movie{
 		ID:              1,
-		Path:            "Title/Title.mkv",
+		Path:            &path,
 		Monitored:       1,
-		MovieFileID:     1,
-		MovieMetadataID: 1,
+		MovieFileID:     intPtr(1),
+		MovieMetadataID: intPtr(1),
 	}
 	res, err := store.CreateMovie(ctx, movie)
 	assert.Nil(t, err)
@@ -84,6 +88,10 @@ func TestMovieStorage(t *testing.T) {
 	assert.Len(t, movies, 1)
 	actual := movies[0]
 	assert.Equal(t, &movie, actual)
+
+	mov, err := store.GetMovieByMetadataID(ctx, 1)
+	assert.NoError(t, err)
+	assert.NotNil(t, mov)
 
 	err = store.DeleteMovie(ctx, id)
 	assert.Nil(t, err)
@@ -118,6 +126,43 @@ func TestMovieStorage(t *testing.T) {
 	files, err = store.ListMovieFiles(ctx)
 	assert.Nil(t, err)
 	assert.Empty(t, files)
+}
+
+func TestMovieMetadataStorage(t *testing.T) {
+	ctx := context.Background()
+	store := initSqlite(t, ctx)
+	require.NotNil(t, store)
+
+	movieMeta := model.MovieMetadata{
+		ID:      1,
+		TmdbID:  1234,
+		Title:   "My Cool Movie",
+		Runtime: 1000,
+	}
+	id, err := store.CreateMovieMetadata(ctx, movieMeta)
+	assert.NoError(t, err)
+	assert.Equal(t, int64(1), id)
+
+	metadata, err := store.ListMovieMetadata(ctx)
+	assert.NoError(t, err)
+	assert.Len(t, metadata, 1)
+	actual := metadata[0]
+	assert.Equal(t, &movieMeta, actual)
+
+	one, err := store.GetMovieMetadata(ctx, table.MovieMetadata.TmdbID.EQ(sqlite.Int(1234)))
+	assert.NoError(t, err)
+	assert.NotNil(t, one)
+
+	notFound, err := store.GetMovieMetadata(ctx, table.MovieMetadata.TmdbID.EQ(sqlite.Int(124)))
+	assert.ErrorIs(t, err, storage.ErrNotFound)
+	assert.Nil(t, notFound)
+
+	err = store.DeleteMovieMetadata(ctx, id)
+	assert.NoError(t, err)
+
+	metadata, err = store.ListMovieMetadata(ctx)
+	assert.NoError(t, err)
+	assert.Empty(t, metadata)
 }
 
 func TestGetQualityStorage(t *testing.T) {
@@ -363,4 +408,8 @@ func TestDownloadClientStorage(t *testing.T) {
 
 	err = store.DeleteDownloadClient(ctx, 2)
 	assert.Nil(t, err)
+}
+
+func intPtr(i int32) *int32 {
+	return &i
 }
