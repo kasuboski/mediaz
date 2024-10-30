@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"testing"
 	"testing/fstest"
+	"time"
 
 	"github.com/kasuboski/mediaz/pkg/download"
 	downloadMock "github.com/kasuboski/mediaz/pkg/download/mocks"
@@ -106,14 +107,15 @@ func TestAddMovietoLibrary(t *testing.T) {
 		QualityProfileID: 1,
 	}
 
-	status, err := m.AddMovieToLibrary(ctx, req)
+	mov, err := m.AddMovieToLibrary(ctx, req)
 	assert.Nil(t, err)
-	assert.NotNil(t, status)
+	assert.NotNil(t, mov)
 
-	assert.Equal(t, status.ID, "123")
-	assert.Equal(t, status.Name, "test download")
+	assert.Equal(t, int32(1), mov.ID)
+
+	err = m.ReconcileMovies(ctx)
+	assert.NoError(t, err)
 }
-
 func TestIndexMovieLibrary(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	tmdbMock := mocks.NewMockClientInterface(ctrl)
@@ -158,52 +160,42 @@ func TestIndexMovieLibrary(t *testing.T) {
 	assert.Len(t, ms, len(expectedMovies))
 }
 
-func TestAvailableProtocols(t *testing.T) {
-	clients := []*model.DownloadClient{
-		{Type: "usenet"},
-		{Type: "torrent"},
-		{Type: "usenet"},
-		{Type: "usenet"},
-		{Type: "torrent"},
-	}
+func TestRun(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	tmdbMock := mocks.NewMockClientInterface(ctrl)
+	prowlarrMock := prowlMock.NewMockClientInterface(ctrl)
+	store, err := sqlite.New(":memory:")
+	require.Nil(t, err)
 
-	actual := availableProtocols(clients)
-	assert.NotEmpty(t, actual)
-	assert.Len(t, actual, 2)
+	schemas, err := storage.ReadSchemaFiles("../storage/sqlite/schema/schema.sql")
+	require.Nil(t, err)
 
-	actual = availableProtocols([]*model.DownloadClient{})
-	assert.Empty(t, actual)
-}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
+	defer cancel()
+	err = store.Init(ctx, schemas...)
+	require.Nil(t, err)
 
-func TestClientForProtocol(t *testing.T) {
-	clients := []*model.DownloadClient{
-		{ID: 1, Type: "usenet"},
-		{ID: 2, Type: "torrent"},
-		{ID: 3, Type: "usenet"},
-		{ID: 4, Type: "usenet"},
-		{ID: 5, Type: "torrent"},
-	}
+	movieFS, expectedMovies := library.MovieFSFromFile(t, "../library/test_movies.txt")
+	require.NotEmpty(t, expectedMovies)
+	tvFS, expectedEpisodes := library.TVFSFromFile(t, "../library/test_episodes.txt")
+	require.NotEmpty(t, expectedEpisodes)
 
-	t.Run("find torrent", func(t *testing.T) {
-		actual := clientForProtocol(clients, prowlarr.DownloadProtocolTorrent)
-		assert.NotNil(t, actual)
-		assert.Equal(t, int32(2), actual.ID)
-	})
-	t.Run("find usenet", func(t *testing.T) {
-		actual := clientForProtocol(clients, prowlarr.DownloadProtocolUsenet)
-		assert.NotNil(t, actual)
-		assert.Equal(t, int32(1), actual.ID)
-	})
+	lib := library.New(movieFS, tvFS)
+	pClient, err := prowlarr.New(":", "1234")
+	pClient.ClientInterface = prowlarrMock
+	require.NoError(t, err)
 
-	t.Run("not found", func(t *testing.T) {
-		actual := clientForProtocol([]*model.DownloadClient{{ID: 1, Type: "usenet"}}, prowlarr.DownloadProtocolTorrent)
-		assert.Nil(t, actual)
-	})
+	tClient, err := tmdb.New(":", "1234")
+	tClient.ClientInterface = tmdbMock
+	require.NoError(t, err)
 
-	t.Run("empty", func(t *testing.T) {
-		actual := clientForProtocol([]*model.DownloadClient{}, prowlarr.DownloadProtocolTorrent)
-		assert.Nil(t, actual)
-	})
+	mockFactory := downloadMock.NewMockFactory(ctrl)
+	m := New(tClient, pClient, lib, store, mockFactory)
+	require.NotNil(t, m)
+
+	err = m.Run(ctx)
+	assert.ErrorIs(t, err, context.DeadlineExceeded)
+
 }
 
 func searchIndexersResponse(t *testing.T, releases []*prowlarr.ReleaseResource) *http.Response {
