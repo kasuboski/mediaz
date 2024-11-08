@@ -25,7 +25,7 @@ func TestNewStateMachine(t *testing.T) {
 	)
 
 	t.Run("valid transition", func(t *testing.T) {
-		machine := New[TestTransition, TestState](StatePending,
+		machine := New[TestState](StatePending,
 			From(StatePending).To(StateSubmitted),
 			From(StateSubmitted).To(StateDone, StateCanceled),
 		)
@@ -40,7 +40,7 @@ func TestNewStateMachine(t *testing.T) {
 	})
 
 	t.Run("invalid transition", func(t *testing.T) {
-		machine := New[TestTransition, TestState](StateSubmitted,
+		machine := New[TestState](StateSubmitted,
 			From(StatePending).To(StateSubmitted),
 			From(StateSubmitted).To(StateDone, StateCanceled),
 		)

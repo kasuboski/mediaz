@@ -85,9 +85,9 @@ var serveCmd = &cobra.Command{
 		factory := download.NewDownloadClientFactory()
 		manager := manager.New(tmdbClient, prowlarrClient, library, store, factory)
 
-		// go func() {
-		// 	log.Fatal(manager.Run(context.Background()))
-		// }()
+		go func() {
+			log.Fatal(manager.Run(context.Background()))
+		}()
 
 		server := server.New(log, manager)
 		log.Error(server.Serve(cfg.Server.Port))

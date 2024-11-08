@@ -6,9 +6,6 @@ type State interface {
 	~string
 }
 
-// Transition is the transaction model
-type Transition any
-
 // Configuration maps where a from state can transition to
 type Configuration[S State] struct {
 	from S
@@ -30,7 +27,7 @@ type TransitionBuilder[S State] struct {
 	transition Configuration[S]
 }
 
-func New[T Transition, S State](currentState S, transitions ...Configuration[S]) *StateMachine[S] {
+func New[S State](currentState S, transitions ...Configuration[S]) *StateMachine[S] {
 	return &StateMachine[S]{transitions: transitions, state: currentState}
 }
 
