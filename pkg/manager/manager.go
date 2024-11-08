@@ -161,9 +161,9 @@ func (m MediaManager) ListMoviesInLibrary(ctx context.Context) ([]library.MovieF
 func (m MediaManager) Run(ctx context.Context) error {
 	log := logger.FromCtx(ctx)
 
-	movieIndexTicker := time.NewTicker(time.Second * 10)
+	movieIndexTicker := time.NewTicker(time.Minute * 10)
 	defer movieIndexTicker.Stop()
-	movieReconcileTicker := time.NewTicker(time.Second * 20)
+	movieReconcileTicker := time.NewTicker(time.Minute * 20)
 	defer movieReconcileTicker.Stop()
 
 	for {
@@ -202,8 +202,6 @@ func (m MediaManager) IndexMovieLibrary(ctx context.Context) error {
 			},
 		}
 
-		mov.Path = &f.Path
-		mov.Monitored = 0
 		movID, err := m.storage.CreateMovie(ctx, mov)
 		if err != nil {
 			log.Errorf("couldn't add movie to db: %w", err)
@@ -258,7 +256,6 @@ func (m MediaManager) AddMovieToLibrary(ctx context.Context, request AddMovieReq
 	movie, err := m.storage.GetMovieByMetadataID(ctx, int(det.ID))
 	// if we find the movie we're done
 	if err == nil {
-		log.Fatal("found moviee....")
 		return movie, err
 	}
 

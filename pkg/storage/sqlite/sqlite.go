@@ -107,7 +107,6 @@ func (s SQLite) CreateMovie(ctx context.Context, movie storage.Movie) (int64, er
 
 	result, err := stmt.ExecContext(ctx, tx)
 	if err != nil {
-		tx.Rollback()
 		return 0, err
 	}
 
@@ -219,7 +218,7 @@ func (s SQLite) UpdateMovieState(ctx context.Context, id int64, state storage.Mo
 		return err
 	}
 
-	previousUpdateStmt := table.MovieTransition.
+	previousTransitionStmt := table.MovieTransition.
 		UPDATE().
 		SET(table.MovieTransition.MostRecent.SET(sqlite.Bool(false))).
 		WHERE(table.MovieTransition.ID.EQ(sqlite.Int(id)).
@@ -227,7 +226,7 @@ func (s SQLite) UpdateMovieState(ctx context.Context, id int64, state storage.Mo
 		RETURNING(table.MovieTransition.AllColumns)
 
 	var previousTransition storage.MovieTransition
-	err = previousUpdateStmt.QueryContext(ctx, tx, &previousTransition)
+	err = previousTransitionStmt.QueryContext(ctx, tx, &previousTransition)
 	if err != nil {
 		tx.Rollback()
 		return err
