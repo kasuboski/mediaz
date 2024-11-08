@@ -62,7 +62,7 @@ type Movie struct {
 type MovieTransition model.MovieTransition
 
 func (m Movie) Machine() *machine.StateMachine[MovieState] {
-	return machine.New[MovieState](m.State,
+	return machine.New(m.State,
 		machine.From(MovieStateMissing).To(MovieStateDownloading, MovieStateDiscovered),
 		machine.From(MovieStateUnreleased).To(MovieStateDownloading, MovieStateDiscovered),
 		machine.From(MovieStateDownloading).To(MovieStateDownloaded),
