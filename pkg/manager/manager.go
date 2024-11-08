@@ -72,7 +72,7 @@ type SearchMediaResult struct {
 var (
 	// TODO: these are specific per indexer it seems.. need to store categories with the indexer
 	MOVIE_CATEGORIES = []int32{2000}
-	TV_CATEGORIES    = []int{5000}
+	TV_CATEGORIES    = []int32{5000}
 )
 
 // SearchMovie querie tmdb for a movie
