@@ -242,9 +242,15 @@ type AddTorrentPayload struct {
 // Get fetches a torrent given an id
 func (c *TransmissionClient) Get(ctx context.Context, request GetRequest) (Status, error) {
 	var status Status
+
+	id, err := strconv.Atoi(request.ID)
+	if err != nil {
+		return status, err
+	}
+
 	arguments := make(map[string]any)
 	arguments["fields"] = torrentFields
-	arguments["ids"] = []string{request.ID}
+	arguments["ids"] = []int{id}
 
 	transmissionRequest := &TransmissionRequest{
 		Method:    GetTorrentMethod,

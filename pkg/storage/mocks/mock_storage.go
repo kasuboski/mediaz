@@ -73,7 +73,7 @@ func (mr *MockStorageMockRecorder) CreateIndexer(ctx, indexer any) *gomock.Call 
 }
 
 // CreateMovie mocks base method.
-func (m *MockStorage) CreateMovie(ctx context.Context, movie model.Movie) (int64, error) {
+func (m *MockStorage) CreateMovie(ctx context.Context, movie storage.Movie) (int64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateMovie", ctx, movie)
 	ret0, _ := ret[0].(int64)
@@ -290,10 +290,10 @@ func (mr *MockStorageMockRecorder) GetDownloadClient(ctx, id any) *gomock.Call {
 }
 
 // GetMovieByMetadataID mocks base method.
-func (m *MockStorage) GetMovieByMetadataID(ctx context.Context, metadataID int) (*model.Movie, error) {
+func (m *MockStorage) GetMovieByMetadataID(ctx context.Context, metadataID int) (*storage.Movie, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetMovieByMetadataID", ctx, metadataID)
-	ret0, _ := ret[0].(*model.Movie)
+	ret0, _ := ret[0].(*storage.Movie)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -444,10 +444,10 @@ func (mr *MockStorageMockRecorder) ListMovieMetadata(ctx any) *gomock.Call {
 }
 
 // ListMovies mocks base method.
-func (m *MockStorage) ListMovies(ctx context.Context) ([]*model.Movie, error) {
+func (m *MockStorage) ListMovies(ctx context.Context) ([]*storage.Movie, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListMovies", ctx)
-	ret0, _ := ret[0].([]*model.Movie)
+	ret0, _ := ret[0].([]*storage.Movie)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -501,6 +501,20 @@ func (m *MockStorage) ListQualityProfiles(ctx context.Context) ([]*storage.Quali
 func (mr *MockStorageMockRecorder) ListQualityProfiles(ctx any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListQualityProfiles", reflect.TypeOf((*MockStorage)(nil).ListQualityProfiles), ctx)
+}
+
+// UpdateMovieState mocks base method.
+func (m *MockStorage) UpdateMovieState(ctx context.Context, id int64, state storage.MovieState) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateMovieState", ctx, id, state)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateMovieState indicates an expected call of UpdateMovieState.
+func (mr *MockStorageMockRecorder) UpdateMovieState(ctx, id, state any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateMovieState", reflect.TypeOf((*MockStorage)(nil).UpdateMovieState), ctx, id, state)
 }
 
 // MockIndexerStorage is a mock of IndexerStorage interface.
@@ -794,7 +808,7 @@ func (m *MockMovieStorage) EXPECT() *MockMovieStorageMockRecorder {
 }
 
 // CreateMovie mocks base method.
-func (m *MockMovieStorage) CreateMovie(ctx context.Context, movie model.Movie) (int64, error) {
+func (m *MockMovieStorage) CreateMovie(ctx context.Context, movie storage.Movie) (int64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateMovie", ctx, movie)
 	ret0, _ := ret[0].(int64)
@@ -852,10 +866,10 @@ func (mr *MockMovieStorageMockRecorder) DeleteMovieFile(ctx, id any) *gomock.Cal
 }
 
 // GetMovieByMetadataID mocks base method.
-func (m *MockMovieStorage) GetMovieByMetadataID(ctx context.Context, metadataID int) (*model.Movie, error) {
+func (m *MockMovieStorage) GetMovieByMetadataID(ctx context.Context, metadataID int) (*storage.Movie, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetMovieByMetadataID", ctx, metadataID)
-	ret0, _ := ret[0].(*model.Movie)
+	ret0, _ := ret[0].(*storage.Movie)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -882,10 +896,10 @@ func (mr *MockMovieStorageMockRecorder) ListMovieFiles(ctx any) *gomock.Call {
 }
 
 // ListMovies mocks base method.
-func (m *MockMovieStorage) ListMovies(ctx context.Context) ([]*model.Movie, error) {
+func (m *MockMovieStorage) ListMovies(ctx context.Context) ([]*storage.Movie, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListMovies", ctx)
-	ret0, _ := ret[0].([]*model.Movie)
+	ret0, _ := ret[0].([]*storage.Movie)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -894,6 +908,20 @@ func (m *MockMovieStorage) ListMovies(ctx context.Context) ([]*model.Movie, erro
 func (mr *MockMovieStorageMockRecorder) ListMovies(ctx any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListMovies", reflect.TypeOf((*MockMovieStorage)(nil).ListMovies), ctx)
+}
+
+// UpdateMovieState mocks base method.
+func (m *MockMovieStorage) UpdateMovieState(ctx context.Context, id int64, state storage.MovieState) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateMovieState", ctx, id, state)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateMovieState indicates an expected call of UpdateMovieState.
+func (mr *MockMovieStorageMockRecorder) UpdateMovieState(ctx, id, state any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateMovieState", reflect.TypeOf((*MockMovieStorage)(nil).UpdateMovieState), ctx, id, state)
 }
 
 // MockMovieMetadataStorage is a mock of MovieMetadataStorage interface.

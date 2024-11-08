@@ -112,10 +112,27 @@ func TestAddMovietoLibrary(t *testing.T) {
 	assert.NotNil(t, mov)
 
 	assert.Equal(t, int32(1), mov.ID)
+	assert.Equal(t, storage.MovieStateMissing, mov.State)
 
 	err = m.ReconcileMovies(ctx)
 	assert.NoError(t, err)
+
+	movie, err := store.GetMovie(ctx, int64(mov.ID))
+	assert.Nil(t, err)
+
+	movieMetadataID := int32(1)
+
+	assert.Equal(t, &storage.Movie{
+		Movie: model.Movie{
+			ID:               1,
+			Monitored:        1,
+			QualityProfileID: 1,
+			MovieMetadataID:  &movieMetadataID,
+		},
+		State: storage.MovieStateDownloading,
+	}, movie)
 }
+
 func TestIndexMovieLibrary(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	tmdbMock := mocks.NewMockClientInterface(ctrl)

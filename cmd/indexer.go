@@ -116,7 +116,10 @@ var searchIndexerCmd = &cobra.Command{
 		}
 
 		query := args[0]
-		releases, err := m.SearchIndexers(ctx, indexers, []int32{manager.MOVIE_CATEGORY, manager.TV_CATEGORY}, query)
+		categories := make([]int32, 0)
+		categories = append(categories, manager.TV_CATEGORY)
+		categories = append(categories, manager.MOVIE_CATEGORIES...)
+		releases, err := m.SearchIndexers(ctx, indexers, categories, query)
 		if err != nil {
 			log.Fatal(err)
 		}

@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/go-jet/jet/v2/sqlite"
+	"github.com/kasuboski/mediaz/pkg/machine"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
 )
 
@@ -43,11 +44,39 @@ type QualityStorage interface {
 	DeleteQualityDefinition(ctx context.Context, id int64) error
 }
 
+type MovieState string
+
+const (
+	MovieStateMissing     MovieState = "missing"
+	MovieStateDiscovered  MovieState = "discovered"
+	MovieStateUnreleased  MovieState = "unreleased"
+	MovieStateDownloading MovieState = "downloading"
+	MovieStateDownloaded  MovieState = "downloaded"
+)
+
+type Movie struct {
+	model.Movie
+	State MovieState `alias:"movie_transition.to_state" json:"state"`
+}
+
+type MovieTransition model.MovieTransition
+
+func (m Movie) Machine() *machine.StateMachine[MovieState] {
+	return machine.New[MovieTransition, MovieState](m.State,
+		machine.From(MovieStateMissing).To(MovieStateDownloading, MovieStateDiscovered),
+		machine.From(MovieStateUnreleased).To(MovieStateDownloading, MovieStateDiscovered),
+		machine.From(MovieStateDownloading).To(MovieStateDownloaded),
+	)
+}
+
 type MovieStorage interface {
-	CreateMovie(ctx context.Context, movie model.Movie) (int64, error)
+	GetMovie(ctx context.Context, id int64) (*Movie, error)
+	CreateMovie(ctx context.Context, movie Movie) (int64, error)
 	DeleteMovie(ctx context.Context, id int64) error
-	ListMovies(ctx context.Context) ([]*model.Movie, error)
-	GetMovieByMetadataID(ctx context.Context, metadataID int) (*model.Movie, error)
+	ListMovies(ctx context.Context) ([]*Movie, error)
+	ListMoviesByState(ctx context.Context, state MovieState) ([]*Movie, error)
+	GetMovieByMetadataID(ctx context.Context, metadataID int) (*Movie, error)
+	UpdateMovieState(ctx context.Context, id int64, state MovieState) error
 
 	CreateMovieFile(ctx context.Context, movieFile model.MovieFile) (int64, error)
 	DeleteMovieFile(ctx context.Context, id int64) error

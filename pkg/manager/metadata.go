@@ -37,7 +37,6 @@ func (m MediaManager) IndexMovies(ctx context.Context) error {
 }
 
 func (m MediaManager) GetMovieMetadata(ctx context.Context, tmdbID int) (*model.MovieMetadata, error) {
-	res := &model.MovieMetadata{}
 	res, err := m.storage.GetMovieMetadata(ctx, table.MovieMetadata.TmdbID.EQ(sqlite.Int(int64(tmdbID))))
 	if err != nil {
 		if !errors.Is(err, storage.ErrNotFound) {
