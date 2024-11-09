@@ -247,7 +247,7 @@ func (s SQLite) UpdateMovieState(ctx context.Context, id int64, state storage.Mo
 
 	newTransitionStmt := table.MovieTransition.
 		INSERT(table.MovieTransition.AllColumns.
-			Except(table.MovieTransition.ID)).
+			Except(table.MovieTransition.ID, table.MovieTransition.CreatedAt, table.MovieTransition.UpdatedAt)).
 		MODEL(transition).
 		RETURNING(table.MovieTransition.AllColumns)
 
