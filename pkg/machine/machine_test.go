@@ -30,12 +30,12 @@ func TestNewStateMachine(t *testing.T) {
 			From(StateSubmitted).To(StateDone, StateCanceled),
 		)
 
-		if len(machine.transitions) != 2 {
-			t.Errorf("expected %d transitions, got %d", 2, len(machine.transitions))
+		if len(machine.toStates) != 2 {
+			t.Errorf("expected %d toStates, got %d", 2, len(machine.toStates))
 		}
 
 		err := machine.ToState(StateSubmitted)
-		assert.Equal(t, machine.state, StatePending)
+		assert.Equal(t, machine.fromState, StatePending)
 		assert.Nil(t, err)
 	})
 
@@ -45,12 +45,12 @@ func TestNewStateMachine(t *testing.T) {
 			From(StateSubmitted).To(StateDone, StateCanceled),
 		)
 
-		if len(machine.transitions) != 2 {
-			t.Errorf("expected %d transitions, got %d", 2, len(machine.transitions))
+		if len(machine.toStates) != 2 {
+			t.Errorf("expected %d toStates, got %d", 2, len(machine.toStates))
 		}
 
 		err := machine.ToState(StatePending)
-		assert.Equal(t, machine.state, StateSubmitted)
+		assert.Equal(t, machine.fromState, StateSubmitted)
 		assert.Equal(t, err, ErrInvalidTransition)
 	})
 }

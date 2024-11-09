@@ -6,16 +6,16 @@ type State interface {
 	~string
 }
 
-// Configuration maps where a from state can transition to
-type Configuration[S State] struct {
+// Allowable maps where a from state is allowed to transition to
+type Allowable[S State] struct {
 	from S
 	to   []S
 }
 
 // StateMachine manages the state of a context
 type StateMachine[S State] struct {
-	state       S
-	transitions []Configuration[S]
+	fromState S
+	toStates  []Allowable[S]
 }
 
 var (
@@ -24,29 +24,29 @@ var (
 
 // TransitionBuilder helps in creating a from-to relationship for state transitions
 type TransitionBuilder[S State] struct {
-	transition Configuration[S]
+	transition Allowable[S]
 }
 
-func New[S State](currentState S, transitions ...Configuration[S]) *StateMachine[S] {
-	return &StateMachine[S]{transitions: transitions, state: currentState}
+func New[S State](currentState S, transitions ...Allowable[S]) *StateMachine[S] {
+	return &StateMachine[S]{fromState: currentState, toStates: transitions}
 }
 
 // From initializes a transition from a specific state
 func From[S State](from S) *TransitionBuilder[S] {
-	return &TransitionBuilder[S]{transition: Configuration[S]{from: from}}
+	return &TransitionBuilder[S]{transition: Allowable[S]{from: from}}
 }
 
 // To sets the possible destination states and returns the configured transition
-func (tb *TransitionBuilder[S]) To(to ...S) Configuration[S] {
+func (tb *TransitionBuilder[S]) To(to ...S) Allowable[S] {
 	tb.transition.to = to
 	return tb.transition
 }
 
 // ToState determines if a given state can transition to another state
 func (m *StateMachine[S]) ToState(s S) error {
-	for _, transition := range m.transitions {
+	for _, transition := range m.toStates {
 		// can't transition from one state to another state if we're not in the same from state
-		if transition.from != m.state {
+		if transition.from != m.fromState {
 			continue
 		}
 
