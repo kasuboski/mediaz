@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/go-jet/jet/v2/qrm"
 	"github.com/go-jet/jet/v2/sqlite"
@@ -19,6 +20,10 @@ import (
 type SQLite struct {
 	db *sql.DB
 }
+
+const (
+	timestampFormat = "2006-01-02 15:04:05"
+)
 
 // New creates a new sqlite database given a path to the database file
 func New(filePath string) (storage.Storage, error) {
@@ -220,9 +225,12 @@ func (s SQLite) UpdateMovieState(ctx context.Context, id int64, state storage.Mo
 
 	previousTransitionStmt := table.MovieTransition.
 		UPDATE().
-		SET(table.MovieTransition.MostRecent.SET(sqlite.Bool(false))).
-		WHERE(table.MovieTransition.ID.EQ(sqlite.Int(id)).
-			AND(table.MovieTransition.MostRecent.EQ(sqlite.Bool(true)))).
+		SET(
+			table.MovieTransition.MostRecent.SET(sqlite.Bool(false)),
+			table.MovieTransition.UpdatedAt.SET(sqlite.TimestampExp(sqlite.String(time.Now().Format(timestampFormat))))).
+		WHERE(
+			table.MovieTransition.ID.EQ(sqlite.Int(id)).
+				AND(table.MovieTransition.MostRecent.EQ(sqlite.Bool(true)))).
 		RETURNING(table.MovieTransition.AllColumns)
 
 	var previousTransition storage.MovieTransition
