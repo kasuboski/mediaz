@@ -123,7 +123,7 @@ func (s SQLite) CreateMovie(ctx context.Context, movie storage.Movie) (int64, er
 		SortKey:    1,
 	}
 
-	transitionStmt := table.MovieTransition.INSERT(table.MovieTransition.AllColumns.Except(table.MovieTransition.ID)).MODEL(state)
+	transitionStmt := table.MovieTransition.INSERT(table.MovieTransition.AllColumns.Except(table.MovieTransition.ID, table.MovieTransition.CreatedAt, table.MovieTransition.UpdatedAt)).MODEL(state)
 	_, err = transitionStmt.ExecContext(ctx, tx)
 	if err != nil {
 		tx.Rollback()
