@@ -93,9 +93,20 @@ CREATE TABLE IF NOT EXISTS "movie" (
     "last_search_time" DATETIME
 );
 
+CREATE TABLE IF NOT EXISTS "movie_transition" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "movie_id" INTEGER NOT NULL REFERENCES "movie"("id"),
+    "to_state" TEXT NOT NULL,
+    "from_state" TEXT,
+    "most_recent" BOOLEAN NOT NULL,
+    "sort_key" INTEGER NOT NULL,
+    "created_at" DATETIME DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS "download_client" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-    "type" TEXT NOT NULL, -- usenet or torrent
+    "type" TEXT NOT NULL,
     "implementation" TEXT NOT NULL,
     "scheme" TEXT NOT NULL,
     "host" TEXT NOT NULL,
@@ -103,4 +114,10 @@ CREATE TABLE IF NOT EXISTS "download_client" (
     "api_key" TEXT
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS "ix_indexer_name" ON "indexer" ("name" ASC);
+CREATE UNIQUE INDEX IF NOT EXISTS "idx_indexer_name" ON "indexer" ("name" ASC);
+
+CREATE UNIQUE INDEX IF NOT EXISTS "idx_movie_transitions_by_parent_most_recent" ON "movie_transition"("movie_id", "most_recent")
+WHERE
+    "most_recent" = 1;
+
+CREATE UNIQUE INDEX IF NOT EXISTS "idx_movie_transitions_by_parent_sort_key" ON "movie_transition"("movie_id", "sort_key");

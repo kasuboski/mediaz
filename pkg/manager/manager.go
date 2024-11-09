@@ -69,9 +69,10 @@ type SearchMediaResult struct {
 	VoteCount        *int     `json:"vote_count,omitempty"`
 }
 
-const (
-	MOVIE_CATEGORY int32 = 2000
-	TV_CATEGORY    int32 = 5000
+var (
+	// TODO: these are specific per indexer it seems.. need to store categories with the indexer
+	MOVIE_CATEGORIES = []int32{2000}
+	TV_CATEGORIES    = []int32{5000}
 )
 
 // SearchMovie querie tmdb for a movie
@@ -194,10 +195,13 @@ func (m MediaManager) IndexMovieLibrary(ctx context.Context) error {
 	}
 
 	for _, f := range files {
-		mov := model.Movie{
-			Path:      &f.Path,
-			Monitored: 0,
+		mov := storage.Movie{
+			Movie: model.Movie{
+				Path:      &f.Path,
+				Monitored: 0,
+			},
 		}
+
 		movID, err := m.storage.CreateMovie(ctx, mov)
 		if err != nil {
 			log.Errorf("couldn't add movie to db: %w", err)
@@ -234,38 +238,55 @@ type AddMovieRequest struct {
 // AddMovieToLibrary adds a movie to be managed by mediaz
 // TODO: check status of movie before doing anything else.. do we already have it tracked? is it downloaded or already discovered? error state?
 // TODO: always write status to database for given movie (queue, downloaded, missing (error?), Unreleased)
-func (m MediaManager) AddMovieToLibrary(ctx context.Context, request AddMovieRequest) (*model.Movie, error) {
+func (m MediaManager) AddMovieToLibrary(ctx context.Context, request AddMovieRequest) (*storage.Movie, error) {
 	log := logger.FromCtx(ctx)
 
 	profile, err := m.storage.GetQualityProfile(ctx, int64(request.QualityProfileID))
 	if err != nil {
+		log.Debug("failed to get quality profile", zap.Int32("id", request.QualityProfileID), zap.Error(err))
 		return nil, err
 	}
 
 	det, err := m.GetMovieMetadata(ctx, request.TMDBID)
 	if err != nil {
+		log.Debug("failed to get movie metadata", zap.Error(err))
 		return nil, err
 	}
 
-	movie := &model.Movie{}
-	movie, err = m.storage.GetMovieByMetadataID(ctx, int(det.ID))
-	if err != nil {
-		if !errors.Is(err, storage.ErrNotFound) {
-			log.Warnw("couldn't find movie by metadata", "meta_id", det.ID)
-			return nil, err
-		}
-		movie = &model.Movie{
+	movie, err := m.storage.GetMovieByMetadataID(ctx, int(det.ID))
+	// if we find the movie we're done
+	if err == nil {
+		return movie, err
+	}
+
+	// anything other than a not found error is an internal error
+	if !errors.Is(err, storage.ErrNotFound) {
+		log.Warnw("couldn't find movie by metadata", "meta_id", det.ID, "err", err)
+		return nil, err
+	}
+
+	// need to add the movie if it does not exist
+	movie = &storage.Movie{
+		Movie: model.Movie{
 			MovieMetadataID:  &det.ID,
 			QualityProfileID: profile.ID,
 			Monitored:        1,
-		}
-		id, err := m.storage.CreateMovie(ctx, *movie)
-		if err != nil {
-			log.Warnw("failed to create movie", "err", err)
-			return nil, err
-		}
-		movie.ID = int32(id)
+		},
 	}
+
+	id, err := m.storage.CreateMovie(ctx, *movie)
+	if err != nil {
+		log.Warnw("failed to create movie", "err", err)
+		return nil, err
+	}
+
+	log.Debug("created movie", zap.Any("movie", movie))
+
+	movie, err = m.storage.GetMovie(ctx, id)
+	if err != nil {
+		log.Warnw("failed to get created movie", "err", err)
+	}
+
 	return movie, nil
 }
 
@@ -279,7 +300,6 @@ func (m MediaManager) ReconcileMovies(ctx context.Context) error {
 
 	protocolsAvailable := availableProtocols(dcs)
 
-	categories := []int32{MOVIE_CATEGORY}
 	indexers, err := m.ListIndexers(ctx)
 	if err != nil {
 		return err
@@ -293,8 +313,7 @@ func (m MediaManager) ReconcileMovies(ctx context.Context) error {
 		indexerIds[i] = indexer.ID
 	}
 
-	// TODO: filter to only eligible movies in the query
-	movies, err := m.storage.ListMovies(ctx)
+	movies, err := m.storage.ListMoviesByState(ctx, storage.MovieStateMissing)
 	if err != nil {
 		return fmt.Errorf("couldn't list movies during reconcile: %w", err)
 	}
@@ -321,7 +340,7 @@ func (m MediaManager) ReconcileMovies(ctx context.Context) error {
 			continue
 		}
 
-		releases, err := m.SearchIndexers(ctx, indexerIds, categories, det.Title)
+		releases, err := m.SearchIndexers(ctx, indexerIds, MOVIE_CATEGORIES, det.Title)
 		if err != nil {
 			log.Debugw("failed to search indexer", "indexers", indexerIds, zap.Error(err))
 			continue
@@ -355,6 +374,13 @@ func (m MediaManager) ReconcileMovies(ctx context.Context) error {
 		_, err = downloadClient.Add(ctx, downloadRequest)
 		if err != nil {
 			log.Debug("failed to add movie download request", zap.Error(err))
+			continue
+		}
+
+		// update the state so we no longer reconcile this movie
+		err = m.storage.UpdateMovieState(ctx, int64(mov.ID), storage.MovieStateDownloading)
+		if err != nil {
+			log.Debugw("failed to update movie state", zap.Error(err))
 			continue
 		}
 	}

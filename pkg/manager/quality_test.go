@@ -10,10 +10,10 @@ import (
 func TestQualitySizeCutoff(t *testing.T) {
 	tests := []struct {
 		name       string
+		definition storage.QualityDefinition
 		size       uint64
 		runtime    uint64
 		want       bool
-		definition storage.QualityDefinition
 	}{
 		{
 			name:    "does not meet minimum size",

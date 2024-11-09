@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/go-jet/jet/v2/qrm"
 	"github.com/go-jet/jet/v2/sqlite"
@@ -19,6 +20,10 @@ import (
 type SQLite struct {
 	db *sql.DB
 }
+
+const (
+	timestampFormat = "2006-01-02 15:04:05"
+)
 
 // New creates a new sqlite database given a path to the database file
 func New(filePath string) (storage.Storage, error) {
@@ -81,8 +86,13 @@ func (s SQLite) ListIndexers(ctx context.Context) ([]*model.Indexer, error) {
 	return indexers, nil
 }
 
-// CreateMovie stores a movie
-func (s SQLite) CreateMovie(ctx context.Context, movie model.Movie) (int64, error) {
+// CreateMovie stores a movie and creates an initial transition state
+func (s SQLite) CreateMovie(ctx context.Context, movie storage.Movie) (int64, error) {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return 0, err
+	}
+
 	setColumns := make([]sqlite.Expression, len(table.Movie.MutableColumns))
 	for i, c := range table.Movie.MutableColumns {
 		setColumns[i] = c
@@ -92,21 +102,104 @@ func (s SQLite) CreateMovie(ctx context.Context, movie model.Movie) (int64, erro
 	if movie.ID != 0 {
 		insertColumns = table.Movie.AllColumns
 	}
-	stmt := table.Movie.INSERT(insertColumns).RETURNING(table.Movie.ID).MODEL(movie).ON_CONFLICT(table.Movie.ID).DO_UPDATE(sqlite.SET(
-		table.Movie.MutableColumns.SET(sqlite.ROW(setColumns...)),
-	))
-	result, err := s.handleInsert(ctx, stmt)
+
+	stmt := table.Movie.
+		INSERT(insertColumns).
+		MODEL(movie.Movie).
+		RETURNING(table.Movie.ID).
+		ON_CONFLICT(table.Movie.ID).
+		DO_UPDATE(sqlite.SET(table.Movie.MutableColumns.SET(sqlite.ROW(setColumns...))))
+
+	result, err := stmt.ExecContext(ctx, tx)
 	if err != nil {
 		return 0, err
 	}
 
 	inserted, err := result.LastInsertId()
 	if err != nil {
+		tx.Rollback()
+		return 0, err
+	}
+
+	state := storage.MovieTransition{
+		MovieID:    int32(inserted),
+		ToState:    string(storage.MovieStateMissing),
+		MostRecent: true,
+		SortKey:    1,
+	}
+
+	transitionStmt := table.MovieTransition.INSERT(table.MovieTransition.AllColumns.Except(table.MovieTransition.ID, table.MovieTransition.CreatedAt, table.MovieTransition.UpdatedAt)).MODEL(state)
+	_, err = transitionStmt.ExecContext(ctx, tx)
+	if err != nil {
+		tx.Rollback()
+		return 0, err
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		tx.Rollback()
 		return 0, err
 	}
 
 	return inserted, nil
+}
 
+func (s SQLite) GetMovie(ctx context.Context, id int64) (*storage.Movie, error) {
+	stmt := sqlite.
+		SELECT(
+			table.Movie.AllColumns,
+			table.MovieTransition.ToState).
+		FROM(
+			table.Movie.INNER_JOIN(
+				table.MovieTransition,
+				table.Movie.ID.EQ(table.MovieTransition.MovieID))).
+		WHERE(
+			table.Movie.ID.EQ(sqlite.Int(id)).
+				AND(table.MovieTransition.MostRecent.EQ(sqlite.Bool(true))),
+		)
+
+	movie := new(storage.Movie)
+	err := stmt.QueryContext(ctx, s.db, movie)
+	return movie, err
+}
+
+// ListMovies lists the stored movies
+func (s SQLite) ListMovies(ctx context.Context) ([]*storage.Movie, error) {
+	movies := make([]*storage.Movie, 0)
+	stmt := sqlite.
+		SELECT(
+			table.Movie.AllColumns,
+			table.MovieTransition.ToState,
+			table.MovieTransition.MostRecent).
+		FROM(
+			table.Movie.INNER_JOIN(
+				table.MovieTransition,
+				table.Movie.ID.EQ(table.MovieTransition.MovieID))).
+		WHERE(
+			table.MovieTransition.MostRecent.EQ(sqlite.Bool(true))).
+		ORDER_BY(table.Movie.Added.ASC())
+
+	err := stmt.QueryContext(ctx, s.db, &movies)
+	return movies, err
+}
+
+func (s SQLite) ListMoviesByState(ctx context.Context, state storage.MovieState) ([]*storage.Movie, error) {
+	stmt := sqlite.
+		SELECT(
+			table.Movie.AllColumns,
+			table.MovieTransition.ToState).
+		FROM(
+			table.Movie.INNER_JOIN(
+				table.MovieTransition,
+				table.Movie.ID.EQ(table.MovieTransition.MovieID))).
+		WHERE(
+			table.MovieTransition.MostRecent.EQ(sqlite.Bool(true)).
+				AND(table.MovieTransition.ToState.EQ(sqlite.String(string(state))))).
+		ORDER_BY(table.Movie.Added.ASC())
+
+	movies := make([]*storage.Movie, 0)
+	err := stmt.QueryContext(ctx, s.db, &movies)
+	return movies, err
 }
 
 // DeleteMovie removes a movie by id
@@ -119,22 +212,79 @@ func (s SQLite) DeleteMovie(ctx context.Context, id int64) error {
 	return nil
 }
 
-// ListMovies lists the stored movies
-func (s SQLite) ListMovies(ctx context.Context) ([]*model.Movie, error) {
-	movies := make([]*model.Movie, 0)
-	stmt := table.Movie.SELECT(table.Movie.AllColumns).FROM(table.Movie).ORDER_BY(table.Movie.Added.ASC())
-	err := stmt.QueryContext(ctx, s.db, &movies)
+func (s SQLite) UpdateMovieState(ctx context.Context, id int64, state storage.MovieState) error {
+	movie, err := s.GetMovie(ctx, id)
 	if err != nil {
-		return nil, fmt.Errorf("failed to list movies: %w", err)
+		return err
 	}
 
-	return movies, nil
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+
+	previousTransitionStmt := table.MovieTransition.
+		UPDATE().
+		SET(
+			table.MovieTransition.MostRecent.SET(sqlite.Bool(false)),
+			table.MovieTransition.UpdatedAt.SET(sqlite.TimestampExp(sqlite.String(time.Now().Format(timestampFormat))))).
+		WHERE(
+			table.MovieTransition.ID.EQ(sqlite.Int(id)).
+				AND(table.MovieTransition.MostRecent.EQ(sqlite.Bool(true)))).
+		RETURNING(table.MovieTransition.AllColumns)
+
+	var previousTransition storage.MovieTransition
+	err = previousTransitionStmt.QueryContext(ctx, tx, &previousTransition)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	err = movie.Machine().ToState(state)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	transition := storage.MovieTransition{
+		MovieID:    int32(id),
+		ToState:    string(state),
+		MostRecent: true,
+		SortKey:    previousTransition.SortKey + 1,
+	}
+
+	newTransitionStmt := table.MovieTransition.
+		INSERT(table.MovieTransition.AllColumns.
+			Except(table.MovieTransition.ID, table.MovieTransition.CreatedAt, table.MovieTransition.UpdatedAt)).
+		MODEL(transition).
+		RETURNING(table.MovieTransition.AllColumns)
+
+	_, err = newTransitionStmt.ExecContext(ctx, tx)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	return tx.Commit()
 }
 
 // GetMovieByTmdb checks if there's a movie already associated with the given tmdb id
-func (s SQLite) GetMovieByMetadataID(ctx context.Context, metadataID int) (*model.Movie, error) {
-	movie := &model.Movie{}
-	stmt := table.Movie.SELECT(table.Movie.AllColumns).FROM(table.Movie).WHERE(table.Movie.MovieMetadataID.EQ(sqlite.Int(int64(metadataID)))).ORDER_BY(table.Movie.Added.ASC())
+func (s SQLite) GetMovieByMetadataID(ctx context.Context, metadataID int) (*storage.Movie, error) {
+	movie := new(storage.Movie)
+
+	stmt := table.Movie.
+		SELECT(
+			table.Movie.AllColumns,
+			table.MovieTransition.ToState).
+		FROM(
+			table.Movie.INNER_JOIN(
+				table.MovieTransition,
+				table.Movie.ID.EQ(table.MovieTransition.MovieID))).
+		WHERE(
+			table.Movie.MovieMetadataID.EQ(sqlite.Int(int64(metadataID))).
+				AND(table.MovieTransition.MostRecent.EQ(sqlite.Bool(true))),
+		)
+
 	err := stmt.QueryContext(ctx, s.db, movie)
 	if err != nil {
 		if errors.Is(err, qrm.ErrNoRows) {
@@ -349,14 +499,17 @@ func (s SQLite) GetQualityProfile(ctx context.Context, id int64) (storage.Qualit
 
 // ListQualityProfiles lists all quality profiles and their associated quality items
 func (s SQLite) ListQualityProfiles(ctx context.Context) ([]*storage.QualityProfile, error) {
-	stmt := sqlite.SELECT(
-		table.QualityProfile.AllColumns,
-		table.QualityDefinition.AllColumns,
-	).FROM(
-		table.QualityProfile.INNER_JOIN(
-			table.QualityProfileItem, table.QualityProfileItem.ProfileID.EQ(table.QualityProfile.ID)).INNER_JOIN(
-			table.QualityDefinition, table.QualityProfileItem.QualityID.EQ(table.QualityDefinition.ID)),
-	).ORDER_BY(table.QualityDefinition.MinSize.DESC())
+	stmt := sqlite.
+		SELECT(
+			table.QualityProfile.AllColumns,
+			table.QualityDefinition.AllColumns,
+		).
+		FROM(
+			table.QualityProfile.INNER_JOIN(
+				table.QualityProfileItem, table.QualityProfileItem.ProfileID.EQ(table.QualityProfile.ID)).INNER_JOIN(
+				table.QualityDefinition, table.QualityProfileItem.QualityID.EQ(table.QualityDefinition.ID)),
+		).
+		ORDER_BY(table.QualityDefinition.MinSize.DESC())
 
 	result := make([]*storage.QualityProfile, 0)
 	err := stmt.QueryContext(ctx, s.db, &result)

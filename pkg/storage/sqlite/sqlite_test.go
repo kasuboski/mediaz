@@ -71,13 +71,27 @@ func TestMovieStorage(t *testing.T) {
 	assert.NotNil(t, store)
 
 	path := "Title/Title.mkv"
-	movie := model.Movie{
-		ID:              1,
-		Path:            &path,
-		Monitored:       1,
-		MovieFileID:     intPtr(1),
-		MovieMetadataID: intPtr(1),
+	movie := storage.Movie{
+		Movie: model.Movie{
+			ID:              1,
+			Path:            &path,
+			Monitored:       1,
+			MovieFileID:     intPtr(1),
+			MovieMetadataID: intPtr(1),
+		},
 	}
+
+	wantMovie := storage.Movie{
+		Movie: model.Movie{
+			ID:              1,
+			Path:            &path,
+			Monitored:       1,
+			MovieFileID:     intPtr(1),
+			MovieMetadataID: intPtr(1),
+		},
+		State: storage.MovieStateMissing,
+	}
+
 	res, err := store.CreateMovie(ctx, movie)
 	assert.Nil(t, err)
 	assert.NotEmpty(t, res)
@@ -87,7 +101,22 @@ func TestMovieStorage(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Len(t, movies, 1)
 	actual := movies[0]
-	assert.Equal(t, &movie, actual)
+	assert.Equal(t, &wantMovie, actual)
+
+	err = store.UpdateMovieState(ctx, int64(wantMovie.ID), storage.MovieStateDownloading)
+	assert.Nil(t, err)
+
+	movies, err = store.ListMovies(ctx)
+	assert.Nil(t, err)
+	assert.Len(t, movies, 1)
+	actual = movies[0]
+	wantMovie.State = storage.MovieStateDownloading
+	assert.Equal(t, &wantMovie, actual)
+
+	movies, err = store.ListMoviesByState(ctx, storage.MovieStateDownloading)
+	assert.Nil(t, err)
+	assert.Len(t, movies, 1)
+	assert.Equal(t, &wantMovie, movies[0])
 
 	mov, err := store.GetMovieByMetadataID(ctx, 1)
 	assert.NoError(t, err)
@@ -97,8 +126,8 @@ func TestMovieStorage(t *testing.T) {
 	assert.Nil(t, err)
 
 	movies, err = store.ListMovies(ctx)
-	assert.Nil(t, err)
 	assert.Empty(t, movies)
+	assert.Nil(t, err)
 
 	file := model.MovieFile{
 		ID:      1,

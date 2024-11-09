@@ -138,6 +138,7 @@ func FromProwlarrIndexer(prowlarr prowlarr.IndexerResource) (*Indexer, error) {
 	if err != nil {
 		return nil, fmt.Errorf("indexer didn't have a name: %w", err)
 	}
+
 	return &Indexer{
 		ID:         *prowlarr.ID,
 		Name:       name,
