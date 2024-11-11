@@ -47,6 +47,7 @@ type QualityStorage interface {
 type MovieState string
 
 const (
+	MovieStateNew         MovieState = ""
 	MovieStateMissing     MovieState = "missing"
 	MovieStateDiscovered  MovieState = "discovered"
 	MovieStateUnreleased  MovieState = "unreleased"
@@ -63,8 +64,9 @@ type MovieTransition model.MovieTransition
 
 func (m Movie) Machine() *machine.StateMachine[MovieState] {
 	return machine.New(m.State,
-		machine.From(MovieStateMissing).To(MovieStateDownloading, MovieStateDiscovered),
-		machine.From(MovieStateUnreleased).To(MovieStateDownloading, MovieStateDiscovered),
+		machine.From(MovieStateNew).To(MovieStateUnreleased, MovieStateMissing, MovieStateDiscovered),
+		machine.From(MovieStateMissing).To(MovieStateDiscovered, MovieStateDownloading),
+		machine.From(MovieStateUnreleased).To(MovieStateDiscovered, MovieStateMissing),
 		machine.From(MovieStateDownloading).To(MovieStateDownloaded),
 	)
 }

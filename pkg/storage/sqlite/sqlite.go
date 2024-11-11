@@ -88,6 +88,15 @@ func (s SQLite) ListIndexers(ctx context.Context) ([]*model.Indexer, error) {
 
 // CreateMovie stores a movie and creates an initial transition state
 func (s SQLite) CreateMovie(ctx context.Context, movie storage.Movie, initialState storage.MovieState) (int64, error) {
+	if movie.State == "" {
+		movie.State = storage.MovieStateNew
+	}
+
+	err := movie.Machine().ToState(initialState)
+	if err != nil {
+		return 0, err
+	}
+
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return 0, err
@@ -129,8 +138,10 @@ func (s SQLite) CreateMovie(ctx context.Context, movie storage.Movie, initialSta
 	}
 
 	transitionStmt := table.MovieTransition.
-		INSERT(table.MovieTransition.AllColumns.Except(table.MovieTransition.ID, table.MovieTransition.CreatedAt, table.MovieTransition.UpdatedAt)).
+		INSERT(table.MovieTransition.AllColumns.
+			Except(table.MovieTransition.ID, table.MovieTransition.CreatedAt, table.MovieTransition.UpdatedAt)).
 		MODEL(state)
+
 	_, err = transitionStmt.ExecContext(ctx, tx)
 	if err != nil {
 		tx.Rollback()
