@@ -27,8 +27,7 @@ type MovieMetadata struct {
 	LastInfoSync       *time.Time
 	Runtime            int32
 	InCinemas          *time.Time
-	PhysicalRelease    *time.Time
-	DigitalRelease     *time.Time
+	ReleaseDate        *time.Time
 	Year               *int32
 	SecondaryYear      *int32
 	Ratings            *string

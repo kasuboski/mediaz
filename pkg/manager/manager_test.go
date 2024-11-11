@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
-	"strconv"
 	"testing"
 	"testing/fstest"
 	"time"
@@ -30,7 +29,10 @@ import (
 func TestAddMovietoLibrary(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	tmdbMock := mocks.NewMockClientInterface(ctrl)
-	tmdbMock.EXPECT().MovieDetails(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(mediaDetailsResponse("test movie", 120), nil).Times(1)
+
+	// create a date in the past
+	releaseDate := time.Now().AddDate(0, 0, -1).Format(tmdb.ReleaseDateFormat)
+	tmdbMock.EXPECT().MovieDetails(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(mediaDetailsResponse("test movie", 120, releaseDate), nil).Times(1)
 
 	prowlarrMock := prowlMock.NewMockClientInterface(ctrl)
 	indexers := []Indexer{{ID: 1, Name: "test", Priority: 1}, {ID: 3, Name: "test2", Priority: 10}}
@@ -230,15 +232,20 @@ func searchIndexersResponse(t *testing.T, releases []*prowlarr.ReleaseResource) 
 }
 
 // mediaDetailsResponse returns an http.Response that represents a MediaDetails with the given title and runtime
-func mediaDetailsResponse(title string, runtime int) *http.Response {
-	resp := &http.Response{
-		StatusCode: http.StatusOK,
-		Header:     make(map[string][]string),
+func mediaDetailsResponse(title string, runtime int, releaseDate string) *http.Response {
+	details := &tmdb.MediaDetails{
+		ID:          1,
+		Title:       &title,
+		Runtime:     &runtime,
+		ReleaseDate: &releaseDate,
 	}
 
-	resp.Body = io.NopCloser(bytes.NewBufferString(`{"id": 1, "title":"` + title + `","runtime":` + strconv.Itoa(runtime) + `}`))
-	return resp
+	b, _ := json.Marshal(details)
 
+	return &http.Response{
+		StatusCode: http.StatusOK,
+		Body:       io.NopCloser(bytes.NewBuffer(b)),
+	}
 }
 
 func indexersResponse(t *testing.T, indexers []Indexer) *http.Response {

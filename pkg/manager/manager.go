@@ -218,7 +218,7 @@ func (m MediaManager) IndexMovieLibrary(ctx context.Context) error {
 		}
 		mfID, err := m.storage.CreateMovieFile(ctx, mf)
 		if err != nil {
-			log.Errorf("couldn't add movie file %s to db: %w", mf, err)
+			log.Error("couldn't add movie file", zap.Any("file", mf), zap.Error(err))
 			continue
 		}
 		fileID := int32(mfID)
@@ -226,7 +226,7 @@ func (m MediaManager) IndexMovieLibrary(ctx context.Context) error {
 		mov.ID = movieID
 		_, err = m.storage.CreateMovie(ctx, mov, storage.MovieStateDiscovered)
 		if err != nil {
-			log.Errorf("couldn't update movie to db: %w", err)
+			log.Error("couldn't update movie to db", zap.Error(err))
 		}
 	}
 
@@ -312,7 +312,7 @@ type ReconcileSnapshot struct {
 func newReconcileSnapshot(indexers []Indexer, downloadClients []*model.DownloadClient) *ReconcileSnapshot {
 	ids := make([]int32, 0)
 	for i := 0; i < len(indexers); i++ {
-		ids[i] = indexers[i].ID
+		ids = append(ids, indexers[i].ID)
 	}
 
 	protocols := availableProtocols(downloadClients)
@@ -352,7 +352,7 @@ func (r *ReconcileSnapshot) GetIndexers() []Indexer {
 }
 
 func (m MediaManager) ReconcileMovies(ctx context.Context) error {
-	var wg *sync.WaitGroup
+	var wg sync.WaitGroup
 
 	log := logger.FromCtx(ctx)
 
@@ -374,10 +374,10 @@ func (m MediaManager) ReconcileMovies(ctx context.Context) error {
 	snapshot := newReconcileSnapshot(indexers, dcs)
 
 	wg.Add(1)
-	go m.ReconcileMissingMovies(ctx, wg, snapshot)
+	go m.ReconcileMissingMovies(ctx, &wg, snapshot)
 
 	wg.Add(1)
-	go m.ReconcileUnreleasedMovies(ctx, wg, snapshot)
+	go m.ReconcileUnreleasedMovies(ctx, &wg, snapshot)
 
 	wg.Wait()
 	return nil
@@ -623,13 +623,5 @@ func nullableDefault[T any](n nullable.Nullable[T]) T {
 }
 
 func isMovieReleased(now time.Time, det *model.MovieMetadata) bool {
-	if det.DigitalRelease != nil && now.After(*det.DigitalRelease) {
-		return true
-	}
-
-	if det.PhysicalRelease != nil && now.After(*det.PhysicalRelease) {
-		return true
-	}
-
-	return false
+	return det.ReleaseDate != nil && now.After(*det.ReleaseDate)
 }

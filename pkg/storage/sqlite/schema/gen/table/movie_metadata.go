@@ -32,8 +32,7 @@ type movieMetadataTable struct {
 	LastInfoSync       sqlite.ColumnTimestamp
 	Runtime            sqlite.ColumnInteger
 	InCinemas          sqlite.ColumnTimestamp
-	PhysicalRelease    sqlite.ColumnTimestamp
-	DigitalRelease     sqlite.ColumnTimestamp
+	ReleaseDate        sqlite.ColumnTimestamp
 	Year               sqlite.ColumnInteger
 	SecondaryYear      sqlite.ColumnInteger
 	Ratings            sqlite.ColumnString
@@ -101,8 +100,7 @@ func newMovieMetadataTableImpl(schemaName, tableName, alias string) movieMetadat
 		LastInfoSyncColumn       = sqlite.TimestampColumn("last_info_sync")
 		RuntimeColumn            = sqlite.IntegerColumn("runtime")
 		InCinemasColumn          = sqlite.TimestampColumn("in_cinemas")
-		PhysicalReleaseColumn    = sqlite.TimestampColumn("physical_release")
-		DigitalReleaseColumn     = sqlite.TimestampColumn("digital_release")
+		ReleaseDateColumn        = sqlite.TimestampColumn("release_date")
 		YearColumn               = sqlite.IntegerColumn("year")
 		SecondaryYearColumn      = sqlite.IntegerColumn("secondary_year")
 		RatingsColumn            = sqlite.StringColumn("ratings")
@@ -115,8 +113,8 @@ func newMovieMetadataTableImpl(schemaName, tableName, alias string) movieMetadat
 		PopularityColumn         = sqlite.FloatColumn("popularity")
 		CollectionTmdbIDColumn   = sqlite.IntegerColumn("collection_tmdb_id")
 		CollectionTitleColumn    = sqlite.StringColumn("collection_title")
-		allColumns               = sqlite.ColumnList{IDColumn, TmdbIDColumn, ImdbIDColumn, ImagesColumn, GenresColumn, TitleColumn, SortTitleColumn, CleanTitleColumn, OriginalTitleColumn, CleanOriginalTitleColumn, OriginalLanguageColumn, StatusColumn, LastInfoSyncColumn, RuntimeColumn, InCinemasColumn, PhysicalReleaseColumn, DigitalReleaseColumn, YearColumn, SecondaryYearColumn, RatingsColumn, RecommendationsColumn, CertificationColumn, YoutubeTrailerIDColumn, StudioColumn, OverviewColumn, WebsiteColumn, PopularityColumn, CollectionTmdbIDColumn, CollectionTitleColumn}
-		mutableColumns           = sqlite.ColumnList{TmdbIDColumn, ImdbIDColumn, ImagesColumn, GenresColumn, TitleColumn, SortTitleColumn, CleanTitleColumn, OriginalTitleColumn, CleanOriginalTitleColumn, OriginalLanguageColumn, StatusColumn, LastInfoSyncColumn, RuntimeColumn, InCinemasColumn, PhysicalReleaseColumn, DigitalReleaseColumn, YearColumn, SecondaryYearColumn, RatingsColumn, RecommendationsColumn, CertificationColumn, YoutubeTrailerIDColumn, StudioColumn, OverviewColumn, WebsiteColumn, PopularityColumn, CollectionTmdbIDColumn, CollectionTitleColumn}
+		allColumns               = sqlite.ColumnList{IDColumn, TmdbIDColumn, ImdbIDColumn, ImagesColumn, GenresColumn, TitleColumn, SortTitleColumn, CleanTitleColumn, OriginalTitleColumn, CleanOriginalTitleColumn, OriginalLanguageColumn, StatusColumn, LastInfoSyncColumn, RuntimeColumn, InCinemasColumn, ReleaseDateColumn, YearColumn, SecondaryYearColumn, RatingsColumn, RecommendationsColumn, CertificationColumn, YoutubeTrailerIDColumn, StudioColumn, OverviewColumn, WebsiteColumn, PopularityColumn, CollectionTmdbIDColumn, CollectionTitleColumn}
+		mutableColumns           = sqlite.ColumnList{TmdbIDColumn, ImdbIDColumn, ImagesColumn, GenresColumn, TitleColumn, SortTitleColumn, CleanTitleColumn, OriginalTitleColumn, CleanOriginalTitleColumn, OriginalLanguageColumn, StatusColumn, LastInfoSyncColumn, RuntimeColumn, InCinemasColumn, ReleaseDateColumn, YearColumn, SecondaryYearColumn, RatingsColumn, RecommendationsColumn, CertificationColumn, YoutubeTrailerIDColumn, StudioColumn, OverviewColumn, WebsiteColumn, PopularityColumn, CollectionTmdbIDColumn, CollectionTitleColumn}
 	)
 
 	return movieMetadataTable{
@@ -138,8 +136,7 @@ func newMovieMetadataTableImpl(schemaName, tableName, alias string) movieMetadat
 		LastInfoSync:       LastInfoSyncColumn,
 		Runtime:            RuntimeColumn,
 		InCinemas:          InCinemasColumn,
-		PhysicalRelease:    PhysicalReleaseColumn,
-		DigitalRelease:     DigitalReleaseColumn,
+		ReleaseDate:        ReleaseDateColumn,
 		Year:               YearColumn,
 		SecondaryYear:      SecondaryYearColumn,
 		Ratings:            RatingsColumn,
