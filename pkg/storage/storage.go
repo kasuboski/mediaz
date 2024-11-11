@@ -71,7 +71,7 @@ func (m Movie) Machine() *machine.StateMachine[MovieState] {
 
 type MovieStorage interface {
 	GetMovie(ctx context.Context, id int64) (*Movie, error)
-	CreateMovie(ctx context.Context, movie Movie) (int64, error)
+	CreateMovie(ctx context.Context, movie Movie, state MovieState) (int64, error)
 	DeleteMovie(ctx context.Context, id int64) error
 	ListMovies(ctx context.Context) ([]*Movie, error)
 	ListMoviesByState(ctx context.Context, state MovieState) ([]*Movie, error)

@@ -45,6 +45,10 @@ func New(tmbdClient TMDBClientInterface, prowlarrClient prowlarr.IProwlarr, libr
 	}
 }
 
+func now() time.Time {
+	return time.Now()
+}
+
 type SearchMediaResponse struct {
 	Page         *int                 `json:"page,omitempty"`
 	TotalPages   *int                 `json:"total_pages,omitempty"`
@@ -202,7 +206,7 @@ func (m MediaManager) IndexMovieLibrary(ctx context.Context) error {
 			},
 		}
 
-		movID, err := m.storage.CreateMovie(ctx, mov)
+		movID, err := m.storage.CreateMovie(ctx, mov, storage.MovieStateDiscovered)
 		if err != nil {
 			log.Errorf("couldn't add movie to db: %w", err)
 		}
@@ -220,7 +224,7 @@ func (m MediaManager) IndexMovieLibrary(ctx context.Context) error {
 		fileID := int32(mfID)
 		mov.MovieFileID = &fileID
 		mov.ID = movieID
-		_, err = m.storage.CreateMovie(ctx, mov)
+		_, err = m.storage.CreateMovie(ctx, mov, storage.MovieStateDiscovered)
 		if err != nil {
 			log.Errorf("couldn't update movie to db: %w", err)
 		}
@@ -274,7 +278,12 @@ func (m MediaManager) AddMovieToLibrary(ctx context.Context, request AddMovieReq
 		},
 	}
 
-	id, err := m.storage.CreateMovie(ctx, *movie)
+	state := storage.MovieStateMissing
+	if !isMovieReleased(now(), det) {
+		state = storage.MovieStateUnreleased
+	}
+
+	id, err := m.storage.CreateMovie(ctx, *movie, state)
 	if err != nil {
 		log.Warnw("failed to create movie", "err", err)
 		return nil, err
@@ -290,18 +299,60 @@ func (m MediaManager) AddMovieToLibrary(ctx context.Context, request AddMovieReq
 	return movie, nil
 }
 
-func (m MediaManager) ReconcileMovies(ctx context.Context) error {
-	var wg *sync.WaitGroup
-
-	wg.Add(1)
-	go m.ReconcileMissingMovies(ctx, wg)
-
-	wg.Wait()
-	return nil
+// ReconcileSnapshot is a thread safe snapshot of the current reconsile loop state
+type ReconcileSnapshot struct {
+	time              time.Time
+	downloadProtocols map[string]struct{}
+	downloadClients   []*model.DownloadClient
+	indexers          []Indexer
+	indexerIDs        []int32
+	mu                sync.Mutex
 }
 
-func (m MediaManager) ReconcileMissingMovies(ctx context.Context, wg *sync.WaitGroup) error {
-	defer wg.Done()
+func newReconcileSnapshot(indexers []Indexer, downloadClients []*model.DownloadClient) *ReconcileSnapshot {
+	ids := make([]int32, 0)
+	for i := 0; i < len(indexers); i++ {
+		ids[i] = indexers[i].ID
+	}
+
+	protocols := availableProtocols(downloadClients)
+
+	return &ReconcileSnapshot{
+		downloadClients:   downloadClients,
+		downloadProtocols: protocols,
+		indexerIDs:        ids,
+		indexers:          indexers,
+		mu:                sync.Mutex{},
+		time:              now(),
+	}
+}
+
+func (r *ReconcileSnapshot) GetDownloadClients() []*model.DownloadClient {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.downloadClients
+}
+
+func (r *ReconcileSnapshot) GetProtocols() map[string]struct{} {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.downloadProtocols
+}
+
+func (r *ReconcileSnapshot) GetIndexerIDs() []int32 {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.indexerIDs
+}
+
+func (r *ReconcileSnapshot) GetIndexers() []Indexer {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.indexers
+}
+
+func (m MediaManager) ReconcileMovies(ctx context.Context) error {
+	var wg *sync.WaitGroup
 
 	log := logger.FromCtx(ctx)
 
@@ -310,21 +361,36 @@ func (m MediaManager) ReconcileMissingMovies(ctx context.Context, wg *sync.WaitG
 		return err
 	}
 
-	downloadProtocolsAvailable := availableProtocols(dcs)
-
 	indexers, err := m.ListIndexers(ctx)
 	if err != nil {
 		return err
 	}
+
 	log.Debugw("listed indexers", "count", len(indexers))
 	if len(indexers) == 0 {
 		return errors.New("no indexers available")
 	}
-	indexerIDs := make([]int32, len(indexers))
-	for i, indexer := range indexers {
-		indexerIDs[i] = indexer.ID
+
+	snapshot := newReconcileSnapshot(indexers, dcs)
+
+	wg.Add(1)
+	go m.ReconcileMissingMovies(ctx, wg, snapshot)
+
+	wg.Add(1)
+	go m.ReconcileUnreleasedMovies(ctx, wg, snapshot)
+
+	wg.Wait()
+	return nil
+}
+
+func (m MediaManager) ReconcileMissingMovies(ctx context.Context, wg *sync.WaitGroup, snapshot *ReconcileSnapshot) error {
+	defer wg.Done()
+
+	if snapshot == nil {
+		return fmt.Errorf("snapshot is nil")
 	}
 
+	log := logger.FromCtx(ctx)
 	movies, err := m.storage.ListMoviesByState(ctx, storage.MovieStateMissing)
 	if err != nil {
 		return fmt.Errorf("couldn't list movies during reconcile: %w", err)
@@ -352,14 +418,16 @@ func (m MediaManager) ReconcileMissingMovies(ctx context.Context, wg *sync.WaitG
 			continue
 		}
 
-		releases, err := m.SearchIndexers(ctx, indexerIDs, MOVIE_CATEGORIES, det.Title)
+		ids := snapshot.GetIndexerIDs()
+		releases, err := m.SearchIndexers(ctx, ids, MOVIE_CATEGORIES, det.Title)
 		if err != nil {
-			log.Debugw("failed to search indexer", "indexers", indexerIDs, zap.Error(err))
+			log.Debugw("failed to search indexer", "indexers", ids, zap.Error(err))
 			continue
 		}
 
+		protocols := snapshot.GetProtocols()
 		log.Debugw("releases for consideration", "releases", len(releases))
-		releases = slices.DeleteFunc(releases, rejectReleaseFunc(ctx, det, profile, downloadProtocolsAvailable))
+		releases = slices.DeleteFunc(releases, rejectReleaseFunc(ctx, det, profile, protocols))
 		log.Debugw("releases after rejection", "releases", len(releases))
 		if len(releases) == 0 {
 			// move on the next movie
@@ -375,6 +443,7 @@ func (m MediaManager) ReconcileMissingMovies(ctx context.Context, wg *sync.WaitG
 			Release: chosenRelease,
 		}
 
+		dcs := snapshot.GetDownloadClients()
 		c := clientForProtocol(dcs, *chosenRelease.Protocol)
 		if c == nil {
 			continue
@@ -393,6 +462,46 @@ func (m MediaManager) ReconcileMissingMovies(ctx context.Context, wg *sync.WaitG
 		err = m.storage.UpdateMovieState(ctx, int64(mov.ID), storage.MovieStateDownloading)
 		if err != nil {
 			log.Debugw("failed to update movie state", zap.Error(err))
+			continue
+		}
+	}
+
+	return nil
+}
+
+func (m MediaManager) ReconcileUnreleasedMovies(ctx context.Context, wg *sync.WaitGroup, snapshot *ReconcileSnapshot) error {
+	defer wg.Done()
+
+	if snapshot == nil {
+		return fmt.Errorf("snapshot is nil")
+	}
+
+	log := logger.FromCtx(ctx)
+
+	movies, err := m.storage.ListMoviesByState(ctx, storage.MovieStateUnreleased)
+	if err != nil {
+		log.Warn("failed to list unreleased movies", zap.Error(err))
+		return fmt.Errorf("couldn't list movies during unrelease reconcile: %w", err)
+	}
+
+	for _, movie := range movies {
+		if movie.MovieMetadataID == nil || movie.Monitored == 0 {
+			continue
+		}
+
+		det, err := m.storage.GetMovieMetadata(ctx, table.MovieMetadata.ID.EQ(sqlite.Int32(*movie.MovieMetadataID)))
+		if err != nil {
+			log.Debug("failed to find movie metadata", zap.Int32("movie id", movie.ID), zap.Error(err))
+			continue
+		}
+
+		if !isMovieReleased(snapshot.time, det) {
+			continue
+		}
+
+		err = m.storage.UpdateMovieState(ctx, int64(movie.ID), storage.MovieStateMissing)
+		if err != nil {
+			log.Warn("failed to update released movie state", zap.Int32("movie id", movie.ID), zap.Error(err))
 			continue
 		}
 	}
@@ -511,4 +620,16 @@ func nullableDefault[T any](n nullable.Nullable[T]) T {
 	}
 
 	return def
+}
+
+func isMovieReleased(now time.Time, det *model.MovieMetadata) bool {
+	if det.DigitalRelease != nil && now.After(*det.DigitalRelease) {
+		return true
+	}
+
+	if det.PhysicalRelease != nil && now.After(*det.PhysicalRelease) {
+		return true
+	}
+
+	return false
 }

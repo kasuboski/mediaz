@@ -92,7 +92,7 @@ func TestMovieStorage(t *testing.T) {
 		State: storage.MovieStateMissing,
 	}
 
-	res, err := store.CreateMovie(ctx, movie)
+	res, err := store.CreateMovie(ctx, movie, storage.MovieStateMissing)
 	assert.Nil(t, err)
 	assert.NotEmpty(t, res)
 
