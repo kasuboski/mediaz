@@ -291,6 +291,18 @@ func (m MediaManager) AddMovieToLibrary(ctx context.Context, request AddMovieReq
 }
 
 func (m MediaManager) ReconcileMovies(ctx context.Context) error {
+	var wg *sync.WaitGroup
+
+	wg.Add(1)
+	go m.ReconcileMissingMovies(ctx, wg)
+
+	wg.Wait()
+	return nil
+}
+
+func (m MediaManager) ReconcileMissingMovies(ctx context.Context, wg *sync.WaitGroup) error {
+	defer wg.Done()
+
 	log := logger.FromCtx(ctx)
 
 	dcs, err := m.ListDownloadClients(ctx)
@@ -298,7 +310,7 @@ func (m MediaManager) ReconcileMovies(ctx context.Context) error {
 		return err
 	}
 
-	protocolsAvailable := availableProtocols(dcs)
+	downloadProtocolsAvailable := availableProtocols(dcs)
 
 	indexers, err := m.ListIndexers(ctx)
 	if err != nil {
@@ -308,9 +320,9 @@ func (m MediaManager) ReconcileMovies(ctx context.Context) error {
 	if len(indexers) == 0 {
 		return errors.New("no indexers available")
 	}
-	indexerIds := make([]int32, len(indexers))
+	indexerIDs := make([]int32, len(indexers))
 	for i, indexer := range indexers {
-		indexerIds[i] = indexer.ID
+		indexerIDs[i] = indexer.ID
 	}
 
 	movies, err := m.storage.ListMoviesByState(ctx, storage.MovieStateMissing)
@@ -340,14 +352,14 @@ func (m MediaManager) ReconcileMovies(ctx context.Context) error {
 			continue
 		}
 
-		releases, err := m.SearchIndexers(ctx, indexerIds, MOVIE_CATEGORIES, det.Title)
+		releases, err := m.SearchIndexers(ctx, indexerIDs, MOVIE_CATEGORIES, det.Title)
 		if err != nil {
-			log.Debugw("failed to search indexer", "indexers", indexerIds, zap.Error(err))
+			log.Debugw("failed to search indexer", "indexers", indexerIDs, zap.Error(err))
 			continue
 		}
 
 		log.Debugw("releases for consideration", "releases", len(releases))
-		releases = slices.DeleteFunc(releases, rejectReleaseFunc(ctx, det, profile, protocolsAvailable))
+		releases = slices.DeleteFunc(releases, rejectReleaseFunc(ctx, det, profile, downloadProtocolsAvailable))
 		log.Debugw("releases after rejection", "releases", len(releases))
 		if len(releases) == 0 {
 			// move on the next movie
