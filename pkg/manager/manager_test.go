@@ -30,6 +30,15 @@ func TestAddMovietoLibrary(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	tmdbMock := mocks.NewMockClientInterface(ctrl)
 
+	store, err := sqlite.New(":memory:")
+	require.Nil(t, err)
+
+	schemas, err := storage.ReadSchemaFiles("../storage/sqlite/schema/schema.sql", "../storage/sqlite/schema/defaults.sql")
+	assert.Nil(t, err)
+
+	ctx := context.Background()
+	err = store.Init(ctx, schemas...)
+
 	// create a date in the past
 	releaseDate := time.Now().AddDate(0, 0, -1).Format(tmdb.ReleaseDateFormat)
 	tmdbMock.EXPECT().MovieDetails(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(mediaDetailsResponse("test movie", 120, releaseDate), nil).Times(1)
@@ -58,14 +67,6 @@ func TestAddMovietoLibrary(t *testing.T) {
 	releases := []*prowlarr.ReleaseResource{doNotWantRelease, wantRelease, smallMovie, nzbMovie}
 	prowlarrMock.EXPECT().GetAPIV1Search(gomock.Any(), gomock.Any()).Return(searchIndexersResponse(t, releases), nil).Times(len(indexers))
 
-	store, err := sqlite.New(":memory:")
-	require.Nil(t, err)
-
-	schemas, err := storage.ReadSchemaFiles("../storage/sqlite/schema/schema.sql", "../storage/sqlite/schema/defaults.sql")
-	assert.Nil(t, err)
-
-	ctx := context.Background()
-	err = store.Init(ctx, schemas...)
 	require.Nil(t, err)
 
 	downloadClient := model.DownloadClient{

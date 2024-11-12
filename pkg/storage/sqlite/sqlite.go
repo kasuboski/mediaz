@@ -231,6 +231,11 @@ func (s SQLite) UpdateMovieState(ctx context.Context, id int64, state storage.Mo
 		return err
 	}
 
+	err = movie.Machine().ToState(state)
+	if err != nil {
+		return err
+	}
+
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -248,12 +253,6 @@ func (s SQLite) UpdateMovieState(ctx context.Context, id int64, state storage.Mo
 
 	var previousTransition storage.MovieTransition
 	err = previousTransitionStmt.QueryContext(ctx, tx, &previousTransition)
-	if err != nil {
-		tx.Rollback()
-		return err
-	}
-
-	err = movie.Machine().ToState(state)
 	if err != nil {
 		tx.Rollback()
 		return err
