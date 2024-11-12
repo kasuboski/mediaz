@@ -38,6 +38,7 @@ func TestAddMovietoLibrary(t *testing.T) {
 
 	ctx := context.Background()
 	err = store.Init(ctx, schemas...)
+	require.Nil(t, err)
 
 	// create a date in the past
 	releaseDate := time.Now().AddDate(0, 0, -1).Format(tmdb.ReleaseDateFormat)
@@ -66,8 +67,6 @@ func TestAddMovietoLibrary(t *testing.T) {
 
 	releases := []*prowlarr.ReleaseResource{doNotWantRelease, wantRelease, smallMovie, nzbMovie}
 	prowlarrMock.EXPECT().GetAPIV1Search(gomock.Any(), gomock.Any()).Return(searchIndexersResponse(t, releases), nil).Times(len(indexers))
-
-	require.Nil(t, err)
 
 	downloadClient := model.DownloadClient{
 		Implementation: "transmission",
