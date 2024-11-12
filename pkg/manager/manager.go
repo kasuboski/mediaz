@@ -418,16 +418,16 @@ func (m MediaManager) ReconcileMissingMovies(ctx context.Context, wg *sync.WaitG
 			continue
 		}
 
-		ids := snapshot.GetIndexerIDs()
-		releases, err := m.SearchIndexers(ctx, ids, MOVIE_CATEGORIES, det.Title)
+		indexerIDs := snapshot.GetIndexerIDs()
+		releases, err := m.SearchIndexers(ctx, indexerIDs, MOVIE_CATEGORIES, det.Title)
 		if err != nil {
-			log.Debugw("failed to search indexer", "indexers", ids, zap.Error(err))
+			log.Debugw("failed to search indexer", "indexers", indexerIDs, zap.Error(err))
 			continue
 		}
 
-		protocols := snapshot.GetProtocols()
+		availableProtocols := snapshot.GetProtocols()
 		log.Debugw("releases for consideration", "releases", len(releases))
-		releases = slices.DeleteFunc(releases, rejectReleaseFunc(ctx, det, profile, protocols))
+		releases = slices.DeleteFunc(releases, rejectReleaseFunc(ctx, det, profile, availableProtocols))
 		log.Debugw("releases after rejection", "releases", len(releases))
 		if len(releases) == 0 {
 			// move on the next movie
