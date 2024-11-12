@@ -7,11 +7,10 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"time"
 )
 
 const (
-	ReleaseDateFormat = time.RFC3339
+	ReleaseDateFormat = "2006-01-02"
 )
 
 type ITmdb interface {

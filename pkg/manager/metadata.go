@@ -14,7 +14,6 @@ import (
 	"github.com/kasuboski/mediaz/pkg/tmdb"
 )
 
-const ()
 
 // IndexMovies finds metadata for each movie in the library
 func (m MediaManager) IndexMovies(ctx context.Context) error {
@@ -85,7 +84,7 @@ func FromSearchMediaResult(resp SearchMediaResult) library.MovieMetadata {
 }
 
 func FromMediaDetails(det tmdb.MediaDetails) (model.MovieMetadata, error) {
-	releaseDate, err := time.Parse(time.RFC3339, *det.ReleaseDate)
+	releaseDate, err := time.Parse(tmdb.ReleaseDateFormat, *det.ReleaseDate)
 	if err != nil {
 		return model.MovieMetadata{}, err
 	}

@@ -165,9 +165,9 @@ func (m MediaManager) ListMoviesInLibrary(ctx context.Context) ([]library.MovieF
 func (m MediaManager) Run(ctx context.Context) error {
 	log := logger.FromCtx(ctx)
 
-	movieIndexTicker := time.NewTicker(time.Minute * 10)
+	movieIndexTicker := time.NewTicker(time.Second * 10)
 	defer movieIndexTicker.Stop()
-	movieReconcileTicker := time.NewTicker(time.Minute * 20)
+	movieReconcileTicker := time.NewTicker(time.Second * 20)
 	defer movieReconcileTicker.Stop()
 
 	for {
@@ -496,6 +496,7 @@ func (m MediaManager) ReconcileUnreleasedMovies(ctx context.Context, wg *sync.Wa
 		}
 
 		if !isMovieReleased(snapshot.time, det) {
+			log.Debug("movie is still unreleased", zap.Int32("movie id", movie.ID))
 			continue
 		}
 
