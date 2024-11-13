@@ -390,80 +390,102 @@ func (m MediaManager) ReconcileMissingMovies(ctx context.Context, wg *sync.WaitG
 		return fmt.Errorf("snapshot is nil")
 	}
 
-	log := logger.FromCtx(ctx)
 	movies, err := m.storage.ListMoviesByState(ctx, storage.MovieStateMissing)
 	if err != nil {
 		return fmt.Errorf("couldn't list movies during reconcile: %w", err)
 	}
 
-	for _, mov := range movies {
-		if mov.MovieMetadataID == nil || mov.QualityProfileID == 0 || mov.Monitored == 0 {
-			continue
-		}
+	log := logger.FromCtx(ctx)
 
-		if mov.MovieFileID != nil {
-			// TODO: this probably needs to check if the existing file meets the quality cutoff
-			continue
-		}
-
-		det, err := m.storage.GetMovieMetadata(ctx, table.MovieMetadata.ID.EQ(sqlite.Int32(*mov.MovieMetadataID)))
+	for _, movie := range movies {
+		err = m.reconcileMissingMovie(ctx, movie, snapshot)
 		if err != nil {
-			log.Debugw("failed to find movie metadata", "meta_id", *mov.MovieMetadataID)
-			continue
+			log.Warn("failed to reconcile movie", zap.Error(err))
 		}
+	}
 
-		profile, err := m.storage.GetQualityProfile(ctx, int64(mov.QualityProfileID))
-		if err != nil {
-			log.Warnw("failed to find movie qualityprofile", "quality_id", mov.QualityProfileID)
-			continue
-		}
+	return nil
+}
 
-		indexerIDs := snapshot.GetIndexerIDs()
-		releases, err := m.SearchIndexers(ctx, indexerIDs, MOVIE_CATEGORIES, det.Title)
-		if err != nil {
-			log.Debugw("failed to search indexer", "indexers", indexerIDs, zap.Error(err))
-			continue
-		}
+func (m MediaManager) reconcileMissingMovie(ctx context.Context, movie *storage.Movie, snapshot *ReconcileSnapshot) error {
+	log := logger.FromCtx(ctx)
+	log = log.With("movie id", movie.ID)
 
-		availableProtocols := snapshot.GetProtocols()
-		log.Debugw("releases for consideration", "releases", len(releases))
-		releases = slices.DeleteFunc(releases, rejectReleaseFunc(ctx, det, profile, availableProtocols))
-		log.Debugw("releases after rejection", "releases", len(releases))
-		if len(releases) == 0 {
-			// move on the next movie
-			continue
-		}
+	if movie.MovieMetadataID == nil {
+		log.Warn("movie metadata id is nil, skipping reconcile")
+		return nil
+	}
 
-		slices.SortFunc(releases, sortReleaseFunc())
-		chosenRelease := releases[len(releases)-1]
+	if movie.QualityProfileID == 0 {
+		log.Warn("movie quality profile id is nil, skipping reconcile")
+		return nil
+	}
 
-		log.Infow("found release", "title", chosenRelease.Title, "proto", *chosenRelease.Protocol)
+	if movie.Monitored == 0 {
+		log.Warn("movie is not monitored, skipping reconcile")
+	}
 
-		downloadRequest := download.AddRequest{
-			Release: chosenRelease,
-		}
+	if movie.MovieFileID != nil {
+		log.Warn("movie file id is nil, skipping reconcile")
+		return nil
+	}
 
-		dcs := snapshot.GetDownloadClients()
-		c := clientForProtocol(dcs, *chosenRelease.Protocol)
-		if c == nil {
-			continue
-		}
-		downloadClient, err := m.factory.NewDownloadClient(*c)
-		if err != nil {
-			continue
-		}
-		_, err = downloadClient.Add(ctx, downloadRequest)
-		if err != nil {
-			log.Debug("failed to add movie download request", zap.Error(err))
-			continue
-		}
+	det, err := m.storage.GetMovieMetadata(ctx, table.MovieMetadata.ID.EQ(sqlite.Int32(*movie.MovieMetadataID)))
+	if err != nil {
+		log.Debugw("failed to find movie metadata", "meta_id", *movie.MovieMetadataID)
+		return err
+	}
 
-		// update the state so we no longer reconcile this movie
-		err = m.storage.UpdateMovieState(ctx, int64(mov.ID), storage.MovieStateDownloading)
-		if err != nil {
-			log.Debugw("failed to update movie state", zap.Error(err))
-			continue
-		}
+	profile, err := m.storage.GetQualityProfile(ctx, int64(movie.QualityProfileID))
+	if err != nil {
+		log.Warnw("failed to find movie qualityprofile", "quality_id", movie.QualityProfileID)
+		return err
+	}
+
+	indexerIDs := snapshot.GetIndexerIDs()
+	releases, err := m.SearchIndexers(ctx, indexerIDs, MOVIE_CATEGORIES, det.Title)
+	if err != nil {
+		log.Debugw("failed to search indexer", "indexers", indexerIDs, zap.Error(err))
+		return err
+	}
+
+	availableProtocols := snapshot.GetProtocols()
+	log.Debugw("releases for consideration", "releases", len(releases))
+	releases = slices.DeleteFunc(releases, rejectReleaseFunc(ctx, det, profile, availableProtocols))
+	log.Debugw("releases after rejection", "releases", len(releases))
+	if len(releases) == 0 {
+		return nil
+	}
+
+	slices.SortFunc(releases, sortReleaseFunc())
+	chosenRelease := releases[len(releases)-1]
+
+	log.Infow("found release", "title", chosenRelease.Title, "proto", *chosenRelease.Protocol)
+
+	downloadRequest := download.AddRequest{
+		Release: chosenRelease,
+	}
+
+	dcs := snapshot.GetDownloadClients()
+	c := clientForProtocol(dcs, *chosenRelease.Protocol)
+	if c == nil {
+		return nil
+	}
+	downloadClient, err := m.factory.NewDownloadClient(*c)
+	if err != nil {
+		return err
+	}
+	_, err = downloadClient.Add(ctx, downloadRequest)
+	if err != nil {
+		log.Debug("failed to add movie download request", zap.Error(err))
+		return err
+	}
+
+	// update the state so we no longer reconcile this movie
+	err = m.storage.UpdateMovieState(ctx, int64(movie.ID), storage.MovieStateDownloading)
+	if err != nil {
+		log.Debugw("failed to update movie state", zap.Error(err))
+		return err
 	}
 
 	return nil
@@ -485,26 +507,42 @@ func (m MediaManager) ReconcileUnreleasedMovies(ctx context.Context, wg *sync.Wa
 	}
 
 	for _, movie := range movies {
-		if movie.MovieMetadataID == nil || movie.Monitored == 0 {
-			continue
-		}
-
-		det, err := m.storage.GetMovieMetadata(ctx, table.MovieMetadata.ID.EQ(sqlite.Int32(*movie.MovieMetadataID)))
+		err = m.reconcileUnreleasedMovie(ctx, movie, snapshot)
 		if err != nil {
-			log.Debug("failed to find movie metadata", zap.Int32("movie id", movie.ID), zap.Error(err))
-			continue
+			log.Warn("error reconciling unreleased movie", zap.Error(err))
 		}
+	}
 
-		if !isMovieReleased(snapshot.time, det) {
-			log.Debug("movie is still unreleased", zap.Int32("movie id", movie.ID))
-			continue
-		}
+	return nil
+}
 
-		err = m.storage.UpdateMovieState(ctx, int64(movie.ID), storage.MovieStateMissing)
-		if err != nil {
-			log.Warn("failed to update released movie state", zap.Int32("movie id", movie.ID), zap.Error(err))
-			continue
-		}
+func (m *MediaManager) reconcileUnreleasedMovie(ctx context.Context, movie *storage.Movie, snapshot *ReconcileSnapshot) error {
+	log := logger.FromCtx(ctx)
+	log = log.With("movie id", movie.ID)
+
+	if movie.Monitored == 0 {
+		log.Info("movie is not monitored, skipping reconcile")
+	}
+
+	if movie.MovieMetadataID == nil {
+		log.Info("movie metadata id is nil, skipping reconcile")
+	}
+
+	det, err := m.storage.GetMovieMetadata(ctx, table.MovieMetadata.ID.EQ(sqlite.Int32(*movie.MovieMetadataID)))
+	if err != nil {
+		log.Debug("failed to find movie metadata", zap.Error(err))
+		return err
+	}
+
+	if !isMovieReleased(snapshot.time, det) {
+		log.Debug("movie is still unreleased")
+		return nil
+	}
+
+	err = m.storage.UpdateMovieState(ctx, int64(movie.ID), storage.MovieStateMissing)
+	if err != nil {
+		log.Warn("failed to update released movie state", zap.Error(err))
+		return err
 	}
 
 	return nil
