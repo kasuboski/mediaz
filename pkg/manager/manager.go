@@ -299,7 +299,7 @@ func (m MediaManager) AddMovieToLibrary(ctx context.Context, request AddMovieReq
 	return movie, nil
 }
 
-// ReconcileSnapshot is a thread safe snapshot of the current reconsile loop state
+// ReconcileSnapshot is a thread safe snapshot of the current reconcile loop state
 type ReconcileSnapshot struct {
 	time              time.Time
 	downloadProtocols map[string]struct{}
