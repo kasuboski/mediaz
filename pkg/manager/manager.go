@@ -425,8 +425,9 @@ func (m MediaManager) reconcileMissingMovie(ctx context.Context, movie *storage.
 		log.Debug("movie is not monitored, skipping reconcile")
 	}
 
-	if movie.MovieFileID == nil {
-		log.Warn("movie file id is nil, skipping reconcile")
+	if movie.MovieFileID != nil {
+		// TODO: should this update state? If we have a movie ID we don't need to download the actual file most likely
+		log.Debug("movie file id already exists for movie, skipping reconcile")
 		return nil
 	}
 
