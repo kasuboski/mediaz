@@ -3,6 +3,7 @@ package manager
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/go-jet/jet/v2/sqlite"
 	"github.com/kasuboski/mediaz/pkg/library"
@@ -12,6 +13,7 @@ import (
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/table"
 	"github.com/kasuboski/mediaz/pkg/tmdb"
 )
+
 
 // IndexMovies finds metadata for each movie in the library
 func (m MediaManager) IndexMovies(ctx context.Context) error {
@@ -82,6 +84,11 @@ func FromSearchMediaResult(resp SearchMediaResult) library.MovieMetadata {
 }
 
 func FromMediaDetails(det tmdb.MediaDetails) (model.MovieMetadata, error) {
+	releaseDate, err := time.Parse(tmdb.ReleaseDateFormat, *det.ReleaseDate)
+	if err != nil {
+		return model.MovieMetadata{}, err
+	}
+
 	return model.MovieMetadata{
 		TmdbID:        int32(det.ID),
 		ImdbID:        det.ImdbID,
@@ -89,5 +96,6 @@ func FromMediaDetails(det tmdb.MediaDetails) (model.MovieMetadata, error) {
 		OriginalTitle: det.OriginalTitle,
 		Runtime:       int32(*det.Runtime),
 		Overview:      det.Overview,
+		ReleaseDate:   &releaseDate,
 	}, nil
 }

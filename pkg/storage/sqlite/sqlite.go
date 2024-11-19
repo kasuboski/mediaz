@@ -87,7 +87,16 @@ func (s SQLite) ListIndexers(ctx context.Context) ([]*model.Indexer, error) {
 }
 
 // CreateMovie stores a movie and creates an initial transition state
-func (s SQLite) CreateMovie(ctx context.Context, movie storage.Movie) (int64, error) {
+func (s SQLite) CreateMovie(ctx context.Context, movie storage.Movie, initialState storage.MovieState) (int64, error) {
+	if movie.State == "" {
+		movie.State = storage.MovieStateNew
+	}
+
+	err := movie.Machine().ToState(initialState)
+	if err != nil {
+		return 0, err
+	}
+
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return 0, err
@@ -123,12 +132,16 @@ func (s SQLite) CreateMovie(ctx context.Context, movie storage.Movie) (int64, er
 
 	state := storage.MovieTransition{
 		MovieID:    int32(inserted),
-		ToState:    string(storage.MovieStateMissing),
+		ToState:    string(initialState),
 		MostRecent: true,
 		SortKey:    1,
 	}
 
-	transitionStmt := table.MovieTransition.INSERT(table.MovieTransition.AllColumns.Except(table.MovieTransition.ID, table.MovieTransition.CreatedAt, table.MovieTransition.UpdatedAt)).MODEL(state)
+	transitionStmt := table.MovieTransition.
+		INSERT(table.MovieTransition.AllColumns.
+			Except(table.MovieTransition.ID, table.MovieTransition.CreatedAt, table.MovieTransition.UpdatedAt)).
+		MODEL(state)
+
 	_, err = transitionStmt.ExecContext(ctx, tx)
 	if err != nil {
 		tx.Rollback()
@@ -218,6 +231,11 @@ func (s SQLite) UpdateMovieState(ctx context.Context, id int64, state storage.Mo
 		return err
 	}
 
+	err = movie.Machine().ToState(state)
+	if err != nil {
+		return err
+	}
+
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -235,12 +253,6 @@ func (s SQLite) UpdateMovieState(ctx context.Context, id int64, state storage.Mo
 
 	var previousTransition storage.MovieTransition
 	err = previousTransitionStmt.QueryContext(ctx, tx, &previousTransition)
-	if err != nil {
-		tx.Rollback()
-		return err
-	}
-
-	err = movie.Machine().ToState(state)
 	if err != nil {
 		tx.Rollback()
 		return err

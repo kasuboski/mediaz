@@ -9,6 +9,10 @@ import (
 	"net/http"
 )
 
+const (
+	ReleaseDateFormat = "2006-01-02"
+)
+
 type ITmdb interface {
 	ClientInterface
 	GetMovieDetails(context.Context, int) (*MediaDetails, error)
@@ -73,31 +77,31 @@ func parseMediaDetailsResponse(res *http.Response) (*MediaDetails, error) {
 }
 
 type MediaDetails struct {
-	Adult               *bool                `json:"adult,omitempty"`
-	BackdropPath        *string              `json:"backdrop_path,omitempty"`
-	BelongsToCollection *interface{}         `json:"belongs_to_collection,omitempty"`
-	Budget              *int                 `json:"budget,omitempty"`
+	SpokenLanguages     *[]SpokenLanguage    `json:"spoken_languages,omitempty"`
 	Genres              *[]Genre             `json:"genres,omitempty"`
+	PosterPath          *string              `json:"poster_path,omitempty"`
+	Budget              *int                 `json:"budget,omitempty"`
+	ProductionCompanies *[]ProductionCompany `json:"production_companies,omitempty"`
 	Homepage            *string              `json:"homepage,omitempty"`
-	ID                  int                  `json:"id,omitempty"`
-	ImdbID              *string              `json:"imdb_id,omitempty"`
+	VoteCount           *int                 `json:"vote_count,omitempty"`
+	ProductionCountries *[]ProductionCountry `json:"production_countries,omitempty"`
 	OriginalLanguage    *string              `json:"original_language,omitempty"`
 	OriginalTitle       *string              `json:"original_title,omitempty"`
 	Overview            *string              `json:"overview,omitempty"`
 	Popularity          *float32             `json:"popularity,omitempty"`
-	PosterPath          *string              `json:"poster_path,omitempty"`
-	ProductionCompanies *[]ProductionCompany `json:"production_companies,omitempty"`
-	ProductionCountries *[]ProductionCountry `json:"production_countries,omitempty"`
+	BelongsToCollection *interface{}         `json:"belongs_to_collection,omitempty"`
+	BackdropPath        *string              `json:"backdrop_path,omitempty"`
+	ImdbID              *string              `json:"imdb_id,omitempty"`
 	ReleaseDate         *string              `json:"release_date,omitempty"`
 	Revenue             *int                 `json:"revenue,omitempty"`
 	Runtime             *int                 `json:"runtime,omitempty"`
-	SpokenLanguages     *[]SpokenLanguage    `json:"spoken_languages,omitempty"`
+	Adult               *bool                `json:"adult,omitempty"`
 	Status              *string              `json:"status,omitempty"`
 	Tagline             *string              `json:"tagline,omitempty"`
 	Title               *string              `json:"title,omitempty"`
 	Video               *bool                `json:"video,omitempty"`
 	VoteAverage         *float32             `json:"vote_average,omitempty"`
-	VoteCount           *int                 `json:"vote_count,omitempty"`
+	ID                  int                  `json:"id,omitempty"`
 }
 
 type Genre struct {
