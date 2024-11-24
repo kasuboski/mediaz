@@ -9,10 +9,12 @@ import (
 
 	"github.com/dustin/go-humanize"
 	"github.com/kasuboski/mediaz/config"
+	mio "github.com/kasuboski/mediaz/pkg/io"
 	"github.com/kasuboski/mediaz/pkg/library"
 	"github.com/kasuboski/mediaz/pkg/logger"
 	"github.com/kasuboski/mediaz/pkg/manager"
 	"github.com/kasuboski/mediaz/pkg/prowlarr"
+
 	"github.com/kasuboski/mediaz/pkg/tmdb"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -100,7 +102,17 @@ var searchIndexerCmd = &cobra.Command{
 
 		movieFS := os.DirFS(cfg.Library.MovieDir)
 		tvFS := os.DirFS(cfg.Library.TVDir)
-		library := library.New(movieFS, tvFS)
+		library := library.New(
+			library.FileSystem{
+				Path: cfg.Library.MovieDir,
+				FS:   movieFS,
+			},
+			library.FileSystem{
+				Path: cfg.Library.TVDir,
+				FS:   tvFS,
+			},
+			&mio.MediaFileSystem{},
+		)
 
 		m := manager.New(tmdbClient, prowlarrClient, library, nil, nil)
 
