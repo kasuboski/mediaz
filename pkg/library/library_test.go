@@ -154,6 +154,8 @@ func TestMediaLibrary_AddMovie(t *testing.T) {
 			t.Error(err)
 		}
 
+		defer os.Remove(tmpFile.Name())
+
 		movieToAdd := fmt.Sprintf("testing/%s", tmpFile.Name())
 
 		mockfs.EXPECT().IsSameFileSystem(gomock.Any(), gomock.Any()).Times(1).Return(true, nil)
@@ -187,6 +189,7 @@ func TestMediaLibrary_AddMovie(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 		}
+		defer os.Remove(tmpFile.Name())
 
 		movieToAdd := fmt.Sprintf("testing/%s", tmpFile.Name())
 
