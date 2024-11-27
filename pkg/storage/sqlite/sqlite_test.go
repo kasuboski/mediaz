@@ -9,6 +9,7 @@ import (
 	"github.com/kasuboski/mediaz/pkg/storage"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/table"
+	_ "github.com/mattn/go-sqlite3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -101,6 +102,17 @@ func TestMovieStorage(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Len(t, movies, 1)
 	actual := movies[0]
+	assert.Equal(t, &wantMovie, actual)
+
+	err = store.UpdateMovieDownloadMetadata(ctx, 1, 1, "123")
+	assert.Nil(t, err)
+
+	wantMovie.DownloadClientID = intPtr(1)
+	wantMovie.DownloadID = strPtr("123")
+	movies, err = store.ListMovies(ctx)
+	assert.Nil(t, err)
+	assert.Len(t, movies, 1)
+	actual = movies[0]
 	assert.Equal(t, &wantMovie, actual)
 
 	err = store.UpdateMovieState(ctx, int64(movies[0].ID), storage.MovieStateDownloading)
@@ -440,5 +452,9 @@ func TestDownloadClientStorage(t *testing.T) {
 }
 
 func intPtr(i int32) *int32 {
+	return &i
+}
+
+func strPtr(i string) *string {
 	return &i
 }

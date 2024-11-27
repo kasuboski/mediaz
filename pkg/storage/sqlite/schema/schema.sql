@@ -89,7 +89,9 @@ CREATE TABLE IF NOT EXISTS "movie" (
     "movie_file_id" INTEGER,
     "minimum_availability" INTEGER NOT NULL,
     "movie_metadata_id" INTEGER UNIQUE,
-    "last_search_time" DATETIME
+    "last_search_time" DATETIME,
+    "download_client_id" INTEGER REFERENCES "download_client"("id"),
+    "download_id" TEXT
 );
 
 CREATE TABLE IF NOT EXISTS "movie_transition" (

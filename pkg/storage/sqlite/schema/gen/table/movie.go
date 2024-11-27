@@ -28,6 +28,8 @@ type movieTable struct {
 	MinimumAvailability sqlite.ColumnInteger
 	MovieMetadataID     sqlite.ColumnInteger
 	LastSearchTime      sqlite.ColumnTimestamp
+	DownloadClientID    sqlite.ColumnInteger
+	DownloadID          sqlite.ColumnString
 
 	AllColumns     sqlite.ColumnList
 	MutableColumns sqlite.ColumnList
@@ -79,8 +81,10 @@ func newMovieTableImpl(schemaName, tableName, alias string) movieTable {
 		MinimumAvailabilityColumn = sqlite.IntegerColumn("minimum_availability")
 		MovieMetadataIDColumn     = sqlite.IntegerColumn("movie_metadata_id")
 		LastSearchTimeColumn      = sqlite.TimestampColumn("last_search_time")
-		allColumns                = sqlite.ColumnList{IDColumn, PathColumn, MonitoredColumn, QualityProfileIDColumn, AddedColumn, TagsColumn, AddOptionsColumn, MovieFileIDColumn, MinimumAvailabilityColumn, MovieMetadataIDColumn, LastSearchTimeColumn}
-		mutableColumns            = sqlite.ColumnList{PathColumn, MonitoredColumn, QualityProfileIDColumn, AddedColumn, TagsColumn, AddOptionsColumn, MovieFileIDColumn, MinimumAvailabilityColumn, MovieMetadataIDColumn, LastSearchTimeColumn}
+		DownloadClientIDColumn    = sqlite.IntegerColumn("download_client_id")
+		DownloadIDColumn          = sqlite.StringColumn("download_id")
+		allColumns                = sqlite.ColumnList{IDColumn, PathColumn, MonitoredColumn, QualityProfileIDColumn, AddedColumn, TagsColumn, AddOptionsColumn, MovieFileIDColumn, MinimumAvailabilityColumn, MovieMetadataIDColumn, LastSearchTimeColumn, DownloadClientIDColumn, DownloadIDColumn}
+		mutableColumns            = sqlite.ColumnList{PathColumn, MonitoredColumn, QualityProfileIDColumn, AddedColumn, TagsColumn, AddOptionsColumn, MovieFileIDColumn, MinimumAvailabilityColumn, MovieMetadataIDColumn, LastSearchTimeColumn, DownloadClientIDColumn, DownloadIDColumn}
 	)
 
 	return movieTable{
@@ -98,6 +102,8 @@ func newMovieTableImpl(schemaName, tableName, alias string) movieTable {
 		MinimumAvailability: MinimumAvailabilityColumn,
 		MovieMetadataID:     MovieMetadataIDColumn,
 		LastSearchTime:      LastSearchTimeColumn,
+		DownloadClientID:    DownloadClientIDColumn,
+		DownloadID:          DownloadIDColumn,
 
 		AllColumns:     allColumns,
 		MutableColumns: mutableColumns,

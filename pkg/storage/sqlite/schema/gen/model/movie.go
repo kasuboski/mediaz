@@ -23,4 +23,6 @@ type Movie struct {
 	MinimumAvailability int32
 	MovieMetadataID     *int32
 	LastSearchTime      *time.Time
+	DownloadClientID    *int32
+	DownloadID          *string
 }

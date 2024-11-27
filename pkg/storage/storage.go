@@ -79,6 +79,7 @@ type MovieStorage interface {
 	ListMoviesByState(ctx context.Context, state MovieState) ([]*Movie, error)
 	GetMovieByMetadataID(ctx context.Context, metadataID int) (*Movie, error)
 	UpdateMovieState(ctx context.Context, id int64, state MovieState) error
+	UpdateMovieDownloadMetadata(ctx context.Context, id int64, downloadClientID int64, downloadID string) error
 
 	CreateMovieFile(ctx context.Context, movieFile model.MovieFile) (int64, error)
 	DeleteMovieFile(ctx context.Context, id int64) error

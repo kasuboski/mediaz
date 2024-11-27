@@ -476,9 +476,15 @@ func (m MediaManager) reconcileMissingMovie(ctx context.Context, movie *storage.
 	if err != nil {
 		return err
 	}
-	_, err = downloadClient.Add(ctx, downloadRequest)
+	status, err := downloadClient.Add(ctx, downloadRequest)
 	if err != nil {
 		log.Debug("failed to add movie download request", zap.Error(err))
+		return err
+	}
+
+	err = m.storage.UpdateMovieDownloadMetadata(ctx, int64(movie.ID), int64(c.ID), status.ID)
+	if err != nil {
+		log.Debug("failed to update movie download metadata", zap.Error(err))
 		return err
 	}
 
@@ -523,10 +529,12 @@ func (m *MediaManager) reconcileUnreleasedMovie(ctx context.Context, movie *stor
 
 	if movie.Monitored == 0 {
 		log.Info("movie is not monitored, skipping reconcile")
+		return nil
 	}
 
 	if movie.MovieMetadataID == nil {
 		log.Info("movie metadata id is nil, skipping reconcile")
+		return nil
 	}
 
 	det, err := m.storage.GetMovieMetadata(ctx, table.MovieMetadata.ID.EQ(sqlite.Int32(*movie.MovieMetadataID)))

@@ -176,6 +176,21 @@ func (s SQLite) GetMovie(ctx context.Context, id int64) (*storage.Movie, error) 
 	return movie, err
 }
 
+func (s SQLite) UpdateMovieDownloadMetadata(ctx context.Context, id int64, downloadClientID int64, downloadID string) error {
+	stmt := table.Movie.
+		UPDATE().
+		SET(
+			table.Movie.DownloadClientID.SET(sqlite.Int(downloadClientID)),
+			table.Movie.DownloadID.SET(sqlite.String(downloadID)),
+		).
+		WHERE(
+			table.Movie.ID.EQ(sqlite.Int(id)),
+		)
+
+	_, err := s.handleStatement(ctx, stmt)
+	return err
+}
+
 // ListMovies lists the stored movies
 func (s SQLite) ListMovies(ctx context.Context) ([]*storage.Movie, error) {
 	movies := make([]*storage.Movie, 0)
