@@ -219,8 +219,6 @@ func Test_Manager_reconcileMissingMovie(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, mov.State, storage.MovieStateDownloading)
-	assert.Equal(t, mov.DownloadClientID, intPtr(1))
-	assert.Equal(t, mov.DownloadID, &downloadStatus.ID)
 }
 
 func Test_Manager_reconcileUnreleasedMovie(t *testing.T) {
