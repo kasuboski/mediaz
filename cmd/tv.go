@@ -4,8 +4,10 @@ import (
 	"context"
 	"os"
 
+	mio "github.com/kasuboski/mediaz/pkg/io"
 	"github.com/kasuboski/mediaz/pkg/library"
 	"github.com/kasuboski/mediaz/pkg/logger"
+
 	"github.com/spf13/cobra"
 )
 
@@ -25,7 +27,12 @@ var listTVCmd = &cobra.Command{
 
 		path := args[0]
 		tvFS := os.DirFS(path)
-		lib := library.New(nil, tvFS)
+		lib := library.New(library.FileSystem{}, library.FileSystem{
+			Path: path,
+			FS:   tvFS,
+		},
+			&mio.MediaFileSystem{},
+		)
 		episodes, err := lib.FindEpisodes(ctx)
 		if err != nil {
 			log.Fatal(err)

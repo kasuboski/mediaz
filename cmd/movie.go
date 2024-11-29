@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/kasuboski/mediaz/config"
+	mio "github.com/kasuboski/mediaz/pkg/io"
 	"github.com/kasuboski/mediaz/pkg/library"
 	"github.com/kasuboski/mediaz/pkg/logger"
 	"github.com/kasuboski/mediaz/pkg/tmdb"
@@ -76,7 +77,11 @@ var listMovieCmd = &cobra.Command{
 
 		path := args[0]
 		movieFS := os.DirFS(path)
-		lib := library.New(movieFS, nil)
+		lib := library.New(
+			library.FileSystem{FS: movieFS},
+			library.FileSystem{},
+			&mio.MediaFileSystem{},
+		)
 		movies, err := lib.FindMovies(ctx)
 		if err != nil {
 			log.Fatal(err)

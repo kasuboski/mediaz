@@ -8,6 +8,7 @@ import (
 
 	"github.com/kasuboski/mediaz/config"
 	"github.com/kasuboski/mediaz/pkg/download"
+	mio "github.com/kasuboski/mediaz/pkg/io"
 	"github.com/kasuboski/mediaz/pkg/library"
 	"github.com/kasuboski/mediaz/pkg/logger"
 	"github.com/kasuboski/mediaz/pkg/manager"
@@ -16,6 +17,7 @@ import (
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite"
 	"github.com/kasuboski/mediaz/pkg/tmdb"
 	"github.com/kasuboski/mediaz/server"
+
 	"go.uber.org/zap"
 
 	"github.com/spf13/cobra"
@@ -80,7 +82,17 @@ var serveCmd = &cobra.Command{
 
 		movieFS := os.DirFS(cfg.Library.MovieDir)
 		tvFS := os.DirFS(cfg.Library.TVDir)
-		library := library.New(movieFS, tvFS)
+		library := library.New(
+			library.FileSystem{
+				Path: cfg.Library.MovieDir,
+				FS:   movieFS,
+			},
+			library.FileSystem{
+				Path: cfg.Library.TVDir,
+				FS:   tvFS,
+			},
+			&mio.MediaFileSystem{},
+		)
 
 		factory := download.NewDownloadClientFactory()
 		manager := manager.New(tmdbClient, prowlarrClient, library, store, factory)
