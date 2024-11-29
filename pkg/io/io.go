@@ -36,7 +36,7 @@ func (o *MediaFileSystem) Create(name string) (io.WriteCloser, error) {
 	return os.Create(name)
 }
 
-// Create copies a file from a source path to a target path. The target file must not exist yet.
+// Copy copies a file from a source path to a target path. The target file must not exist yet.
 func (o *MediaFileSystem) Copy(source, target string) (int64, error) {
 	sourceFile, err := o.Open(source)
 	if err != nil {
