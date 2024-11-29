@@ -1,6 +1,7 @@
 package io
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -47,18 +48,32 @@ func (o *MediaFileSystem) Copy(source, target string) (int64, error) {
 	return io.Copy(targetFile, sourceFile)
 }
 
-// IsSameFileSystem checks if a source and target are on the same file system
+// IsSameFileSystem checks if a source and target are on the same file system.
 func (o *MediaFileSystem) IsSameFileSystem(source, target string) (bool, error) {
-	var sourcePathSyscall, targetPathSyscall syscall.Stat_t
-	if err := syscall.Stat(source, &sourcePathSyscall); err != nil {
-		return false, fmt.Errorf("failed to stat download path: %v", err)
+	// Get source file stat
+	sourceStat, err := os.Stat(source)
+	if err != nil {
+		return false, fmt.Errorf("failed to stat source path: %w", err)
 	}
 
-	if err := syscall.Stat(target, &targetPathSyscall); err != nil {
-		return false, fmt.Errorf("failed to stat destination path: %v", err)
+	sourceSys, ok := sourceStat.Sys().(*syscall.Stat_t)
+	if !ok {
+		return false, errors.New("source path: unexpected sys type")
 	}
 
-	return sourcePathSyscall.Dev == targetPathSyscall.Dev, nil
+	// Get target file stat
+	targetStat, err := os.Stat(target)
+	if err != nil {
+		return false, fmt.Errorf("failed to stat target path: %w", err)
+	}
+
+	targetSys, ok := targetStat.Sys().(*syscall.Stat_t)
+	if !ok {
+		return false, errors.New("target path: unexpected sys type")
+	}
+
+	// Compare device IDs
+	return sourceSys.Dev == targetSys.Dev, nil
 }
 
 // WalkDir is a wrapper around fs.WalkDir
