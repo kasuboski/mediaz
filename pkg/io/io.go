@@ -16,6 +16,11 @@ var (
 // MediaFilesystem is the default implementation of file io using the os package
 type MediaFileSystem struct{}
 
+// Stat is a wrapper around os.Stat
+func (o *MediaFileSystem) Stat(target string) (os.FileInfo, error) {
+	return os.Stat(target)
+}
+
 // Rename is a wrapper around os.Rename
 func (o *MediaFileSystem) Rename(source, target string) error {
 	return os.Rename(source, target)
@@ -31,13 +36,22 @@ func (o *MediaFileSystem) Create(name string) (io.WriteCloser, error) {
 	return os.Create(name)
 }
 
-// Create copies a file from a source path to a target path
+// Create copies a file from a source path to a target path. The target file must not exist yet.
 func (o *MediaFileSystem) Copy(source, target string) (int64, error) {
 	sourceFile, err := o.Open(source)
 	if err != nil {
 		return 0, err
 	}
 	defer sourceFile.Close()
+
+	_, err = o.Stat(target)
+	if err == nil {
+		return 0, errors.New("target file already exists")
+	}
+
+	if !errors.Is(err, os.ErrNotExist) {
+		return 0, fmt.Errorf("unexpected error: %v", err)
+	}
 
 	targetFile, err := o.Create(target)
 	if err != nil {

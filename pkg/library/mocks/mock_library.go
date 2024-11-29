@@ -41,11 +41,12 @@ func (m *MockLibrary) EXPECT() *MockLibraryMockRecorder {
 }
 
 // AddMovie mocks base method.
-func (m *MockLibrary) AddMovie(arg0 context.Context, arg1 string) error {
+func (m *MockLibrary) AddMovie(arg0 context.Context, arg1 string) (library.MovieFile, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "AddMovie", arg0, arg1)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].(library.MovieFile)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // AddMovie indicates an expected call of AddMovie.
