@@ -476,14 +476,17 @@ func (m MediaManager) reconcileMissingMovie(ctx context.Context, movie *storage.
 	if err != nil {
 		return err
 	}
-	_, err = downloadClient.Add(ctx, downloadRequest)
+	status, err := downloadClient.Add(ctx, downloadRequest)
 	if err != nil {
 		log.Debug("failed to add movie download request", zap.Error(err))
 		return err
 	}
 
-	// update the state so we no longer reconcile this movie
-	err = m.storage.UpdateMovieState(ctx, int64(movie.ID), storage.MovieStateDownloading)
+	// update the state so we no longer reconcile this movie including download metadata
+	err = m.storage.UpdateMovieState(ctx, int64(movie.ID), storage.MovieStateDownloading, &storage.MovieStateMetadata{
+		DownloadID:       &status.ID,
+		DownloadClientID: &c.ID,
+	})
 	if err != nil {
 		log.Debugw("failed to update movie state", zap.Error(err))
 		return err
@@ -523,10 +526,12 @@ func (m *MediaManager) reconcileUnreleasedMovie(ctx context.Context, movie *stor
 
 	if movie.Monitored == 0 {
 		log.Info("movie is not monitored, skipping reconcile")
+		return nil
 	}
 
 	if movie.MovieMetadataID == nil {
 		log.Info("movie metadata id is nil, skipping reconcile")
+		return nil
 	}
 
 	det, err := m.storage.GetMovieMetadata(ctx, table.MovieMetadata.ID.EQ(sqlite.Int32(*movie.MovieMetadataID)))
@@ -540,7 +545,7 @@ func (m *MediaManager) reconcileUnreleasedMovie(ctx context.Context, movie *stor
 		return nil
 	}
 
-	err = m.storage.UpdateMovieState(ctx, int64(movie.ID), storage.MovieStateMissing)
+	err = m.storage.UpdateMovieState(ctx, int64(movie.ID), storage.MovieStateMissing, nil)
 	if err != nil {
 		log.Warn("failed to update released movie state", zap.Error(err))
 		return err

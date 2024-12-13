@@ -12,6 +12,7 @@ import (
 
 	"github.com/kasuboski/mediaz/pkg/download"
 	downloadMock "github.com/kasuboski/mediaz/pkg/download/mocks"
+	mio "github.com/kasuboski/mediaz/pkg/io"
 	"github.com/kasuboski/mediaz/pkg/library"
 	"github.com/kasuboski/mediaz/pkg/prowlarr"
 	prowlMock "github.com/kasuboski/mediaz/pkg/prowlarr/mocks"
@@ -61,7 +62,15 @@ func TestAddMovietoLibrary(t *testing.T) {
 
 	movieFS := fstest.MapFS{}
 	tvFS := fstest.MapFS{}
-	lib := library.New(movieFS, tvFS)
+	lib := library.New(
+		library.FileSystem{
+			FS: movieFS,
+		},
+		library.FileSystem{
+			FS: tvFS,
+		},
+		&mio.MediaFileSystem{},
+	)
 	pClient, err := prowlarr.New(":", "1234")
 	pClient.ClientInterface = prowlarrMock
 	require.NoError(t, err)
@@ -167,16 +176,25 @@ func Test_Manager_reconcileMissingMovie(t *testing.T) {
 
 	mockFactory := downloadMock.NewMockFactory(ctrl)
 	mockDownloadClient := downloadMock.NewMockDownloadClient(ctrl)
-	mockDownloadClient.EXPECT().Add(ctx, download.AddRequest{Release: wantRelease}).Times(1).Return(download.Status{
+	downloadStatus := download.Status{
 		ID:   "123",
 		Name: "test download",
-	}, nil)
+	}
+	mockDownloadClient.EXPECT().Add(ctx, download.AddRequest{Release: wantRelease}).Times(1).Return(downloadStatus, nil)
 
 	mockFactory.EXPECT().NewDownloadClient(downloadClient).Times(1).Return(mockDownloadClient, nil)
 
 	movieFS := fstest.MapFS{}
 	tvFS := fstest.MapFS{}
-	lib := library.New(movieFS, tvFS)
+	lib := library.New(
+		library.FileSystem{
+			FS: movieFS,
+		},
+		library.FileSystem{
+			FS: tvFS,
+		},
+		&mio.MediaFileSystem{},
+	)
 
 	m := New(tClient, pClient, lib, store, mockFactory)
 	require.NotNil(t, m)
@@ -248,7 +266,15 @@ func Test_Manager_reconcileUnreleasedMovie(t *testing.T) {
 
 	movieFS := fstest.MapFS{}
 	tvFS := fstest.MapFS{}
-	lib := library.New(movieFS, tvFS)
+	lib := library.New(
+		library.FileSystem{
+			FS: movieFS,
+		},
+		library.FileSystem{
+			FS: tvFS,
+		},
+		&mio.MediaFileSystem{},
+	)
 
 	m := New(tClient, pClient, lib, store, mockFactory)
 	require.NotNil(t, m)
@@ -289,12 +315,20 @@ func TestIndexMovieLibrary(t *testing.T) {
 	err = store.Init(ctx, schemas...)
 	require.Nil(t, err)
 
-	movieFS, expectedMovies := library.MovieFSFromFile(t, "../library/test_movies.txt")
+	movieFS, expectedMovies := library.MovieFSFromFile(t, "../library/testing/test_movies.txt")
 	require.NotEmpty(t, expectedMovies)
-	tvFS, expectedEpisodes := library.TVFSFromFile(t, "../library/test_episodes.txt")
+	tvFS, expectedEpisodes := library.TVFSFromFile(t, "../library/testing/test_episodes.txt")
 	require.NotEmpty(t, expectedEpisodes)
 
-	lib := library.New(movieFS, tvFS)
+	lib := library.New(
+		library.FileSystem{
+			FS: movieFS,
+		},
+		library.FileSystem{
+			FS: tvFS,
+		},
+		&mio.MediaFileSystem{},
+	)
 	pClient, err := prowlarr.New(":", "1234")
 	pClient.ClientInterface = prowlarrMock
 	require.NoError(t, err)
@@ -334,12 +368,20 @@ func TestRun(t *testing.T) {
 	err = store.Init(ctx, schemas...)
 	require.Nil(t, err)
 
-	movieFS, expectedMovies := library.MovieFSFromFile(t, "../library/test_movies.txt")
+	movieFS, expectedMovies := library.MovieFSFromFile(t, "../library/testing/test_movies.txt")
 	require.NotEmpty(t, expectedMovies)
-	tvFS, expectedEpisodes := library.TVFSFromFile(t, "../library/test_episodes.txt")
+	tvFS, expectedEpisodes := library.TVFSFromFile(t, "../library/testing/test_episodes.txt")
 	require.NotEmpty(t, expectedEpisodes)
 
-	lib := library.New(movieFS, tvFS)
+	lib := library.New(
+		library.FileSystem{
+			FS: movieFS,
+		},
+		library.FileSystem{
+			FS: tvFS,
+		},
+		&mio.MediaFileSystem{},
+	)
 	pClient, err := prowlarr.New(":", "1234")
 	pClient.ClientInterface = prowlarrMock
 	require.NoError(t, err)

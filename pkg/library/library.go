@@ -7,40 +7,93 @@ import (
 	"math"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 
+	"github.com/kasuboski/mediaz/pkg/io"
 	"github.com/kasuboski/mediaz/pkg/logger"
+
+	"go.uber.org/zap"
 )
 
-const (
-	moviePattern = `^((\w|\s|')+)(\(\d+\))?\s*({tmdb-\w+})?([[:print:]])*\.?\w*$`
-	showPattern  = `^(\w|\s|')+(\((\w|\s)+\))*\s*(\(\d+\))*\s*({tmdb-\d+})?-?\s*([sS]\d{1,2}[eE]\d{1,2})?\s*-?\s*(\w|\s|'|-)*\s*(\(\d+\))?\.?\w*$`
-)
-
-var (
-	movieRegex      = regexp.MustCompile(moviePattern)
-	showRegex       = regexp.MustCompile(showPattern)
-	videoExtensions = []string{".mp4", ".avi", ".mkv", ".m4v", ".iso", ".ts", ".m2ts"}
-)
-
-type Library struct {
-	movies fs.FS
-	tv     fs.FS
+// FileSystem describes where media lives
+type FileSystem struct {
+	FS   fs.FS
+	Path string
 }
 
-func New(movies fs.FS, tv fs.FS) Library {
-	return Library{
-		movies,
-		tv,
+// MediaLibary describes the media that create a library
+type MediaLibrary struct {
+	io     io.FileIO
+	movies FileSystem
+	tv     FileSystem
+}
+
+// New creates a new library
+func New(movies FileSystem, tv FileSystem, io io.FileIO) Library {
+	return &MediaLibrary{
+		movies: movies,
+		tv:     tv,
+		io:     io,
 	}
 }
 
-func (l *Library) FindMovies(ctx context.Context) ([]MovieFile, error) {
+// AddMovie adds a movie file from an absolute path to the movie library
+// TODO: add option to delete source file if we succesfully copy
+func (l *MediaLibrary) AddMovie(ctx context.Context, sourcePath string) (MovieFile, error) {
+	log := logger.FromCtx(ctx)
+	log = log.With("source path", sourcePath).With("movie library path", l.movies.Path)
+
+	var movieFile MovieFile
+
+	ok, err := l.io.IsSameFileSystem(l.movies.Path, sourcePath)
+	if err != nil {
+		log.Debug("failed to determine if request path and library path share a file systema", zap.Error(err))
+	}
+
+	// downloads/batman begins/file.mp4 -> /library/movies/batman begins/file.mp4
+	sourceDir := dirName(sourcePath)
+	targetPath := filepath.Join(l.movies.Path, filepath.Join(sourceDir, filepath.Base(sourcePath)))
+
+	// rename the file if we're on the same file system to the movie library path to avoid copying
+	if ok {
+		err := l.io.Rename(sourcePath, targetPath)
+		if err != nil {
+			log.Error("failed to rename file", zap.Error(err))
+			return movieFile, err
+		}
+	} else {
+		_, err = l.io.Copy(sourcePath, targetPath)
+		if err != nil {
+			log.Error("failed to copy file", zap.Error(err))
+			return movieFile, err
+		}
+	}
+
+	file, err := l.io.Open(targetPath)
+	if err != nil {
+		return movieFile, err
+	}
+	defer file.Close()
+
+	movieFile.Name = sanitizeName(filepath.Base(file.Name()))
+	info, err := file.Stat()
+	if err != nil {
+		log.Error("failed to state file", zap.Error(err))
+		return movieFile, err
+	}
+
+	movieFile.Size = info.Size()
+	movieFile.Path = targetPath
+
+	return movieFile, nil
+}
+
+// FindMovies lists media in the movie library
+func (l *MediaLibrary) FindMovies(ctx context.Context) ([]MovieFile, error) {
 	log := logger.FromCtx(ctx)
 
 	movies := []MovieFile{}
-	err := fs.WalkDir(l.movies, ".", func(path string, d fs.DirEntry, err error) error {
+	err := l.io.WalkDir(l.movies.FS, ".", func(path string, d fs.DirEntry, err error) error {
 		log.Debugw("movie walk", "path", path)
 		if err != nil {
 			// just skip this dir for now if there's an issue
@@ -79,10 +132,11 @@ func (l *Library) FindMovies(ctx context.Context) ([]MovieFile, error) {
 	return movies, nil
 }
 
-func (l *Library) FindEpisodes(ctx context.Context) ([]string, error) {
+// FindEpisodes lists episodes in the tv library
+func (l *MediaLibrary) FindEpisodes(ctx context.Context) ([]string, error) {
 	log := logger.FromCtx(ctx)
 	episodes := []string{}
-	err := fs.WalkDir(l.tv, ".", func(path string, d fs.DirEntry, err error) error {
+	err := fs.WalkDir(l.tv.FS, ".", func(path string, d fs.DirEntry, err error) error {
 		log.Debugw("episode walk", "path", path)
 		if err != nil {
 			// just skip this dir for now if there's an issue
