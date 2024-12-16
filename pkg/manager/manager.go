@@ -407,6 +407,62 @@ func (m MediaManager) ReconcileMissingMovies(ctx context.Context, wg *sync.WaitG
 	return nil
 }
 
+func (m MediaManager) ReconcileDownloadingMovies(ctx context.Context, wg *sync.WaitGroup, snapshot *ReconcileSnapshot) error {
+	defer wg.Done()
+
+	if snapshot == nil {
+		return fmt.Errorf("snapshot is nil")
+	}
+
+	movies, err := m.storage.ListMoviesByState(ctx, storage.MovieStateMissing)
+	if err != nil {
+		return fmt.Errorf("couldn't list movies during reconcile: %w", err)
+	}
+
+	log := logger.FromCtx(ctx)
+
+	for _, movie := range movies {
+		err = m.reconcileMissingMovie(ctx, movie, snapshot)
+		if err != nil {
+			log.Warn("failed to reconcile movie", zap.Error(err))
+		}
+	}
+
+	return nil
+}
+
+func (m *MediaManager) reconcileDownloadingMovie(ctx context.Context, movie *storage.Movie, snapshot *ReconcileSnapshot) error {
+	log := logger.FromCtx(ctx)
+	log = log.With("movie id", movie.ID)
+
+	if movie.Monitored == 0 {
+		log.Info("movie is not monitored, skipping reconcile")
+	}
+
+	if movie.MovieMetadataID == nil {
+		log.Info("movie metadata id is nil, skipping reconcile")
+	}
+
+	det, err := m.storage.GetMovieMetadata(ctx, table.MovieMetadata.ID.EQ(sqlite.Int32(*movie.MovieMetadataID)))
+	if err != nil {
+		log.Debug("failed to find movie metadata", zap.Error(err))
+		return err
+	}
+
+	if !isMovieReleased(snapshot.time, det) {
+		log.Debug("movie is still unreleased")
+		return nil
+	}
+
+	err = m.storage.UpdateMovieState(ctx, int64(movie.ID), storage.MovieStateMissing)
+	if err != nil {
+		log.Warn("failed to update released movie state", zap.Error(err))
+		return err
+	}
+
+	return nil
+}
+
 func (m MediaManager) reconcileMissingMovie(ctx context.Context, movie *storage.Movie, snapshot *ReconcileSnapshot) error {
 	log := logger.FromCtx(ctx)
 	log = log.With("movie id", movie.ID)
