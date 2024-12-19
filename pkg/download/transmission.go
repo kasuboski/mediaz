@@ -103,7 +103,7 @@ func (t *TransmissionTorrent) ToStatus() Status {
 		Speed:    t.RateDownload >> 20, // bytes/s to mb/s
 	}
 
-	if len(t.Files) == 0 {
+	if len(t.Files) != 0 {
 		s.FilePath = filepath.Join(t.DownloadDir, t.Files[0].Name)
 	}
 

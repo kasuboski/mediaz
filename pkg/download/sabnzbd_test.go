@@ -96,17 +96,36 @@ func TestSabnzbdClient_Add(t *testing.T) {
 		getResponseBody, err := json.Marshal(getResponse)
 		require.NoError(t, err)
 
-		first := mockHttp.EXPECT().Do(gomock.Any()).Return(&http.Response{
+		addMock := mockHttp.EXPECT().Do(gomock.Any()).Return(&http.Response{
 			StatusCode: http.StatusOK,
 			Body:       io.NopCloser(bytes.NewBuffer(addResponseBody)),
 		}, nil)
 
-		second := mockHttp.EXPECT().Do(gomock.Any()).Return(&http.Response{
+		getMock := mockHttp.EXPECT().Do(gomock.Any()).Return(&http.Response{
 			StatusCode: http.StatusOK,
 			Body:       io.NopCloser(bytes.NewBuffer(getResponseBody)),
 		}, nil)
 
-		gomock.InOrder(first, second)
+		historyResponse := HistoryResponse{
+			History: History{
+				Slots: []HistorySlot{
+					{
+						NzoID:   "SABnzbd_nzo_ksfai6",
+						Storage: "/downloads/TV.Show.S04E12.720p.HDTV.x264",
+					},
+				},
+			},
+		}
+
+		historyResponseBody, err := json.Marshal(historyResponse)
+		require.NoError(t, err)
+
+		historyMock := mockHttp.EXPECT().Do(gomock.Any()).Return(&http.Response{
+			StatusCode: http.StatusOK,
+			Body:       io.NopCloser(bytes.NewBuffer(historyResponseBody)),
+		}, nil)
+
+		gomock.InOrder(addMock, getMock, historyMock)
 
 		status, err := client.Add(ctx, addRequest)
 		assert.NoError(t, err)
@@ -117,6 +136,7 @@ func TestSabnzbdClient_Add(t *testing.T) {
 			Progress: 40,
 			Speed:    1,
 			Size:     1277,
+			FilePath: "/downloads/TV.Show.S04E12.720p.HDTV.x264",
 		}
 		assert.Equal(t, expectedStatus, status)
 	})
@@ -229,7 +249,7 @@ func TestSabnzbdClient_Get(t *testing.T) {
 			ID: "SABnzbd_nzo_ksfai6",
 		}
 
-		getResponse := QueueResponse{
+		queueResponse := QueueResponse{
 			Queue: Queue{
 				Speed: "1.3 M",
 				Slots: []Slot{{
@@ -241,13 +261,34 @@ func TestSabnzbdClient_Get(t *testing.T) {
 			},
 		}
 
-		getResponseBody, err := json.Marshal(getResponse)
+		queueResponseBody, err := json.Marshal(queueResponse)
 		require.NoError(t, err)
 
-		mockHttp.EXPECT().Do(gomock.Any()).Return(&http.Response{
+		queueMock := mockHttp.EXPECT().Do(gomock.Any()).Return(&http.Response{
 			StatusCode: http.StatusOK,
-			Body:       io.NopCloser(bytes.NewBuffer(getResponseBody)),
+			Body:       io.NopCloser(bytes.NewBuffer(queueResponseBody)),
 		}, nil)
+
+		historyResponse := HistoryResponse{
+			History: History{
+				Slots: []HistorySlot{
+					{
+						NzoID:   "SABnzbd_nzo_ksfai6",
+						Storage: "/downloads/TV.Show.S04E12.720p.HDTV.x264",
+					},
+				},
+			},
+		}
+
+		historyResponseBody, err := json.Marshal(historyResponse)
+		require.NoError(t, err)
+
+		historyMock := mockHttp.EXPECT().Do(gomock.Any()).Return(&http.Response{
+			StatusCode: http.StatusOK,
+			Body:       io.NopCloser(bytes.NewBuffer(historyResponseBody)),
+		}, nil)
+
+		gomock.InOrder(queueMock, historyMock)
 
 		status, err := client.Get(ctx, getRequest)
 		assert.NoError(t, err)
@@ -258,6 +299,7 @@ func TestSabnzbdClient_Get(t *testing.T) {
 			Progress: 40,
 			Speed:    1,
 			Size:     1277,
+			FilePath: "/downloads/TV.Show.S04E12.720p.HDTV.x264",
 		}
 		assert.Equal(t, expectedStatus, status)
 	})
@@ -284,11 +326,7 @@ func TestSabnzbdClient_Get(t *testing.T) {
 		client := NewSabnzbdClient(mockHttp, "http", "localhost", "secret")
 		ctx := context.Background()
 
-		getRequest := GetRequest{
-			ID: "1",
-		}
-
-		getResponse := QueueResponse{
+		queueResponse := QueueResponse{
 			Queue: Queue{
 				Speed: "1.3 M",
 				Slots: []Slot{{
@@ -300,13 +338,38 @@ func TestSabnzbdClient_Get(t *testing.T) {
 			},
 		}
 
-		getResponseBody, err := json.Marshal(getResponse)
+		queueResponseBody, err := json.Marshal(queueResponse)
 		require.NoError(t, err)
 
-		mockHttp.EXPECT().Do(gomock.Any()).Return(&http.Response{
+		queueMock := mockHttp.EXPECT().Do(gomock.Any()).Return(&http.Response{
 			StatusCode: http.StatusOK,
-			Body:       io.NopCloser(bytes.NewBuffer(getResponseBody)),
+			Body:       io.NopCloser(bytes.NewBuffer(queueResponseBody)),
 		}, nil)
+
+		historyResponse := HistoryResponse{
+			History: History{
+				Slots: []HistorySlot{
+					{
+						NzoID:   "SABnzbd_nzo_ksfai6",
+						Storage: "/downloads/TV.Show.S04E12.720p.HDTV.x264",
+					},
+				},
+			},
+		}
+
+		historyResponseBody, err := json.Marshal(historyResponse)
+		require.NoError(t, err)
+
+		historyMock := mockHttp.EXPECT().Do(gomock.Any()).Return(&http.Response{
+			StatusCode: http.StatusOK,
+			Body:       io.NopCloser(bytes.NewBuffer(historyResponseBody)),
+		}, nil)
+
+		gomock.InOrder(queueMock, historyMock)
+
+		getRequest := GetRequest{
+			ID: "1",
+		}
 
 		status, err := client.Get(ctx, getRequest)
 		assert.Error(t, err)
@@ -321,12 +384,7 @@ func TestSabnzbdClient_List(t *testing.T) {
 
 	t.Run("success", func(t *testing.T) {
 		mockHttp := httpMock.NewMockHTTPClient(ctrl)
-		client := SabnzbdClient{
-			http:   mockHttp,
-			host:   "localhost",
-			scheme: "http",
-			apiKey: "secret",
-		}
+		client := NewSabnzbdClient(mockHttp, "http", "localhost", "secret")
 		ctx := context.Background()
 
 		queueResponse := QueueResponse{
@@ -358,6 +416,11 @@ func TestSabnzbdClient_List(t *testing.T) {
 		queueResponseBody, err := json.Marshal(queueResponse)
 		require.NoError(t, err)
 
+		queueMock := mockHttp.EXPECT().Do(gomock.Any()).Return(&http.Response{
+			StatusCode: http.StatusOK,
+			Body:       io.NopCloser(bytes.NewBuffer(queueResponseBody)),
+		}, nil)
+
 		historyResponse := HistoryResponse{
 			History: History{
 				Slots: []HistorySlot{
@@ -380,16 +443,12 @@ func TestSabnzbdClient_List(t *testing.T) {
 		historyResponseBody, err := json.Marshal(historyResponse)
 		require.NoError(t, err)
 
-		gomock.InOrder(
-			mockHttp.EXPECT().Do(gomock.Any()).Return(&http.Response{
-				StatusCode: http.StatusOK,
-				Body:       io.NopCloser(bytes.NewBuffer(queueResponseBody)),
-			}, nil),
-			mockHttp.EXPECT().Do(gomock.Any()).Return(&http.Response{
-				StatusCode: http.StatusOK,
-				Body:       io.NopCloser(bytes.NewBuffer(historyResponseBody)),
-			}, nil),
-		)
+		historyMock := mockHttp.EXPECT().Do(gomock.Any()).Return(&http.Response{
+			StatusCode: http.StatusOK,
+			Body:       io.NopCloser(bytes.NewBuffer(historyResponseBody)),
+		}, nil)
+
+		gomock.InOrder(queueMock, historyMock)
 
 		mockHttp.EXPECT()
 
