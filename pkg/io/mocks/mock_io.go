@@ -115,6 +115,21 @@ func (mr *MockFileIOMockRecorder) Rename(arg0, arg1 any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Rename", reflect.TypeOf((*MockFileIO)(nil).Rename), arg0, arg1)
 }
 
+// Stat mocks base method.
+func (m *MockFileIO) Stat(arg0 string) (fs.FileInfo, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Stat", arg0)
+	ret0, _ := ret[0].(fs.FileInfo)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Stat indicates an expected call of Stat.
+func (mr *MockFileIOMockRecorder) Stat(arg0 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Stat", reflect.TypeOf((*MockFileIO)(nil).Stat), arg0)
+}
+
 // WalkDir mocks base method.
 func (m *MockFileIO) WalkDir(arg0 fs.FS, arg1 string, arg2 fs.WalkDirFunc) error {
 	m.ctrl.T.Helper()

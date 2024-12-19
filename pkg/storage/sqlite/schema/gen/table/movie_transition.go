@@ -17,14 +17,16 @@ type movieTransitionTable struct {
 	sqlite.Table
 
 	// Columns
-	ID         sqlite.ColumnInteger
-	MovieID    sqlite.ColumnInteger
-	ToState    sqlite.ColumnString
-	FromState  sqlite.ColumnString
-	MostRecent sqlite.ColumnBool
-	SortKey    sqlite.ColumnInteger
-	CreatedAt  sqlite.ColumnTimestamp
-	UpdatedAt  sqlite.ColumnTimestamp
+	ID               sqlite.ColumnInteger
+	MovieID          sqlite.ColumnInteger
+	ToState          sqlite.ColumnString
+	FromState        sqlite.ColumnString
+	MostRecent       sqlite.ColumnBool
+	SortKey          sqlite.ColumnInteger
+	DownloadClientID sqlite.ColumnInteger
+	DownloadID       sqlite.ColumnString
+	CreatedAt        sqlite.ColumnTimestamp
+	UpdatedAt        sqlite.ColumnTimestamp
 
 	AllColumns     sqlite.ColumnList
 	MutableColumns sqlite.ColumnList
@@ -65,30 +67,34 @@ func newMovieTransitionTable(schemaName, tableName, alias string) *MovieTransiti
 
 func newMovieTransitionTableImpl(schemaName, tableName, alias string) movieTransitionTable {
 	var (
-		IDColumn         = sqlite.IntegerColumn("id")
-		MovieIDColumn    = sqlite.IntegerColumn("movie_id")
-		ToStateColumn    = sqlite.StringColumn("to_state")
-		FromStateColumn  = sqlite.StringColumn("from_state")
-		MostRecentColumn = sqlite.BoolColumn("most_recent")
-		SortKeyColumn    = sqlite.IntegerColumn("sort_key")
-		CreatedAtColumn  = sqlite.TimestampColumn("created_at")
-		UpdatedAtColumn  = sqlite.TimestampColumn("updated_at")
-		allColumns       = sqlite.ColumnList{IDColumn, MovieIDColumn, ToStateColumn, FromStateColumn, MostRecentColumn, SortKeyColumn, CreatedAtColumn, UpdatedAtColumn}
-		mutableColumns   = sqlite.ColumnList{MovieIDColumn, ToStateColumn, FromStateColumn, MostRecentColumn, SortKeyColumn, CreatedAtColumn, UpdatedAtColumn}
+		IDColumn               = sqlite.IntegerColumn("id")
+		MovieIDColumn          = sqlite.IntegerColumn("movie_id")
+		ToStateColumn          = sqlite.StringColumn("to_state")
+		FromStateColumn        = sqlite.StringColumn("from_state")
+		MostRecentColumn       = sqlite.BoolColumn("most_recent")
+		SortKeyColumn          = sqlite.IntegerColumn("sort_key")
+		DownloadClientIDColumn = sqlite.IntegerColumn("download_client_id")
+		DownloadIDColumn       = sqlite.StringColumn("download_id")
+		CreatedAtColumn        = sqlite.TimestampColumn("created_at")
+		UpdatedAtColumn        = sqlite.TimestampColumn("updated_at")
+		allColumns             = sqlite.ColumnList{IDColumn, MovieIDColumn, ToStateColumn, FromStateColumn, MostRecentColumn, SortKeyColumn, DownloadClientIDColumn, DownloadIDColumn, CreatedAtColumn, UpdatedAtColumn}
+		mutableColumns         = sqlite.ColumnList{MovieIDColumn, ToStateColumn, FromStateColumn, MostRecentColumn, SortKeyColumn, DownloadClientIDColumn, DownloadIDColumn, CreatedAtColumn, UpdatedAtColumn}
 	)
 
 	return movieTransitionTable{
 		Table: sqlite.NewTable(schemaName, tableName, alias, allColumns...),
 
 		//Columns
-		ID:         IDColumn,
-		MovieID:    MovieIDColumn,
-		ToState:    ToStateColumn,
-		FromState:  FromStateColumn,
-		MostRecent: MostRecentColumn,
-		SortKey:    SortKeyColumn,
-		CreatedAt:  CreatedAtColumn,
-		UpdatedAt:  UpdatedAtColumn,
+		ID:               IDColumn,
+		MovieID:          MovieIDColumn,
+		ToState:          ToStateColumn,
+		FromState:        FromStateColumn,
+		MostRecent:       MostRecentColumn,
+		SortKey:          SortKeyColumn,
+		DownloadClientID: DownloadClientIDColumn,
+		DownloadID:       DownloadIDColumn,
+		CreatedAt:        CreatedAtColumn,
+		UpdatedAt:        UpdatedAtColumn,
 
 		AllColumns:     allColumns,
 		MutableColumns: mutableColumns,

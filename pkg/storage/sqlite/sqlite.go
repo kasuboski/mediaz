@@ -183,6 +183,8 @@ func (s SQLite) ListMovies(ctx context.Context) ([]*storage.Movie, error) {
 		SELECT(
 			table.Movie.AllColumns,
 			table.MovieTransition.ToState,
+			table.MovieTransition.DownloadClientID,
+			table.MovieTransition.DownloadID,
 			table.MovieTransition.MostRecent).
 		FROM(
 			table.Movie.INNER_JOIN(
@@ -200,7 +202,9 @@ func (s SQLite) ListMoviesByState(ctx context.Context, state storage.MovieState)
 	stmt := sqlite.
 		SELECT(
 			table.Movie.AllColumns,
-			table.MovieTransition.ToState).
+			table.MovieTransition.ToState,
+			table.MovieTransition.DownloadClientID,
+			table.MovieTransition.DownloadID).
 		FROM(
 			table.Movie.INNER_JOIN(
 				table.MovieTransition,
@@ -225,7 +229,8 @@ func (s SQLite) DeleteMovie(ctx context.Context, id int64) error {
 	return nil
 }
 
-func (s SQLite) UpdateMovieState(ctx context.Context, id int64, state storage.MovieState) error {
+// UpdateMovieState updates the transition state of a movie. Metadata is optional and can be nil
+func (s SQLite) UpdateMovieState(ctx context.Context, id int64, state storage.MovieState, metadata *storage.MovieStateMetadata) error {
 	movie, err := s.GetMovie(ctx, id)
 	if err != nil {
 		return err
@@ -263,6 +268,13 @@ func (s SQLite) UpdateMovieState(ctx context.Context, id int64, state storage.Mo
 		ToState:    string(state),
 		MostRecent: true,
 		SortKey:    previousTransition.SortKey + 1,
+	}
+
+	if metadata != nil {
+		if metadata.DownloadClientID != nil && metadata.DownloadID != nil {
+			transition.DownloadClientID = metadata.DownloadClientID
+			transition.DownloadID = metadata.DownloadID
+		}
 	}
 
 	newTransitionStmt := table.MovieTransition.

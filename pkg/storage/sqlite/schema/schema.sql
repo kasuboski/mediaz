@@ -99,6 +99,8 @@ CREATE TABLE IF NOT EXISTS "movie_transition" (
     "from_state" TEXT,
     "most_recent" BOOLEAN NOT NULL,
     "sort_key" INTEGER NOT NULL,
+    "download_client_id" INTEGER REFERENCES "download_client"("id"),
+    "download_id" TEXT,
     "created_at" DATETIME DEFAULT CURRENT_TIMESTAMP,
     "updated_at" DATETIME DEFAULT CURRENT_TIMESTAMP
 );

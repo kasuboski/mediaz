@@ -55,9 +55,16 @@ const (
 	MovieStateDownloaded  MovieState = "downloaded"
 )
 
+type MovieStateMetadata struct {
+	DownloadID       *string
+	DownloadClientID *int32
+}
+
 type Movie struct {
 	model.Movie
-	State MovieState `alias:"movie_transition.to_state" json:"state"`
+	State            MovieState `alias:"movie_transition.to_state" json:"state"`
+	DownloadID       string     `alias:"movie_transition.download_id" json:"-"`
+	DownloadClientID int32      `alias:"movie_transition.download_client_id" json:"-"`
 }
 
 type MovieTransition model.MovieTransition
@@ -78,7 +85,7 @@ type MovieStorage interface {
 	ListMovies(ctx context.Context) ([]*Movie, error)
 	ListMoviesByState(ctx context.Context, state MovieState) ([]*Movie, error)
 	GetMovieByMetadataID(ctx context.Context, metadataID int) (*Movie, error)
-	UpdateMovieState(ctx context.Context, id int64, state MovieState) error
+	UpdateMovieState(ctx context.Context, id int64, state MovieState, metadata *MovieStateMetadata) error
 
 	CreateMovieFile(ctx context.Context, movieFile model.MovieFile) (int64, error)
 	DeleteMovieFile(ctx context.Context, id int64) error

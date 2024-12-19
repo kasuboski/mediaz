@@ -176,10 +176,11 @@ func Test_Manager_reconcileMissingMovie(t *testing.T) {
 
 	mockFactory := downloadMock.NewMockFactory(ctrl)
 	mockDownloadClient := downloadMock.NewMockDownloadClient(ctrl)
-	mockDownloadClient.EXPECT().Add(ctx, download.AddRequest{Release: wantRelease}).Times(1).Return(download.Status{
+	downloadStatus := download.Status{
 		ID:   "123",
 		Name: "test download",
-	}, nil)
+	}
+	mockDownloadClient.EXPECT().Add(ctx, download.AddRequest{Release: wantRelease}).Times(1).Return(downloadStatus, nil)
 
 	mockFactory.EXPECT().NewDownloadClient(downloadClient).Times(1).Return(mockDownloadClient, nil)
 

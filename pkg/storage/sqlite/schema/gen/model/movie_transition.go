@@ -12,12 +12,14 @@ import (
 )
 
 type MovieTransition struct {
-	ID         int32 `sql:"primary_key"`
-	MovieID    int32
-	ToState    string
-	FromState  *string
-	MostRecent bool
-	SortKey    int32
-	CreatedAt  *time.Time
-	UpdatedAt  *time.Time
+	ID               int32 `sql:"primary_key"`
+	MovieID          int32
+	ToState          string
+	FromState        *string
+	MostRecent       bool
+	SortKey          int32
+	DownloadClientID *int32
+	DownloadID       *string
+	CreatedAt        *time.Time
+	UpdatedAt        *time.Time
 }

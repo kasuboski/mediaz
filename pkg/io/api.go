@@ -8,6 +8,7 @@ import (
 
 // FileIO is an interface for file io operations
 type FileIO interface {
+	Stat(target string) (os.FileInfo, error)
 	Create(name string) (io.WriteCloser, error)
 	IsSameFileSystem(source, target string) (bool, error)
 	Open(name string) (*os.File, error)
