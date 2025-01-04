@@ -50,18 +50,6 @@ func TestTransmissionClient_Add(t *testing.T) {
 			Release: &prowlarr.ReleaseResource{GUID: nullable.NewNullableWithValue[string]("http://example.com/torrent")},
 		}
 
-		getResponse := TransmissionListTorrentsResponse{
-			Arguments: TorrentList{
-				Torrents: []TransmissionTorrent{
-					{
-						ID:   1,
-						Name: "torrent 1",
-					},
-				},
-			},
-			Result: "success",
-		}
-
 		addResponse := AddTorrentResponse{
 			Arguments: AddTorrentResponseArguments{
 				TorrentAdded: AddedTorrent{
@@ -76,27 +64,46 @@ func TestTransmissionClient_Add(t *testing.T) {
 		addResponseBody, err := json.Marshal(addResponse)
 		assert.NoError(t, err)
 
+		getResponse := TransmissionListTorrentsResponse{
+			Arguments: TorrentList{
+				Torrents: []TransmissionTorrent{
+					{
+						ID:          1,
+						Name:        "torrent 1",
+						DownloadDir: "/downloads",
+						Files: []TransmissionFile{
+							{
+								Name: "file1",
+							},
+						},
+					},
+				},
+			},
+			Result: "success",
+		}
+
 		getResponseBody, err := json.Marshal(getResponse)
 		assert.NoError(t, err)
 
-		first := mockHttp.EXPECT().Do(gomock.Any()).Return(&http.Response{
+		addMock := mockHttp.EXPECT().Do(gomock.Any()).Return(&http.Response{
 			StatusCode: http.StatusOK,
 			Body:       io.NopCloser(bytes.NewBuffer(addResponseBody)),
 		}, nil)
 
-		second := mockHttp.EXPECT().Do(gomock.Any()).Return(&http.Response{
+		getMock := mockHttp.EXPECT().Do(gomock.Any()).Return(&http.Response{
 			StatusCode: http.StatusOK,
 			Body:       io.NopCloser(bytes.NewBuffer(getResponseBody)),
 		}, nil)
 
-		gomock.InOrder(first, second)
+		gomock.InOrder(addMock, getMock)
 
 		status, err := client.Add(ctx, addRequest)
 		assert.NoError(t, err)
 
 		expectedStatus := Status{
-			ID:   "1",
-			Name: "torrent 1",
+			ID:       "1",
+			Name:     "torrent 1",
+			FilePath: []string{"/downloads/file1"},
 		}
 		assert.Equal(t, expectedStatus, status)
 	})

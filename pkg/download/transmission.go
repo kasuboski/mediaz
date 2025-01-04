@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"path/filepath"
 	"strconv"
 	"sync"
 
@@ -94,13 +95,21 @@ type TransmissionTorrent struct {
 }
 
 func (t *TransmissionTorrent) ToStatus() Status {
-	return Status{
+	var paths []string
+	for _, f := range t.Files {
+		paths = append(paths, filepath.Join(t.DownloadDir, f.Name))
+	}
+
+	s := Status{
 		ID:       fmt.Sprintf("%d", t.ID),
 		Name:     t.Name,
 		Size:     t.TotalSize >> 20, // bytes to mb
 		Progress: t.PercentDone,
 		Speed:    t.RateDownload >> 20, // bytes/s to mb/s
+		FilePath: paths,
 	}
+
+	return s
 }
 
 type TransmissionFile struct {

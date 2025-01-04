@@ -22,17 +22,29 @@ func TestQueueToStatus(t *testing.T) {
 	err := json.Unmarshal([]byte(testQueueResponse), &response)
 	require.NoError(t, err)
 
-	statuses, err := queueToStatus(response.Queue)
+	var historyResponse HistoryResponse
+	err = json.Unmarshal([]byte(testHistoyResponse), &historyResponse)
+	require.NoError(t, err)
+
+	statuses, err := queueToStatus(response.Queue, historyResponse.History)
 	assert.NoError(t, err)
 
 	assert.Len(t, statuses, 2)
-	for _, s := range statuses {
-		assert.NotEmpty(t, s.ID)
-		assert.NotEmpty(t, s.Name)
-		assert.NotEmpty(t, s.Progress)
-		assert.NotEmpty(t, s.Size)
-		assert.NotEmpty(t, s.Speed)
-	}
+	firstStatus := statuses[0]
+	assert.Equal(t, "SABnzbd_nzo_p86tgx", firstStatus.ID)
+	assert.Equal(t, "TV.Show.S04E11.720p.HDTV.x264", firstStatus.Name)
+	assert.Equal(t, 2.5, firstStatus.Progress)
+	assert.Equal(t, int64(1), firstStatus.Speed)
+	assert.Equal(t, int64(1277), firstStatus.Size)
+	assert.Equal(t, []string{"/path/to/TV.Show.S04E02.720p.BluRay.x264-xHD"}, firstStatus.FilePath)
+
+	secondStatus := statuses[1]
+	assert.Equal(t, "SABnzbd_nzo_ksfai6", secondStatus.ID)
+	assert.Equal(t, "TV.Show.S04E12.720p.HDTV.x264", secondStatus.Name)
+	assert.Equal(t, 50.0, secondStatus.Progress)
+	assert.Equal(t, int64(1), secondStatus.Speed)
+	assert.Equal(t, int64(1277), secondStatus.Size)
+	assert.Equal(t, []string{"/path2/to/TV.Show.S04E02.720p.BluRay.x264-xHD"}, secondStatus.FilePath)
 }
 
 func TestNewSabnzbdClient(t *testing.T) {
@@ -75,7 +87,7 @@ func TestSabnzbdClient_Add(t *testing.T) {
 
 		addResponse := AddNewsResponse{
 			Status: true,
-			NZOIDS: []string{"SABnzbd_nzo_ksfai6"},
+			NzoIDs: []string{"SABnzbd_nzo_ksfai6"},
 		}
 
 		addResponseBody, err := json.Marshal(addResponse)
@@ -84,17 +96,36 @@ func TestSabnzbdClient_Add(t *testing.T) {
 		getResponseBody, err := json.Marshal(getResponse)
 		require.NoError(t, err)
 
-		first := mockHttp.EXPECT().Do(gomock.Any()).Return(&http.Response{
+		addMock := mockHttp.EXPECT().Do(gomock.Any()).Return(&http.Response{
 			StatusCode: http.StatusOK,
 			Body:       io.NopCloser(bytes.NewBuffer(addResponseBody)),
 		}, nil)
 
-		second := mockHttp.EXPECT().Do(gomock.Any()).Return(&http.Response{
+		getMock := mockHttp.EXPECT().Do(gomock.Any()).Return(&http.Response{
 			StatusCode: http.StatusOK,
 			Body:       io.NopCloser(bytes.NewBuffer(getResponseBody)),
 		}, nil)
 
-		gomock.InOrder(first, second)
+		historyResponse := HistoryResponse{
+			History: History{
+				Slots: []HistorySlot{
+					{
+						NzoID:   "SABnzbd_nzo_ksfai6",
+						Storage: "/downloads/TV.Show.S04E12.720p.HDTV.x264",
+					},
+				},
+			},
+		}
+
+		historyResponseBody, err := json.Marshal(historyResponse)
+		require.NoError(t, err)
+
+		historyMock := mockHttp.EXPECT().Do(gomock.Any()).Return(&http.Response{
+			StatusCode: http.StatusOK,
+			Body:       io.NopCloser(bytes.NewBuffer(historyResponseBody)),
+		}, nil)
+
+		gomock.InOrder(addMock, getMock, historyMock)
 
 		status, err := client.Add(ctx, addRequest)
 		assert.NoError(t, err)
@@ -105,6 +136,7 @@ func TestSabnzbdClient_Add(t *testing.T) {
 			Progress: 40,
 			Speed:    1,
 			Size:     1277,
+			FilePath: []string{"/downloads/TV.Show.S04E12.720p.HDTV.x264"},
 		}
 		assert.Equal(t, expectedStatus, status)
 	})
@@ -178,7 +210,7 @@ func TestSabnzbdClient_Add(t *testing.T) {
 		// Mock the successful Add response
 		addResponse := AddNewsResponse{
 			Status: true,
-			NZOIDS: []string{"SABnzbd_nzo_ksfai6"},
+			NzoIDs: []string{"SABnzbd_nzo_ksfai6"},
 		}
 
 		// Serialize the Add response
@@ -217,7 +249,7 @@ func TestSabnzbdClient_Get(t *testing.T) {
 			ID: "SABnzbd_nzo_ksfai6",
 		}
 
-		getResponse := QueueResponse{
+		queueResponse := QueueResponse{
 			Queue: Queue{
 				Speed: "1.3 M",
 				Slots: []Slot{{
@@ -229,13 +261,34 @@ func TestSabnzbdClient_Get(t *testing.T) {
 			},
 		}
 
-		getResponseBody, err := json.Marshal(getResponse)
+		queueResponseBody, err := json.Marshal(queueResponse)
 		require.NoError(t, err)
 
-		mockHttp.EXPECT().Do(gomock.Any()).Return(&http.Response{
+		queueMock := mockHttp.EXPECT().Do(gomock.Any()).Return(&http.Response{
 			StatusCode: http.StatusOK,
-			Body:       io.NopCloser(bytes.NewBuffer(getResponseBody)),
+			Body:       io.NopCloser(bytes.NewBuffer(queueResponseBody)),
 		}, nil)
+
+		historyResponse := HistoryResponse{
+			History: History{
+				Slots: []HistorySlot{
+					{
+						NzoID:   "SABnzbd_nzo_ksfai6",
+						Storage: "/downloads/TV.Show.S04E12.720p.HDTV.x264",
+					},
+				},
+			},
+		}
+
+		historyResponseBody, err := json.Marshal(historyResponse)
+		require.NoError(t, err)
+
+		historyMock := mockHttp.EXPECT().Do(gomock.Any()).Return(&http.Response{
+			StatusCode: http.StatusOK,
+			Body:       io.NopCloser(bytes.NewBuffer(historyResponseBody)),
+		}, nil)
+
+		gomock.InOrder(queueMock, historyMock)
 
 		status, err := client.Get(ctx, getRequest)
 		assert.NoError(t, err)
@@ -246,6 +299,7 @@ func TestSabnzbdClient_Get(t *testing.T) {
 			Progress: 40,
 			Speed:    1,
 			Size:     1277,
+			FilePath: []string{"/downloads/TV.Show.S04E12.720p.HDTV.x264"},
 		}
 		assert.Equal(t, expectedStatus, status)
 	})
@@ -272,11 +326,7 @@ func TestSabnzbdClient_Get(t *testing.T) {
 		client := NewSabnzbdClient(mockHttp, "http", "localhost", "secret")
 		ctx := context.Background()
 
-		getRequest := GetRequest{
-			ID: "1",
-		}
-
-		getResponse := QueueResponse{
+		queueResponse := QueueResponse{
 			Queue: Queue{
 				Speed: "1.3 M",
 				Slots: []Slot{{
@@ -288,13 +338,38 @@ func TestSabnzbdClient_Get(t *testing.T) {
 			},
 		}
 
-		getResponseBody, err := json.Marshal(getResponse)
+		queueResponseBody, err := json.Marshal(queueResponse)
 		require.NoError(t, err)
 
-		mockHttp.EXPECT().Do(gomock.Any()).Return(&http.Response{
+		queueMock := mockHttp.EXPECT().Do(gomock.Any()).Return(&http.Response{
 			StatusCode: http.StatusOK,
-			Body:       io.NopCloser(bytes.NewBuffer(getResponseBody)),
+			Body:       io.NopCloser(bytes.NewBuffer(queueResponseBody)),
 		}, nil)
+
+		historyResponse := HistoryResponse{
+			History: History{
+				Slots: []HistorySlot{
+					{
+						NzoID:   "SABnzbd_nzo_ksfai6",
+						Storage: "/downloads/TV.Show.S04E12.720p.HDTV.x264",
+					},
+				},
+			},
+		}
+
+		historyResponseBody, err := json.Marshal(historyResponse)
+		require.NoError(t, err)
+
+		historyMock := mockHttp.EXPECT().Do(gomock.Any()).Return(&http.Response{
+			StatusCode: http.StatusOK,
+			Body:       io.NopCloser(bytes.NewBuffer(historyResponseBody)),
+		}, nil)
+
+		gomock.InOrder(queueMock, historyMock)
+
+		getRequest := GetRequest{
+			ID: "1",
+		}
 
 		status, err := client.Get(ctx, getRequest)
 		assert.Error(t, err)
@@ -312,7 +387,7 @@ func TestSabnzbdClient_List(t *testing.T) {
 		client := NewSabnzbdClient(mockHttp, "http", "localhost", "secret")
 		ctx := context.Background()
 
-		getResponse := QueueResponse{
+		queueResponse := QueueResponse{
 			Queue: Queue{
 				Speed: "1.3 M",
 				Slots: []Slot{
@@ -338,13 +413,44 @@ func TestSabnzbdClient_List(t *testing.T) {
 			},
 		}
 
-		getResponseBody, err := json.Marshal(getResponse)
+		queueResponseBody, err := json.Marshal(queueResponse)
 		require.NoError(t, err)
 
-		mockHttp.EXPECT().Do(gomock.Any()).Return(&http.Response{
+		queueMock := mockHttp.EXPECT().Do(gomock.Any()).Return(&http.Response{
 			StatusCode: http.StatusOK,
-			Body:       io.NopCloser(bytes.NewBuffer(getResponseBody)),
+			Body:       io.NopCloser(bytes.NewBuffer(queueResponseBody)),
 		}, nil)
+
+		historyResponse := HistoryResponse{
+			History: History{
+				Slots: []HistorySlot{
+					{
+						NzoID:   "SABnzbd_nzo_ksfai6",
+						Storage: "/downloads/TV.Show.S04E12.720p.HDTV.x264",
+					},
+					{
+						NzoID:   "SABnzbd_nzo_ksfai7",
+						Storage: "/downloads/TV.Show.S04E13.720p.HDTV.x264",
+					},
+					{
+						NzoID:   "SABnzbd_nzo_ksfai8",
+						Storage: "/downloads/TV.Show.S04E10.720p.HDTV.x264",
+					},
+				},
+			},
+		}
+
+		historyResponseBody, err := json.Marshal(historyResponse)
+		require.NoError(t, err)
+
+		historyMock := mockHttp.EXPECT().Do(gomock.Any()).Return(&http.Response{
+			StatusCode: http.StatusOK,
+			Body:       io.NopCloser(bytes.NewBuffer(historyResponseBody)),
+		}, nil)
+
+		gomock.InOrder(queueMock, historyMock)
+
+		mockHttp.EXPECT()
 
 		status, err := client.List(ctx)
 		assert.NoError(t, err)
@@ -356,6 +462,7 @@ func TestSabnzbdClient_List(t *testing.T) {
 				Progress: 40,
 				Speed:    1,
 				Size:     1277,
+				FilePath: []string{"/downloads/TV.Show.S04E12.720p.HDTV.x264"},
 			},
 			{
 				ID:       "SABnzbd_nzo_ksfai7",
@@ -363,6 +470,7 @@ func TestSabnzbdClient_List(t *testing.T) {
 				Progress: 2,
 				Speed:    1,
 				Size:     12237,
+				FilePath: []string{"/downloads/TV.Show.S04E13.720p.HDTV.x264"},
 			},
 			{
 				ID:       "SABnzbd_nzo_ksfai8",
@@ -370,6 +478,7 @@ func TestSabnzbdClient_List(t *testing.T) {
 				Progress: 22.5,
 				Speed:    1,
 				Size:     127,
+				FilePath: []string{"/downloads/TV.Show.S04E10.720p.HDTV.x264"},
 			},
 		}
 		assert.Equal(t, want, status)
@@ -403,14 +512,139 @@ func TestSabnzbdClient_List(t *testing.T) {
 		getResponseBody, err := json.Marshal(getResponse)
 		require.NoError(t, err)
 
-		mockHttp.EXPECT().Do(gomock.Any()).Return(&http.Response{
-			StatusCode: http.StatusOK,
-			Body:       io.NopCloser(bytes.NewBuffer(getResponseBody)),
-		}, nil)
+		gomock.InOrder(
+			mockHttp.EXPECT().Do(gomock.Any()).Return(&http.Response{
+				StatusCode: http.StatusOK,
+				Body:       io.NopCloser(bytes.NewBuffer(getResponseBody)),
+			}, nil),
+			mockHttp.EXPECT().Do(gomock.Any()).Return(&http.Response{
+				StatusCode: http.StatusOK,
+				Body:       io.NopCloser(bytes.NewBuffer(getResponseBody)),
+			}, nil),
+		)
 
 		statuses, err := client.List(ctx)
 		assert.NoError(t, err)
 		assert.Empty(t, statuses)
+	})
+}
+
+func TestSabnzbdClient_History(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	t.Run("success with ids", func(t *testing.T) {
+		mockHttp := httpMock.NewMockHTTPClient(ctrl)
+		client := SabnzbdClient{
+			http:   mockHttp,
+			host:   "localhost",
+			scheme: "http",
+			apiKey: "secret",
+		}
+		ctx := context.Background()
+
+		historyResponse := HistoryResponse{
+			History: History{
+				NoOfSlots: 1,
+				Slots: []HistorySlot{
+					{
+						NzoID:   "SABnzbd_nzo_ksfai6",
+						Name:    "TV.Show.S04E12.720p.HDTV.x264",
+						Status:  "Completed",
+						Storage: "/downloads/TV.Show.S04E12.720p.HDTV.x264",
+					},
+				},
+			},
+		}
+
+		historyResponseBody, err := json.Marshal(historyResponse)
+		require.NoError(t, err)
+
+		mockHttp.EXPECT().Do(gomock.Any()).Return(&http.Response{
+			StatusCode: http.StatusOK,
+			Body:       io.NopCloser(bytes.NewBuffer(historyResponseBody)),
+		}, nil)
+
+		history, err := client.history(ctx, "SABnzbd_nzo_ksfai6")
+		assert.NoError(t, err)
+		assert.Equal(t, historyResponse, history)
+	})
+
+	t.Run("success without ids", func(t *testing.T) {
+		mockHttp := httpMock.NewMockHTTPClient(ctrl)
+		client := SabnzbdClient{
+			http:   mockHttp,
+			host:   "localhost",
+			scheme: "http",
+			apiKey: "secret",
+		}
+		ctx := context.Background()
+
+		historyResponse := HistoryResponse{
+			History: History{
+				NoOfSlots: 1,
+				Slots: []HistorySlot{
+					{
+						NzoID:   "SABnzbd_nzo_ksfai6",
+						Name:    "TV.Show.S04E12.720p.HDTV.x264",
+						Status:  "Completed",
+						Storage: "/downloads/TV.Show.S04E12.720p.HDTV.x264",
+					},
+				},
+			},
+		}
+
+		historyResponseBody, err := json.Marshal(historyResponse)
+		require.NoError(t, err)
+
+		mockHttp.EXPECT().Do(gomock.Any()).Return(&http.Response{
+			StatusCode: http.StatusOK,
+			Body:       io.NopCloser(bytes.NewBuffer(historyResponseBody)),
+		}, nil)
+
+		history, err := client.history(ctx)
+		assert.NoError(t, err)
+		assert.Equal(t, historyResponse, history)
+	})
+
+	t.Run("error during request", func(t *testing.T) {
+		mockHttp := httpMock.NewMockHTTPClient(ctrl)
+		client := SabnzbdClient{
+			http:   mockHttp,
+			host:   "localhost",
+			scheme: "http",
+			apiKey: "secret",
+		}
+		ctx := context.Background()
+
+		mockHttp.EXPECT().Do(gomock.Any()).Return(nil, fmt.Errorf("http error"))
+
+		history, err := client.history(ctx, "SABnzbd_nzo_ksfai6")
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "http error")
+		assert.Equal(t, HistoryResponse{}, history)
+	})
+
+	t.Run("error in response", func(t *testing.T) {
+		mockHttp := httpMock.NewMockHTTPClient(ctrl)
+		client := SabnzbdClient{
+			http:   mockHttp,
+			host:   "localhost",
+			scheme: "http",
+			apiKey: "secret",
+		}
+
+		ctx := context.Background()
+
+		mockHttp.EXPECT().Do(gomock.Any()).Return(&http.Response{
+			StatusCode: http.StatusOK,
+			Body:       io.NopCloser(bytes.NewBuffer([]byte("invalid json"))),
+		}, nil)
+
+		history, err := client.history(ctx, "SABnzbd_nzo_ksfai6")
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "invalid character")
+		assert.Equal(t, HistoryResponse{}, history)
 	})
 }
 
@@ -496,4 +730,144 @@ const testQueueResponse = `{
         "quota": "0 ",
         "have_quota": false
     }
+}`
+
+var testHistoyResponse = `{
+    "history": {
+        "noofslots": 220,
+        "ppslots": 1,
+        "day_size": "1.9 G",
+        "week_size": "30.4 G",
+        "month_size": "167.3 G",
+        "total_size": "678.1 G",
+        "last_history_update": 1469210913,
+        "slots": [
+            {
+                "action_line": "",
+                "duplicate_key": "TV.Show/4/2",
+                "meta": null,
+                "fail_message": "",
+                "loaded": false,
+                "size": "2.3 GB",
+                "category": "tv",
+                "pp": "D",
+                "retry": 0,
+                "script": "None",
+                "nzb_name": "TV.Show.S04E02.720p.BluRay.x264-xHD.nzb",
+                "download_time": 64,
+                "storage": "/path/to/TV.Show.S04E02.720p.BluRay.x264-xHD",
+                "has_rating": false,
+                "status": "Completed",
+                "script_line": "",
+                "completed": 1469172988,
+                "nzo_id": "SABnzbd_nzo_p86tgx",
+                "downloaded": 2436906376,
+                "report": "",
+                "password": "",
+                "path": "C:\\Users\\xxx\\Videos\\Complete\\TV.Show.S04E02.720p.BluRay.x264-xHD",
+                "postproc_time": 40,
+                "name": "TV.Show.S04E02.720p.BluRay.x264-xHD",
+                "url": "TV.Show.S04E02.720p.BluRay.x264-xHD.nzb",
+                "md5sum": "d2c16aeecbc1b1921d04422850e93013",
+                "archive": false,
+                "bytes": 2436906376,
+                "url_info": "",
+                "stage_log": [
+                    {
+                        "name": "Source",
+                        "actions": [
+                            "TV.Show.S04E02.720p.BluRay.x264-xHD.nzb"
+                        ]
+                    },
+                    {
+                        "name": "Download",
+                        "actions": [
+                            "Downloaded in 1 min 4 seconds at an average of 36.2 MB/s<br/>Age: 550d<br/>10 articles were malformed"
+                        ]
+                    },
+                    {
+                        "name": "Servers",
+                        "actions": [
+                            "Frugal=2.3 GB"
+                        ]
+                    },
+                    {
+                        "name": "Repair",
+                        "actions": [
+                            "[pA72r5Ac6lW3bmpd20T7Hj1Zg2bymUsINBB50skrI] Repaired in 19 seconds"
+                        ]
+                    },
+                    {
+                        "name": "Unpack",
+                        "actions": [
+                            "[pA72r5Ac6lW3bmpd20T7Hj1Zg2bymUsINBB50skrI] Unpacked 1 files/folders in 6 seconds"
+                        ]
+                    }
+                ]
+            },
+			            {
+                "action_line": "",
+                "duplicate_key": "TV.Show/4/2",
+                "meta": null,
+                "fail_message": "",
+                "loaded": false,
+                "size": "2.3 GB",
+                "category": "tv",
+                "pp": "D",
+                "retry": 0,
+                "script": "None",
+                "nzb_name": "TV.Show.S04E02.720p.BluRay.x264-xHD.nzb",
+                "download_time": 64,
+                "storage": "/path2/to/TV.Show.S04E02.720p.BluRay.x264-xHD",
+                "has_rating": false,
+                "status": "Completed",
+                "script_line": "",
+                "completed": 1469172988,
+                "nzo_id": "SABnzbd_nzo_ksfai6",
+                "downloaded": 2436906376,
+                "report": "",
+                "password": "",
+                "path": "/path2/to/TV.Show.S04E02.720p.BluRay.x264-xHD",
+                "postproc_time": 40,
+                "name": "TV.Show.S04E02.720p.BluRay.x264-xHD",
+                "url": "TV.Show.S04E02.720p.BluRay.x264-xHD.nzb",
+                "md5sum": "d2c16aeecbc1b1921d04422850e93013",
+                "archive": false,
+                "bytes": 2436906376,
+                "url_info": "",
+                "stage_log": [
+                    {
+                        "name": "Source",
+                        "actions": [
+                            "TV.Show.S04E02.720p.BluRay.x264-xHD.nzb"
+                        ]
+                    },
+                    {
+                        "name": "Download",
+                        "actions": [
+                            "Downloaded in 1 min 4 seconds at an average of 36.2 MB/s<br/>Age: 550d<br/>10 articles were malformed"
+                        ]
+                    },
+                    {
+                        "name": "Servers",
+                        "actions": [
+                            "Frugal=2.3 GB"
+                        ]
+                    },
+                    {
+                        "name": "Repair",
+                        "actions": [
+                            "[pA72r5Ac6lW3bmpd20T7Hj1Zg2bymUsINBB50skrI] Repaired in 19 seconds"
+                        ]
+                    },
+                    {
+                        "name": "Unpack",
+                        "actions": [
+                            "[pA72r5Ac6lW3bmpd20T7Hj1Zg2bymUsINBB50skrI] Unpacked 1 files/folders in 6 seconds"
+                        ]
+                    }
+                ]
+            }
+		]
+	}
 }`

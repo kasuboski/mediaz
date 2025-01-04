@@ -32,8 +32,8 @@ func NewSabnzbdClient(http HTTPClient, scheme, host, apiKey string) DownloadClie
 }
 
 type AddNewsResponse struct {
+	NzoIDs []string `json:"nzo_ids"`
 	Status bool
-	NZOIDS []string `json:"nzo_ids"`
 }
 
 func (c *SabnzbdClient) Add(ctx context.Context, request AddRequest) (Status, error) {
@@ -68,11 +68,11 @@ func (c *SabnzbdClient) Add(ctx context.Context, request AddRequest) (Status, er
 		return status, err
 	}
 
-	if len(response.NZOIDS) == 0 {
+	if len(response.NzoIDs) == 0 {
 		return status, errors.New("no ids returned")
 	}
 
-	return c.Get(ctx, GetRequest{ID: response.NZOIDS[0]})
+	return c.Get(ctx, GetRequest{ID: response.NzoIDs[0]})
 }
 
 type QueueResponse struct {
@@ -80,14 +80,14 @@ type QueueResponse struct {
 }
 
 type Queue struct {
+	Finishaction    interface{} `json:"finishaction"`
+	Diskspace1      string      `json:"diskspace1"`
+	PauseInt        string      `json:"pause_int"`
+	Quota           string      `json:"quota"`
 	Status          string      `json:"status"`
 	Speedlimit      string      `json:"speedlimit"`
-	SpeedlimitAbs   string      `json:"speedlimit_abs"`
-	Paused          bool        `json:"paused"`
-	NoofslotsTotal  int64       `json:"noofslots_total"`
-	Noofslots       int64       `json:"noofslots"`
-	Limit           int64       `json:"limit"`
-	Start           int64       `json:"start"`
+	CacheSize       string      `json:"cache_size"`
+	Diskspace2      string      `json:"diskspace2"`
 	Timeleft        string      `json:"timeleft"`
 	Speed           string      `json:"speed"`
 	Kbpersec        string      `json:"kbpersec"`
@@ -95,46 +95,46 @@ type Queue struct {
 	Sizeleft        string      `json:"sizeleft"`
 	MB              string      `json:"mb"`
 	Mbleft          string      `json:"mbleft"`
-	Slots           []Slot      `json:"slots"`
-	Diskspace1      string      `json:"diskspace1"`
-	Diskspace2      string      `json:"diskspace2"`
+	CacheArt        string      `json:"cache_art"`
+	Version         string      `json:"version"`
+	LeftQuota       string      `json:"left_quota"`
 	Diskspacetotal1 string      `json:"diskspacetotal1"`
 	Diskspacetotal2 string      `json:"diskspacetotal2"`
 	Diskspace1Norm  string      `json:"diskspace1_norm"`
 	Diskspace2Norm  string      `json:"diskspace2_norm"`
 	HaveWarnings    string      `json:"have_warnings"`
-	PauseInt        string      `json:"pause_int"`
-	LeftQuota       string      `json:"left_quota"`
-	Version         string      `json:"version"`
+	SpeedlimitAbs   string      `json:"speedlimit_abs"`
+	Slots           []Slot      `json:"slots"`
+	Start           int64       `json:"start"`
 	Finish          int64       `json:"finish"`
-	CacheArt        string      `json:"cache_art"`
-	CacheSize       string      `json:"cache_size"`
-	Finishaction    interface{} `json:"finishaction"`
+	Limit           int64       `json:"limit"`
+	Noofslots       int64       `json:"noofslots"`
+	NoofslotsTotal  int64       `json:"noofslots_total"`
 	PausedAll       bool        `json:"paused_all"`
-	Quota           string      `json:"quota"`
 	HaveQuota       bool        `json:"have_quota"`
+	Paused          bool        `json:"paused"`
 }
 
 type Slot struct {
-	Status       string   `json:"status"`
-	Index        int64    `json:"index"`
-	Password     string   `json:"password"`
-	AvgAge       string   `json:"avg_age"`
-	Script       string   `json:"script"`
 	DirectUnpack *string  `json:"direct_unpack"`
-	MB           string   `json:"mb"`
-	Mbleft       string   `json:"mbleft"`
 	Mbmissing    string   `json:"mbmissing"`
-	Size         string   `json:"size"`
+	AvgAge       string   `json:"avg_age"`
 	Sizeleft     string   `json:"sizeleft"`
 	Filename     string   `json:"filename"`
-	Labels       []string `json:"labels"`
-	Priority     int      `json:"priority"`
+	Size         string   `json:"size"`
+	MB           string   `json:"mb"`
+	Mbleft       string   `json:"mbleft"`
+	Status       string   `json:"status"`
+	Unpackopts   string   `json:"unpackopts"`
+	Password     string   `json:"password"`
+	Script       string   `json:"script"`
+	NzoID        string   `json:"nzo_id"`
+	Percentage   string   `json:"percentage"`
 	Cat          string   `json:"cat"`
 	Timeleft     string   `json:"timeleft"`
-	Percentage   string   `json:"percentage"`
-	NzoID        string   `json:"nzo_id"`
-	Unpackopts   string   `json:"unpackopts"`
+	Labels       []string `json:"labels"`
+	Priority     int      `json:"priority"`
+	Index        int64    `json:"index"`
 }
 
 func (c *SabnzbdClient) Get(ctx context.Context, request GetRequest) (Status, error) {
@@ -175,10 +175,101 @@ func (c *SabnzbdClient) List(ctx context.Context) ([]Status, error) {
 		return nil, err
 	}
 
-	return queueToStatus(response.Queue)
+	ids := make([]string, 0)
+	for _, s := range response.Queue.Slots {
+		ids = append(ids, s.NzoID)
+	}
+
+	historyResponse, err := c.history(ctx, ids...)
+	if err != nil {
+		return nil, err
+	}
+
+	return queueToStatus(response.Queue, historyResponse.History)
 }
 
-func queueToStatus(queue Queue) ([]Status, error) {
+type HistoryResponse struct {
+	History History `json:"history"`
+}
+
+// History represents the root history structure
+type History struct {
+	DaySize           string        `json:"day_size"`
+	WeekSize          string        `json:"week_size"`
+	MonthSize         string        `json:"month_size"`
+	TotalSize         string        `json:"total_size"`
+	Slots             []HistorySlot `json:"slots"`
+	NoOfSlots         int           `json:"noofslots"`
+	PPslots           int           `json:"ppslots"`
+	LastHistoryUpdate int64         `json:"last_history_update"`
+}
+
+// HistorySlot represents an individual slot in the history
+type HistorySlot struct {
+	Meta         interface{} `json:"meta"`
+	Status       string      `json:"status"`
+	Size         string      `json:"size"`
+	ScriptLine   string      `json:"script_line"`
+	URLInfo      string      `json:"url_info"`
+	MD5Sum       string      `json:"md5sum"`
+	Category     string      `json:"category"`
+	PP           string      `json:"pp"`
+	URL          string      `json:"url"`
+	Script       string      `json:"script"`
+	NZBName      string      `json:"nzb_name"`
+	Name         string      `json:"name"`
+	NzoID        string      `json:"nzo_id"`
+	Path         string      `json:"path"`
+	ActionLine   string      `json:"action_line"`
+	FailMessage  string      `json:"fail_message"`
+	DuplicateKey string      `json:"duplicate_key"`
+	Storage      string      `json:"storage"`
+	Password     string      `json:"password"`
+	Report       string      `json:"report"`
+	StageLog     []StageLog  `json:"stage_log"`
+	Downloaded   int64       `json:"downloaded"`
+	PostprocTime int         `json:"postproc_time"`
+	DownloadTime int         `json:"download_time"`
+	Retry        int         `json:"retry"`
+	Completed    int64       `json:"completed"`
+	Bytes        int64       `json:"bytes"`
+	HasRating    bool        `json:"has_rating"`
+	Archive      bool        `json:"archive"`
+	Loaded       bool        `json:"loaded"`
+}
+
+// StageLog represents a single stage log entry
+type StageLog struct {
+	Name    string   `json:"name"`
+	Actions []string `json:"actions"`
+}
+
+func (c *SabnzbdClient) history(ctx context.Context, ids ...string) (HistoryResponse, error) {
+	url := url.URL{
+		Host:   c.host,
+		Scheme: c.scheme,
+		Path:   "/sabnzbd/api",
+	}
+
+	q := url.Query()
+	q.Set("mode", "history")
+	if len(ids) > 0 {
+		q.Set("nzo_id", strings.Join(ids, ","))
+	}
+
+	url.RawQuery = q.Encode()
+
+	var history HistoryResponse
+	b, err := c.do(ctx, &url)
+	if err != nil {
+		return history, err
+	}
+
+	err = json.Unmarshal(b, &history)
+	return history, err
+}
+
+func queueToStatus(queue Queue, history History) ([]Status, error) {
 	slots := queue.Slots
 	speedDesc := queue.Speed
 	split := strings.Split(speedDesc, " ")
@@ -198,12 +289,21 @@ func queueToStatus(queue Queue) ([]Status, error) {
 		if err != nil {
 			size = 0
 		}
+
+		var path string
+		for _, h := range history.Slots {
+			if h.NzoID == s.NzoID {
+				path = h.Storage
+			}
+		}
+
 		stats[i] = Status{
 			ID:       s.NzoID,
 			Name:     s.Filename,
 			Progress: p,
 			Size:     int64(size),
 			Speed:    int64(speed),
+			FilePath: []string{path},
 		}
 	}
 
