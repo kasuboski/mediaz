@@ -57,12 +57,12 @@ func TestDownloadClientFactory_NewDownloadClient(t *testing.T) {
 
 func TestStatus_Finished(t *testing.T) {
 	type fields struct {
-		ID       string
-		Name     string
-		FilePath string
-		Progress float64
-		Speed    int64
-		Size     int64
+		ID        string
+		Name      string
+		FilePaths []string
+		Progress  float64
+		Speed     int64
+		Size      int64
 	}
 	tests := []struct {
 		name   string
@@ -89,7 +89,7 @@ func TestStatus_Finished(t *testing.T) {
 			s := Status{
 				ID:       tt.fields.ID,
 				Name:     tt.fields.Name,
-				FilePath: tt.fields.FilePath,
+				FilePath: tt.fields.FilePaths,
 				Progress: tt.fields.Progress,
 				Speed:    tt.fields.Speed,
 				Size:     tt.fields.Size,
