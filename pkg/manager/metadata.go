@@ -14,7 +14,6 @@ import (
 	"github.com/kasuboski/mediaz/pkg/tmdb"
 )
 
-
 // IndexMovies finds metadata for each movie in the library
 func (m MediaManager) IndexMovies(ctx context.Context) error {
 	log := logger.FromCtx(ctx)

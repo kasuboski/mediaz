@@ -6,10 +6,14 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"os"
 	"testing"
 	"testing/fstest"
 	"time"
 
+	"strconv"
+
+	"github.com/gkampitakis/go-snaps/snaps"
 	"github.com/kasuboski/mediaz/pkg/download"
 	downloadMock "github.com/kasuboski/mediaz/pkg/download/mocks"
 	mio "github.com/kasuboski/mediaz/pkg/io"
@@ -399,6 +403,40 @@ func TestRun(t *testing.T) {
 
 }
 
+func TestRejectRelease(t *testing.T) {
+	t.Run("prefix match only", func(t *testing.T) {
+		ctx := context.Background()
+		det := &model.MovieMetadata{Title: "Brothers", Runtime: 60}
+		profile := storage.QualityProfile{
+			Name: "test",
+			Qualities: []storage.QualityDefinition{{
+				MinSize:       17.0,
+				MaxSize:       2000,
+				PreferredSize: 1999,
+			}},
+		}
+		rejectFunc := rejectReleaseFunc(ctx, det, profile, map[string]struct{}{"usenet": {}, "torrent": {}})
+		releases := getReleasesFromFile(t, "./testing/brother-releases.json")
+		for _, r := range releases {
+			got := rejectFunc(r)
+			snaps.MatchSnapshot(t, []string{r.Title.MustGet(), strconv.FormatBool(got)})
+		}
+	})
+}
+
+func getReleasesFromFile(t *testing.T, path string) []*prowlarr.ReleaseResource {
+	b, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	releases := make([]*prowlarr.ReleaseResource, 0)
+	err = json.Unmarshal(b, &releases)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return releases
+}
+
 func searchIndexersResponse(t *testing.T, releases []*prowlarr.ReleaseResource) *http.Response {
 	resp := &http.Response{
 		StatusCode: http.StatusOK,
@@ -428,27 +466,6 @@ func mediaDetailsResponse(title string, runtime int, releaseDate string) *http.R
 		StatusCode: http.StatusOK,
 		Body:       io.NopCloser(bytes.NewBuffer(b)),
 	}
-}
-
-func indexersResponse(t *testing.T, indexers []Indexer) *http.Response {
-	resp := &http.Response{
-		StatusCode: http.StatusOK,
-		Header:     make(map[string][]string),
-	}
-
-	prowlarrIndexers := make([]*prowlarr.IndexerResource, len(indexers))
-	for i, indexer := range indexers {
-		prowlarrIndexers[i] = &prowlarr.IndexerResource{
-			ID:           &indexer.ID,
-			Name:         nullable.NewNullableWithValue(indexer.Name),
-			Priority:     &indexer.Priority,
-			Capabilities: &prowlarr.IndexerCapabilityResource{},
-		}
-	}
-	out, err := json.Marshal(prowlarrIndexers)
-	assert.Nil(t, err)
-	resp.Body = io.NopCloser(bytes.NewBuffer(out))
-	return resp
 }
 
 func sizeGBToBytes(gb int) *int64 {
