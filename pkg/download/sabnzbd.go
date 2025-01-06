@@ -230,7 +230,7 @@ type HistorySlot struct {
 	Downloaded   int64       `json:"downloaded"`
 	PostprocTime int         `json:"postproc_time"`
 	DownloadTime int         `json:"download_time"`
-	Retry        int         `json:"retry"`
+	Retry        bool        `json:"retry"`
 	Completed    int64       `json:"completed"`
 	Bytes        int64       `json:"bytes"`
 	HasRating    bool        `json:"has_rating"`
@@ -254,7 +254,7 @@ func (c *SabnzbdClient) history(ctx context.Context, ids ...string) (HistoryResp
 	q := url.Query()
 	q.Set("mode", "history")
 	if len(ids) > 0 {
-		q.Set("nzo_id", strings.Join(ids, ","))
+		q.Set("nzo_ids", strings.Join(ids, ","))
 	}
 
 	url.RawQuery = q.Encode()
