@@ -207,32 +207,32 @@ type History struct {
 // HistorySlot represents an individual slot in the history
 type HistorySlot struct {
 	Meta         interface{} `json:"meta"`
-	Status       string      `json:"status"`
-	Size         string      `json:"size"`
-	ScriptLine   string      `json:"script_line"`
-	URLInfo      string      `json:"url_info"`
+	ActionLine   string      `json:"action_line"`
 	MD5Sum       string      `json:"md5sum"`
+	FailMessage  string      `json:"fail_message"`
+	URLInfo      string      `json:"url_info"`
+	DuplicateKey string      `json:"duplicate_key"`
 	Category     string      `json:"category"`
 	PP           string      `json:"pp"`
 	URL          string      `json:"url"`
 	Script       string      `json:"script"`
 	NZBName      string      `json:"nzb_name"`
 	Name         string      `json:"name"`
-	NzoID        string      `json:"nzo_id"`
-	Path         string      `json:"path"`
-	ActionLine   string      `json:"action_line"`
-	FailMessage  string      `json:"fail_message"`
-	DuplicateKey string      `json:"duplicate_key"`
 	Storage      string      `json:"storage"`
+	Path         string      `json:"path"`
+	Status       string      `json:"status"`
+	ScriptLine   string      `json:"script_line"`
+	Size         string      `json:"size"`
+	NzoID        string      `json:"nzo_id"`
 	Password     string      `json:"password"`
 	Report       string      `json:"report"`
 	StageLog     []StageLog  `json:"stage_log"`
 	Downloaded   int64       `json:"downloaded"`
 	PostprocTime int         `json:"postproc_time"`
 	DownloadTime int         `json:"download_time"`
-	Retry        bool        `json:"retry"`
 	Completed    int64       `json:"completed"`
 	Bytes        int64       `json:"bytes"`
+	Retry        bool        `json:"retry"`
 	HasRating    bool        `json:"has_rating"`
 	Archive      bool        `json:"archive"`
 	Loaded       bool        `json:"loaded"`
