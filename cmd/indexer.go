@@ -2,6 +2,8 @@ package cmd
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/url"
@@ -14,6 +16,10 @@ import (
 	"github.com/kasuboski/mediaz/pkg/logger"
 	"github.com/kasuboski/mediaz/pkg/manager"
 	"github.com/kasuboski/mediaz/pkg/prowlarr"
+	"github.com/kasuboski/mediaz/pkg/storage"
+	"github.com/kasuboski/mediaz/pkg/storage/sqlite"
+	"github.com/oapi-codegen/nullable"
+	"go.uber.org/zap"
 
 	"github.com/kasuboski/mediaz/pkg/tmdb"
 	"github.com/spf13/cobra"
@@ -114,7 +120,30 @@ var searchIndexerCmd = &cobra.Command{
 			&mio.MediaFileSystem{},
 		)
 
-		m := manager.New(tmdbClient, prowlarrClient, library, nil, nil)
+		defaultSchemas := cfg.Storage.Schemas
+		if _, err := os.Stat(cfg.Storage.FilePath); err != nil {
+			if errors.Is(err, os.ErrNotExist) {
+				log.Debug("database does not exist, defaulting table values", zap.Any("schemas", cfg.Storage.TableValueSchemas))
+				defaultSchemas = append(defaultSchemas, cfg.Storage.TableValueSchemas...)
+			}
+		}
+
+		store, err := sqlite.New(cfg.Storage.FilePath)
+		if err != nil {
+			log.Fatal("failed to create storage connection", zap.Error(err))
+		}
+
+		schemas, err := storage.ReadSchemaFiles(defaultSchemas...)
+		if err != nil {
+			log.Fatal("failed to read schema files", zap.Error(err))
+		}
+
+		err = store.Init(context.TODO(), schemas...)
+		if err != nil {
+			log.Fatal("failed to init database", zap.Error(err))
+		}
+
+		m := manager.New(tmdbClient, prowlarrClient, library, store, nil)
 
 		ctx := logger.WithCtx(context.Background(), log)
 		idx, err := m.ListIndexers(ctx)
@@ -128,9 +157,15 @@ var searchIndexerCmd = &cobra.Command{
 		}
 
 		query := args[0]
+
 		categories := make([]int32, 0)
-		categories = append(categories, manager.TV_CATEGORIES...)
-		categories = append(categories, manager.MOVIE_CATEGORIES...)
+		if m, err := cmd.Flags().GetBool("movie"); err == nil && m {
+			categories = append(categories, manager.MOVIE_CATEGORIES...)
+		}
+		if s, err := cmd.Flags().GetBool("show"); err == nil && s {
+			categories = append(categories, manager.TV_CATEGORIES...)
+		}
+
 		releases, err := m.SearchIndexers(ctx, indexers, categories, query)
 		if err != nil {
 			log.Fatal(err)
@@ -143,6 +178,27 @@ var searchIndexerCmd = &cobra.Command{
 			humanSize := humanize.Bytes(uint64(size))
 
 			log.Infow(fmt.Sprintf("found %s", name), "indexer", indexer, "size", humanSize)
+
+			// clear some url fields
+			r.GUID = nullable.NewNullNullable[string]()
+			r.Indexer = nullable.NewNullNullable[string]()
+			r.CommentURL = nullable.NewNullNullable[string]()
+			r.DownloadURL = nullable.NewNullNullable[string]()
+			r.InfoURL = nullable.NewNullNullable[string]()
+			r.PosterURL = nullable.NewNullNullable[string]()
+			r.MagnetURL = nullable.NewNullNullable[string]()
+		}
+
+		if out, err := cmd.Flags().GetString("output"); err == nil {
+			data, err := json.MarshalIndent(releases, "", "  ")
+			if err != nil {
+				log.Fatal(err)
+			}
+			f, err := os.Create(out)
+			if err != nil {
+				log.Fatal(err)
+			}
+			fmt.Fprintln(f, string(data))
 		}
 
 		log.Infof("found %d releases", len(releases))
@@ -151,5 +207,8 @@ var searchIndexerCmd = &cobra.Command{
 
 func init() {
 	listCmd.AddCommand(listIndexerCmd)
+	searchIndexerCmd.Flags().Bool("movie", true, "search for arg as a movie")
+	searchIndexerCmd.Flags().Bool("show", true, "search for arg as a tv show")
+	searchIndexerCmd.Flags().StringP("output", "o", "", "path to output the found releases as json")
 	searchCmd.AddCommand(searchIndexerCmd)
 }
