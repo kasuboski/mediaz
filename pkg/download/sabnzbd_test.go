@@ -36,7 +36,7 @@ func TestQueueToStatus(t *testing.T) {
 	assert.Equal(t, 2.5, firstStatus.Progress)
 	assert.Equal(t, int64(1), firstStatus.Speed)
 	assert.Equal(t, int64(1277), firstStatus.Size)
-	assert.Equal(t, []string{"/path/to/TV.Show.S04E02.720p.BluRay.x264-xHD"}, firstStatus.FilePath)
+	assert.Equal(t, []string{"/path/to/TV.Show.S04E02.720p.BluRay.x264-xHD"}, firstStatus.FilePaths)
 
 	secondStatus := statuses[1]
 	assert.Equal(t, "SABnzbd_nzo_ksfai6", secondStatus.ID)
@@ -44,7 +44,7 @@ func TestQueueToStatus(t *testing.T) {
 	assert.Equal(t, 50.0, secondStatus.Progress)
 	assert.Equal(t, int64(1), secondStatus.Speed)
 	assert.Equal(t, int64(1277), secondStatus.Size)
-	assert.Equal(t, []string{"/path2/to/TV.Show.S04E02.720p.BluRay.x264-xHD"}, secondStatus.FilePath)
+	assert.Equal(t, []string{"/path2/to/TV.Show.S04E02.720p.BluRay.x264-xHD"}, secondStatus.FilePaths)
 }
 
 func TestNewSabnzbdClient(t *testing.T) {
@@ -131,12 +131,12 @@ func TestSabnzbdClient_Add(t *testing.T) {
 		assert.NoError(t, err)
 
 		expectedStatus := Status{
-			ID:       "SABnzbd_nzo_ksfai6",
-			Name:     "TV.Show.S04E12.720p.HDTV.x264",
-			Progress: 40,
-			Speed:    1,
-			Size:     1277,
-			FilePath: []string{"/downloads/TV.Show.S04E12.720p.HDTV.x264"},
+			ID:        "SABnzbd_nzo_ksfai6",
+			Name:      "TV.Show.S04E12.720p.HDTV.x264",
+			Progress:  40,
+			Speed:     1,
+			Size:      1277,
+			FilePaths: []string{"/downloads/TV.Show.S04E12.720p.HDTV.x264"},
 		}
 		assert.Equal(t, expectedStatus, status)
 	})
@@ -294,12 +294,12 @@ func TestSabnzbdClient_Get(t *testing.T) {
 		assert.NoError(t, err)
 
 		expectedStatus := Status{
-			ID:       "SABnzbd_nzo_ksfai6",
-			Name:     "TV.Show.S04E12.720p.HDTV.x264",
-			Progress: 40,
-			Speed:    1,
-			Size:     1277,
-			FilePath: []string{"/downloads/TV.Show.S04E12.720p.HDTV.x264"},
+			ID:        "SABnzbd_nzo_ksfai6",
+			Name:      "TV.Show.S04E12.720p.HDTV.x264",
+			Progress:  40,
+			Speed:     1,
+			Size:      1277,
+			FilePaths: []string{"/downloads/TV.Show.S04E12.720p.HDTV.x264"},
 		}
 		assert.Equal(t, expectedStatus, status)
 	})
@@ -457,28 +457,28 @@ func TestSabnzbdClient_List(t *testing.T) {
 
 		want := []Status{
 			{
-				ID:       "SABnzbd_nzo_ksfai6",
-				Name:     "TV.Show.S04E12.720p.HDTV.x264",
-				Progress: 40,
-				Speed:    1,
-				Size:     1277,
-				FilePath: []string{"/downloads/TV.Show.S04E12.720p.HDTV.x264"},
+				ID:        "SABnzbd_nzo_ksfai6",
+				Name:      "TV.Show.S04E12.720p.HDTV.x264",
+				Progress:  40,
+				Speed:     1,
+				Size:      1277,
+				FilePaths: []string{"/downloads/TV.Show.S04E12.720p.HDTV.x264"},
 			},
 			{
-				ID:       "SABnzbd_nzo_ksfai7",
-				Name:     "TV.Show.S04E13.720p.HDTV.x264",
-				Progress: 2,
-				Speed:    1,
-				Size:     12237,
-				FilePath: []string{"/downloads/TV.Show.S04E13.720p.HDTV.x264"},
+				ID:        "SABnzbd_nzo_ksfai7",
+				Name:      "TV.Show.S04E13.720p.HDTV.x264",
+				Progress:  2,
+				Speed:     1,
+				Size:      12237,
+				FilePaths: []string{"/downloads/TV.Show.S04E13.720p.HDTV.x264"},
 			},
 			{
-				ID:       "SABnzbd_nzo_ksfai8",
-				Name:     "TV.Show.S04E10.720p.HDTV.x264",
-				Progress: 22.5,
-				Speed:    1,
-				Size:     127,
-				FilePath: []string{"/downloads/TV.Show.S04E10.720p.HDTV.x264"},
+				ID:        "SABnzbd_nzo_ksfai8",
+				Name:      "TV.Show.S04E10.720p.HDTV.x264",
+				Progress:  22.5,
+				Speed:     1,
+				Size:      127,
+				FilePaths: []string{"/downloads/TV.Show.S04E10.720p.HDTV.x264"},
 			},
 		}
 		assert.Equal(t, want, status)

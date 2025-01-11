@@ -35,7 +35,6 @@ type MediaManager struct {
 	library library.Library
 	storage storage.Storage
 	factory download.Factory
-	file    mio.FileIO
 }
 
 func New(tmbdClient TMDBClientInterface, prowlarrClient prowlarr.IProwlarr, library library.Library, storage storage.Storage, factory download.Factory) MediaManager {
@@ -170,7 +169,7 @@ func (m MediaManager) Run(ctx context.Context) error {
 
 	movieIndexTicker := time.NewTicker(time.Minute * 10)
 	defer movieIndexTicker.Stop()
-	movieReconcileTicker := time.NewTicker(time.Minute * 20)
+	movieReconcileTicker := time.NewTicker(time.Second * 15)
 	defer movieReconcileTicker.Stop()
 
 	for {
@@ -382,6 +381,9 @@ func (m MediaManager) ReconcileMovies(ctx context.Context) error {
 	wg.Add(1)
 	go m.ReconcileUnreleasedMovies(ctx, &wg, snapshot)
 
+	wg.Add(1)
+	go m.ReconcileDownloadingMovies(ctx, &wg, snapshot)
+
 	wg.Wait()
 	return nil
 }
@@ -395,7 +397,7 @@ func (m MediaManager) ReconcileMissingMovies(ctx context.Context, wg *sync.WaitG
 
 	movies, err := m.storage.ListMoviesByState(ctx, storage.MovieStateMissing)
 	if err != nil {
-		return fmt.Errorf("couldn't list movies during reconcile: %w", err)
+		return fmt.Errorf("couldn't list missing movies: %w", err)
 	}
 
 	log := logger.FromCtx(ctx)
@@ -411,10 +413,11 @@ func (m MediaManager) ReconcileMissingMovies(ctx context.Context, wg *sync.WaitG
 }
 
 func (m MediaManager) ReconcileDownloadingMovies(ctx context.Context, wg *sync.WaitGroup, snapshot *ReconcileSnapshot) error {
+	defer wg.Done()
 	log := logger.FromCtx(ctx)
 	movies, err := m.storage.ListMoviesByState(ctx, storage.MovieStateDownloading)
 	if err != nil {
-		return fmt.Errorf("couldn't list movies during reconcile: %w", err)
+		return fmt.Errorf("couldn't list downloading movies: %w", err)
 	}
 
 	for _, movie := range movies {
@@ -462,12 +465,47 @@ func (m MediaManager) reconcileDownloadingMovie(ctx context.Context, movie *stor
 		return err
 	}
 
-	if !status.Finished() {
+	log.Debug("status", zap.Any("status", status))
+	if !status.Done {
 		log.Debug("download not finished")
 		return nil
 	}
 
-	status.Fil
+	for _, f := range status.FilePaths {
+		mf, err := m.library.AddMovie(ctx, f)
+		if err != nil {
+			// if the file already exists we can ignore the error and make sure the movie file exists
+			if !errors.Is(err, mio.ErrFileExists) {
+				log.Error("failed to add movie to library", zap.Error(err))
+				return err
+			}
+		}
+
+		_, err = m.storage.GetMovieFile(ctx, int64(movie.ID))
+		// if we already have a movie file we can just update the state, otherwise create it
+		if err != nil {
+			_, err = m.storage.CreateMovieFile(ctx, model.MovieFile{
+				MovieID:          int32(movie.ID),
+				RelativePath:     &mf.Path,
+				Size:             mf.Size,
+				OriginalFilePath: &f,
+				DateAdded:        time.Now(),
+			})
+			if err != nil {
+				log.Error("failed to create movie file", zap.Error(err))
+				return err
+			}
+		}
+
+		err = m.storage.UpdateMovieState(ctx, int64(movie.ID), storage.MovieStateDownloaded, &storage.MovieStateMetadata{})
+		if err != nil {
+			log.Error("failed to update movie state", zap.Error(err))
+			return err
+		}
+	}
+
+	log.Debug("movie download finished")
+	return nil
 }
 
 func (m MediaManager) reconcileMissingMovie(ctx context.Context, movie *storage.Movie, snapshot *ReconcileSnapshot) error {

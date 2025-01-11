@@ -11,6 +11,8 @@ import (
 
 var (
 	_ FileIO = (*MediaFileSystem)(nil)
+
+	ErrFileExists = fmt.Errorf("file already exists")
 )
 
 // MediaFilesystem is the default implementation of file io using the os package
@@ -23,6 +25,9 @@ func (o *MediaFileSystem) Stat(target string) (os.FileInfo, error) {
 
 // Rename is a wrapper around os.Rename
 func (o *MediaFileSystem) Rename(source, target string) error {
+	if o.FileExists(target) {
+		return ErrFileExists
+	}
 	return os.Rename(source, target)
 }
 
@@ -44,9 +49,8 @@ func (o *MediaFileSystem) Copy(source, target string) (int64, error) {
 	}
 	defer sourceFile.Close()
 
-	_, err = o.Stat(target)
-	if err == nil {
-		return 0, errors.New("target file already exists")
+	if o.FileExists(target) {
+		return 0, ErrFileExists
 	}
 
 	if !errors.Is(err, os.ErrNotExist) {
@@ -93,4 +97,9 @@ func (o *MediaFileSystem) IsSameFileSystem(source, target string) (bool, error) 
 // WalkDir is a wrapper around fs.WalkDir
 func (o *MediaFileSystem) WalkDir(fsys fs.FS, root string, fn fs.WalkDirFunc) error {
 	return fs.WalkDir(fsys, root, fn)
+}
+
+func (o *MediaFileSystem) FileExists(path string) bool {
+	_, err := o.Stat(path)
+	return err == nil
 }

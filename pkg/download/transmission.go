@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"path/filepath"
@@ -88,7 +89,7 @@ type TransmissionTorrent struct {
 	WebseedsSendingToUs int                       `json:"webseedsSendingToUs"`
 	DoneDate            int64                     `json:"doneDate"`
 	AddedDate           int64                     `json:"addedDate"`
-	Status              int                       `json:"status"`
+	Status              float64                   `json:"status"`
 	UploadRatio         float64                   `json:"uploadRatio"`
 	DownloadLimited     bool                      `json:"downloadLimited"`
 	UploadLimited       bool                      `json:"uploadLimited"`
@@ -100,13 +101,15 @@ func (t *TransmissionTorrent) ToStatus() Status {
 		paths = append(paths, filepath.Join(t.DownloadDir, f.Name))
 	}
 
+	log.Printf("%+v", t)
 	s := Status{
-		ID:       fmt.Sprintf("%d", t.ID),
-		Name:     t.Name,
-		Size:     t.TotalSize >> 20, // bytes to mb
-		Progress: t.PercentDone,
-		Speed:    t.RateDownload >> 20, // bytes/s to mb/s
-		FilePath: paths,
+		ID:        fmt.Sprintf("%d", t.ID),
+		Name:      t.Name,
+		Size:      t.TotalSize >> 20, // bytes to mb
+		Progress:  t.PercentDone,
+		Speed:     t.RateDownload >> 20, // bytes/s to mb/s
+		FilePaths: paths,
+		Done:      t.Status > 4 || t.PercentDone == 100.0, // 4 = downloading, 5 = queue'd to seed, 6 = seeding
 	}
 
 	return s

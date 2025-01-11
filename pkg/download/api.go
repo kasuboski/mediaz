@@ -56,14 +56,11 @@ type GetRequest struct {
 }
 
 type Status struct {
-	ID       string   `json:"id"`
-	Name     string   `json:"name"`
-	FilePath []string `json:"filePath"` // absolute path to the file
-	Progress float64  `json:"progress"` // percentage
-	Speed    int64    `json:"speed"`    // assumed mb/s
-	Size     int64    `json:"size"`     // assumed mb
-}
-
-func (s Status) Finished() bool {
-	return s.Progress == 100
+	ID        string   `json:"id"`
+	Name      string   `json:"name"`
+	FilePaths []string `json:"filePaths"` // absolute path to the file
+	Progress  float64  `json:"progress"`  // percentage
+	Speed     int64    `json:"speed"`     // assumed mb/s
+	Size      int64    `json:"size"`      // assumed mb
+	Done      bool     `json:"done"`
 }

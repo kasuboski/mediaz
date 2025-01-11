@@ -320,6 +320,17 @@ func (s SQLite) GetMovieByMetadataID(ctx context.Context, metadataID int) (*stor
 	return movie, nil
 }
 
+func (s SQLite) GetMovieFile(ctx context.Context, id int64) (model.MovieFile, error) {
+	stmt := table.MovieFile.
+		SELECT(table.MovieFile.AllColumns).
+		FROM(table.MovieFile).
+		WHERE(table.MovieFile.ID.EQ(sqlite.Int64(id)))
+
+	var result model.MovieFile
+	err := stmt.QueryContext(ctx, s.db, &result)
+	return result, err
+}
+
 // CreateMovieFile stores a movie file
 func (s SQLite) CreateMovieFile(ctx context.Context, file model.MovieFile) (int64, error) {
 	// Exclude DateAdded so that the default is used

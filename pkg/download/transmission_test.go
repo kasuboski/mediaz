@@ -103,7 +103,7 @@ func TestTransmissionClient_Add(t *testing.T) {
 		expectedStatus := Status{
 			ID:       "1",
 			Name:     "torrent 1",
-			FilePath: []string{"/downloads/file1"},
+			FilePaths: []string{"/downloads/file1"},
 		}
 		assert.Equal(t, expectedStatus, status)
 	})

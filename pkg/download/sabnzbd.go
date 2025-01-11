@@ -303,7 +303,7 @@ func queueToStatus(queue Queue, history History) ([]Status, error) {
 			Progress: p,
 			Size:     int64(size),
 			Speed:    int64(speed),
-			FilePath: []string{path},
+			FilePaths: []string{path},
 		}
 	}
 
