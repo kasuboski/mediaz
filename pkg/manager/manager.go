@@ -14,6 +14,7 @@ import (
 
 	"github.com/go-jet/jet/v2/sqlite"
 	"github.com/kasuboski/mediaz/pkg/download"
+	mio "github.com/kasuboski/mediaz/pkg/io"
 	"github.com/kasuboski/mediaz/pkg/library"
 	"github.com/kasuboski/mediaz/pkg/logger"
 	"github.com/kasuboski/mediaz/pkg/prowlarr"
@@ -33,6 +34,7 @@ type MediaManager struct {
 	library library.Library
 	storage storage.Storage
 	factory download.Factory
+	file    mio.FileIO
 }
 
 func New(tmbdClient TMDBClientInterface, prowlarrClient prowlarr.IProwlarr, library library.Library, storage storage.Storage, factory download.Factory) MediaManager {
@@ -405,6 +407,66 @@ func (m MediaManager) ReconcileMissingMovies(ctx context.Context, wg *sync.WaitG
 	}
 
 	return nil
+}
+
+func (m MediaManager) ReconcileDownloadingMovies(ctx context.Context, wg *sync.WaitGroup, snapshot *ReconcileSnapshot) error {
+	log := logger.FromCtx(ctx)
+	movies, err := m.storage.ListMoviesByState(ctx, storage.MovieStateDownloading)
+	if err != nil {
+		return fmt.Errorf("couldn't list movies during reconcile: %w", err)
+	}
+
+	for _, movie := range movies {
+		err = m.reconcileDownloadingMovie(ctx, movie, snapshot)
+		if err != nil {
+			log.Warn("failed to reconcile downloading movie", zap.Error(err))
+			continue
+		}
+	}
+
+	return nil
+}
+
+func (m MediaManager) reconcileDownloadingMovie(ctx context.Context, movie *storage.Movie, snapshot *ReconcileSnapshot) error {
+	log := logger.FromCtx(ctx)
+	log = log.With("movie id", movie.ID)
+
+	if movie.Monitored == 0 {
+		log.Debug("movie is not monitored, skipping reconcile")
+		return nil
+	}
+
+	if movie.DownloadClientID == 0 {
+		log.Warn("movie download client id is nil, skipping reconcile")
+		return nil
+	}
+
+	movieDownloadClient, err := m.storage.GetDownloadClient(ctx, int64(movie.DownloadClientID))
+	if err != nil {
+		log.Warn("failed to find movie download client", zap.Error(err))
+		return err
+	}
+
+	downloadClient, err := m.factory.NewDownloadClient(movieDownloadClient)
+	if err != nil {
+		log.Warn("failed to create download client", zap.Error(err))
+		return err
+	}
+
+	status, err := downloadClient.Get(ctx, download.GetRequest{
+		ID: movie.DownloadID,
+	})
+	if err != nil {
+		log.Warn("failed to get download status", zap.Error(err))
+		return err
+	}
+
+	if !status.Finished() {
+		log.Debug("download not finished")
+		return nil
+	}
+
+	status.Fil
 }
 
 func (m MediaManager) reconcileMissingMovie(ctx context.Context, movie *storage.Movie, snapshot *ReconcileSnapshot) error {
