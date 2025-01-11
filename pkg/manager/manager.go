@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"slices"
+	"strings"
 	"sync"
 	"time"
 
@@ -621,6 +622,13 @@ func rejectReleaseFunc(ctx context.Context, det *model.MovieMetadata, profile st
 	log := logger.FromCtx(ctx)
 
 	return func(r *prowlarr.ReleaseResource) bool {
+		if r.Title != nil {
+			releaseTitle := strings.TrimSpace(r.Title.MustGet())
+			if !strings.HasPrefix(releaseTitle, det.Title) {
+				return true
+			}
+		}
+
 		if r.Protocol != nil {
 			// reject if we don't have a download client for it
 			if _, has := protocolsAvailable[string(*r.Protocol)]; !has {
