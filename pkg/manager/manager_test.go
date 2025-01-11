@@ -146,8 +146,8 @@ func Test_Manager_reconcileMissingMovie(t *testing.T) {
 	smallestSeeders := nullable.NewNullNullable[int32]()
 	smallestSeeders.Set(10)
 
-	torrentProto := protocolPtr(prowlarr.DownloadProtocolTorrent)
-	usenetProto := protocolPtr(prowlarr.DownloadProtocolUsenet)
+	torrentProto := ptr(prowlarr.DownloadProtocolTorrent)
+	usenetProto := ptr(prowlarr.DownloadProtocolUsenet)
 
 	wantRelease := &prowlarr.ReleaseResource{ID: intPtr(123), Title: nullable.NewNullableWithValue("test movie"), Size: sizeGBToBytes(23), Seeders: bigSeeders, Protocol: torrentProto}
 	doNotWantRelease := &prowlarr.ReleaseResource{ID: intPtr(124), Title: nullable.NewNullableWithValue("test movie"), Size: sizeGBToBytes(23), Seeders: smallerSeeders, Protocol: torrentProto}
@@ -422,6 +422,27 @@ func TestRejectRelease(t *testing.T) {
 			snaps.MatchSnapshot(t, []string{r.Title.MustGet(), strconv.FormatBool(got)})
 		}
 	})
+
+	t.Run("reject by unavailable protocol", func(t *testing.T) {
+		ctx := context.Background()
+		det := &model.MovieMetadata{Title: "Interstellar"}
+		profile := storage.QualityProfile{
+			Name: "test",
+			Qualities: []storage.QualityDefinition{{
+				MinSize:       0,
+				MaxSize:       1000,
+				PreferredSize: 1999,
+			}},
+		}
+		protocolsAvailable := map[string]struct{}{"torrent": {}, "ftp": {}}
+		rejectFunc := rejectReleaseFunc(ctx, det, profile, protocolsAvailable)
+
+		// Test case where the release protocol is not available
+		r2 := &prowlarr.ReleaseResource{Protocol: ptr(prowlarr.DownloadProtocolUsenet), Size: ptr(int64(500))}
+		if !rejectFunc(r2) {
+			t.Errorf("Expected rejection for protocol 'usenet' since it's unavailable")
+		}
+	})
 }
 
 func getReleasesFromFile(t *testing.T, path string) []*prowlarr.ReleaseResource {
@@ -473,6 +494,6 @@ func sizeGBToBytes(gb int) *int64 {
 	return &b
 }
 
-func protocolPtr(proto prowlarr.DownloadProtocol) *prowlarr.DownloadProtocol {
-	return &proto
+func ptr[A any](thing A) *A {
+	return &thing
 }
