@@ -94,7 +94,7 @@ var serveCmd = &cobra.Command{
 			&mio.MediaFileSystem{},
 		)
 
-		factory := download.NewDownloadClientFactory(cfg.Library.MountDir)
+		factory := download.NewDownloadClientFactory(cfg.Library.DownloadMountDir)
 		manager := manager.New(tmdbClient, prowlarrClient, library, store, factory)
 
 		go func() {

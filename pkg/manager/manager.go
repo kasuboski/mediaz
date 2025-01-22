@@ -168,7 +168,7 @@ func (m MediaManager) Run(ctx context.Context) error {
 
 	movieIndexTicker := time.NewTicker(time.Minute * 10)
 	defer movieIndexTicker.Stop()
-	movieReconcileTicker := time.NewTicker(time.Second * 15)
+	movieReconcileTicker := time.NewTicker(time.Minute * 10)
 	defer movieReconcileTicker.Stop()
 
 	for {
