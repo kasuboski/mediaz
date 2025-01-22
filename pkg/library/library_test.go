@@ -143,6 +143,78 @@ func Test_fileSizeToString(t *testing.T) {
 }
 
 func TestMediaLibrary_AddMovie(t *testing.T) {
+	t.Run("error making directory", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockfs := mocks.NewMockFileIO(ctrl)
+
+		ctx := context.Background()
+
+		tmpFile, err := os.CreateTemp("testing/", "Batman Begins (2005)-*.mp4")
+		if err != nil {
+			t.Error(err)
+		}
+
+		defer os.Remove(tmpFile.Name())
+
+		movieToAdd := fmt.Sprintf("testing/%s", tmpFile.Name())
+
+		mockfs.EXPECT().IsSameFileSystem(gomock.Any(), gomock.Any()).Times(1).Return(true, nil)
+		mockfs.EXPECT().MkdirAll(gomock.Any(), gomock.Any()).Times(1).Return(errors.New("expected testing error"))
+
+		fs, _ := MovieFSFromFile(t, "./testing/test_movies.txt")
+
+		fileSystem := FileSystem{
+			FS:   fs,
+			Path: "testing",
+		}
+
+		library := New(FileSystem{}, fileSystem, mockfs)
+
+		title := "Batman Begins"
+		movieFile, err := library.AddMovie(ctx, title, movieToAdd)
+		wantMovieFile := MovieFile{}
+		assert.Error(t, err)
+		assert.Equal(t, err.Error(), "expected testing error")
+		assert.Equal(t, wantMovieFile, movieFile)
+	})
+
+	t.Run("different file system - error checking if same file system", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockfs := mocks.NewMockFileIO(ctrl)
+
+		tmpFile, err := os.CreateTemp("testing/", "Batman Begins (2005)-*.mp4")
+		if err != nil {
+			t.Error(err)
+		}
+		defer os.Remove(tmpFile.Name())
+
+		movieToAdd := fmt.Sprintf("testing/%s", tmpFile.Name())
+		mockfs.EXPECT().IsSameFileSystem(gomock.Any(), gomock.Any()).Times(1).Return(false, errors.New("expected testing error"))
+
+		fs, _ := MovieFSFromFile(t, "./testing/test_movies.txt")
+
+		fileSystem := FileSystem{
+			FS:   fs,
+			Path: "testing",
+		}
+
+		library := New(fileSystem, FileSystem{}, mockfs)
+
+		ctx := context.Background()
+
+		title := "Batman Begins"
+		movieFile, err := library.AddMovie(ctx, title, movieToAdd)
+		wantMovieFile := MovieFile{
+			Name: "",
+			Size: 0,
+			Path: "",
+		}
+
+		assert.Error(t, err)
+		assert.Equal(t, err.Error(), "expected testing error")
+		assert.Equal(t, wantMovieFile, movieFile)
+	})
+
 	t.Run("same file system", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		mockfs := mocks.NewMockFileIO(ctrl)
@@ -161,6 +233,7 @@ func TestMediaLibrary_AddMovie(t *testing.T) {
 		mockfs.EXPECT().IsSameFileSystem(gomock.Any(), gomock.Any()).Times(1).Return(true, nil)
 		mockfs.EXPECT().Rename(gomock.Any(), gomock.Any()).Times(1).Return(nil)
 		mockfs.EXPECT().Open(gomock.Any()).Times(1).Return(tmpFile, nil)
+		mockfs.EXPECT().MkdirAll(gomock.Any(), gomock.Any()).Times(1).Return(nil)
 
 		fs, _ := MovieFSFromFile(t, "./testing/test_movies.txt")
 
@@ -169,13 +242,14 @@ func TestMediaLibrary_AddMovie(t *testing.T) {
 			Path: "testing",
 		}
 
-		library := New(FileSystem{}, fileSystem, mockfs)
+		library := New(fileSystem, FileSystem{}, mockfs)
 
-		movieFile, err := library.AddMovie(ctx, movieToAdd)
+		title := "Batman Begins"
+		movieFile, err := library.AddMovie(ctx, title, movieToAdd)
 		wantMovieFile := MovieFile{
 			Name: filepath.Base(tmpFile.Name()),
 			Size: 0,
-			Path: tmpFile.Name(),
+			Path: filepath.Join(fileSystem.Path, title, filepath.Base(tmpFile.Name())),
 		}
 		assert.Nil(t, err)
 		assert.Equal(t, wantMovieFile, movieFile)
@@ -198,6 +272,7 @@ func TestMediaLibrary_AddMovie(t *testing.T) {
 		var response int64 = 0
 		mockfs.EXPECT().Copy(gomock.Any(), gomock.Any()).Times(1).Return(response, nil)
 		mockfs.EXPECT().Open(gomock.Any()).Times(1).Return(tmpFile, nil)
+		mockfs.EXPECT().MkdirAll(gomock.Any(), gomock.Any()).Times(1).Return(nil)
 
 		fs, _ := MovieFSFromFile(t, "./testing/test_movies.txt")
 
@@ -206,53 +281,15 @@ func TestMediaLibrary_AddMovie(t *testing.T) {
 			Path: "testing",
 		}
 
-		library := New(FileSystem{}, fileSystem, mockfs)
+		library := New(fileSystem, FileSystem{}, mockfs)
 
 		ctx := context.Background()
-		movieFile, err := library.AddMovie(ctx, movieToAdd)
+		title := "Batman Begins"
+		movieFile, err := library.AddMovie(ctx, title, movieToAdd)
 		wantMovieFile := MovieFile{
 			Name: filepath.Base(tmpFile.Name()),
 			Size: 0,
-			Path: tmpFile.Name(),
-		}
-
-		assert.Nil(t, err)
-		assert.Equal(t, wantMovieFile, movieFile)
-	})
-
-	t.Run("different file system - error checking if same file system", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
-		mockfs := mocks.NewMockFileIO(ctrl)
-
-		tmpFile, err := os.CreateTemp("testing/", "Batman Begins (2005)-*.mp4")
-		if err != nil {
-			t.Error(err)
-		}
-		defer os.Remove(tmpFile.Name())
-
-		movieToAdd := fmt.Sprintf("testing/%s", tmpFile.Name())
-
-		mockfs.EXPECT().IsSameFileSystem(gomock.Any(), gomock.Any()).Times(1).Return(false, errors.New("expected testing error"))
-
-		var response int64 = 0
-		mockfs.EXPECT().Copy(gomock.Any(), gomock.Any()).Times(1).Return(response, nil)
-		mockfs.EXPECT().Open(gomock.Any()).Times(1).Return(tmpFile, nil)
-
-		fs, _ := MovieFSFromFile(t, "./testing/test_movies.txt")
-
-		fileSystem := FileSystem{
-			FS:   fs,
-			Path: "testing",
-		}
-
-		library := New(FileSystem{}, fileSystem, mockfs)
-
-		ctx := context.Background()
-		movieFile, err := library.AddMovie(ctx, movieToAdd)
-		wantMovieFile := MovieFile{
-			Name: filepath.Base(tmpFile.Name()),
-			Size: 0,
-			Path: tmpFile.Name(),
+			Path: filepath.Join(fileSystem.Path, title, filepath.Base(tmpFile.Name())),
 		}
 
 		assert.Nil(t, err)

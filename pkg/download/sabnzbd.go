@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -16,18 +17,20 @@ import (
 )
 
 type SabnzbdClient struct {
-	http   HTTPClient
-	scheme string
-	host   string
-	apiKey string
+	http        HTTPClient
+	scheme      string
+	host        string
+	apiKey      string
+	mountPrefix string
 }
 
-func NewSabnzbdClient(http HTTPClient, scheme, host, apiKey string) DownloadClient {
+func NewSabnzbdClient(http HTTPClient, scheme, host, mountPrefix, apiKey string) DownloadClient {
 	return &SabnzbdClient{
 		http,
 		scheme,
 		host,
 		apiKey,
+		mountPrefix,
 	}
 }
 
@@ -185,7 +188,7 @@ func (c *SabnzbdClient) List(ctx context.Context) ([]Status, error) {
 		return nil, err
 	}
 
-	return queueToStatus(response.Queue, historyResponse.History)
+	return queueToStatus(response.Queue, historyResponse.History, c.mountPrefix)
 }
 
 type HistoryResponse struct {
@@ -269,7 +272,7 @@ func (c *SabnzbdClient) history(ctx context.Context, ids ...string) (HistoryResp
 	return history, err
 }
 
-func queueToStatus(queue Queue, history History) ([]Status, error) {
+func queueToStatus(queue Queue, history History, mountPrefix string) ([]Status, error) {
 	slots := queue.Slots
 	speedDesc := queue.Speed
 	split := strings.Split(speedDesc, " ")
@@ -293,16 +296,16 @@ func queueToStatus(queue Queue, history History) ([]Status, error) {
 		var path string
 		for _, h := range history.Slots {
 			if h.NzoID == s.NzoID {
-				path = h.Storage
+				path = filepath.Join(mountPrefix, h.Storage)
 			}
 		}
 
 		stats[i] = Status{
-			ID:       s.NzoID,
-			Name:     s.Filename,
-			Progress: p,
-			Size:     int64(size),
-			Speed:    int64(speed),
+			ID:        s.NzoID,
+			Name:      s.Filename,
+			Progress:  p,
+			Size:      int64(size),
+			Speed:     int64(speed),
 			FilePaths: []string{path},
 		}
 	}

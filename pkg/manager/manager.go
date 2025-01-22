@@ -15,7 +15,6 @@ import (
 
 	"github.com/go-jet/jet/v2/sqlite"
 	"github.com/kasuboski/mediaz/pkg/download"
-	mio "github.com/kasuboski/mediaz/pkg/io"
 	"github.com/kasuboski/mediaz/pkg/library"
 	"github.com/kasuboski/mediaz/pkg/logger"
 	"github.com/kasuboski/mediaz/pkg/prowlarr"
@@ -431,7 +430,7 @@ func (m MediaManager) ReconcileDownloadingMovies(ctx context.Context, wg *sync.W
 	return nil
 }
 
-func (m MediaManager) reconcileDownloadingMovie(ctx context.Context, movie *storage.Movie, snapshot *ReconcileSnapshot) error {
+func (m MediaManager) reconcileDownloadingMovie(ctx context.Context, movie *storage.Movie, _ *ReconcileSnapshot) error {
 	log := logger.FromCtx(ctx)
 	log = log.With("movie id", movie.ID)
 
@@ -465,46 +464,64 @@ func (m MediaManager) reconcileDownloadingMovie(ctx context.Context, movie *stor
 		return err
 	}
 
+	movieMetadata, err := m.storage.GetMovieMetadata(ctx, table.MovieMetadata.ID.EQ(sqlite.Int32(*movie.MovieMetadataID)))
+	if err != nil {
+		log.Error("failed to get movie metadata", zap.Error(err))
+		return err
+	}
+
 	log.Debug("status", zap.Any("status", status))
 	if !status.Done {
 		log.Debug("download not finished")
 		return nil
 	}
 
+	log.Debug("attempting to move downloaded file")
+
 	for _, f := range status.FilePaths {
-		mf, err := m.library.AddMovie(ctx, f)
+		err = m.addMovieFileToLibrary(ctx, movieMetadata.Title, f, movie)
 		if err != nil {
-			// if the file already exists we can ignore the error and make sure the movie file exists
-			if !errors.Is(err, mio.ErrFileExists) {
-				log.Error("failed to add movie to library", zap.Error(err))
-				return err
-			}
-		}
-
-		_, err = m.storage.GetMovieFile(ctx, int64(movie.ID))
-		// if we already have a movie file we can just update the state, otherwise create it
-		if err != nil {
-			_, err = m.storage.CreateMovieFile(ctx, model.MovieFile{
-				MovieID:          int32(movie.ID),
-				RelativePath:     &mf.Path,
-				Size:             mf.Size,
-				OriginalFilePath: &f,
-				DateAdded:        time.Now(),
-			})
-			if err != nil {
-				log.Error("failed to create movie file", zap.Error(err))
-				return err
-			}
-		}
-
-		err = m.storage.UpdateMovieState(ctx, int64(movie.ID), storage.MovieStateDownloaded, &storage.MovieStateMetadata{})
-		if err != nil {
-			log.Error("failed to update movie state", zap.Error(err))
+			log.Error("failed to add movie file to library", zap.Error(err))
 			return err
 		}
 	}
 
+	err = m.storage.UpdateMovieState(ctx, int64(movie.ID), storage.MovieStateDownloaded, &storage.MovieStateMetadata{})
+	if err != nil {
+		log.Error("failed to update movie state", zap.Error(err))
+		return err
+	}
+
 	log.Debug("movie download finished")
+	return nil
+}
+
+func (m MediaManager) addMovieFileToLibrary(ctx context.Context, title, filePath string, movie *storage.Movie) error {
+	log := logger.FromCtx(ctx)
+	log = log.With("movie id", movie.ID)
+	_, err := m.storage.GetMovieFile(ctx, int64(movie.ID))
+	// if we already have a movie file we can just update the state, otherwise create it
+	if err == nil {
+		log.Debug("movie file already exists in database, skipping movie file creation")
+		return nil
+	}
+
+	mf, err := m.library.AddMovie(ctx, title, filePath)
+	if err != nil {
+		return fmt.Errorf("failed to add movie to library: %w", err)
+	}
+
+	_, err = m.storage.CreateMovieFile(ctx, model.MovieFile{
+		MovieID:          int32(movie.ID),
+		RelativePath:     &mf.Path,
+		Size:             mf.Size,
+		OriginalFilePath: &filePath,
+		DateAdded:        time.Now(),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create movie file record: %w", err)
+	}
+
 	return nil
 }
 

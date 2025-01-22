@@ -252,7 +252,7 @@ func (s SQLite) UpdateMovieState(ctx context.Context, id int64, state storage.Mo
 			table.MovieTransition.MostRecent.SET(sqlite.Bool(false)),
 			table.MovieTransition.UpdatedAt.SET(sqlite.TimestampExp(sqlite.String(time.Now().Format(timestampFormat))))).
 		WHERE(
-			table.MovieTransition.ID.EQ(sqlite.Int(id)).
+			table.MovieTransition.MovieID.EQ(sqlite.Int(id)).
 				AND(table.MovieTransition.MostRecent.EQ(sqlite.Bool(true)))).
 		RETURNING(table.MovieTransition.AllColumns)
 

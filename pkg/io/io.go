@@ -41,6 +41,11 @@ func (o *MediaFileSystem) Create(name string) (io.WriteCloser, error) {
 	return os.Create(name)
 }
 
+// Create is a wrapper around os.MkDirAll
+func (o *MediaFileSystem) MkdirAll(path string, mode os.FileMode) error {
+	return os.MkdirAll(path, mode)
+}
+
 // Copy copies a file from a source path to a target path. The target file must not exist yet.
 func (o *MediaFileSystem) Copy(source, target string) (int64, error) {
 	sourceFile, err := o.Open(source)
@@ -51,10 +56,6 @@ func (o *MediaFileSystem) Copy(source, target string) (int64, error) {
 
 	if o.FileExists(target) {
 		return 0, ErrFileExists
-	}
-
-	if !errors.Is(err, os.ErrNotExist) {
-		return 0, fmt.Errorf("unexpected error: %v", err)
 	}
 
 	targetFile, err := o.Create(target)

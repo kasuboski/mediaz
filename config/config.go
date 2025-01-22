@@ -25,6 +25,7 @@ type Server struct {
 type Library struct {
 	MovieDir string `json:"movie" yaml:"movie" mapstructure:"movie"`
 	TVDir    string `json:"tv" yaml:"tv" mapstructure:"tv"`
+	MountDir string `json:"mountDir" yaml:"mountDir" mapstructure:"mountDir"`
 }
 
 type Prowlarr struct {

@@ -9,14 +9,15 @@ import (
 
 func TestDownloadClientFactory_NewDownloadClient(t *testing.T) {
 	t.Run("transmission client", func(t *testing.T) {
-		factory := NewDownloadClientFactory()
+		factory := NewDownloadClientFactory("mount")
 
 		client, err := factory.NewDownloadClient(model.DownloadClient{
 			Implementation: "transmission",
 		})
-		_, ok := client.(*TransmissionClient)
+		tc, ok := client.(*TransmissionClient)
 		assert.True(t, ok, "client should be of type *TransmissionClient")
 
+		assert.Equal(t, "mount", tc.mountPrefix)
 		assert.Nil(t, err)
 	})
 

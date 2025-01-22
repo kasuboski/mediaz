@@ -26,7 +26,7 @@ func TestQueueToStatus(t *testing.T) {
 	err = json.Unmarshal([]byte(testHistoyResponse), &historyResponse)
 	require.NoError(t, err)
 
-	statuses, err := queueToStatus(response.Queue, historyResponse.History)
+	statuses, err := queueToStatus(response.Queue, historyResponse.History, "")
 	assert.NoError(t, err)
 
 	assert.Len(t, statuses, 2)
@@ -51,7 +51,7 @@ func TestNewSabnzbdClient(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	mockHttp := httpMock.NewMockHTTPClient(ctrl)
 
-	client := NewSabnzbdClient(mockHttp, "http", "localhost", "secret")
+	client := NewSabnzbdClient(mockHttp, "http", "localhost", "", "secret")
 	sabnzbdClient, ok := client.(*SabnzbdClient)
 	assert.True(t, ok, "client should be of type *sabnzbdClient")
 	assert.Equal(t, "localhost", sabnzbdClient.host, "Host should not include port")
@@ -66,7 +66,7 @@ func TestSabnzbdClient_Add(t *testing.T) {
 
 	t.Run("success", func(t *testing.T) {
 		mockHttp := httpMock.NewMockHTTPClient(ctrl)
-		client := NewSabnzbdClient(mockHttp, "http", "localhost", "secret")
+		client := NewSabnzbdClient(mockHttp, "http", "localhost", "", "secret")
 		ctx := context.Background()
 
 		addRequest := AddRequest{
@@ -143,7 +143,7 @@ func TestSabnzbdClient_Add(t *testing.T) {
 
 	t.Run("missing guid", func(t *testing.T) {
 		mockHttp := httpMock.NewMockHTTPClient(ctrl)
-		client := NewSabnzbdClient(mockHttp, "http", "localhost", "secret")
+		client := NewSabnzbdClient(mockHttp, "http", "localhost", "", "secret")
 		ctx := context.Background()
 
 		addRequest := AddRequest{
@@ -158,7 +158,7 @@ func TestSabnzbdClient_Add(t *testing.T) {
 
 	t.Run("error during request", func(t *testing.T) {
 		mockHttp := httpMock.NewMockHTTPClient(ctrl)
-		client := NewSabnzbdClient(mockHttp, "http", "localhost", "secret")
+		client := NewSabnzbdClient(mockHttp, "http", "localhost", "", "secret")
 		ctx := context.Background()
 
 		addRequest := AddRequest{
@@ -175,7 +175,7 @@ func TestSabnzbdClient_Add(t *testing.T) {
 
 	t.Run("error in response", func(t *testing.T) {
 		mockHttp := httpMock.NewMockHTTPClient(ctrl)
-		client := NewSabnzbdClient(mockHttp, "http", "localhost", "secret")
+		client := NewSabnzbdClient(mockHttp, "http", "localhost", "", "secret")
 		ctx := context.Background()
 
 		addRequest := AddRequest{
@@ -200,7 +200,7 @@ func TestSabnzbdClient_Add(t *testing.T) {
 
 	t.Run("Error during Get", func(t *testing.T) {
 		mockHttp := httpMock.NewMockHTTPClient(ctrl)
-		client := NewSabnzbdClient(mockHttp, "http", "localhost", "secret")
+		client := NewSabnzbdClient(mockHttp, "http", "localhost", "", "secret")
 		ctx := context.Background()
 
 		addRequest := AddRequest{
@@ -242,7 +242,7 @@ func TestSabnzbdClient_Get(t *testing.T) {
 
 	t.Run("success", func(t *testing.T) {
 		mockHttp := httpMock.NewMockHTTPClient(ctrl)
-		client := NewSabnzbdClient(mockHttp, "http", "localhost", "secret")
+		client := NewSabnzbdClient(mockHttp, "http", "localhost", "", "secret")
 		ctx := context.Background()
 
 		getRequest := GetRequest{
@@ -306,7 +306,7 @@ func TestSabnzbdClient_Get(t *testing.T) {
 
 	t.Run("error", func(t *testing.T) {
 		mockHttp := httpMock.NewMockHTTPClient(ctrl)
-		client := NewSabnzbdClient(mockHttp, "http", "localhost", "secret")
+		client := NewSabnzbdClient(mockHttp, "http", "localhost", "", "secret")
 		ctx := context.Background()
 
 		getRequest := GetRequest{
@@ -323,7 +323,7 @@ func TestSabnzbdClient_Get(t *testing.T) {
 
 	t.Run("id not found", func(t *testing.T) {
 		mockHttp := httpMock.NewMockHTTPClient(ctrl)
-		client := NewSabnzbdClient(mockHttp, "http", "localhost", "secret")
+		client := NewSabnzbdClient(mockHttp, "http", "localhost", "", "secret")
 		ctx := context.Background()
 
 		queueResponse := QueueResponse{
@@ -384,7 +384,7 @@ func TestSabnzbdClient_List(t *testing.T) {
 
 	t.Run("success", func(t *testing.T) {
 		mockHttp := httpMock.NewMockHTTPClient(ctrl)
-		client := NewSabnzbdClient(mockHttp, "http", "localhost", "secret")
+		client := NewSabnzbdClient(mockHttp, "http", "localhost", "", "secret")
 		ctx := context.Background()
 
 		queueResponse := QueueResponse{
@@ -486,7 +486,7 @@ func TestSabnzbdClient_List(t *testing.T) {
 
 	t.Run("error during request", func(t *testing.T) {
 		mockHttp := httpMock.NewMockHTTPClient(ctrl)
-		client := NewSabnzbdClient(mockHttp, "http", "localhost", "secret")
+		client := NewSabnzbdClient(mockHttp, "http", "localhost", "", "secret")
 		ctx := context.Background()
 
 		mockHttp.EXPECT().Do(gomock.Any()).Return(nil, fmt.Errorf("http error"))
@@ -499,7 +499,7 @@ func TestSabnzbdClient_List(t *testing.T) {
 
 	t.Run("empty queue", func(t *testing.T) {
 		mockHttp := httpMock.NewMockHTTPClient(ctrl)
-		client := NewSabnzbdClient(mockHttp, "http", "localhost", "secret")
+		client := NewSabnzbdClient(mockHttp, "http", "localhost", "", "secret")
 		ctx := context.Background()
 
 		getResponse := QueueResponse{

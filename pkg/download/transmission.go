@@ -19,11 +19,12 @@ import (
 )
 
 type TransmissionClient struct {
-	http    HTTPClient
-	scheme  string
-	host    string
-	mutex   *sync.Mutex
-	session string
+	http        HTTPClient
+	scheme      string
+	host        string
+	mutex       *sync.Mutex
+	session     string
+	mountPrefix string
 }
 
 type TransmissionRequest struct {
@@ -39,17 +40,18 @@ const (
 	GetTorrentMethod torrentMethod = "torrent-get"
 )
 
-func NewTransmissionClient(http HTTPClient, scheme, host string, port int) DownloadClient {
+func NewTransmissionClient(http HTTPClient, scheme, host, mountPrefix string, port int) DownloadClient {
 	if port != 0 {
 		host = fmt.Sprintf("%s:%d", host, port)
 	}
 
 	return &TransmissionClient{
-		http:    http,
-		scheme:  scheme,
-		host:    host,
-		mutex:   new(sync.Mutex),
-		session: "",
+		http:        http,
+		scheme:      scheme,
+		host:        host,
+		mutex:       new(sync.Mutex),
+		session:     "",
+		mountPrefix: mountPrefix,
 	}
 }
 
@@ -95,10 +97,10 @@ type TransmissionTorrent struct {
 	UploadLimited       bool                      `json:"uploadLimited"`
 }
 
-func (t *TransmissionTorrent) ToStatus() Status {
+func (t *TransmissionTorrent) ToStatus(mountPrefix string) Status {
 	var paths []string
 	for _, f := range t.Files {
-		paths = append(paths, filepath.Join(t.DownloadDir, f.Name))
+		paths = append(paths, filepath.Join(mountPrefix, t.DownloadDir, f.Name))
 	}
 
 	log.Printf("%+v", t)
@@ -181,10 +183,10 @@ type TransmissionListTorrentsResponse struct {
 	Arguments TorrentList `json:"arguments"`
 }
 
-func (r TransmissionListTorrentsResponse) ToTorrents() []Status {
+func (r TransmissionListTorrentsResponse) ToTorrents(mountPrefix string) []Status {
 	var torrents []Status
 	for _, r := range r.Arguments.Torrents {
-		torrents = append(torrents, r.ToStatus())
+		torrents = append(torrents, r.ToStatus(mountPrefix))
 	}
 
 	return torrents
@@ -295,7 +297,7 @@ func (c *TransmissionClient) Get(ctx context.Context, request GetRequest) (Statu
 		return status, fmt.Errorf("unexpected result: %v", response.Result)
 	}
 
-	torrents := response.ToTorrents()
+	torrents := response.ToTorrents(c.mountPrefix)
 	if len(torrents) == 0 {
 		return status, fmt.Errorf("no torrent found for %s", request.ID)
 	}
@@ -339,7 +341,7 @@ func (c *TransmissionClient) List(ctx context.Context) ([]Status, error) {
 		return nil, fmt.Errorf("unexpected result: %v", response.Result)
 	}
 
-	return response.ToTorrents(), nil
+	return response.ToTorrents(c.mountPrefix), nil
 }
 
 // AddTorrentResponse represents a response from a torrent-add rpc call

@@ -24,24 +24,33 @@ type Factory interface {
 	NewDownloadClient(config model.DownloadClient) (DownloadClient, error)
 }
 
-type DownloadClientFactory struct{}
+type DownloadClientFactory struct {
+	downloadMountPrefix string
+}
 
-func NewDownloadClientFactory() Factory {
-	return DownloadClientFactory{}
+// NewDownloadClientFactory creates a new download client factory.
+// The mount prefix is optional. It can be used to prefix download mount directory in scenarios where the download client uses a different path.
+func NewDownloadClientFactory(mountPrefix ...string) Factory {
+	factory := DownloadClientFactory{}
+	if len(mountPrefix) > 0 {
+		factory.downloadMountPrefix = mountPrefix[0]
+	}
+
+	return factory
 }
 
 // NewDownloadClient returns a downloada client for the given configuration
 // TODO: handle supporting configurations such as timeouts, etc
-func (DownloadClientFactory) NewDownloadClient(config model.DownloadClient) (DownloadClient, error) {
+func (d DownloadClientFactory) NewDownloadClient(config model.DownloadClient) (DownloadClient, error) {
 	switch config.Implementation {
 	case "transmission":
 		// TODO: Replace default http client with stored configurations
-		return NewTransmissionClient(http.DefaultClient, config.Scheme, config.Host, int(config.Port)), nil
+		return NewTransmissionClient(http.DefaultClient, config.Scheme, config.Host, d.downloadMountPrefix, int(config.Port)), nil
 	case "sabnzbd":
 		if config.APIKey == nil {
 			return nil, errors.New("missing api key")
 		}
-		return NewSabnzbdClient(http.DefaultClient, config.Scheme, config.Host, *config.APIKey), nil
+		return NewSabnzbdClient(http.DefaultClient, config.Scheme, config.Host, d.downloadMountPrefix, *config.APIKey), nil
 	default:
 		return nil, fmt.Errorf("unsupported client implementation: %v", config.Implementation)
 	}
