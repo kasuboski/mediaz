@@ -151,16 +151,18 @@ func TestMovieStorage(t *testing.T) {
 	assert.Nil(t, err)
 	assert.NotEmpty(t, res)
 
-	movieFile, err := store.GetMovieFile(ctx, int64(res))
+	files, err := store.GetMovieFiles(ctx, int64(res))
 	assert.NoError(t, err)
-	movieFile.DateAdded = time.Time{}
-	assert.Equal(t, file, movieFile)
+	actualFile := files[0]
+	actualFile.DateAdded = time.Time{}
+	// clear non-deterministic date field
+	assert.Equal(t, &file, actualFile)
 
 	id = int64(res)
-	files, err := store.ListMovieFiles(ctx)
+	files, err = store.ListMovieFiles(ctx)
 	assert.Nil(t, err)
 	assert.Len(t, files, 1)
-	actualFile := files[0]
+	actualFile = files[0]
 	assert.NotEmpty(t, actualFile.DateAdded)
 	// clear non-deterministic date field
 	actualFile.DateAdded = time.Time{}

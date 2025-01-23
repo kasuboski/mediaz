@@ -509,7 +509,7 @@ func Test_Manager_reconcileDownloadingMovie(t *testing.T) {
 
 		downloadClient.ID = int32(downloadClientID)
 
-		movie := storage.Movie{Movie: model.Movie{ID: 1, Monitored: 1}, DownloadClientID: downloadClient.ID}
+		movie := storage.Movie{Movie: model.Movie{ID: 1, Monitored: 1}, DownloadClientID: downloadClient.ID, DownloadID: "123"}
 
 		_, err = store.CreateMovie(ctx, movie, storage.MovieStateMissing)
 		require.NoError(t, err)
@@ -526,7 +526,7 @@ func Test_Manager_reconcileDownloadingMovie(t *testing.T) {
 		snapshot := newReconcileSnapshot(nil, []*model.DownloadClient{&downloadClient})
 
 		err = m.reconcileDownloadingMovie(ctx, &movie, snapshot)
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.Equal(t, err.Error(), "failed to create download client")
 
 		mov, err := store.GetMovie(ctx, 1)
@@ -776,8 +776,10 @@ func Test_Manager_reconcileDownloadingMovie(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, storage.MovieStateDownloaded, mov.State)
 
-		mf, err := store.GetMovieFile(ctx, 1)
+		mfs, err := store.GetMovieFiles(ctx, 1)
 		require.NoError(t, err)
+		require.Len(t, mfs, 1)
+		mf := mfs[0]
 		assert.Equal(t, "/movies/my-movie/movie.mp4", *mf.RelativePath)
 		assert.Equal(t, "/downloads/movie.mp4", *mf.OriginalFilePath)
 		assert.Equal(t, int64(1024), mf.Size)
