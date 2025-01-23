@@ -495,7 +495,7 @@ func Test_Manager_reconcileDownloadingMovie(t *testing.T) {
 	t.Run("failed to create download client from model", func(t *testing.T) {
 		store := newStore(t, ctx)
 
-		downloadClient := model.DownloadClient{
+		downloadClientModel := model.DownloadClient{
 			Implementation: "transmission",
 			Type:           "torrent",
 			Port:           8080,
@@ -504,28 +504,36 @@ func Test_Manager_reconcileDownloadingMovie(t *testing.T) {
 			APIKey:         nil,
 		}
 
-		downloadClientID, err := store.CreateDownloadClient(ctx, downloadClient)
+		downloadClientID, err := store.CreateDownloadClient(ctx, downloadClientModel)
 		require.NoError(t, err)
 
-		downloadClient.ID = int32(downloadClientID)
-
-		movie := storage.Movie{Movie: model.Movie{ID: 1, Monitored: 1}, DownloadClientID: downloadClient.ID, DownloadID: "123"}
-
-		_, err = store.CreateMovie(ctx, movie, storage.MovieStateMissing)
-		require.NoError(t, err)
+		downloadClientModel.ID = int32(downloadClientID)
 
 		mockFactory := downloadMock.NewMockFactory(ctrl)
-		mockFactory.EXPECT().NewDownloadClient(downloadClient).Return(nil, errors.New("failed to create download client"))
+		mockFactory.EXPECT().NewDownloadClient(downloadClientModel).Return(nil, errors.New("failed to create download client"))
 
 		m := New(nil, nil, nil, store, mockFactory)
 		require.NotNil(t, m)
 
-		err = m.updateMovieState(ctx, &movie, storage.MovieStateDownloading, nil)
+		movieID, err := m.storage.CreateMovie(ctx, storage.Movie{Movie: model.Movie{ID: 1, Monitored: 1, QualityProfileID: 1}}, storage.MovieStateMissing)
 		require.NoError(t, err)
 
-		snapshot := newReconcileSnapshot(nil, []*model.DownloadClient{&downloadClient})
+		movie, err := m.storage.GetMovie(ctx, movieID)
+		require.NoError(t, err)
 
-		err = m.reconcileDownloadingMovie(ctx, &movie, snapshot)
+		downloadID := "123"
+		err = m.updateMovieState(ctx, movie, storage.MovieStateDownloading, &storage.MovieStateMetadata{
+			DownloadID:       &downloadID,
+			DownloadClientID: &downloadClientModel.ID,
+		})
+		require.NoError(t, err)
+
+		movie, err = m.storage.GetMovie(ctx, movieID)
+		require.NoError(t, err)
+
+		snapshot := newReconcileSnapshot(nil, []*model.DownloadClient{&downloadClientModel})
+
+		err = m.reconcileDownloadingMovie(ctx, movie, snapshot)
 		require.Error(t, err)
 		assert.Equal(t, err.Error(), "failed to create download client")
 
@@ -550,11 +558,6 @@ func Test_Manager_reconcileDownloadingMovie(t *testing.T) {
 
 		downloadClientModel.ID = int32(downloadClientID)
 
-		movie := storage.Movie{Movie: model.Movie{ID: 1, Monitored: 1}, DownloadClientID: downloadClientModel.ID, DownloadID: "123"}
-
-		_, err = store.CreateMovie(ctx, movie, storage.MovieStateMissing)
-		require.NoError(t, err)
-
 		mockDownloadClient := downloadMock.NewMockDownloadClient(ctrl)
 		mockFactory := downloadMock.NewMockFactory(ctrl)
 		mockFactory.EXPECT().NewDownloadClient(downloadClientModel).Return(mockDownloadClient, nil)
@@ -563,12 +566,25 @@ func Test_Manager_reconcileDownloadingMovie(t *testing.T) {
 		m := New(nil, nil, nil, store, mockFactory)
 		require.NotNil(t, m)
 
-		err = m.updateMovieState(ctx, &movie, storage.MovieStateDownloading, nil)
+		movieID, err := m.storage.CreateMovie(ctx, storage.Movie{Movie: model.Movie{ID: 1, Monitored: 1, QualityProfileID: 1}}, storage.MovieStateMissing)
+		require.NoError(t, err)
+
+		movie, err := m.storage.GetMovie(ctx, movieID)
+		require.NoError(t, err)
+
+		downloadID := "123"
+		err = m.updateMovieState(ctx, movie, storage.MovieStateDownloading, &storage.MovieStateMetadata{
+			DownloadID:       &downloadID,
+			DownloadClientID: &downloadClientModel.ID,
+		})
+		require.NoError(t, err)
+
+		movie, err = m.storage.GetMovie(ctx, movieID)
 		require.NoError(t, err)
 
 		snapshot := newReconcileSnapshot(nil, []*model.DownloadClient{&downloadClientModel})
 
-		err = m.reconcileDownloadingMovie(ctx, &movie, snapshot)
+		err = m.reconcileDownloadingMovie(ctx, movie, snapshot)
 		assert.Error(t, err)
 		assert.Equal(t, err.Error(), "failed to get download status")
 
@@ -601,19 +617,27 @@ func Test_Manager_reconcileDownloadingMovie(t *testing.T) {
 			Done: false,
 		}, nil)
 
-		movie := storage.Movie{Movie: model.Movie{ID: 1, Monitored: 1}, DownloadClientID: downloadClientModel.ID, DownloadID: "123"}
-
-		_, err = store.CreateMovie(ctx, movie, storage.MovieStateMissing)
-		require.NoError(t, err)
-
 		m := New(nil, nil, nil, store, mockFactory)
 		require.NotNil(t, m)
 
-		err = m.updateMovieState(ctx, &movie, storage.MovieStateDownloading, nil)
+		movieID, err := m.storage.CreateMovie(ctx, storage.Movie{Movie: model.Movie{ID: 1, Monitored: 1, QualityProfileID: 1}}, storage.MovieStateMissing)
+		require.NoError(t, err)
+
+		movie, err := m.storage.GetMovie(ctx, movieID)
+		require.NoError(t, err)
+
+		downloadID := "123"
+		err = m.updateMovieState(ctx, movie, storage.MovieStateDownloading, &storage.MovieStateMetadata{
+			DownloadID:       &downloadID,
+			DownloadClientID: &downloadClientModel.ID,
+		})
+		require.NoError(t, err)
+
+		movie, err = m.storage.GetMovie(ctx, movieID)
 		require.NoError(t, err)
 
 		snapshot := newReconcileSnapshot(nil, []*model.DownloadClient{&downloadClientModel})
-		err = m.reconcileDownloadingMovie(ctx, &movie, snapshot)
+		err = m.reconcileDownloadingMovie(ctx, movie, snapshot)
 		assert.NoError(t, err)
 
 		mov, err := store.GetMovie(ctx, 1)
@@ -645,20 +669,28 @@ func Test_Manager_reconcileDownloadingMovie(t *testing.T) {
 			Done: true,
 		}, nil)
 
-		movie := storage.Movie{Movie: model.Movie{ID: 1, Monitored: 1, MovieMetadataID: intPtr(1)}, DownloadClientID: downloadClientModel.ID, DownloadID: "123"}
-
-		_, err = store.CreateMovie(ctx, movie, storage.MovieStateMissing)
-		require.NoError(t, err)
-
 		m := New(nil, nil, nil, store, mockFactory)
 		require.NotNil(t, m)
 
-		err = m.updateMovieState(ctx, &movie, storage.MovieStateDownloading, nil)
+		movieID, err := m.storage.CreateMovie(ctx, storage.Movie{Movie: model.Movie{ID: 1, Monitored: 1, QualityProfileID: 1, MovieMetadataID: intPtr(1)}}, storage.MovieStateMissing)
+		require.NoError(t, err)
+
+		movie, err := m.storage.GetMovie(ctx, movieID)
+		require.NoError(t, err)
+
+		downloadID := "123"
+		err = m.updateMovieState(ctx, movie, storage.MovieStateDownloading, &storage.MovieStateMetadata{
+			DownloadID:       &downloadID,
+			DownloadClientID: &downloadClientModel.ID,
+		})
+		require.NoError(t, err)
+
+		movie, err = m.storage.GetMovie(ctx, movieID)
 		require.NoError(t, err)
 
 		snapshot := newReconcileSnapshot(nil, []*model.DownloadClient{&downloadClientModel})
 
-		err = m.reconcileDownloadingMovie(ctx, &movie, snapshot)
+		err = m.reconcileDownloadingMovie(ctx, movie, snapshot)
 		assert.Error(t, err)
 		assert.Equal(t, "not found in storage", err.Error())
 
@@ -694,24 +726,32 @@ func Test_Manager_reconcileDownloadingMovie(t *testing.T) {
 			FilePaths: []string{"test path"},
 		}, nil)
 
-		movie := storage.Movie{Movie: model.Movie{ID: 1, Monitored: 1, MovieMetadataID: intPtr(1)}, DownloadClientID: downloadClientModel.ID, DownloadID: "123"}
+		m := New(nil, nil, mockLibrary, store, mockFactory)
+		require.NotNil(t, m)
 
-		_, err = store.CreateMovie(ctx, movie, storage.MovieStateMissing)
+		movieID, err := m.storage.CreateMovie(ctx, storage.Movie{Movie: model.Movie{ID: 1, Monitored: 1, QualityProfileID: 1, MovieMetadataID: intPtr(1)}}, storage.MovieStateMissing)
+		require.NoError(t, err)
+
+		movie, err := m.storage.GetMovie(ctx, movieID)
+		require.NoError(t, err)
+
+		downloadID := "123"
+		err = m.updateMovieState(ctx, movie, storage.MovieStateDownloading, &storage.MovieStateMetadata{
+			DownloadID:       &downloadID,
+			DownloadClientID: &downloadClientModel.ID,
+		})
+		require.NoError(t, err)
+
+		movie, err = m.storage.GetMovie(ctx, movieID)
 		require.NoError(t, err)
 
 		movieMetadata := model.MovieMetadata{Title: "my-movie", TmdbID: 1234}
 		_, err = store.CreateMovieMetadata(ctx, movieMetadata)
 		require.NoError(t, err)
 
-		m := New(nil, nil, mockLibrary, store, mockFactory)
-		require.NotNil(t, m)
-
-		err = m.updateMovieState(ctx, &movie, storage.MovieStateDownloading, nil)
-		require.NoError(t, err)
-
 		snapshot := newReconcileSnapshot(nil, []*model.DownloadClient{&downloadClientModel})
 
-		err = m.reconcileDownloadingMovie(ctx, &movie, snapshot)
+		err = m.reconcileDownloadingMovie(ctx, movie, snapshot)
 		assert.Error(t, err)
 		assert.Equal(t, "failed to add movie to library: expected testing error", err.Error())
 
@@ -752,24 +792,32 @@ func Test_Manager_reconcileDownloadingMovie(t *testing.T) {
 			FilePaths: []string{"/downloads/movie.mp4"},
 		}, nil)
 
-		movie := storage.Movie{Movie: model.Movie{ID: 1, Monitored: 1, MovieMetadataID: intPtr(1)}, DownloadClientID: downloadClientModel.ID, DownloadID: "123"}
+		m := New(nil, nil, mockLibrary, store, mockFactory)
+		require.NotNil(t, m)
 
-		_, err = store.CreateMovie(ctx, movie, storage.MovieStateMissing)
+		movieID, err := m.storage.CreateMovie(ctx, storage.Movie{Movie: model.Movie{ID: 1, Monitored: 1, QualityProfileID: 1, MovieMetadataID: intPtr(1)}}, storage.MovieStateMissing)
+		require.NoError(t, err)
+
+		movie, err := m.storage.GetMovie(ctx, movieID)
+		require.NoError(t, err)
+
+		downloadID := "123"
+		err = m.updateMovieState(ctx, movie, storage.MovieStateDownloading, &storage.MovieStateMetadata{
+			DownloadID:       &downloadID,
+			DownloadClientID: &downloadClientModel.ID,
+		})
+		require.NoError(t, err)
+
+		movie, err = m.storage.GetMovie(ctx, movieID)
 		require.NoError(t, err)
 
 		movieMetadata := model.MovieMetadata{Title: "my-movie", TmdbID: 1234}
 		_, err = store.CreateMovieMetadata(ctx, movieMetadata)
 		require.NoError(t, err)
 
-		m := New(nil, nil, mockLibrary, store, mockFactory)
-		require.NotNil(t, m)
-
-		err = m.updateMovieState(ctx, &movie, storage.MovieStateDownloading, nil)
-		require.NoError(t, err)
-
 		snapshot := newReconcileSnapshot(nil, []*model.DownloadClient{&downloadClientModel})
 
-		err = m.reconcileDownloadingMovie(ctx, &movie, snapshot)
+		err = m.reconcileDownloadingMovie(ctx, movie, snapshot)
 		assert.NoError(t, err)
 
 		mov, err := store.GetMovie(ctx, 1)

@@ -161,7 +161,7 @@ func (s SQLite) GetMovie(ctx context.Context, id int64) (*storage.Movie, error) 
 	stmt := sqlite.
 		SELECT(
 			table.Movie.AllColumns,
-			table.MovieTransition.ToState).
+			table.MovieTransition.AllColumns).
 		FROM(
 			table.Movie.INNER_JOIN(
 				table.MovieTransition,

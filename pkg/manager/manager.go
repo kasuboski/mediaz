@@ -310,9 +310,11 @@ type ReconcileSnapshot struct {
 	mu                sync.Mutex
 }
 
-func (r *ReconcileSnapshot) GetDownloadClient(id int) *model.DownloadClient {
-	for _, dc := range r.downloadClients {
-		if dc.ID == int32(id) {
+func (r *ReconcileSnapshot) GetDownloadClient(id int32) *model.DownloadClient {
+	dcs := r.GetDownloadClients()
+
+	for _, dc := range dcs {
+		if dc.ID == id {
 			return dc
 		}
 	}
@@ -460,7 +462,7 @@ func (m MediaManager) reconcileDownloadingMovie(ctx context.Context, movie *stor
 		return m.updateMovieState(ctx, movie, storage.MovieStateDownloaded, nil)
 	}
 
-	dc := snapshot.GetDownloadClient(int(movie.DownloadClientID))
+	dc := snapshot.GetDownloadClient(movie.DownloadClientID)
 	if dc == nil {
 		log.Warn("movie download client not found in snapshot, skipping reconcile", zap.Int32("download client id", movie.DownloadClientID))
 		return nil
