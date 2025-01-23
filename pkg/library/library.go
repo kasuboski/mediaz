@@ -93,7 +93,8 @@ func (l *MediaLibrary) AddMovie(ctx context.Context, title, sourcePath string) (
 	}
 
 	movieFile.Size = info.Size()
-	movieFile.Path = targetPath
+	movieFile.RelativePath = fmt.Sprintf("%s/%s", title, movieFile.Name)
+	movieFile.AbsolutePath = targetPath
 
 	return movieFile, nil
 }

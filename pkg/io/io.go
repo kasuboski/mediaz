@@ -67,11 +67,14 @@ func (o *MediaFileSystem) Copy(source, target string) (int64, error) {
 	return io.Copy(targetFile, sourceFile)
 }
 
-// IsSameFileSystem checks if a source and target are on the same file system.
+// IsSameFileSystem checks if a source and target are on the same file system. If a file does not exist, it is considered to be on a different file system.
 func (o *MediaFileSystem) IsSameFileSystem(source, target string) (bool, error) {
 	// Get source file stat
 	sourceStat, err := o.Stat(source)
 	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return false, nil
+		}
 		return false, fmt.Errorf("failed to stat source path: %w", err)
 	}
 
@@ -83,6 +86,9 @@ func (o *MediaFileSystem) IsSameFileSystem(source, target string) (bool, error) 
 	// Get target file stat
 	targetStat, err := o.Stat(target)
 	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return false, nil
+		}
 		return false, fmt.Errorf("failed to stat target path: %w", err)
 	}
 

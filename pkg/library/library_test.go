@@ -205,9 +205,10 @@ func TestMediaLibrary_AddMovie(t *testing.T) {
 		title := "Batman Begins"
 		movieFile, err := library.AddMovie(ctx, title, movieToAdd)
 		wantMovieFile := MovieFile{
-			Name: "",
-			Size: 0,
-			Path: "",
+			Name:         "",
+			Size:         0,
+			RelativePath: "",
+			AbsolutePath: "",
 		}
 
 		assert.Error(t, err)
@@ -247,9 +248,10 @@ func TestMediaLibrary_AddMovie(t *testing.T) {
 		title := "Batman Begins"
 		movieFile, err := library.AddMovie(ctx, title, movieToAdd)
 		wantMovieFile := MovieFile{
-			Name: filepath.Base(tmpFile.Name()),
-			Size: 0,
-			Path: filepath.Join(fileSystem.Path, title, filepath.Base(tmpFile.Name())),
+			Name:         filepath.Base(tmpFile.Name()),
+			Size:         0,
+			RelativePath: filepath.Join(title, filepath.Base(tmpFile.Name())),
+			AbsolutePath: filepath.Join(fileSystem.Path, title, filepath.Base(tmpFile.Name())),
 		}
 		assert.Nil(t, err)
 		assert.Equal(t, wantMovieFile, movieFile)
@@ -287,9 +289,10 @@ func TestMediaLibrary_AddMovie(t *testing.T) {
 		title := "Batman Begins"
 		movieFile, err := library.AddMovie(ctx, title, movieToAdd)
 		wantMovieFile := MovieFile{
-			Name: filepath.Base(tmpFile.Name()),
-			Size: 0,
-			Path: filepath.Join(fileSystem.Path, title, filepath.Base(tmpFile.Name())),
+			Name:         filepath.Base(tmpFile.Name()),
+			Size:         0,
+			RelativePath: filepath.Join(title, filepath.Base(tmpFile.Name())),
+			AbsolutePath: filepath.Join(fileSystem.Path, title, filepath.Base(tmpFile.Name())),
 		}
 
 		assert.Nil(t, err)

@@ -166,21 +166,21 @@ func (m MediaManager) ListMoviesInLibrary(ctx context.Context) ([]library.MovieF
 func (m MediaManager) Run(ctx context.Context) error {
 	log := logger.FromCtx(ctx)
 
-	movieIndexTicker := time.NewTicker(time.Minute * 10)
-	defer movieIndexTicker.Stop()
-	movieReconcileTicker := time.NewTicker(time.Minute * 10)
+	// movieIndexTicker := time.NewTicker(time.Second * 10)
+	// defer movieIndexTicker.Stop()
+	movieReconcileTicker := time.NewTicker(time.Second * 10)
 	defer movieReconcileTicker.Stop()
 
 	for {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		case <-movieIndexTicker.C:
-			err := m.IndexMovieLibrary(ctx)
-			if err != nil {
-				log.Errorf("movie indexing failed: %w", err)
-				continue
-			}
+		// case <-movieIndexTicker.C:
+		// 	err := m.IndexMovieLibrary(ctx)
+		// 	if err != nil {
+		// 		log.Errorf("movie indexing failed: %w", err)
+		// 		continue
+		// 	}
 		case <-movieReconcileTicker.C:
 			err := m.ReconcileMovies(ctx)
 			if err != nil {
@@ -202,7 +202,7 @@ func (m MediaManager) IndexMovieLibrary(ctx context.Context) error {
 	for _, f := range files {
 		mov := storage.Movie{
 			Movie: model.Movie{
-				Path:      &f.Path,
+				Path:      &f.RelativePath,
 				Monitored: 0,
 			},
 		}
@@ -213,7 +213,7 @@ func (m MediaManager) IndexMovieLibrary(ctx context.Context) error {
 		}
 		movieID := int32(movID)
 		mf := model.MovieFile{
-			RelativePath: &f.Path, // TODO: make sure it's actually relative
+			RelativePath: &f.RelativePath, // TODO: make sure it's actually relative
 			Size:         f.Size,
 			MovieID:      movieID,
 		}
@@ -308,6 +308,16 @@ type ReconcileSnapshot struct {
 	indexers          []Indexer
 	indexerIDs        []int32
 	mu                sync.Mutex
+}
+
+func (r *ReconcileSnapshot) GetDownloadClient(id int) *model.DownloadClient {
+	for _, dc := range r.downloadClients {
+		if dc.ID == int32(id) {
+			return dc
+		}
+	}
+
+	return nil
 }
 
 func newReconcileSnapshot(indexers []Indexer, downloadClients []*model.DownloadClient) *ReconcileSnapshot {
@@ -430,27 +440,33 @@ func (m MediaManager) ReconcileDownloadingMovies(ctx context.Context, wg *sync.W
 	return nil
 }
 
-func (m MediaManager) reconcileDownloadingMovie(ctx context.Context, movie *storage.Movie, _ *ReconcileSnapshot) error {
+func (m MediaManager) reconcileDownloadingMovie(ctx context.Context, movie *storage.Movie, snapshot *ReconcileSnapshot) error {
 	log := logger.FromCtx(ctx)
-	log = log.With("movie id", movie.ID)
+	log = log.With("reconcile loop", "downloading", "movie id", movie.ID)
+
+	if snapshot == nil {
+		log.Warn("snapshot is nil, skipping reconcile")
+		return nil
+	}
 
 	if movie.Monitored == 0 {
 		log.Debug("movie is not monitored, skipping reconcile")
 		return nil
 	}
 
-	if movie.DownloadClientID == 0 {
-		log.Warn("movie download client id is nil, skipping reconcile")
+	_, err := m.storage.GetMovieFile(ctx, int64(movie.ID))
+	if err == nil {
+		log.Info("movie file is already tracked")
+		return m.updateMovieState(ctx, movie, storage.MovieStateDownloaded, nil)
+	}
+
+	dc := snapshot.GetDownloadClient(int(movie.DownloadClientID))
+	if dc == nil {
+		log.Warn("movie download client not found in snapshot, skipping reconcile", zap.Int32("download client id", movie.DownloadClientID))
 		return nil
 	}
 
-	movieDownloadClient, err := m.storage.GetDownloadClient(ctx, int64(movie.DownloadClientID))
-	if err != nil {
-		log.Warn("failed to find movie download client", zap.Error(err))
-		return err
-	}
-
-	downloadClient, err := m.factory.NewDownloadClient(movieDownloadClient)
+	downloadClient, err := m.factory.NewDownloadClient(*dc)
 	if err != nil {
 		log.Warn("failed to create download client", zap.Error(err))
 		return err
@@ -464,47 +480,35 @@ func (m MediaManager) reconcileDownloadingMovie(ctx context.Context, movie *stor
 		return err
 	}
 
-	movieMetadata, err := m.storage.GetMovieMetadata(ctx, table.MovieMetadata.ID.EQ(sqlite.Int32(*movie.MovieMetadataID)))
-	if err != nil {
-		log.Error("failed to get movie metadata", zap.Error(err))
-		return err
-	}
-
 	log.Debug("status", zap.Any("status", status))
 	if !status.Done {
 		log.Debug("download not finished")
 		return nil
 	}
 
-	log.Debug("attempting to move downloaded file")
+	movieMetadata, err := m.storage.GetMovieMetadata(ctx, table.MovieMetadata.ID.EQ(sqlite.Int32(*movie.MovieMetadataID)))
+	if err != nil {
+		log.Error("failed to get movie metadata", zap.Error(err))
+		return err
+	}
 
+	log.Debug("attempting to move downloaded file")
 	for _, f := range status.FilePaths {
 		err = m.addMovieFileToLibrary(ctx, movieMetadata.Title, f, movie)
 		if err != nil {
 			log.Error("failed to add movie file to library", zap.Error(err))
 			return err
 		}
+
+		log.Debug("successfully added movie file to library", zap.String("file", f))
 	}
 
-	err = m.storage.UpdateMovieState(ctx, int64(movie.ID), storage.MovieStateDownloaded, &storage.MovieStateMetadata{})
-	if err != nil {
-		log.Error("failed to update movie state", zap.Error(err))
-		return err
-	}
-
-	log.Debug("movie download finished")
-	return nil
+	return m.updateMovieState(ctx, movie, storage.MovieStateDownloaded, nil)
 }
 
 func (m MediaManager) addMovieFileToLibrary(ctx context.Context, title, filePath string, movie *storage.Movie) error {
 	log := logger.FromCtx(ctx)
 	log = log.With("movie id", movie.ID)
-	_, err := m.storage.GetMovieFile(ctx, int64(movie.ID))
-	// if we already have a movie file we can just update the state, otherwise create it
-	if err == nil {
-		log.Debug("movie file already exists in database, skipping movie file creation")
-		return nil
-	}
 
 	mf, err := m.library.AddMovie(ctx, title, filePath)
 	if err != nil {
@@ -513,13 +517,13 @@ func (m MediaManager) addMovieFileToLibrary(ctx context.Context, title, filePath
 
 	_, err = m.storage.CreateMovieFile(ctx, model.MovieFile{
 		MovieID:          int32(movie.ID),
-		RelativePath:     &mf.Path,
+		RelativePath:     &mf.RelativePath,
 		Size:             mf.Size,
 		OriginalFilePath: &filePath,
 		DateAdded:        time.Now(),
 	})
 	if err != nil {
-		return fmt.Errorf("failed to create movie file record: %w", err)
+		return fmt.Errorf("failed to create movie file: %v", err)
 	}
 
 	return nil
@@ -600,17 +604,10 @@ func (m MediaManager) reconcileMissingMovie(ctx context.Context, movie *storage.
 		return err
 	}
 
-	// update the state so we no longer reconcile this movie including download metadata
-	err = m.storage.UpdateMovieState(ctx, int64(movie.ID), storage.MovieStateDownloading, &storage.MovieStateMetadata{
+	return m.updateMovieState(ctx, movie, storage.MovieStateDownloading, &storage.MovieStateMetadata{
 		DownloadID:       &status.ID,
 		DownloadClientID: &c.ID,
 	})
-	if err != nil {
-		log.Debugw("failed to update movie state", zap.Error(err))
-		return err
-	}
-
-	return nil
 }
 
 func (m MediaManager) ReconcileUnreleasedMovies(ctx context.Context, wg *sync.WaitGroup, snapshot *ReconcileSnapshot) error {
@@ -663,12 +660,18 @@ func (m *MediaManager) reconcileUnreleasedMovie(ctx context.Context, movie *stor
 		return nil
 	}
 
-	err = m.storage.UpdateMovieState(ctx, int64(movie.ID), storage.MovieStateMissing, nil)
+	return m.updateMovieState(ctx, movie, storage.MovieStateMissing, nil)
+}
+
+func (m MediaManager) updateMovieState(ctx context.Context, movie *storage.Movie, state storage.MovieState, metadata *storage.MovieStateMetadata) error {
+	log := logger.FromCtx(ctx).With("movie id", movie.ID, "from state", movie.State, "to state", state)
+	err := m.storage.UpdateMovieState(ctx, int64(movie.ID), state, metadata)
 	if err != nil {
-		log.Warn("failed to update released movie state", zap.Error(err))
+		log.Warn("failed to update movie state", zap.Error(err))
 		return err
 	}
 
+	log.Info("successfully updated movie state")
 	return nil
 }
 
