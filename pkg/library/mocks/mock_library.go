@@ -41,18 +41,18 @@ func (m *MockLibrary) EXPECT() *MockLibraryMockRecorder {
 }
 
 // AddMovie mocks base method.
-func (m *MockLibrary) AddMovie(arg0 context.Context, arg1 string) (library.MovieFile, error) {
+func (m *MockLibrary) AddMovie(arg0 context.Context, arg1, arg2 string) (library.MovieFile, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AddMovie", arg0, arg1)
+	ret := m.ctrl.Call(m, "AddMovie", arg0, arg1, arg2)
 	ret0, _ := ret[0].(library.MovieFile)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // AddMovie indicates an expected call of AddMovie.
-func (mr *MockLibraryMockRecorder) AddMovie(arg0, arg1 any) *gomock.Call {
+func (mr *MockLibraryMockRecorder) AddMovie(arg0, arg1, arg2 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddMovie", reflect.TypeOf((*MockLibrary)(nil).AddMovie), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddMovie", reflect.TypeOf((*MockLibrary)(nil).AddMovie), arg0, arg1, arg2)
 }
 
 // FindEpisodes mocks base method.

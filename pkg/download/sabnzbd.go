@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -16,18 +17,20 @@ import (
 )
 
 type SabnzbdClient struct {
-	http   HTTPClient
-	scheme string
-	host   string
-	apiKey string
+	http        HTTPClient
+	scheme      string
+	host        string
+	apiKey      string
+	mountPrefix string
 }
 
-func NewSabnzbdClient(http HTTPClient, scheme, host, apiKey string) DownloadClient {
+func NewSabnzbdClient(http HTTPClient, scheme, host, mountPrefix, apiKey string) DownloadClient {
 	return &SabnzbdClient{
 		http,
 		scheme,
 		host,
 		apiKey,
+		mountPrefix,
 	}
 }
 
@@ -185,7 +188,7 @@ func (c *SabnzbdClient) List(ctx context.Context) ([]Status, error) {
 		return nil, err
 	}
 
-	return queueToStatus(response.Queue, historyResponse.History)
+	return queueToStatus(response.Queue, historyResponse.History, c.mountPrefix)
 }
 
 type HistoryResponse struct {
@@ -207,32 +210,32 @@ type History struct {
 // HistorySlot represents an individual slot in the history
 type HistorySlot struct {
 	Meta         interface{} `json:"meta"`
-	Status       string      `json:"status"`
-	Size         string      `json:"size"`
-	ScriptLine   string      `json:"script_line"`
-	URLInfo      string      `json:"url_info"`
+	ActionLine   string      `json:"action_line"`
 	MD5Sum       string      `json:"md5sum"`
+	FailMessage  string      `json:"fail_message"`
+	URLInfo      string      `json:"url_info"`
+	DuplicateKey string      `json:"duplicate_key"`
 	Category     string      `json:"category"`
 	PP           string      `json:"pp"`
 	URL          string      `json:"url"`
 	Script       string      `json:"script"`
 	NZBName      string      `json:"nzb_name"`
 	Name         string      `json:"name"`
-	NzoID        string      `json:"nzo_id"`
-	Path         string      `json:"path"`
-	ActionLine   string      `json:"action_line"`
-	FailMessage  string      `json:"fail_message"`
-	DuplicateKey string      `json:"duplicate_key"`
 	Storage      string      `json:"storage"`
+	Path         string      `json:"path"`
+	Status       string      `json:"status"`
+	ScriptLine   string      `json:"script_line"`
+	Size         string      `json:"size"`
+	NzoID        string      `json:"nzo_id"`
 	Password     string      `json:"password"`
 	Report       string      `json:"report"`
 	StageLog     []StageLog  `json:"stage_log"`
 	Downloaded   int64       `json:"downloaded"`
 	PostprocTime int         `json:"postproc_time"`
 	DownloadTime int         `json:"download_time"`
-	Retry        bool        `json:"retry"`
 	Completed    int64       `json:"completed"`
 	Bytes        int64       `json:"bytes"`
+	Retry        bool        `json:"retry"`
 	HasRating    bool        `json:"has_rating"`
 	Archive      bool        `json:"archive"`
 	Loaded       bool        `json:"loaded"`
@@ -269,7 +272,7 @@ func (c *SabnzbdClient) history(ctx context.Context, ids ...string) (HistoryResp
 	return history, err
 }
 
-func queueToStatus(queue Queue, history History) ([]Status, error) {
+func queueToStatus(queue Queue, history History, mountPrefix string) ([]Status, error) {
 	slots := queue.Slots
 	speedDesc := queue.Speed
 	split := strings.Split(speedDesc, " ")
@@ -293,17 +296,17 @@ func queueToStatus(queue Queue, history History) ([]Status, error) {
 		var path string
 		for _, h := range history.Slots {
 			if h.NzoID == s.NzoID {
-				path = h.Storage
+				path = filepath.Join(mountPrefix, h.Storage)
 			}
 		}
 
 		stats[i] = Status{
-			ID:       s.NzoID,
-			Name:     s.Filename,
-			Progress: p,
-			Size:     int64(size),
-			Speed:    int64(speed),
-			FilePath: []string{path},
+			ID:        s.NzoID,
+			Name:      s.Filename,
+			Progress:  p,
+			Size:      int64(size),
+			Speed:     int64(speed),
+			FilePaths: []string{path},
 		}
 	}
 

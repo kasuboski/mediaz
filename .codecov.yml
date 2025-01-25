@@ -9,5 +9,5 @@ coverage:
 ignore:
   - "**/gen"
   - "**/*.gen.*"
-  - "**/mocks"
+  - "**/mocks/**"
   - "cmd/*"

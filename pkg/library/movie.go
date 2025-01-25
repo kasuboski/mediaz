@@ -6,21 +6,22 @@ import (
 )
 
 type MovieFile struct {
-	Name string `json:"name"`
-	Path string `json:"path"`
-	Size int64  `json:"size"`
+	Name         string `json:"name"`
+	RelativePath string `json:"path"`
+	AbsolutePath string `json:"absolutePath"`
+	Size         int64  `json:"size"`
 }
 
 func (mf MovieFile) String() string {
-	return fmt.Sprintf("name: %s, path: %s, size: %s", mf.Name, mf.Path, fileSizeToString(mf.Size))
+	return fmt.Sprintf("name: %s, relative path: %s, size: %s", mf.Name, mf.RelativePath, fileSizeToString(mf.Size))
 }
 
 func FromPath(path string) MovieFile {
 	// Use the directory name to find the movie name
 	name := dirName(path)
 	return MovieFile{
-		Name: sanitizeName(name),
-		Path: path,
+		Name:         sanitizeName(name),
+		RelativePath: path,
 	}
 }
 

@@ -161,7 +161,7 @@ func (s SQLite) GetMovie(ctx context.Context, id int64) (*storage.Movie, error) 
 	stmt := sqlite.
 		SELECT(
 			table.Movie.AllColumns,
-			table.MovieTransition.ToState).
+			table.MovieTransition.AllColumns).
 		FROM(
 			table.Movie.INNER_JOIN(
 				table.MovieTransition,
@@ -252,7 +252,7 @@ func (s SQLite) UpdateMovieState(ctx context.Context, id int64, state storage.Mo
 			table.MovieTransition.MostRecent.SET(sqlite.Bool(false)),
 			table.MovieTransition.UpdatedAt.SET(sqlite.TimestampExp(sqlite.String(time.Now().Format(timestampFormat))))).
 		WHERE(
-			table.MovieTransition.ID.EQ(sqlite.Int(id)).
+			table.MovieTransition.MovieID.EQ(sqlite.Int(id)).
 				AND(table.MovieTransition.MostRecent.EQ(sqlite.Bool(true)))).
 		RETURNING(table.MovieTransition.AllColumns)
 
@@ -318,6 +318,25 @@ func (s SQLite) GetMovieByMetadataID(ctx context.Context, metadataID int) (*stor
 	}
 
 	return movie, nil
+}
+
+func (s SQLite) GetMovieFiles(ctx context.Context, id int64) ([]*model.MovieFile, error) {
+	stmt := table.MovieFile.
+		SELECT(table.MovieFile.AllColumns).
+		FROM(table.MovieFile).
+		WHERE(table.MovieFile.MovieID.EQ(sqlite.Int64(id)))
+
+	var result []*model.MovieFile
+	err := stmt.QueryContext(ctx, s.db, &result)
+	if err != nil {
+		return result, err
+	}
+
+	if len(result) == 0 {
+		return nil, storage.ErrNotFound
+	}
+
+	return result, err
 }
 
 // CreateMovieFile stores a movie file

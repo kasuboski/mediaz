@@ -20,7 +20,7 @@ func TestNewTransmissionClient(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	mockHttp := httpMock.NewMockHTTPClient(ctrl)
 
-	client := NewTransmissionClient(mockHttp, "http", "localhost", 0)
+	client := NewTransmissionClient(mockHttp, "http", "localhost", "", 0)
 	transmissionClient, ok := client.(*TransmissionClient)
 	assert.True(t, ok, "client should be of type *TransmissionClient")
 	assert.Equal(t, "localhost", transmissionClient.host, "Host should not include port")
@@ -28,7 +28,7 @@ func TestNewTransmissionClient(t *testing.T) {
 	assert.Equal(t, "http", transmissionClient.scheme, "Scheme should match")
 	assert.NotNil(t, transmissionClient.mutex, "Mutex should not be nil")
 
-	clientWithPort := NewTransmissionClient(mockHttp, "https", "example.com", 9090)
+	clientWithPort := NewTransmissionClient(mockHttp, "https", "example.com", "", 9090)
 	transmissionClientWithPort, ok := clientWithPort.(*TransmissionClient)
 	assert.True(t, ok, "client should be of type *TransmissionClient")
 	assert.Equal(t, "example.com:9090", transmissionClientWithPort.host, "Host should include port")
@@ -43,7 +43,7 @@ func TestTransmissionClient_Add(t *testing.T) {
 
 	t.Run("success", func(t *testing.T) {
 		mockHttp := httpMock.NewMockHTTPClient(ctrl)
-		client := NewTransmissionClient(mockHttp, "http", "localhost", 0)
+		client := NewTransmissionClient(mockHttp, "http", "localhost", "", 0)
 		ctx := context.Background()
 
 		addRequest := AddRequest{
@@ -101,16 +101,16 @@ func TestTransmissionClient_Add(t *testing.T) {
 		assert.NoError(t, err)
 
 		expectedStatus := Status{
-			ID:       "1",
-			Name:     "torrent 1",
-			FilePath: []string{"/downloads/file1"},
+			ID:        "1",
+			Name:      "torrent 1",
+			FilePaths: []string{"/downloads/file1"},
 		}
 		assert.Equal(t, expectedStatus, status)
 	})
 
 	t.Run("missing guid", func(t *testing.T) {
 		mockHttp := httpMock.NewMockHTTPClient(ctrl)
-		client := NewTransmissionClient(mockHttp, "http", "localhost", 0)
+		client := NewTransmissionClient(mockHttp, "http", "localhost", "", 0)
 		ctx := context.Background()
 
 		addRequest := AddRequest{
@@ -125,7 +125,7 @@ func TestTransmissionClient_Add(t *testing.T) {
 
 	t.Run("error during request", func(t *testing.T) {
 		mockHttp := httpMock.NewMockHTTPClient(ctrl)
-		client := NewTransmissionClient(mockHttp, "http", "localhost", 0)
+		client := NewTransmissionClient(mockHttp, "http", "localhost", "", 0)
 		ctx := context.Background()
 
 		addRequest := AddRequest{
@@ -142,7 +142,7 @@ func TestTransmissionClient_Add(t *testing.T) {
 
 	t.Run("error in response", func(t *testing.T) {
 		mockHttp := httpMock.NewMockHTTPClient(ctrl)
-		client := NewTransmissionClient(mockHttp, "http", "localhost", 0)
+		client := NewTransmissionClient(mockHttp, "http", "localhost", "", 0)
 		ctx := context.Background()
 
 		addRequest := AddRequest{
@@ -169,7 +169,7 @@ func TestTransmissionClient_Add(t *testing.T) {
 
 	t.Run("Error during Get RPC Call", func(t *testing.T) {
 		mockHttp := httpMock.NewMockHTTPClient(ctrl)
-		client := NewTransmissionClient(mockHttp, "http", "localhost", 0)
+		client := NewTransmissionClient(mockHttp, "http", "localhost", "", 0)
 		ctx := context.Background()
 
 		addRequest := AddRequest{
@@ -217,7 +217,7 @@ func TestTransmissionClient_Get(t *testing.T) {
 
 	t.Run("success", func(t *testing.T) {
 		mockHttp := httpMock.NewMockHTTPClient(ctrl)
-		client := NewTransmissionClient(mockHttp, "http", "localhost", 0)
+		client := NewTransmissionClient(mockHttp, "http", "localhost", "", 0)
 		ctx := context.Background()
 
 		getRequest := GetRequest{
@@ -256,7 +256,7 @@ func TestTransmissionClient_Get(t *testing.T) {
 
 	t.Run("error", func(t *testing.T) {
 		mockHttp := httpMock.NewMockHTTPClient(ctrl)
-		client := NewTransmissionClient(mockHttp, "http", "localhost", 0)
+		client := NewTransmissionClient(mockHttp, "http", "localhost", "", 0)
 		ctx := context.Background()
 
 		getRequest := GetRequest{
@@ -273,7 +273,7 @@ func TestTransmissionClient_Get(t *testing.T) {
 
 	t.Run("error in response", func(t *testing.T) {
 		mockHttp := httpMock.NewMockHTTPClient(ctrl)
-		client := NewTransmissionClient(mockHttp, "http", "localhost", 0)
+		client := NewTransmissionClient(mockHttp, "http", "localhost", "", 0)
 		ctx := context.Background()
 
 		getRequest := GetRequest{
@@ -307,7 +307,7 @@ func TestTransmissionClient_List(t *testing.T) {
 
 	t.Run("success", func(t *testing.T) {
 		mockHttp := httpMock.NewMockHTTPClient(ctrl)
-		client := NewTransmissionClient(mockHttp, "http", "localhost", 0)
+		client := NewTransmissionClient(mockHttp, "http", "localhost", "", 0)
 		ctx := context.Background()
 
 		getResponse := TransmissionListTorrentsResponse{
@@ -352,7 +352,7 @@ func TestTransmissionClient_List(t *testing.T) {
 
 	t.Run("error during request", func(t *testing.T) {
 		mockHttp := httpMock.NewMockHTTPClient(ctrl)
-		client := NewTransmissionClient(mockHttp, "http", "localhost", 0)
+		client := NewTransmissionClient(mockHttp, "http", "localhost", "", 0)
 		ctx := context.Background()
 
 		mockHttp.EXPECT().Do(gomock.Any()).Return(nil, fmt.Errorf("http error"))
@@ -365,7 +365,7 @@ func TestTransmissionClient_List(t *testing.T) {
 
 	t.Run("error in response", func(t *testing.T) {
 		mockHttp := httpMock.NewMockHTTPClient(ctrl)
-		client := NewTransmissionClient(mockHttp, "http", "localhost", 0)
+		client := NewTransmissionClient(mockHttp, "http", "localhost", "", 0)
 		ctx := context.Background()
 
 		getResponse := TransmissionListTorrentsResponse{

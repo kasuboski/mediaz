@@ -15,4 +15,5 @@ type FileIO interface {
 	Rename(source, target string) error
 	WalkDir(fsys fs.FS, root string, fn fs.WalkDirFunc) error
 	Copy(source, target string) (int64, error)
+	MkdirAll(name string, perm os.FileMode) error
 }

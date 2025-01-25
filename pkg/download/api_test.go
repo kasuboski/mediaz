@@ -9,14 +9,15 @@ import (
 
 func TestDownloadClientFactory_NewDownloadClient(t *testing.T) {
 	t.Run("transmission client", func(t *testing.T) {
-		factory := NewDownloadClientFactory()
+		factory := NewDownloadClientFactory("mount")
 
 		client, err := factory.NewDownloadClient(model.DownloadClient{
 			Implementation: "transmission",
 		})
-		_, ok := client.(*TransmissionClient)
+		tc, ok := client.(*TransmissionClient)
 		assert.True(t, ok, "client should be of type *TransmissionClient")
 
+		assert.Equal(t, "mount", tc.mountPrefix)
 		assert.Nil(t, err)
 	})
 
@@ -53,50 +54,4 @@ func TestDownloadClientFactory_NewDownloadClient(t *testing.T) {
 		assert.Equal(t, "unsupported client implementation: my-client-implementation", err.Error())
 	})
 
-}
-
-func TestStatus_Finished(t *testing.T) {
-	type fields struct {
-		ID        string
-		Name      string
-		FilePaths []string
-		Progress  float64
-		Speed     int64
-		Size      int64
-	}
-	tests := []struct {
-		name   string
-		fields fields
-		want   bool
-	}{
-		{
-			name: "finished",
-			fields: fields{
-				Progress: 100,
-			},
-			want: true,
-		},
-		{
-			name: "not finished",
-			fields: fields{
-				Progress: 12,
-			},
-			want: false,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			s := Status{
-				ID:       tt.fields.ID,
-				Name:     tt.fields.Name,
-				FilePath: tt.fields.FilePaths,
-				Progress: tt.fields.Progress,
-				Speed:    tt.fields.Speed,
-				Size:     tt.fields.Size,
-			}
-			if got := s.Finished(); got != tt.want {
-				t.Errorf("Status.Finished() = %v, want %v", got, tt.want)
-			}
-		})
-	}
 }

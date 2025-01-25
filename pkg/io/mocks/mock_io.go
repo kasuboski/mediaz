@@ -86,6 +86,20 @@ func (mr *MockFileIOMockRecorder) IsSameFileSystem(arg0, arg1 any) *gomock.Call 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsSameFileSystem", reflect.TypeOf((*MockFileIO)(nil).IsSameFileSystem), arg0, arg1)
 }
 
+// MkdirAll mocks base method.
+func (m *MockFileIO) MkdirAll(arg0 string, arg1 fs.FileMode) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "MkdirAll", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// MkdirAll indicates an expected call of MkdirAll.
+func (mr *MockFileIOMockRecorder) MkdirAll(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MkdirAll", reflect.TypeOf((*MockFileIO)(nil).MkdirAll), arg0, arg1)
+}
+
 // Open mocks base method.
 func (m *MockFileIO) Open(arg0 string) (*os.File, error) {
 	m.ctrl.T.Helper()

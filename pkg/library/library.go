@@ -37,31 +37,41 @@ func New(movies FileSystem, tv FileSystem, io io.FileIO) Library {
 	}
 }
 
-// AddMovie adds a movie file from an absolute path to the movie library
+// AddMovie adds a movie file from an absolute path to the movie library. If a directory does not exist for the movie, it will be created using the title provided.
 // TODO: add option to delete source file if we succesfully copy
-func (l *MediaLibrary) AddMovie(ctx context.Context, sourcePath string) (MovieFile, error) {
+func (l *MediaLibrary) AddMovie(ctx context.Context, title, sourcePath string) (MovieFile, error) {
 	log := logger.FromCtx(ctx)
-	log = log.With("source path", sourcePath).With("movie library path", l.movies.Path)
+	log = log.With("source path", sourcePath, "movie library path", l.movies.Path)
 
 	var movieFile MovieFile
 
 	ok, err := l.io.IsSameFileSystem(l.movies.Path, sourcePath)
 	if err != nil {
-		log.Debug("failed to determine if request path and library path share a file systema", zap.Error(err))
+		log.Debug("failed to determine if request path and library path share a file system", zap.Error(err))
+		return movieFile, err
 	}
 
-	// downloads/batman begins/file.mp4 -> /library/movies/batman begins/file.mp4
-	sourceDir := dirName(sourcePath)
-	targetPath := filepath.Join(l.movies.Path, filepath.Join(sourceDir, filepath.Base(sourcePath)))
+	// downloads/file.mp4 -> /library/movies/batman begins/file.mp4
+	targetDir := filepath.Join(l.movies.Path, title)
+	targetPath := filepath.Join(targetDir, filepath.Base(sourcePath))
+	log = log.With("target dir", targetDir, "target path", targetPath)
+
+	err = l.io.MkdirAll(targetDir, os.ModePerm)
+	if err != nil {
+		log.Error("failed to create movie directory", zap.Error(err))
+		return movieFile, err
+	}
 
 	// rename the file if we're on the same file system to the movie library path to avoid copying
 	if ok {
+		log.Debug("renaming file")
 		err := l.io.Rename(sourcePath, targetPath)
 		if err != nil {
 			log.Error("failed to rename file", zap.Error(err))
 			return movieFile, err
 		}
 	} else {
+		log.Debug("copying file")
 		_, err = l.io.Copy(sourcePath, targetPath)
 		if err != nil {
 			log.Error("failed to copy file", zap.Error(err))
@@ -83,7 +93,8 @@ func (l *MediaLibrary) AddMovie(ctx context.Context, sourcePath string) (MovieFi
 	}
 
 	movieFile.Size = info.Size()
-	movieFile.Path = targetPath
+	movieFile.RelativePath = fmt.Sprintf("%s/%s", title, movieFile.Name)
+	movieFile.AbsolutePath = targetPath
 
 	return movieFile, nil
 }

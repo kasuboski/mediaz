@@ -11,6 +11,8 @@ import (
 
 var (
 	_ FileIO = (*MediaFileSystem)(nil)
+
+	ErrFileExists = fmt.Errorf("file already exists")
 )
 
 // MediaFilesystem is the default implementation of file io using the os package
@@ -23,6 +25,9 @@ func (o *MediaFileSystem) Stat(target string) (os.FileInfo, error) {
 
 // Rename is a wrapper around os.Rename
 func (o *MediaFileSystem) Rename(source, target string) error {
+	if o.FileExists(target) {
+		return ErrFileExists
+	}
 	return os.Rename(source, target)
 }
 
@@ -36,6 +41,11 @@ func (o *MediaFileSystem) Create(name string) (io.WriteCloser, error) {
 	return os.Create(name)
 }
 
+// Create is a wrapper around os.MkDirAll
+func (o *MediaFileSystem) MkdirAll(path string, mode os.FileMode) error {
+	return os.MkdirAll(path, mode)
+}
+
 // Copy copies a file from a source path to a target path. The target file must not exist yet.
 func (o *MediaFileSystem) Copy(source, target string) (int64, error) {
 	sourceFile, err := o.Open(source)
@@ -44,13 +54,8 @@ func (o *MediaFileSystem) Copy(source, target string) (int64, error) {
 	}
 	defer sourceFile.Close()
 
-	_, err = o.Stat(target)
-	if err == nil {
-		return 0, errors.New("target file already exists")
-	}
-
-	if !errors.Is(err, os.ErrNotExist) {
-		return 0, fmt.Errorf("unexpected error: %v", err)
+	if o.FileExists(target) {
+		return 0, ErrFileExists
 	}
 
 	targetFile, err := o.Create(target)
@@ -62,11 +67,14 @@ func (o *MediaFileSystem) Copy(source, target string) (int64, error) {
 	return io.Copy(targetFile, sourceFile)
 }
 
-// IsSameFileSystem checks if a source and target are on the same file system.
+// IsSameFileSystem checks if a source and target are on the same file system. If a file does not exist, it is considered to be on a different file system.
 func (o *MediaFileSystem) IsSameFileSystem(source, target string) (bool, error) {
 	// Get source file stat
 	sourceStat, err := o.Stat(source)
 	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return false, nil
+		}
 		return false, fmt.Errorf("failed to stat source path: %w", err)
 	}
 
@@ -78,6 +86,9 @@ func (o *MediaFileSystem) IsSameFileSystem(source, target string) (bool, error) 
 	// Get target file stat
 	targetStat, err := o.Stat(target)
 	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return false, nil
+		}
 		return false, fmt.Errorf("failed to stat target path: %w", err)
 	}
 
@@ -93,4 +104,9 @@ func (o *MediaFileSystem) IsSameFileSystem(source, target string) (bool, error) 
 // WalkDir is a wrapper around fs.WalkDir
 func (o *MediaFileSystem) WalkDir(fsys fs.FS, root string, fn fs.WalkDirFunc) error {
 	return fs.WalkDir(fsys, root, fn)
+}
+
+func (o *MediaFileSystem) FileExists(path string) bool {
+	_, err := o.Stat(path)
+	return err == nil
 }

@@ -25,6 +25,7 @@ func TestMediaFileSystem_IsSameFileSystem(t *testing.T) {
 		assert.NoError(t, err)
 		assert.True(t, isSame)
 	})
+
 	t.Run("non-existent source path", func(t *testing.T) {
 		nonExistentSource := "/non/existent/source/path"
 		tempFile, err := os.CreateTemp("", "testfile")
@@ -33,7 +34,7 @@ func TestMediaFileSystem_IsSameFileSystem(t *testing.T) {
 
 		// Call the function and verify it returns an error
 		isSame, err := mfs.IsSameFileSystem(nonExistentSource, tempFile.Name())
-		assert.Error(t, err)
+		assert.NoError(t, err)
 		assert.False(t, isSame)
 	})
 
@@ -46,7 +47,7 @@ func TestMediaFileSystem_IsSameFileSystem(t *testing.T) {
 
 		// Call the function and verify it returns an error
 		isSame, err := mfs.IsSameFileSystem(tempFile.Name(), nonExistentTarget)
-		assert.Error(t, err)
+		assert.NoError(t, err)
 		assert.False(t, isSame)
 	})
 
