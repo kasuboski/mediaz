@@ -13,7 +13,7 @@ type MovieFile struct {
 }
 
 func (mf MovieFile) String() string {
-	return fmt.Sprintf("name: %s, relative path: %s, size: %s", mf.Name, mf.RelativePath, fileSizeToString(mf.Size))
+	return fmt.Sprintf("name: %s, relative path: %s, size in bytes: %d", mf.Name, mf.RelativePath, mf.Size)
 }
 
 func FromPath(path string) MovieFile {

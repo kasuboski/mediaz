@@ -229,6 +229,14 @@ func (s SQLite) DeleteMovie(ctx context.Context, id int64) error {
 	return nil
 }
 
+// UpdateMovieMovieFileID updates the movie file id for a movie
+func (s SQLite) UpdateMovieMovieFileID(ctx context.Context, id int64, fileID int64) error {
+	stmt := table.Movie.UPDATE().
+		SET(table.Movie.MovieFileID.SET(sqlite.Int64(fileID))).WHERE(table.Movie.ID.EQ(sqlite.Int64(id)))
+	_, err := s.handleStatement(ctx, stmt)
+	return err
+}
+
 // UpdateMovieState updates the transition state of a movie. Metadata is optional and can be nil
 func (s SQLite) UpdateMovieState(ctx context.Context, id int64, state storage.MovieState, metadata *storage.MovieStateMetadata) error {
 	movie, err := s.GetMovie(ctx, id)
