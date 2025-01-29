@@ -510,7 +510,7 @@ func TestSQLite_UpdateMovieState(t *testing.T) {
 				},
 			}
 
-			movieID, err := store.CreateMovie(ctx, movie, storage.MovieStateMissing)
+			movieID, err := store.CreateMovie(ctx, movie, storage.MovieStateMissing, tx)
 			if err != nil {
 				return err
 			}
@@ -518,7 +518,122 @@ func TestSQLite_UpdateMovieState(t *testing.T) {
 			err = store.UpdateMovieState(ctx, movieID, storage.MovieStateDownloaded, &storage.MovieStateMetadata{
 				DownloadID:       ptr("1"),
 				DownloadClientID: ptr(int32(1)),
-			})
+			}, tx)
+			if err != nil {
+				return err
+			}
+
+			return nil
+		})
+		require.Error(t, err)
+
+		movie, err := store.GetMovie(ctx, 1)
+		assert.Error(t, err)
+		assert.Equal(t, movie, new(storage.Movie))
+	})
+
+	t.Run("transaction provided - success", func(t *testing.T) {
+		ctx := context.Background()
+		store := initSqlite(t, ctx)
+
+		path := "Title/Title.mkv"
+		newMovie := storage.Movie{
+			Movie: model.Movie{
+				ID:              1,
+				Path:            &path,
+				Monitored:       1,
+				MovieFileID:     ptr(int32(1)),
+				MovieMetadataID: ptr(int32(1)),
+			},
+		}
+
+		movieID, err := store.CreateMovie(ctx, newMovie, storage.MovieStateMissing)
+		require.NoError(t, err)
+
+		err = store.UpdateMovieState(ctx, movieID, storage.MovieStateDownloading, &storage.MovieStateMetadata{
+			DownloadID:       ptr("1"),
+			DownloadClientID: ptr(int32(1)),
+		})
+		require.NoError(t, err)
+
+		gotMovie, err := store.GetMovie(ctx, 1)
+		assert.NoError(t, err)
+
+		require.NotNil(t, gotMovie)
+		assert.Equal(t, gotMovie.ID, int32(1))
+		assert.Equal(t, gotMovie.State, storage.MovieStateDownloading)
+	})
+}
+
+func TestSQLite_Transaction(t *testing.T) {
+	t.Run("rollback", func(t *testing.T) {
+		ctx := context.Background()
+		store := initSqlite(t, ctx)
+
+		err := store.Transaction(ctx, func(ctx context.Context, tx *sql.Tx) error {
+			path := "Title/Title.mkv"
+			movie := storage.Movie{
+				Movie: model.Movie{
+					ID:              1,
+					Path:            &path,
+					Monitored:       1,
+					MovieFileID:     ptr(int32(1)),
+					MovieMetadataID: ptr(int32(1)),
+				},
+			}
+
+			movieID, err := store.CreateMovie(ctx, movie, storage.MovieStateMissing, tx)
+			if err != nil {
+				return err
+			}
+
+			err = store.UpdateMovieState(ctx, movieID, storage.MovieStateDownloaded, &storage.MovieStateMetadata{
+				DownloadID:       ptr("1"),
+				DownloadClientID: ptr(int32(1)),
+			}, tx)
+			if err != nil {
+				return err
+			}
+
+			return nil
+		})
+		require.Error(t, err)
+
+		movie, err := store.GetMovie(ctx, 1)
+		assert.Error(t, err)
+		assert.Equal(t, movie, new(storage.Movie))
+	})
+
+	t.Run("sucess", func(t *testing.T) {
+		ctx := context.Background()
+		store := initSqlite(t, ctx)
+
+		err := store.Transaction(ctx, func(ctx context.Context, tx *sql.Tx) error {
+			path := "Title/Title.mkv"
+			movie := storage.Movie{
+				Movie: model.Movie{
+					ID:              1,
+					Path:            &path,
+					Monitored:       1,
+					MovieFileID:     ptr(int32(1)),
+					MovieMetadataID: ptr(int32(1)),
+				},
+			}
+
+			movieID, err := store.CreateMovie(ctx, movie, storage.MovieStateMissing, tx)
+			if err != nil {
+				return err
+			}
+
+			err = store.UpdateMovieState(ctx, movieID, storage.MovieStateDownloading, &storage.MovieStateMetadata{
+				DownloadID:       ptr("1"),
+				DownloadClientID: ptr(int32(1)),
+			}, tx)
+			if err != nil {
+				return err
+			}
+
+			err = store.UpdateMovieState(ctx, movieID, storage.MovieStateDownloaded, nil, tx)
 			if err != nil {
 				return err
 			}
