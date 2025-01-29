@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"os"
 
@@ -14,6 +15,7 @@ var ErrNotFound = errors.New("not found in storage")
 
 type Storage interface {
 	Init(ctx context.Context, schemas ...string) error
+	Transaction(ctx context.Context, transaction func(ctx context.Context, tx *sql.Tx) error) error
 	IndexerStorage
 	QualityStorage
 	MovieStorage
@@ -22,26 +24,26 @@ type Storage interface {
 }
 
 type IndexerStorage interface {
-	CreateIndexer(ctx context.Context, indexer model.Indexer) (int64, error)
-	DeleteIndexer(ctx context.Context, id int64) error
+	CreateIndexer(ctx context.Context, indexer model.Indexer, tx ...*sql.Tx) (int64, error)
+	DeleteIndexer(ctx context.Context, id int64, tx ...*sql.Tx) error
 	ListIndexers(ctx context.Context) ([]*model.Indexer, error)
 }
 
 type QualityStorage interface {
-	CreateQualityProfile(ctx context.Context, profile model.QualityProfile) (int64, error)
+	CreateQualityProfile(ctx context.Context, profile model.QualityProfile, tx ...*sql.Tx) (int64, error)
 	GetQualityProfile(ctx context.Context, id int64) (QualityProfile, error)
 	ListQualityProfiles(ctx context.Context) ([]*QualityProfile, error)
-	DeleteQualityProfile(ctx context.Context, id int64) error //TODO: do we cascade associated items?
+	DeleteQualityProfile(ctx context.Context, id int64, tx ...*sql.Tx) error //TODO: do we cascade associated items?
 
-	CreateQualityProfileItem(ctx context.Context, item model.QualityProfileItem) (int64, error)
-	DeleteQualityProfileItem(ctx context.Context, id int64) error
+	CreateQualityProfileItem(ctx context.Context, item model.QualityProfileItem, tx ...*sql.Tx) (int64, error)
+	DeleteQualityProfileItem(ctx context.Context, id int64, tx ...*sql.Tx) error
 	GetQualityProfileItem(ctx context.Context, id int64) (model.QualityProfileItem, error)
 	ListQualityProfileItems(ctx context.Context) ([]*model.QualityProfileItem, error)
 
-	CreateQualityDefinition(ctx context.Context, definition model.QualityDefinition) (int64, error)
+	CreateQualityDefinition(ctx context.Context, definition model.QualityDefinition, tx ...*sql.Tx) (int64, error)
 	GetQualityDefinition(ctx context.Context, id int64) (model.QualityDefinition, error)
 	ListQualityDefinitions(ctx context.Context) ([]*model.QualityDefinition, error)
-	DeleteQualityDefinition(ctx context.Context, id int64) error
+	DeleteQualityDefinition(ctx context.Context, id int64, tx ...*sql.Tx) error
 }
 
 type MovieState string
@@ -80,31 +82,31 @@ func (m Movie) Machine() *machine.StateMachine[MovieState] {
 
 type MovieStorage interface {
 	GetMovie(ctx context.Context, id int64) (*Movie, error)
-	CreateMovie(ctx context.Context, movie Movie, state MovieState) (int64, error)
-	DeleteMovie(ctx context.Context, id int64) error
+	CreateMovie(ctx context.Context, movie Movie, state MovieState, tx ...*sql.Tx) (int64, error)
+	DeleteMovie(ctx context.Context, id int64, tx ...*sql.Tx) error
 	ListMovies(ctx context.Context) ([]*Movie, error)
 	ListMoviesByState(ctx context.Context, state MovieState) ([]*Movie, error)
 	GetMovieByMetadataID(ctx context.Context, metadataID int) (*Movie, error)
-	UpdateMovieState(ctx context.Context, id int64, state MovieState, metadata *MovieStateMetadata) error
+	UpdateMovieState(ctx context.Context, id int64, state MovieState, metadata *MovieStateMetadata, tx ...*sql.Tx) error
 
 	GetMovieFiles(ctx context.Context, id int64) ([]*model.MovieFile, error)
-	CreateMovieFile(ctx context.Context, movieFile model.MovieFile) (int64, error)
-	DeleteMovieFile(ctx context.Context, id int64) error
+	CreateMovieFile(ctx context.Context, movieFile model.MovieFile, tx ...*sql.Tx) (int64, error)
+	DeleteMovieFile(ctx context.Context, id int64, tx ...*sql.Tx) error
 	ListMovieFiles(ctx context.Context) ([]*model.MovieFile, error)
 }
 
 type MovieMetadataStorage interface {
-	CreateMovieMetadata(ctx context.Context, movieMeta model.MovieMetadata) (int64, error)
-	DeleteMovieMetadata(ctx context.Context, id int64) error
+	CreateMovieMetadata(ctx context.Context, movieMeta model.MovieMetadata, tx ...*sql.Tx) (int64, error)
+	DeleteMovieMetadata(ctx context.Context, id int64, tx ...*sql.Tx) error
 	ListMovieMetadata(ctx context.Context) ([]*model.MovieMetadata, error)
 	GetMovieMetadata(ctx context.Context, where sqlite.BoolExpression) (*model.MovieMetadata, error)
 }
 
 type DownloadClientStorage interface {
-	CreateDownloadClient(ctx context.Context, client model.DownloadClient) (int64, error)
+	CreateDownloadClient(ctx context.Context, client model.DownloadClient, tx ...*sql.Tx) (int64, error)
 	GetDownloadClient(ctx context.Context, id int64) (model.DownloadClient, error)
 	ListDownloadClients(ctx context.Context) ([]*model.DownloadClient, error)
-	DeleteDownloadClient(ctx context.Context, id int64) error
+	DeleteDownloadClient(ctx context.Context, id int64, tx ...*sql.Tx) error
 }
 
 type QualityProfile struct {

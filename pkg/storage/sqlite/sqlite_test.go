@@ -2,6 +2,7 @@ package sqlite
 
 import (
 	"context"
+	"database/sql"
 	"testing"
 	"time"
 
@@ -77,8 +78,8 @@ func TestMovieStorage(t *testing.T) {
 			ID:              1,
 			Path:            &path,
 			Monitored:       1,
-			MovieFileID:     intPtr(1),
-			MovieMetadataID: intPtr(1),
+			MovieFileID:     ptr(int32(1)),
+			MovieMetadataID: ptr(int32(1)),
 		},
 	}
 
@@ -87,8 +88,8 @@ func TestMovieStorage(t *testing.T) {
 			ID:              1,
 			Path:            &path,
 			Monitored:       1,
-			MovieFileID:     intPtr(1),
-			MovieMetadataID: intPtr(1),
+			MovieFileID:     ptr(int32(1)),
+			MovieMetadataID: ptr(int32(1)),
 		},
 		State: storage.MovieStateMissing,
 	}
@@ -111,8 +112,8 @@ func TestMovieStorage(t *testing.T) {
 	assert.Equal(t, &wantMovie, actual)
 
 	err = store.UpdateMovieState(ctx, int64(movies[0].ID), storage.MovieStateDownloading, &storage.MovieStateMetadata{
-		DownloadID:       strPtr("123"),
-		DownloadClientID: intPtr(1),
+		DownloadID:       ptr("123"),
+		DownloadClientID: ptr(int32(1)),
 	})
 	assert.Nil(t, err)
 
@@ -458,10 +459,76 @@ func TestDownloadClientStorage(t *testing.T) {
 	assert.Nil(t, err)
 }
 
-func intPtr(i int32) *int32 {
-	return &i
+func ptr[A any](thing A) *A {
+	return &thing
 }
 
-func strPtr(i string) *string {
-	return &i
+func TestSQLite_UpdateMovieState(t *testing.T) {
+	t.Run("error getting movie", func(t *testing.T) {
+		ctx := context.Background()
+		store := initSqlite(t, ctx)
+
+		err := store.UpdateMovieState(ctx, 1, storage.MovieStateMissing, nil)
+		assert.Error(t, err)
+	})
+
+	t.Run("invalid state transition", func(t *testing.T) {
+		ctx := context.Background()
+		store := initSqlite(t, ctx)
+
+		path := "Title/Title.mkv"
+		movie := storage.Movie{
+			Movie: model.Movie{
+				ID:              1,
+				Path:            &path,
+				Monitored:       1,
+				MovieFileID:     ptr(int32(1)),
+				MovieMetadataID: ptr(int32(1)),
+			},
+		}
+
+		movieID, err := store.CreateMovie(ctx, movie, storage.MovieStateMissing)
+		require.NoError(t, err)
+
+		err = store.UpdateMovieState(ctx, movieID, storage.MovieStateMissing, nil)
+		assert.Error(t, err)
+	})
+
+	t.Run("transaction provided - rollback", func(t *testing.T) {
+		ctx := context.Background()
+		store := initSqlite(t, ctx)
+
+		err := store.Transaction(ctx, func(ctx context.Context, tx *sql.Tx) error {
+			path := "Title/Title.mkv"
+			movie := storage.Movie{
+				Movie: model.Movie{
+					ID:              1,
+					Path:            &path,
+					Monitored:       1,
+					MovieFileID:     ptr(int32(1)),
+					MovieMetadataID: ptr(int32(1)),
+				},
+			}
+
+			movieID, err := store.CreateMovie(ctx, movie, storage.MovieStateMissing)
+			if err != nil {
+				return err
+			}
+
+			err = store.UpdateMovieState(ctx, movieID, storage.MovieStateDownloaded, &storage.MovieStateMetadata{
+				DownloadID:       ptr("1"),
+				DownloadClientID: ptr(int32(1)),
+			})
+			if err != nil {
+				return err
+			}
+
+			return nil
+		})
+		require.Error(t, err)
+
+		movie, err := store.GetMovie(ctx, 1)
+		assert.Error(t, err)
+		assert.Equal(t, movie, new(storage.Movie))
+	})
 }
