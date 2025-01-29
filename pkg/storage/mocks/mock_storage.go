@@ -11,6 +11,7 @@ package mocks
 
 import (
 	context "context"
+	sql "database/sql"
 	reflect "reflect"
 
 	sqlite "github.com/go-jet/jet/v2/sqlite"
@@ -43,235 +44,315 @@ func (m *MockStorage) EXPECT() *MockStorageMockRecorder {
 }
 
 // CreateDownloadClient mocks base method.
-func (m *MockStorage) CreateDownloadClient(ctx context.Context, client model.DownloadClient) (int64, error) {
+func (m *MockStorage) CreateDownloadClient(ctx context.Context, client model.DownloadClient, tx ...*sql.Tx) (int64, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateDownloadClient", ctx, client)
+	varargs := []any{ctx, client}
+	for _, a := range tx {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "CreateDownloadClient", varargs...)
 	ret0, _ := ret[0].(int64)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // CreateDownloadClient indicates an expected call of CreateDownloadClient.
-func (mr *MockStorageMockRecorder) CreateDownloadClient(ctx, client any) *gomock.Call {
+func (mr *MockStorageMockRecorder) CreateDownloadClient(ctx, client any, tx ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateDownloadClient", reflect.TypeOf((*MockStorage)(nil).CreateDownloadClient), ctx, client)
+	varargs := append([]any{ctx, client}, tx...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateDownloadClient", reflect.TypeOf((*MockStorage)(nil).CreateDownloadClient), varargs...)
 }
 
 // CreateIndexer mocks base method.
-func (m *MockStorage) CreateIndexer(ctx context.Context, indexer model.Indexer) (int64, error) {
+func (m *MockStorage) CreateIndexer(ctx context.Context, indexer model.Indexer, tx ...*sql.Tx) (int64, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateIndexer", ctx, indexer)
+	varargs := []any{ctx, indexer}
+	for _, a := range tx {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "CreateIndexer", varargs...)
 	ret0, _ := ret[0].(int64)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // CreateIndexer indicates an expected call of CreateIndexer.
-func (mr *MockStorageMockRecorder) CreateIndexer(ctx, indexer any) *gomock.Call {
+func (mr *MockStorageMockRecorder) CreateIndexer(ctx, indexer any, tx ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateIndexer", reflect.TypeOf((*MockStorage)(nil).CreateIndexer), ctx, indexer)
+	varargs := append([]any{ctx, indexer}, tx...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateIndexer", reflect.TypeOf((*MockStorage)(nil).CreateIndexer), varargs...)
 }
 
 // CreateMovie mocks base method.
-func (m *MockStorage) CreateMovie(ctx context.Context, movie storage.Movie, state storage.MovieState) (int64, error) {
+func (m *MockStorage) CreateMovie(ctx context.Context, movie storage.Movie, state storage.MovieState, tx ...*sql.Tx) (int64, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateMovie", ctx, movie, state)
+	varargs := []any{ctx, movie, state}
+	for _, a := range tx {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "CreateMovie", varargs...)
 	ret0, _ := ret[0].(int64)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // CreateMovie indicates an expected call of CreateMovie.
-func (mr *MockStorageMockRecorder) CreateMovie(ctx, movie, state any) *gomock.Call {
+func (mr *MockStorageMockRecorder) CreateMovie(ctx, movie, state any, tx ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateMovie", reflect.TypeOf((*MockStorage)(nil).CreateMovie), ctx, movie, state)
+	varargs := append([]any{ctx, movie, state}, tx...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateMovie", reflect.TypeOf((*MockStorage)(nil).CreateMovie), varargs...)
 }
 
 // CreateMovieFile mocks base method.
-func (m *MockStorage) CreateMovieFile(ctx context.Context, movieFile model.MovieFile) (int64, error) {
+func (m *MockStorage) CreateMovieFile(ctx context.Context, movieFile model.MovieFile, tx ...*sql.Tx) (int64, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateMovieFile", ctx, movieFile)
+	varargs := []any{ctx, movieFile}
+	for _, a := range tx {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "CreateMovieFile", varargs...)
 	ret0, _ := ret[0].(int64)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // CreateMovieFile indicates an expected call of CreateMovieFile.
-func (mr *MockStorageMockRecorder) CreateMovieFile(ctx, movieFile any) *gomock.Call {
+func (mr *MockStorageMockRecorder) CreateMovieFile(ctx, movieFile any, tx ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateMovieFile", reflect.TypeOf((*MockStorage)(nil).CreateMovieFile), ctx, movieFile)
+	varargs := append([]any{ctx, movieFile}, tx...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateMovieFile", reflect.TypeOf((*MockStorage)(nil).CreateMovieFile), varargs...)
 }
 
 // CreateMovieMetadata mocks base method.
-func (m *MockStorage) CreateMovieMetadata(ctx context.Context, movieMeta model.MovieMetadata) (int64, error) {
+func (m *MockStorage) CreateMovieMetadata(ctx context.Context, movieMeta model.MovieMetadata, tx ...*sql.Tx) (int64, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateMovieMetadata", ctx, movieMeta)
+	varargs := []any{ctx, movieMeta}
+	for _, a := range tx {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "CreateMovieMetadata", varargs...)
 	ret0, _ := ret[0].(int64)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // CreateMovieMetadata indicates an expected call of CreateMovieMetadata.
-func (mr *MockStorageMockRecorder) CreateMovieMetadata(ctx, movieMeta any) *gomock.Call {
+func (mr *MockStorageMockRecorder) CreateMovieMetadata(ctx, movieMeta any, tx ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateMovieMetadata", reflect.TypeOf((*MockStorage)(nil).CreateMovieMetadata), ctx, movieMeta)
+	varargs := append([]any{ctx, movieMeta}, tx...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateMovieMetadata", reflect.TypeOf((*MockStorage)(nil).CreateMovieMetadata), varargs...)
 }
 
 // CreateQualityDefinition mocks base method.
-func (m *MockStorage) CreateQualityDefinition(ctx context.Context, definition model.QualityDefinition) (int64, error) {
+func (m *MockStorage) CreateQualityDefinition(ctx context.Context, definition model.QualityDefinition, tx ...*sql.Tx) (int64, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateQualityDefinition", ctx, definition)
+	varargs := []any{ctx, definition}
+	for _, a := range tx {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "CreateQualityDefinition", varargs...)
 	ret0, _ := ret[0].(int64)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // CreateQualityDefinition indicates an expected call of CreateQualityDefinition.
-func (mr *MockStorageMockRecorder) CreateQualityDefinition(ctx, definition any) *gomock.Call {
+func (mr *MockStorageMockRecorder) CreateQualityDefinition(ctx, definition any, tx ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateQualityDefinition", reflect.TypeOf((*MockStorage)(nil).CreateQualityDefinition), ctx, definition)
+	varargs := append([]any{ctx, definition}, tx...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateQualityDefinition", reflect.TypeOf((*MockStorage)(nil).CreateQualityDefinition), varargs...)
 }
 
 // CreateQualityProfile mocks base method.
-func (m *MockStorage) CreateQualityProfile(ctx context.Context, profile model.QualityProfile) (int64, error) {
+func (m *MockStorage) CreateQualityProfile(ctx context.Context, profile model.QualityProfile, tx ...*sql.Tx) (int64, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateQualityProfile", ctx, profile)
+	varargs := []any{ctx, profile}
+	for _, a := range tx {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "CreateQualityProfile", varargs...)
 	ret0, _ := ret[0].(int64)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // CreateQualityProfile indicates an expected call of CreateQualityProfile.
-func (mr *MockStorageMockRecorder) CreateQualityProfile(ctx, profile any) *gomock.Call {
+func (mr *MockStorageMockRecorder) CreateQualityProfile(ctx, profile any, tx ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateQualityProfile", reflect.TypeOf((*MockStorage)(nil).CreateQualityProfile), ctx, profile)
+	varargs := append([]any{ctx, profile}, tx...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateQualityProfile", reflect.TypeOf((*MockStorage)(nil).CreateQualityProfile), varargs...)
 }
 
 // CreateQualityProfileItem mocks base method.
-func (m *MockStorage) CreateQualityProfileItem(ctx context.Context, item model.QualityProfileItem) (int64, error) {
+func (m *MockStorage) CreateQualityProfileItem(ctx context.Context, item model.QualityProfileItem, tx ...*sql.Tx) (int64, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateQualityProfileItem", ctx, item)
+	varargs := []any{ctx, item}
+	for _, a := range tx {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "CreateQualityProfileItem", varargs...)
 	ret0, _ := ret[0].(int64)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // CreateQualityProfileItem indicates an expected call of CreateQualityProfileItem.
-func (mr *MockStorageMockRecorder) CreateQualityProfileItem(ctx, item any) *gomock.Call {
+func (mr *MockStorageMockRecorder) CreateQualityProfileItem(ctx, item any, tx ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateQualityProfileItem", reflect.TypeOf((*MockStorage)(nil).CreateQualityProfileItem), ctx, item)
+	varargs := append([]any{ctx, item}, tx...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateQualityProfileItem", reflect.TypeOf((*MockStorage)(nil).CreateQualityProfileItem), varargs...)
 }
 
 // DeleteDownloadClient mocks base method.
-func (m *MockStorage) DeleteDownloadClient(ctx context.Context, id int64) error {
+func (m *MockStorage) DeleteDownloadClient(ctx context.Context, id int64, tx ...*sql.Tx) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteDownloadClient", ctx, id)
+	varargs := []any{ctx, id}
+	for _, a := range tx {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "DeleteDownloadClient", varargs...)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DeleteDownloadClient indicates an expected call of DeleteDownloadClient.
-func (mr *MockStorageMockRecorder) DeleteDownloadClient(ctx, id any) *gomock.Call {
+func (mr *MockStorageMockRecorder) DeleteDownloadClient(ctx, id any, tx ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteDownloadClient", reflect.TypeOf((*MockStorage)(nil).DeleteDownloadClient), ctx, id)
+	varargs := append([]any{ctx, id}, tx...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteDownloadClient", reflect.TypeOf((*MockStorage)(nil).DeleteDownloadClient), varargs...)
 }
 
 // DeleteIndexer mocks base method.
-func (m *MockStorage) DeleteIndexer(ctx context.Context, id int64) error {
+func (m *MockStorage) DeleteIndexer(ctx context.Context, id int64, tx ...*sql.Tx) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteIndexer", ctx, id)
+	varargs := []any{ctx, id}
+	for _, a := range tx {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "DeleteIndexer", varargs...)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DeleteIndexer indicates an expected call of DeleteIndexer.
-func (mr *MockStorageMockRecorder) DeleteIndexer(ctx, id any) *gomock.Call {
+func (mr *MockStorageMockRecorder) DeleteIndexer(ctx, id any, tx ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteIndexer", reflect.TypeOf((*MockStorage)(nil).DeleteIndexer), ctx, id)
+	varargs := append([]any{ctx, id}, tx...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteIndexer", reflect.TypeOf((*MockStorage)(nil).DeleteIndexer), varargs...)
 }
 
 // DeleteMovie mocks base method.
-func (m *MockStorage) DeleteMovie(ctx context.Context, id int64) error {
+func (m *MockStorage) DeleteMovie(ctx context.Context, id int64, tx ...*sql.Tx) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteMovie", ctx, id)
+	varargs := []any{ctx, id}
+	for _, a := range tx {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "DeleteMovie", varargs...)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DeleteMovie indicates an expected call of DeleteMovie.
-func (mr *MockStorageMockRecorder) DeleteMovie(ctx, id any) *gomock.Call {
+func (mr *MockStorageMockRecorder) DeleteMovie(ctx, id any, tx ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteMovie", reflect.TypeOf((*MockStorage)(nil).DeleteMovie), ctx, id)
+	varargs := append([]any{ctx, id}, tx...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteMovie", reflect.TypeOf((*MockStorage)(nil).DeleteMovie), varargs...)
 }
 
 // DeleteMovieFile mocks base method.
-func (m *MockStorage) DeleteMovieFile(ctx context.Context, id int64) error {
+func (m *MockStorage) DeleteMovieFile(ctx context.Context, id int64, tx ...*sql.Tx) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteMovieFile", ctx, id)
+	varargs := []any{ctx, id}
+	for _, a := range tx {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "DeleteMovieFile", varargs...)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DeleteMovieFile indicates an expected call of DeleteMovieFile.
-func (mr *MockStorageMockRecorder) DeleteMovieFile(ctx, id any) *gomock.Call {
+func (mr *MockStorageMockRecorder) DeleteMovieFile(ctx, id any, tx ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteMovieFile", reflect.TypeOf((*MockStorage)(nil).DeleteMovieFile), ctx, id)
+	varargs := append([]any{ctx, id}, tx...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteMovieFile", reflect.TypeOf((*MockStorage)(nil).DeleteMovieFile), varargs...)
 }
 
 // DeleteMovieMetadata mocks base method.
-func (m *MockStorage) DeleteMovieMetadata(ctx context.Context, id int64) error {
+func (m *MockStorage) DeleteMovieMetadata(ctx context.Context, id int64, tx ...*sql.Tx) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteMovieMetadata", ctx, id)
+	varargs := []any{ctx, id}
+	for _, a := range tx {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "DeleteMovieMetadata", varargs...)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DeleteMovieMetadata indicates an expected call of DeleteMovieMetadata.
-func (mr *MockStorageMockRecorder) DeleteMovieMetadata(ctx, id any) *gomock.Call {
+func (mr *MockStorageMockRecorder) DeleteMovieMetadata(ctx, id any, tx ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteMovieMetadata", reflect.TypeOf((*MockStorage)(nil).DeleteMovieMetadata), ctx, id)
+	varargs := append([]any{ctx, id}, tx...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteMovieMetadata", reflect.TypeOf((*MockStorage)(nil).DeleteMovieMetadata), varargs...)
 }
 
 // DeleteQualityDefinition mocks base method.
-func (m *MockStorage) DeleteQualityDefinition(ctx context.Context, id int64) error {
+func (m *MockStorage) DeleteQualityDefinition(ctx context.Context, id int64, tx ...*sql.Tx) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteQualityDefinition", ctx, id)
+	varargs := []any{ctx, id}
+	for _, a := range tx {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "DeleteQualityDefinition", varargs...)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DeleteQualityDefinition indicates an expected call of DeleteQualityDefinition.
-func (mr *MockStorageMockRecorder) DeleteQualityDefinition(ctx, id any) *gomock.Call {
+func (mr *MockStorageMockRecorder) DeleteQualityDefinition(ctx, id any, tx ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteQualityDefinition", reflect.TypeOf((*MockStorage)(nil).DeleteQualityDefinition), ctx, id)
+	varargs := append([]any{ctx, id}, tx...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteQualityDefinition", reflect.TypeOf((*MockStorage)(nil).DeleteQualityDefinition), varargs...)
 }
 
 // DeleteQualityProfile mocks base method.
-func (m *MockStorage) DeleteQualityProfile(ctx context.Context, id int64) error {
+func (m *MockStorage) DeleteQualityProfile(ctx context.Context, id int64, tx ...*sql.Tx) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteQualityProfile", ctx, id)
+	varargs := []any{ctx, id}
+	for _, a := range tx {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "DeleteQualityProfile", varargs...)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DeleteQualityProfile indicates an expected call of DeleteQualityProfile.
-func (mr *MockStorageMockRecorder) DeleteQualityProfile(ctx, id any) *gomock.Call {
+func (mr *MockStorageMockRecorder) DeleteQualityProfile(ctx, id any, tx ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteQualityProfile", reflect.TypeOf((*MockStorage)(nil).DeleteQualityProfile), ctx, id)
+	varargs := append([]any{ctx, id}, tx...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteQualityProfile", reflect.TypeOf((*MockStorage)(nil).DeleteQualityProfile), varargs...)
 }
 
 // DeleteQualityProfileItem mocks base method.
-func (m *MockStorage) DeleteQualityProfileItem(ctx context.Context, id int64) error {
+func (m *MockStorage) DeleteQualityProfileItem(ctx context.Context, id int64, tx ...*sql.Tx) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteQualityProfileItem", ctx, id)
+	varargs := []any{ctx, id}
+	for _, a := range tx {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "DeleteQualityProfileItem", varargs...)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DeleteQualityProfileItem indicates an expected call of DeleteQualityProfileItem.
-func (mr *MockStorageMockRecorder) DeleteQualityProfileItem(ctx, id any) *gomock.Call {
+func (mr *MockStorageMockRecorder) DeleteQualityProfileItem(ctx, id any, tx ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteQualityProfileItem", reflect.TypeOf((*MockStorage)(nil).DeleteQualityProfileItem), ctx, id)
+	varargs := append([]any{ctx, id}, tx...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteQualityProfileItem", reflect.TypeOf((*MockStorage)(nil).DeleteQualityProfileItem), varargs...)
 }
 
 // GetDownloadClient mocks base method.
@@ -319,19 +400,19 @@ func (mr *MockStorageMockRecorder) GetMovieByMetadataID(ctx, metadataID any) *go
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMovieByMetadataID", reflect.TypeOf((*MockStorage)(nil).GetMovieByMetadataID), ctx, metadataID)
 }
 
-// GetMovieFile mocks base method.
-func (m *MockStorage) GetMovieFile(ctx context.Context, id int64) (model.MovieFile, error) {
+// GetMovieFiles mocks base method.
+func (m *MockStorage) GetMovieFiles(ctx context.Context, id int64) ([]*model.MovieFile, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetMovieFile", ctx, id)
-	ret0, _ := ret[0].(model.MovieFile)
+	ret := m.ctrl.Call(m, "GetMovieFiles", ctx, id)
+	ret0, _ := ret[0].([]*model.MovieFile)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// GetMovieFile indicates an expected call of GetMovieFile.
-func (mr *MockStorageMockRecorder) GetMovieFile(ctx, id any) *gomock.Call {
+// GetMovieFiles indicates an expected call of GetMovieFiles.
+func (mr *MockStorageMockRecorder) GetMovieFiles(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMovieFile", reflect.TypeOf((*MockStorage)(nil).GetMovieFile), ctx, id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMovieFiles", reflect.TypeOf((*MockStorage)(nil).GetMovieFiles), ctx, id)
 }
 
 // GetMovieMetadata mocks base method.
@@ -548,18 +629,37 @@ func (mr *MockStorageMockRecorder) ListQualityProfiles(ctx any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListQualityProfiles", reflect.TypeOf((*MockStorage)(nil).ListQualityProfiles), ctx)
 }
 
-// UpdateMovieState mocks base method.
-func (m *MockStorage) UpdateMovieState(ctx context.Context, id int64, state storage.MovieState, metadata *storage.MovieStateMetadata) error {
+// Transaction mocks base method.
+func (m *MockStorage) Transaction(ctx context.Context, transaction func(context.Context, *sql.Tx) error) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UpdateMovieState", ctx, id, state, metadata)
+	ret := m.ctrl.Call(m, "Transaction", ctx, transaction)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Transaction indicates an expected call of Transaction.
+func (mr *MockStorageMockRecorder) Transaction(ctx, transaction any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Transaction", reflect.TypeOf((*MockStorage)(nil).Transaction), ctx, transaction)
+}
+
+// UpdateMovieState mocks base method.
+func (m *MockStorage) UpdateMovieState(ctx context.Context, id int64, state storage.MovieState, metadata *storage.MovieStateMetadata, tx ...*sql.Tx) error {
+	m.ctrl.T.Helper()
+	varargs := []any{ctx, id, state, metadata}
+	for _, a := range tx {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "UpdateMovieState", varargs...)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // UpdateMovieState indicates an expected call of UpdateMovieState.
-func (mr *MockStorageMockRecorder) UpdateMovieState(ctx, id, state, metadata any) *gomock.Call {
+func (mr *MockStorageMockRecorder) UpdateMovieState(ctx, id, state, metadata any, tx ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateMovieState", reflect.TypeOf((*MockStorage)(nil).UpdateMovieState), ctx, id, state, metadata)
+	varargs := append([]any{ctx, id, state, metadata}, tx...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateMovieState", reflect.TypeOf((*MockStorage)(nil).UpdateMovieState), varargs...)
 }
 
 // MockIndexerStorage is a mock of IndexerStorage interface.
@@ -586,32 +686,42 @@ func (m *MockIndexerStorage) EXPECT() *MockIndexerStorageMockRecorder {
 }
 
 // CreateIndexer mocks base method.
-func (m *MockIndexerStorage) CreateIndexer(ctx context.Context, indexer model.Indexer) (int64, error) {
+func (m *MockIndexerStorage) CreateIndexer(ctx context.Context, indexer model.Indexer, tx ...*sql.Tx) (int64, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateIndexer", ctx, indexer)
+	varargs := []any{ctx, indexer}
+	for _, a := range tx {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "CreateIndexer", varargs...)
 	ret0, _ := ret[0].(int64)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // CreateIndexer indicates an expected call of CreateIndexer.
-func (mr *MockIndexerStorageMockRecorder) CreateIndexer(ctx, indexer any) *gomock.Call {
+func (mr *MockIndexerStorageMockRecorder) CreateIndexer(ctx, indexer any, tx ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateIndexer", reflect.TypeOf((*MockIndexerStorage)(nil).CreateIndexer), ctx, indexer)
+	varargs := append([]any{ctx, indexer}, tx...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateIndexer", reflect.TypeOf((*MockIndexerStorage)(nil).CreateIndexer), varargs...)
 }
 
 // DeleteIndexer mocks base method.
-func (m *MockIndexerStorage) DeleteIndexer(ctx context.Context, id int64) error {
+func (m *MockIndexerStorage) DeleteIndexer(ctx context.Context, id int64, tx ...*sql.Tx) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteIndexer", ctx, id)
+	varargs := []any{ctx, id}
+	for _, a := range tx {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "DeleteIndexer", varargs...)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DeleteIndexer indicates an expected call of DeleteIndexer.
-func (mr *MockIndexerStorageMockRecorder) DeleteIndexer(ctx, id any) *gomock.Call {
+func (mr *MockIndexerStorageMockRecorder) DeleteIndexer(ctx, id any, tx ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteIndexer", reflect.TypeOf((*MockIndexerStorage)(nil).DeleteIndexer), ctx, id)
+	varargs := append([]any{ctx, id}, tx...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteIndexer", reflect.TypeOf((*MockIndexerStorage)(nil).DeleteIndexer), varargs...)
 }
 
 // ListIndexers mocks base method.
@@ -653,90 +763,120 @@ func (m *MockQualityStorage) EXPECT() *MockQualityStorageMockRecorder {
 }
 
 // CreateQualityDefinition mocks base method.
-func (m *MockQualityStorage) CreateQualityDefinition(ctx context.Context, definition model.QualityDefinition) (int64, error) {
+func (m *MockQualityStorage) CreateQualityDefinition(ctx context.Context, definition model.QualityDefinition, tx ...*sql.Tx) (int64, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateQualityDefinition", ctx, definition)
+	varargs := []any{ctx, definition}
+	for _, a := range tx {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "CreateQualityDefinition", varargs...)
 	ret0, _ := ret[0].(int64)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // CreateQualityDefinition indicates an expected call of CreateQualityDefinition.
-func (mr *MockQualityStorageMockRecorder) CreateQualityDefinition(ctx, definition any) *gomock.Call {
+func (mr *MockQualityStorageMockRecorder) CreateQualityDefinition(ctx, definition any, tx ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateQualityDefinition", reflect.TypeOf((*MockQualityStorage)(nil).CreateQualityDefinition), ctx, definition)
+	varargs := append([]any{ctx, definition}, tx...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateQualityDefinition", reflect.TypeOf((*MockQualityStorage)(nil).CreateQualityDefinition), varargs...)
 }
 
 // CreateQualityProfile mocks base method.
-func (m *MockQualityStorage) CreateQualityProfile(ctx context.Context, profile model.QualityProfile) (int64, error) {
+func (m *MockQualityStorage) CreateQualityProfile(ctx context.Context, profile model.QualityProfile, tx ...*sql.Tx) (int64, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateQualityProfile", ctx, profile)
+	varargs := []any{ctx, profile}
+	for _, a := range tx {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "CreateQualityProfile", varargs...)
 	ret0, _ := ret[0].(int64)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // CreateQualityProfile indicates an expected call of CreateQualityProfile.
-func (mr *MockQualityStorageMockRecorder) CreateQualityProfile(ctx, profile any) *gomock.Call {
+func (mr *MockQualityStorageMockRecorder) CreateQualityProfile(ctx, profile any, tx ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateQualityProfile", reflect.TypeOf((*MockQualityStorage)(nil).CreateQualityProfile), ctx, profile)
+	varargs := append([]any{ctx, profile}, tx...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateQualityProfile", reflect.TypeOf((*MockQualityStorage)(nil).CreateQualityProfile), varargs...)
 }
 
 // CreateQualityProfileItem mocks base method.
-func (m *MockQualityStorage) CreateQualityProfileItem(ctx context.Context, item model.QualityProfileItem) (int64, error) {
+func (m *MockQualityStorage) CreateQualityProfileItem(ctx context.Context, item model.QualityProfileItem, tx ...*sql.Tx) (int64, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateQualityProfileItem", ctx, item)
+	varargs := []any{ctx, item}
+	for _, a := range tx {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "CreateQualityProfileItem", varargs...)
 	ret0, _ := ret[0].(int64)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // CreateQualityProfileItem indicates an expected call of CreateQualityProfileItem.
-func (mr *MockQualityStorageMockRecorder) CreateQualityProfileItem(ctx, item any) *gomock.Call {
+func (mr *MockQualityStorageMockRecorder) CreateQualityProfileItem(ctx, item any, tx ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateQualityProfileItem", reflect.TypeOf((*MockQualityStorage)(nil).CreateQualityProfileItem), ctx, item)
+	varargs := append([]any{ctx, item}, tx...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateQualityProfileItem", reflect.TypeOf((*MockQualityStorage)(nil).CreateQualityProfileItem), varargs...)
 }
 
 // DeleteQualityDefinition mocks base method.
-func (m *MockQualityStorage) DeleteQualityDefinition(ctx context.Context, id int64) error {
+func (m *MockQualityStorage) DeleteQualityDefinition(ctx context.Context, id int64, tx ...*sql.Tx) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteQualityDefinition", ctx, id)
+	varargs := []any{ctx, id}
+	for _, a := range tx {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "DeleteQualityDefinition", varargs...)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DeleteQualityDefinition indicates an expected call of DeleteQualityDefinition.
-func (mr *MockQualityStorageMockRecorder) DeleteQualityDefinition(ctx, id any) *gomock.Call {
+func (mr *MockQualityStorageMockRecorder) DeleteQualityDefinition(ctx, id any, tx ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteQualityDefinition", reflect.TypeOf((*MockQualityStorage)(nil).DeleteQualityDefinition), ctx, id)
+	varargs := append([]any{ctx, id}, tx...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteQualityDefinition", reflect.TypeOf((*MockQualityStorage)(nil).DeleteQualityDefinition), varargs...)
 }
 
 // DeleteQualityProfile mocks base method.
-func (m *MockQualityStorage) DeleteQualityProfile(ctx context.Context, id int64) error {
+func (m *MockQualityStorage) DeleteQualityProfile(ctx context.Context, id int64, tx ...*sql.Tx) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteQualityProfile", ctx, id)
+	varargs := []any{ctx, id}
+	for _, a := range tx {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "DeleteQualityProfile", varargs...)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DeleteQualityProfile indicates an expected call of DeleteQualityProfile.
-func (mr *MockQualityStorageMockRecorder) DeleteQualityProfile(ctx, id any) *gomock.Call {
+func (mr *MockQualityStorageMockRecorder) DeleteQualityProfile(ctx, id any, tx ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteQualityProfile", reflect.TypeOf((*MockQualityStorage)(nil).DeleteQualityProfile), ctx, id)
+	varargs := append([]any{ctx, id}, tx...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteQualityProfile", reflect.TypeOf((*MockQualityStorage)(nil).DeleteQualityProfile), varargs...)
 }
 
 // DeleteQualityProfileItem mocks base method.
-func (m *MockQualityStorage) DeleteQualityProfileItem(ctx context.Context, id int64) error {
+func (m *MockQualityStorage) DeleteQualityProfileItem(ctx context.Context, id int64, tx ...*sql.Tx) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteQualityProfileItem", ctx, id)
+	varargs := []any{ctx, id}
+	for _, a := range tx {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "DeleteQualityProfileItem", varargs...)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DeleteQualityProfileItem indicates an expected call of DeleteQualityProfileItem.
-func (mr *MockQualityStorageMockRecorder) DeleteQualityProfileItem(ctx, id any) *gomock.Call {
+func (mr *MockQualityStorageMockRecorder) DeleteQualityProfileItem(ctx, id any, tx ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteQualityProfileItem", reflect.TypeOf((*MockQualityStorage)(nil).DeleteQualityProfileItem), ctx, id)
+	varargs := append([]any{ctx, id}, tx...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteQualityProfileItem", reflect.TypeOf((*MockQualityStorage)(nil).DeleteQualityProfileItem), varargs...)
 }
 
 // GetQualityDefinition mocks base method.
@@ -853,61 +993,81 @@ func (m *MockMovieStorage) EXPECT() *MockMovieStorageMockRecorder {
 }
 
 // CreateMovie mocks base method.
-func (m *MockMovieStorage) CreateMovie(ctx context.Context, movie storage.Movie, state storage.MovieState) (int64, error) {
+func (m *MockMovieStorage) CreateMovie(ctx context.Context, movie storage.Movie, state storage.MovieState, tx ...*sql.Tx) (int64, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateMovie", ctx, movie, state)
+	varargs := []any{ctx, movie, state}
+	for _, a := range tx {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "CreateMovie", varargs...)
 	ret0, _ := ret[0].(int64)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // CreateMovie indicates an expected call of CreateMovie.
-func (mr *MockMovieStorageMockRecorder) CreateMovie(ctx, movie, state any) *gomock.Call {
+func (mr *MockMovieStorageMockRecorder) CreateMovie(ctx, movie, state any, tx ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateMovie", reflect.TypeOf((*MockMovieStorage)(nil).CreateMovie), ctx, movie, state)
+	varargs := append([]any{ctx, movie, state}, tx...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateMovie", reflect.TypeOf((*MockMovieStorage)(nil).CreateMovie), varargs...)
 }
 
 // CreateMovieFile mocks base method.
-func (m *MockMovieStorage) CreateMovieFile(ctx context.Context, movieFile model.MovieFile) (int64, error) {
+func (m *MockMovieStorage) CreateMovieFile(ctx context.Context, movieFile model.MovieFile, tx ...*sql.Tx) (int64, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateMovieFile", ctx, movieFile)
+	varargs := []any{ctx, movieFile}
+	for _, a := range tx {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "CreateMovieFile", varargs...)
 	ret0, _ := ret[0].(int64)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // CreateMovieFile indicates an expected call of CreateMovieFile.
-func (mr *MockMovieStorageMockRecorder) CreateMovieFile(ctx, movieFile any) *gomock.Call {
+func (mr *MockMovieStorageMockRecorder) CreateMovieFile(ctx, movieFile any, tx ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateMovieFile", reflect.TypeOf((*MockMovieStorage)(nil).CreateMovieFile), ctx, movieFile)
+	varargs := append([]any{ctx, movieFile}, tx...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateMovieFile", reflect.TypeOf((*MockMovieStorage)(nil).CreateMovieFile), varargs...)
 }
 
 // DeleteMovie mocks base method.
-func (m *MockMovieStorage) DeleteMovie(ctx context.Context, id int64) error {
+func (m *MockMovieStorage) DeleteMovie(ctx context.Context, id int64, tx ...*sql.Tx) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteMovie", ctx, id)
+	varargs := []any{ctx, id}
+	for _, a := range tx {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "DeleteMovie", varargs...)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DeleteMovie indicates an expected call of DeleteMovie.
-func (mr *MockMovieStorageMockRecorder) DeleteMovie(ctx, id any) *gomock.Call {
+func (mr *MockMovieStorageMockRecorder) DeleteMovie(ctx, id any, tx ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteMovie", reflect.TypeOf((*MockMovieStorage)(nil).DeleteMovie), ctx, id)
+	varargs := append([]any{ctx, id}, tx...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteMovie", reflect.TypeOf((*MockMovieStorage)(nil).DeleteMovie), varargs...)
 }
 
 // DeleteMovieFile mocks base method.
-func (m *MockMovieStorage) DeleteMovieFile(ctx context.Context, id int64) error {
+func (m *MockMovieStorage) DeleteMovieFile(ctx context.Context, id int64, tx ...*sql.Tx) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteMovieFile", ctx, id)
+	varargs := []any{ctx, id}
+	for _, a := range tx {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "DeleteMovieFile", varargs...)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DeleteMovieFile indicates an expected call of DeleteMovieFile.
-func (mr *MockMovieStorageMockRecorder) DeleteMovieFile(ctx, id any) *gomock.Call {
+func (mr *MockMovieStorageMockRecorder) DeleteMovieFile(ctx, id any, tx ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteMovieFile", reflect.TypeOf((*MockMovieStorage)(nil).DeleteMovieFile), ctx, id)
+	varargs := append([]any{ctx, id}, tx...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteMovieFile", reflect.TypeOf((*MockMovieStorage)(nil).DeleteMovieFile), varargs...)
 }
 
 // GetMovie mocks base method.
@@ -940,19 +1100,19 @@ func (mr *MockMovieStorageMockRecorder) GetMovieByMetadataID(ctx, metadataID any
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMovieByMetadataID", reflect.TypeOf((*MockMovieStorage)(nil).GetMovieByMetadataID), ctx, metadataID)
 }
 
-// GetMovieFile mocks base method.
-func (m *MockMovieStorage) GetMovieFile(ctx context.Context, id int64) (model.MovieFile, error) {
+// GetMovieFiles mocks base method.
+func (m *MockMovieStorage) GetMovieFiles(ctx context.Context, id int64) ([]*model.MovieFile, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetMovieFile", ctx, id)
-	ret0, _ := ret[0].(model.MovieFile)
+	ret := m.ctrl.Call(m, "GetMovieFiles", ctx, id)
+	ret0, _ := ret[0].([]*model.MovieFile)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// GetMovieFile indicates an expected call of GetMovieFile.
-func (mr *MockMovieStorageMockRecorder) GetMovieFile(ctx, id any) *gomock.Call {
+// GetMovieFiles indicates an expected call of GetMovieFiles.
+func (mr *MockMovieStorageMockRecorder) GetMovieFiles(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMovieFile", reflect.TypeOf((*MockMovieStorage)(nil).GetMovieFile), ctx, id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMovieFiles", reflect.TypeOf((*MockMovieStorage)(nil).GetMovieFiles), ctx, id)
 }
 
 // ListMovieFiles mocks base method.
@@ -1001,17 +1161,22 @@ func (mr *MockMovieStorageMockRecorder) ListMoviesByState(ctx, state any) *gomoc
 }
 
 // UpdateMovieState mocks base method.
-func (m *MockMovieStorage) UpdateMovieState(ctx context.Context, id int64, state storage.MovieState, metadata *storage.MovieStateMetadata) error {
+func (m *MockMovieStorage) UpdateMovieState(ctx context.Context, id int64, state storage.MovieState, metadata *storage.MovieStateMetadata, tx ...*sql.Tx) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UpdateMovieState", ctx, id, state, metadata)
+	varargs := []any{ctx, id, state, metadata}
+	for _, a := range tx {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "UpdateMovieState", varargs...)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // UpdateMovieState indicates an expected call of UpdateMovieState.
-func (mr *MockMovieStorageMockRecorder) UpdateMovieState(ctx, id, state, metadata any) *gomock.Call {
+func (mr *MockMovieStorageMockRecorder) UpdateMovieState(ctx, id, state, metadata any, tx ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateMovieState", reflect.TypeOf((*MockMovieStorage)(nil).UpdateMovieState), ctx, id, state, metadata)
+	varargs := append([]any{ctx, id, state, metadata}, tx...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateMovieState", reflect.TypeOf((*MockMovieStorage)(nil).UpdateMovieState), varargs...)
 }
 
 // MockMovieMetadataStorage is a mock of MovieMetadataStorage interface.
@@ -1038,32 +1203,42 @@ func (m *MockMovieMetadataStorage) EXPECT() *MockMovieMetadataStorageMockRecorde
 }
 
 // CreateMovieMetadata mocks base method.
-func (m *MockMovieMetadataStorage) CreateMovieMetadata(ctx context.Context, movieMeta model.MovieMetadata) (int64, error) {
+func (m *MockMovieMetadataStorage) CreateMovieMetadata(ctx context.Context, movieMeta model.MovieMetadata, tx ...*sql.Tx) (int64, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateMovieMetadata", ctx, movieMeta)
+	varargs := []any{ctx, movieMeta}
+	for _, a := range tx {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "CreateMovieMetadata", varargs...)
 	ret0, _ := ret[0].(int64)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // CreateMovieMetadata indicates an expected call of CreateMovieMetadata.
-func (mr *MockMovieMetadataStorageMockRecorder) CreateMovieMetadata(ctx, movieMeta any) *gomock.Call {
+func (mr *MockMovieMetadataStorageMockRecorder) CreateMovieMetadata(ctx, movieMeta any, tx ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateMovieMetadata", reflect.TypeOf((*MockMovieMetadataStorage)(nil).CreateMovieMetadata), ctx, movieMeta)
+	varargs := append([]any{ctx, movieMeta}, tx...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateMovieMetadata", reflect.TypeOf((*MockMovieMetadataStorage)(nil).CreateMovieMetadata), varargs...)
 }
 
 // DeleteMovieMetadata mocks base method.
-func (m *MockMovieMetadataStorage) DeleteMovieMetadata(ctx context.Context, id int64) error {
+func (m *MockMovieMetadataStorage) DeleteMovieMetadata(ctx context.Context, id int64, tx ...*sql.Tx) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteMovieMetadata", ctx, id)
+	varargs := []any{ctx, id}
+	for _, a := range tx {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "DeleteMovieMetadata", varargs...)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DeleteMovieMetadata indicates an expected call of DeleteMovieMetadata.
-func (mr *MockMovieMetadataStorageMockRecorder) DeleteMovieMetadata(ctx, id any) *gomock.Call {
+func (mr *MockMovieMetadataStorageMockRecorder) DeleteMovieMetadata(ctx, id any, tx ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteMovieMetadata", reflect.TypeOf((*MockMovieMetadataStorage)(nil).DeleteMovieMetadata), ctx, id)
+	varargs := append([]any{ctx, id}, tx...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteMovieMetadata", reflect.TypeOf((*MockMovieMetadataStorage)(nil).DeleteMovieMetadata), varargs...)
 }
 
 // GetMovieMetadata mocks base method.
@@ -1120,32 +1295,42 @@ func (m *MockDownloadClientStorage) EXPECT() *MockDownloadClientStorageMockRecor
 }
 
 // CreateDownloadClient mocks base method.
-func (m *MockDownloadClientStorage) CreateDownloadClient(ctx context.Context, client model.DownloadClient) (int64, error) {
+func (m *MockDownloadClientStorage) CreateDownloadClient(ctx context.Context, client model.DownloadClient, tx ...*sql.Tx) (int64, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateDownloadClient", ctx, client)
+	varargs := []any{ctx, client}
+	for _, a := range tx {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "CreateDownloadClient", varargs...)
 	ret0, _ := ret[0].(int64)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // CreateDownloadClient indicates an expected call of CreateDownloadClient.
-func (mr *MockDownloadClientStorageMockRecorder) CreateDownloadClient(ctx, client any) *gomock.Call {
+func (mr *MockDownloadClientStorageMockRecorder) CreateDownloadClient(ctx, client any, tx ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateDownloadClient", reflect.TypeOf((*MockDownloadClientStorage)(nil).CreateDownloadClient), ctx, client)
+	varargs := append([]any{ctx, client}, tx...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateDownloadClient", reflect.TypeOf((*MockDownloadClientStorage)(nil).CreateDownloadClient), varargs...)
 }
 
 // DeleteDownloadClient mocks base method.
-func (m *MockDownloadClientStorage) DeleteDownloadClient(ctx context.Context, id int64) error {
+func (m *MockDownloadClientStorage) DeleteDownloadClient(ctx context.Context, id int64, tx ...*sql.Tx) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteDownloadClient", ctx, id)
+	varargs := []any{ctx, id}
+	for _, a := range tx {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "DeleteDownloadClient", varargs...)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DeleteDownloadClient indicates an expected call of DeleteDownloadClient.
-func (mr *MockDownloadClientStorageMockRecorder) DeleteDownloadClient(ctx, id any) *gomock.Call {
+func (mr *MockDownloadClientStorageMockRecorder) DeleteDownloadClient(ctx, id any, tx ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteDownloadClient", reflect.TypeOf((*MockDownloadClientStorage)(nil).DeleteDownloadClient), ctx, id)
+	varargs := append([]any{ctx, id}, tx...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteDownloadClient", reflect.TypeOf((*MockDownloadClientStorage)(nil).DeleteDownloadClient), varargs...)
 }
 
 // GetDownloadClient mocks base method.
