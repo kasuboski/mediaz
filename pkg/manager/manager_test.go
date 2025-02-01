@@ -307,55 +307,129 @@ func Test_Manager_reconcileUnreleasedMovie(t *testing.T) {
 }
 
 func TestIndexMovieLibrary(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	tmdbMock := mocks.NewMockClientInterface(ctrl)
-	prowlarrMock := prowlMock.NewMockClientInterface(ctrl)
-	store, err := sqlite.New(":memory:")
-	require.Nil(t, err)
+	t.Run("error listing finding files in library", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		ctx := context.Background()
 
-	schemas, err := storage.ReadSchemaFiles("../storage/sqlite/schema/schema.sql")
-	require.Nil(t, err)
+		library := mockLibrary.NewMockLibrary(ctrl)
+		library.EXPECT().FindMovies(ctx).Times(1).Return(nil, errors.New("expected tested error"))
+		m := New(nil, nil, library, nil, nil)
+		require.NotNil(t, m)
 
-	ctx := context.Background()
-	err = store.Init(ctx, schemas...)
-	require.Nil(t, err)
+		err := m.IndexMovieLibrary(ctx)
+		assert.Error(t, err)
+		assert.EqualError(t, err, "failed to index movie library: expected tested error")
+	})
 
-	movieFS, expectedMovies := library.MovieFSFromFile(t, "../library/testing/test_movies.txt")
-	require.NotEmpty(t, expectedMovies)
-	tvFS, expectedEpisodes := library.TVFSFromFile(t, "../library/testing/test_episodes.txt")
-	require.NotEmpty(t, expectedEpisodes)
+	t.Run("no files discovered", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		ctx := context.Background()
 
-	lib := library.New(
-		library.FileSystem{
-			FS: movieFS,
-		},
-		library.FileSystem{
-			FS: tvFS,
-		},
-		&mio.MediaFileSystem{},
-	)
-	pClient, err := prowlarr.New(":", "1234")
-	pClient.ClientInterface = prowlarrMock
-	require.NoError(t, err)
+		mockLibrary := mockLibrary.NewMockLibrary(ctrl)
+		mockLibrary.EXPECT().FindMovies(ctx).Times(1).Return([]library.MovieFile{}, nil)
+		m := New(nil, nil, mockLibrary, nil, nil)
+		require.NotNil(t, m)
 
-	tClient, err := tmdb.New(":", "1234")
-	tClient.ClientInterface = tmdbMock
-	require.NoError(t, err)
+		err := m.IndexMovieLibrary(ctx)
+		assert.NoError(t, err)
+	})
 
-	mockFactory := downloadMock.NewMockFactory(ctrl)
-	m := New(tClient, pClient, lib, store, mockFactory)
-	require.NotNil(t, m)
+	t.Run("error listing movie files from storage", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		ctx := context.Background()
 
-	err = m.IndexMovieLibrary(ctx)
-	require.Nil(t, err)
+		store := newStore(t, ctx)
+		mockLibrary := mockLibrary.NewMockLibrary(ctrl)
 
-	mfs, err := store.ListMovieFiles(ctx)
-	assert.Nil(t, err)
-	assert.Len(t, mfs, len(expectedMovies))
+		discoveredFiles := []library.MovieFile{
+			{RelativePath: "movie1.mp4", AbsolutePath: "/movies/movie1.mp4"},
+		}
 
-	ms, err := store.ListMovies(ctx)
-	assert.Nil(t, err)
-	assert.Len(t, ms, len(expectedMovies))
+		mockLibrary.EXPECT().FindMovies(ctx).Times(1).Return(discoveredFiles, nil)
+
+		m := New(nil, nil, mockLibrary, store, nil)
+		require.NotNil(t, m)
+
+		err := m.IndexMovieLibrary(ctx)
+		assert.NoError(t, err)
+	})
+
+	t.Run("successfully indexes new movie files", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		ctx := context.Background()
+
+		store := newStore(t, ctx)
+		mockLibrary := mockLibrary.NewMockLibrary(ctrl)
+
+		discoveredFiles := []library.MovieFile{
+			{RelativePath: "movie1.mp4", AbsolutePath: "/movies/movie1.mp4", Size: 1024},
+			{RelativePath: "movie2.mkv", AbsolutePath: "/movies/movie2.mkv", Size: 2048},
+		}
+
+		mockLibrary.EXPECT().FindMovies(ctx).Times(1).Return(discoveredFiles, nil)
+
+		m := New(nil, nil, mockLibrary, store, nil)
+		require.NotNil(t, m)
+
+		err := m.IndexMovieLibrary(ctx)
+		assert.NoError(t, err)
+
+		movies, err := store.ListMovies(ctx)
+		require.NoError(t, err)
+		assert.Len(t, movies, 2)
+
+		movieFiles, err := store.ListMovieFiles(ctx)
+		require.NoError(t, err)
+		assert.Len(t, movieFiles, 2)
+
+		assert.Equal(t, "movie1.mp4", *movieFiles[0].RelativePath)
+		assert.Equal(t, int64(1024), movieFiles[0].Size)
+		assert.Equal(t, "movie2.mkv", *movieFiles[1].RelativePath)
+		assert.Equal(t, int64(2048), movieFiles[1].Size)
+
+		assert.Equal(t, int32(1), *movies[0].MovieFileID)
+		assert.Equal(t, "movie1.mp4", *movies[0].Path)
+		assert.Equal(t, int32(2), *movies[1].MovieFileID)
+		assert.Equal(t, "movie2.mkv", *movies[1].Path)
+	})
+
+	t.Run("create movie for already tracked file", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		ctx := context.Background()
+
+		store := newStore(t, ctx)
+		mockLibrary := mockLibrary.NewMockLibrary(ctrl)
+
+		_, err := store.CreateMovieFile(ctx, model.MovieFile{
+			Size:             1024,
+			RelativePath:     ptr("/movies/movie1.mp4"),
+			OriginalFilePath: ptr("/movies/movie1.mp4"),
+		})
+		require.NoError(t, err)
+
+		discoveredFiles := []library.MovieFile{
+			{RelativePath: "/movies/movie1.mp4", AbsolutePath: "/movies/movie1.mp4"},
+		}
+
+		mockLibrary.EXPECT().FindMovies(ctx).Times(1).Return(discoveredFiles, nil)
+
+		m := New(nil, nil, mockLibrary, store, nil)
+		require.NotNil(t, m)
+
+		err = m.IndexMovieLibrary(ctx)
+		assert.NoError(t, err)
+
+		movieFiles, err := store.ListMovieFiles(ctx)
+		require.NoError(t, err)
+		assert.Len(t, movieFiles, 1)
+
+		movies, err := store.ListMovies(ctx)
+		require.NoError(t, err)
+		require.Len(t, movies, 1)
+
+		assert.Equal(t, int32(1), *movies[0].MovieFileID)
+		assert.Equal(t, "/movies/movie1.mp4", *movies[0].Path)
+	})
 }
 
 func TestRun(t *testing.T) {
@@ -483,7 +557,7 @@ func Test_Manager_reconcileDownloadingMovie(t *testing.T) {
 		err = m.updateMovieState(ctx, &movie, storage.MovieStateDownloading, nil)
 		require.NoError(t, err)
 
-		_, err = store.CreateMovieFile(ctx, model.MovieFile{MovieID: 1})
+		_, err = store.CreateMovieFile(ctx, model.MovieFile{})
 		require.NoError(t, err)
 
 		snapshot := newReconcileSnapshot(nil, nil)

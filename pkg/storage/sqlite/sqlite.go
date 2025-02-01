@@ -176,6 +176,25 @@ func (s SQLite) GetMovie(ctx context.Context, id int64) (*storage.Movie, error) 
 	return movie, err
 }
 
+func (s SQLite) GetMovieByMovieFileID(ctx context.Context, fileID int64) (*storage.Movie, error) {
+	stmt := sqlite.
+		SELECT(
+			table.Movie.AllColumns,
+			table.MovieTransition.AllColumns).
+		FROM(
+			table.Movie.INNER_JOIN(
+				table.MovieTransition,
+				table.Movie.ID.EQ(table.MovieTransition.MovieID))).
+		WHERE(
+			table.Movie.MovieFileID.EQ(sqlite.Int(fileID)).
+				AND(table.MovieTransition.MostRecent.EQ(sqlite.Bool(true))),
+		)
+
+	movie := new(storage.Movie)
+	err := stmt.QueryContext(ctx, s.db, movie)
+	return movie, err
+}
+
 // ListMovies lists the stored movies
 func (s SQLite) ListMovies(ctx context.Context) ([]*storage.Movie, error) {
 	movies := make([]*storage.Movie, 0)
@@ -227,6 +246,14 @@ func (s SQLite) DeleteMovie(ctx context.Context, id int64) error {
 		return err
 	}
 	return nil
+}
+
+// UpdateMovieMovieFileID updates the movie file id for a movie
+func (s SQLite) UpdateMovieMovieFileID(ctx context.Context, id int64, fileID int64) error {
+	stmt := table.Movie.UPDATE().
+		SET(table.Movie.MovieFileID.SET(sqlite.Int64(fileID))).WHERE(table.Movie.ID.EQ(sqlite.Int64(id)))
+	_, err := s.handleStatement(ctx, stmt)
+	return err
 }
 
 // UpdateMovieState updates the transition state of a movie. Metadata is optional and can be nil
@@ -324,7 +351,7 @@ func (s SQLite) GetMovieFiles(ctx context.Context, id int64) ([]*model.MovieFile
 	stmt := table.MovieFile.
 		SELECT(table.MovieFile.AllColumns).
 		FROM(table.MovieFile).
-		WHERE(table.MovieFile.MovieID.EQ(sqlite.Int64(id)))
+		WHERE(table.MovieFile.ID.EQ(sqlite.Int64(id)))
 
 	var result []*model.MovieFile
 	err := stmt.QueryContext(ctx, s.db, &result)

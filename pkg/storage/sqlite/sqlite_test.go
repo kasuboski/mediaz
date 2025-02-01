@@ -19,6 +19,10 @@ func TestInit(t *testing.T) {
 	assert.NotNil(t, store)
 }
 
+func ptr[A any](thing A) *A {
+	return &thing
+}
+
 func initSqlite(t *testing.T, ctx context.Context) storage.Storage {
 	store, err := New(":memory:")
 	assert.Nil(t, err)
@@ -77,8 +81,8 @@ func TestMovieStorage(t *testing.T) {
 			ID:              1,
 			Path:            &path,
 			Monitored:       1,
-			MovieFileID:     intPtr(1),
-			MovieMetadataID: intPtr(1),
+			MovieFileID:     ptr(int32(1)),
+			MovieMetadataID: ptr(int32(1)),
 		},
 	}
 
@@ -87,8 +91,8 @@ func TestMovieStorage(t *testing.T) {
 			ID:              1,
 			Path:            &path,
 			Monitored:       1,
-			MovieFileID:     intPtr(1),
-			MovieMetadataID: intPtr(1),
+			MovieFileID:     ptr(int32(1)),
+			MovieMetadataID: ptr(int32(1)),
 		},
 		State: storage.MovieStateMissing,
 	}
@@ -111,8 +115,8 @@ func TestMovieStorage(t *testing.T) {
 	assert.Equal(t, &wantMovie, actual)
 
 	err = store.UpdateMovieState(ctx, int64(movies[0].ID), storage.MovieStateDownloading, &storage.MovieStateMetadata{
-		DownloadID:       strPtr("123"),
-		DownloadClientID: intPtr(1),
+		DownloadID:       ptr("123"),
+		DownloadClientID: ptr(int32(1)),
 	})
 	assert.Nil(t, err)
 
@@ -145,7 +149,6 @@ func TestMovieStorage(t *testing.T) {
 		ID:      1,
 		Quality: "HDTV-720p",
 		Size:    1_000_000_000,
-		MovieID: 1,
 	}
 	res, err = store.CreateMovieFile(ctx, file)
 	assert.Nil(t, err)
@@ -457,11 +460,69 @@ func TestDownloadClientStorage(t *testing.T) {
 	err = store.DeleteDownloadClient(ctx, 2)
 	assert.Nil(t, err)
 }
+func TestSQLite_UpdateMovieMovieFileID(t *testing.T) {
+	t.Run("update movie file id", func(t *testing.T) {
+		ctx := context.Background()
+		store := initSqlite(t, ctx)
+		require.NotNil(t, store)
 
-func intPtr(i int32) *int32 {
-	return &i
+		path := "Title/Title.mkv"
+		newMovie := storage.Movie{
+			Movie: model.Movie{
+				ID:          1,
+				Monitored:   1,
+				Path:        &path,
+				MovieFileID: ptr(int32(1)),
+			},
+		}
+
+		movieID, err := store.CreateMovie(ctx, newMovie, storage.MovieStateDiscovered)
+		require.NoError(t, err)
+		require.Equal(t, int64(1), movieID)
+
+		err = store.UpdateMovieMovieFileID(ctx, movieID, 2)
+		require.NoError(t, err)
+
+		movie, err := store.GetMovie(ctx, movieID)
+		require.NoError(t, err)
+
+		assert.Equal(t, int32(1), movie.ID)
+		assert.Equal(t, int32(2), *movie.MovieFileID)
+	})
 }
 
-func strPtr(i string) *string {
-	return &i
+func TestSQLite_GetMovieByMovieFileID(t *testing.T) {
+	t.Run("get movie by movie file id", func(t *testing.T) {
+		ctx := context.Background()
+		store := initSqlite(t, ctx)
+		require.NotNil(t, store)
+
+		path := "Title/Title.mkv"
+		movie1 := storage.Movie{
+			Movie: model.Movie{
+				Monitored:   1,
+				Path:        &path,
+				MovieFileID: ptr(int32(1)),
+			},
+		}
+
+		_, err := store.CreateMovie(ctx, movie1, storage.MovieStateDiscovered)
+		require.NoError(t, err)
+
+		movie2 := storage.Movie{
+			Movie: model.Movie{
+				Monitored:   1,
+				Path:        &path,
+				MovieFileID: ptr(int32(2)),
+			},
+		}
+		_, err = store.CreateMovie(ctx, movie2, storage.MovieStateDiscovered)
+		require.NoError(t, err)
+
+		movie, err := store.GetMovieByMovieFileID(ctx, 1)
+		require.NoError(t, err)
+
+		assert.Equal(t, int32(1), movie.ID)
+		assert.Equal(t, int32(1), int32(*movie.MovieFileID))
+	})
 }

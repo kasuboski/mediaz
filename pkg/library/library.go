@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io/fs"
-	"math"
 	"os"
 	"path/filepath"
 	"strings"
@@ -37,7 +36,9 @@ func New(movies FileSystem, tv FileSystem, io io.FileIO) Library {
 	}
 }
 
-// AddMovie adds a movie file from an absolute path to the movie library. If a directory does not exist for the movie, it will be created using the title provided.
+// AddMovie adds a movie file from an absolute path to the movie library.
+// If a directory does not exist for the movie, it will be created using the title provided.
+// This assumes the source path is not already relative to the library, i.e it was downloaded or discoverd outside of the library.
 // TODO: add option to delete source file if we succesfully copy
 func (l *MediaLibrary) AddMovie(ctx context.Context, title, sourcePath string) (MovieFile, error) {
 	log := logger.FromCtx(ctx)
@@ -214,16 +215,4 @@ func dirName(path string) string {
 	dirPath := filepath.Dir(path)
 	split := strings.Split(dirPath, string(os.PathSeparator))
 	return split[len(split)-1]
-}
-
-func fileSizeToString(size int64) string {
-	const unit = 1024
-
-	if size < unit {
-		return fmt.Sprintf("%d B", size)
-	}
-
-	exp := int(math.Log(float64(size)) / math.Log(unit))
-	pre := "KMGTPE"[exp-1]
-	return fmt.Sprintf("%.1f %cB", float64(size)/math.Pow(unit, float64(exp)), pre)
 }
