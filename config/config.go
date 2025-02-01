@@ -1,6 +1,8 @@
 package config
 
 import (
+	"time"
+
 	"github.com/spf13/viper"
 )
 
@@ -10,6 +12,7 @@ type Config struct {
 	Library  Library  `json:"library" yaml:"library" mapstructure:"library"`
 	Storage  Storage  `json:"storage" yaml:"storage" mapstructure:"storage"`
 	Server   Server   `json:"server" yaml:"server" mapstructure:"server"`
+	Manager  Manager  `json:"manager" yaml:"manager" mapstructure:"manager"`
 }
 
 type TMDB struct {
@@ -39,6 +42,16 @@ type Storage struct {
 	FilePath          string   `json:"filePath" yaml:"filePath" mapstructure:"filePath"`
 	Schemas           []string `json:"schemas"  yaml:"schemas" mapstructure:"schemas"`
 	TableValueSchemas []string `json:"tableValueSchemas" yaml:"tableValueSchemas" mapstructure:"tableValueSchemas"`
+}
+
+// Manager houses configuration related to the manager and reconcillation
+type Manager struct {
+	Jobs Jobs `json:"jobs" yaml:"jobs" mapstructure:"jobs"`
+}
+
+type Jobs struct {
+	MovieReconcile time.Duration `json:"movieReconcile" yaml:"movieReconcile" mapstructure:"movieReconcile"`
+	MovieIndex     time.Duration `json:"movieIndex" yaml:"movieIndex" mapstructure:"movieIndex"`
 }
 
 type ConfigUnmarshaler interface {

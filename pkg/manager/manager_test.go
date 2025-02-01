@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/gkampitakis/go-snaps/snaps"
+	"github.com/kasuboski/mediaz/config"
 	"github.com/kasuboski/mediaz/pkg/download"
 	downloadMock "github.com/kasuboski/mediaz/pkg/download/mocks"
 	mio "github.com/kasuboski/mediaz/pkg/io"
@@ -86,7 +87,7 @@ func TestAddMovietoLibrary(t *testing.T) {
 
 	mockFactory := downloadMock.NewMockFactory(ctrl)
 
-	m := New(tClient, pClient, lib, store, mockFactory)
+	m := New(tClient, pClient, lib, store, mockFactory, config.Manager{})
 	require.NotNil(t, m)
 
 	req := AddMovieRequest{
@@ -201,7 +202,7 @@ func Test_Manager_reconcileMissingMovie(t *testing.T) {
 		&mio.MediaFileSystem{},
 	)
 
-	m := New(tClient, pClient, lib, store, mockFactory)
+	m := New(tClient, pClient, lib, store, mockFactory, config.Manager{})
 	require.NotNil(t, m)
 
 	req := AddMovieRequest{
@@ -281,7 +282,7 @@ func Test_Manager_reconcileUnreleasedMovie(t *testing.T) {
 		&mio.MediaFileSystem{},
 	)
 
-	m := New(tClient, pClient, lib, store, mockFactory)
+	m := New(tClient, pClient, lib, store, mockFactory, config.Manager{})
 	require.NotNil(t, m)
 
 	req := AddMovieRequest{
@@ -313,7 +314,7 @@ func TestIndexMovieLibrary(t *testing.T) {
 
 		library := mockLibrary.NewMockLibrary(ctrl)
 		library.EXPECT().FindMovies(ctx).Times(1).Return(nil, errors.New("expected tested error"))
-		m := New(nil, nil, library, nil, nil)
+		m := New(nil, nil, library, nil, nil, config.Manager{})
 		require.NotNil(t, m)
 
 		err := m.IndexMovieLibrary(ctx)
@@ -327,7 +328,7 @@ func TestIndexMovieLibrary(t *testing.T) {
 
 		mockLibrary := mockLibrary.NewMockLibrary(ctrl)
 		mockLibrary.EXPECT().FindMovies(ctx).Times(1).Return([]library.MovieFile{}, nil)
-		m := New(nil, nil, mockLibrary, nil, nil)
+		m := New(nil, nil, mockLibrary, nil, nil, config.Manager{})
 		require.NotNil(t, m)
 
 		err := m.IndexMovieLibrary(ctx)
@@ -347,7 +348,7 @@ func TestIndexMovieLibrary(t *testing.T) {
 
 		mockLibrary.EXPECT().FindMovies(ctx).Times(1).Return(discoveredFiles, nil)
 
-		m := New(nil, nil, mockLibrary, store, nil)
+		m := New(nil, nil, mockLibrary, store, nil, config.Manager{})
 		require.NotNil(t, m)
 
 		err := m.IndexMovieLibrary(ctx)
@@ -368,7 +369,7 @@ func TestIndexMovieLibrary(t *testing.T) {
 
 		mockLibrary.EXPECT().FindMovies(ctx).Times(1).Return(discoveredFiles, nil)
 
-		m := New(nil, nil, mockLibrary, store, nil)
+		m := New(nil, nil, mockLibrary, store, nil, config.Manager{})
 		require.NotNil(t, m)
 
 		err := m.IndexMovieLibrary(ctx)
@@ -413,7 +414,7 @@ func TestIndexMovieLibrary(t *testing.T) {
 
 		mockLibrary.EXPECT().FindMovies(ctx).Times(1).Return(discoveredFiles, nil)
 
-		m := New(nil, nil, mockLibrary, store, nil)
+		m := New(nil, nil, mockLibrary, store, nil, config.Manager{})
 		require.NotNil(t, m)
 
 		err = m.IndexMovieLibrary(ctx)
@@ -470,7 +471,12 @@ func TestRun(t *testing.T) {
 	require.NoError(t, err)
 
 	mockFactory := downloadMock.NewMockFactory(ctrl)
-	m := New(tClient, pClient, lib, store, mockFactory)
+	m := New(tClient, pClient, lib, store, mockFactory, config.Manager{
+		Jobs: config.Jobs{
+			MovieReconcile: time.Minute * 1,
+			MovieIndex:     time.Minute * 1,
+		},
+	})
 	require.NotNil(t, m)
 
 	err = m.Run(ctx)
@@ -527,7 +533,7 @@ func Test_Manager_reconcileDownloadingMovie(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("snapshot is nil", func(t *testing.T) {
-		m := New(nil, nil, nil, nil, nil)
+		m := New(nil, nil, nil, nil, nil, config.Manager{})
 		require.NotNil(t, m)
 
 		movie := &storage.Movie{Movie: model.Movie{ID: 1}}
@@ -536,7 +542,7 @@ func Test_Manager_reconcileDownloadingMovie(t *testing.T) {
 	})
 
 	t.Run("movie is not monitored", func(t *testing.T) {
-		m := New(nil, nil, nil, nil, nil)
+		m := New(nil, nil, nil, nil, nil, config.Manager{})
 		require.NotNil(t, m)
 
 		movie := &storage.Movie{Movie: model.Movie{ID: 1, Monitored: 0}}
@@ -547,7 +553,7 @@ func Test_Manager_reconcileDownloadingMovie(t *testing.T) {
 
 	t.Run("movie file is already tracked", func(t *testing.T) {
 		store := newStore(t, ctx)
-		m := New(nil, nil, nil, store, nil)
+		m := New(nil, nil, nil, store, nil, config.Manager{})
 		require.NotNil(t, m)
 
 		movie := storage.Movie{Movie: model.Movie{ID: 1, Monitored: 1}}
@@ -571,7 +577,7 @@ func Test_Manager_reconcileDownloadingMovie(t *testing.T) {
 
 	t.Run("download client not found in snapshot", func(t *testing.T) {
 		store := newStore(t, ctx)
-		m := New(nil, nil, nil, store, nil)
+		m := New(nil, nil, nil, store, nil, config.Manager{})
 		require.NotNil(t, m)
 
 		movie := storage.Movie{Movie: model.Movie{ID: 1, Monitored: 1}}
@@ -607,7 +613,7 @@ func Test_Manager_reconcileDownloadingMovie(t *testing.T) {
 		mockFactory := downloadMock.NewMockFactory(ctrl)
 		mockFactory.EXPECT().NewDownloadClient(downloadClientModel).Return(nil, errors.New("failed to create download client"))
 
-		m := New(nil, nil, nil, store, mockFactory)
+		m := New(nil, nil, nil, store, mockFactory, config.Manager{})
 		require.NotNil(t, m)
 
 		movieID, err := m.storage.CreateMovie(ctx, storage.Movie{Movie: model.Movie{ID: 1, Monitored: 1, QualityProfileID: 1}}, storage.MovieStateMissing)
@@ -658,7 +664,7 @@ func Test_Manager_reconcileDownloadingMovie(t *testing.T) {
 		mockFactory.EXPECT().NewDownloadClient(downloadClientModel).Return(mockDownloadClient, nil)
 		mockDownloadClient.EXPECT().Get(ctx, download.GetRequest{ID: "123"}).Return(download.Status{}, errors.New("failed to get download status"))
 
-		m := New(nil, nil, nil, store, mockFactory)
+		m := New(nil, nil, nil, store, mockFactory, config.Manager{})
 		require.NotNil(t, m)
 
 		movieID, err := m.storage.CreateMovie(ctx, storage.Movie{Movie: model.Movie{ID: 1, Monitored: 1, QualityProfileID: 1}}, storage.MovieStateMissing)
@@ -712,7 +718,7 @@ func Test_Manager_reconcileDownloadingMovie(t *testing.T) {
 			Done: false,
 		}, nil)
 
-		m := New(nil, nil, nil, store, mockFactory)
+		m := New(nil, nil, nil, store, mockFactory, config.Manager{})
 		require.NotNil(t, m)
 
 		movieID, err := m.storage.CreateMovie(ctx, storage.Movie{Movie: model.Movie{ID: 1, Monitored: 1, QualityProfileID: 1}}, storage.MovieStateMissing)
@@ -764,7 +770,7 @@ func Test_Manager_reconcileDownloadingMovie(t *testing.T) {
 			Done: true,
 		}, nil)
 
-		m := New(nil, nil, nil, store, mockFactory)
+		m := New(nil, nil, nil, store, mockFactory, config.Manager{})
 		require.NotNil(t, m)
 
 		movieID, err := m.storage.CreateMovie(ctx, storage.Movie{Movie: model.Movie{ID: 1, Monitored: 1, QualityProfileID: 1, MovieMetadataID: intPtr(1)}}, storage.MovieStateMissing)
@@ -821,7 +827,7 @@ func Test_Manager_reconcileDownloadingMovie(t *testing.T) {
 			FilePaths: []string{"test path"},
 		}, nil)
 
-		m := New(nil, nil, mockLibrary, store, mockFactory)
+		m := New(nil, nil, mockLibrary, store, mockFactory, config.Manager{})
 		require.NotNil(t, m)
 
 		movieID, err := m.storage.CreateMovie(ctx, storage.Movie{Movie: model.Movie{ID: 1, Monitored: 1, QualityProfileID: 1, MovieMetadataID: intPtr(1)}}, storage.MovieStateMissing)
@@ -887,7 +893,7 @@ func Test_Manager_reconcileDownloadingMovie(t *testing.T) {
 			FilePaths: []string{"/downloads/movie.mp4"},
 		}, nil)
 
-		m := New(nil, nil, mockLibrary, store, mockFactory)
+		m := New(nil, nil, mockLibrary, store, mockFactory, config.Manager{})
 		require.NotNil(t, m)
 
 		movieID, err := m.storage.CreateMovie(ctx, storage.Movie{Movie: model.Movie{ID: 1, Monitored: 1, QualityProfileID: 1, MovieMetadataID: intPtr(1)}}, storage.MovieStateMissing)

@@ -3,6 +3,7 @@ package cmd
 import (
 	"os"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -58,4 +59,7 @@ func initConfig() {
 	viper.SetDefault("storage.filePath", "mediaz.sqlite")
 	viper.SetDefault("storage.schemas", []string{"./pkg/storage/sqlite/schema/schema.sql"})
 	viper.SetDefault("storage.tableValueSchemas", []string{"./pkg/storage/sqlite/schema/defaults.sql"})
+
+	viper.SetDefault("manager.reconciler.movie", time.Minute*10)
+	viper.SetDefault("manager.reconciler.movieLibraryIndex", time.Minute*10)
 }

@@ -15,6 +15,7 @@ import (
 
 	"github.com/go-jet/jet/v2/qrm"
 	"github.com/go-jet/jet/v2/sqlite"
+	"github.com/kasuboski/mediaz/config"
 	"github.com/kasuboski/mediaz/pkg/download"
 	"github.com/kasuboski/mediaz/pkg/library"
 	"github.com/kasuboski/mediaz/pkg/logger"
@@ -35,15 +36,17 @@ type MediaManager struct {
 	library library.Library
 	storage storage.Storage
 	factory download.Factory
+	configs config.Manager
 }
 
-func New(tmbdClient TMDBClientInterface, prowlarrClient prowlarr.IProwlarr, library library.Library, storage storage.Storage, factory download.Factory) MediaManager {
+func New(tmbdClient TMDBClientInterface, prowlarrClient prowlarr.IProwlarr, library library.Library, storage storage.Storage, factory download.Factory, managerConfigs config.Manager) MediaManager {
 	return MediaManager{
 		tmdb:    tmbdClient,
 		indexer: NewIndexerStore(prowlarrClient, storage),
 		library: library,
 		storage: storage,
 		factory: factory,
+		configs: managerConfigs,
 	}
 }
 
@@ -167,9 +170,9 @@ func (m MediaManager) ListMoviesInLibrary(ctx context.Context) ([]library.MovieF
 func (m MediaManager) Run(ctx context.Context) error {
 	log := logger.FromCtx(ctx)
 
-	movieIndexTicker := time.NewTicker(time.Minute * 10)
+	movieIndexTicker := time.NewTicker(m.configs.Jobs.MovieIndex)
 	defer movieIndexTicker.Stop()
-	movieReconcileTicker := time.NewTicker(time.Minute * 10)
+	movieReconcileTicker := time.NewTicker(m.configs.Jobs.MovieReconcile)
 	defer movieReconcileTicker.Stop()
 
 	for {
