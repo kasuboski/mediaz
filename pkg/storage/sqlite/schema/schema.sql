@@ -33,7 +33,6 @@ CREATE TABLE IF NOT EXISTS "quality_profile_item" (
 
 CREATE TABLE IF NOT EXISTS "movie_file" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-    "movie_id" INTEGER UNIQUE NOT NULL,
     "quality" TEXT NOT NULL,
     "size" BIGINT NOT NULL,
     "date_added" DATETIME NOT NULL DEFAULT current_timestamp,

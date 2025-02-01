@@ -149,7 +149,6 @@ func TestMovieStorage(t *testing.T) {
 		ID:      1,
 		Quality: "HDTV-720p",
 		Size:    1_000_000_000,
-		MovieID: 1,
 	}
 	res, err = store.CreateMovieFile(ctx, file)
 	assert.Nil(t, err)
@@ -489,5 +488,41 @@ func TestSQLite_UpdateMovieMovieFileID(t *testing.T) {
 
 		assert.Equal(t, int32(1), movie.ID)
 		assert.Equal(t, int32(2), *movie.MovieFileID)
+	})
+}
+
+func TestSQLite_GetMovieByMovieFileID(t *testing.T) {
+	t.Run("get movie by movie file id", func(t *testing.T) {
+		ctx := context.Background()
+		store := initSqlite(t, ctx)
+		require.NotNil(t, store)
+
+		path := "Title/Title.mkv"
+		movie1 := storage.Movie{
+			Movie: model.Movie{
+				Monitored:   1,
+				Path:        &path,
+				MovieFileID: ptr(int32(1)),
+			},
+		}
+
+		_, err := store.CreateMovie(ctx, movie1, storage.MovieStateDiscovered)
+		require.NoError(t, err)
+
+		movie2 := storage.Movie{
+			Movie: model.Movie{
+				Monitored:   1,
+				Path:        &path,
+				MovieFileID: ptr(int32(2)),
+			},
+		}
+		_, err = store.CreateMovie(ctx, movie2, storage.MovieStateDiscovered)
+		require.NoError(t, err)
+
+		movie, err := store.GetMovieByMovieFileID(ctx, 1)
+		require.NoError(t, err)
+
+		assert.Equal(t, int32(1), movie.ID)
+		assert.Equal(t, int32(1), int32(*movie.MovieFileID))
 	})
 }

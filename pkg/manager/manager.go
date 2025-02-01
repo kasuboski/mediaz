@@ -8,12 +8,12 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"path/filepath"
 	"slices"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/go-jet/jet/v2/qrm"
 	"github.com/go-jet/jet/v2/sqlite"
 	"github.com/kasuboski/mediaz/pkg/download"
 	"github.com/kasuboski/mediaz/pkg/library"
@@ -167,7 +167,7 @@ func (m MediaManager) ListMoviesInLibrary(ctx context.Context) ([]library.MovieF
 func (m MediaManager) Run(ctx context.Context) error {
 	log := logger.FromCtx(ctx)
 
-	movieIndexTicker := time.NewTicker(time.Minute * 10)
+	movieIndexTicker := time.NewTicker(time.Second * 10)
 	defer movieIndexTicker.Stop()
 	movieReconcileTicker := time.NewTicker(time.Minute * 10)
 	defer movieReconcileTicker.Stop()
@@ -202,7 +202,7 @@ func (m MediaManager) IndexMovieLibrary(ctx context.Context) error {
 	}
 
 	if len(discoveredFiles) == 0 {
-		log.Debug("no new files discovered")
+		log.Debug("no files discovered")
 		return nil
 	}
 
@@ -211,12 +211,7 @@ func (m MediaManager) IndexMovieLibrary(ctx context.Context) error {
 		return fmt.Errorf("failed to list movie files: %w", err)
 	}
 
-	newFiles := make([]library.MovieFile, 0)
 	for _, discoveredFile := range discoveredFiles {
-		if !isVideoFile(discoveredFile.RelativePath) {
-			continue
-		}
-
 		// need to check if the file is already tracked, and if not, add it
 		isTracked := false
 		for _, mf := range movieFiles {
@@ -241,45 +236,61 @@ func (m MediaManager) IndexMovieLibrary(ctx context.Context) error {
 			}
 		}
 
-		if !isTracked {
-			log.Debug("discovered unmonitored file", zap.String("file", discoveredFile.RelativePath))
-			newFiles = append(newFiles, discoveredFile)
-		}
-	}
-
-	for _, f := range newFiles {
-		mov := storage.Movie{
-			Movie: model.Movie{
-				Path:      &f.RelativePath,
-				Monitored: 0,
-			},
-		}
-
-		movID, err := m.storage.CreateMovie(ctx, mov, storage.MovieStateDiscovered)
-		if err != nil {
-			log.Errorf("couldn't create new movie for discovered file: %w", err)
+		if isTracked {
 			continue
 		}
 
-		movieID := int32(movID)
 		mf := model.MovieFile{
-			MovieID:          movieID,
-			OriginalFilePath: &f.RelativePath, // this should always be relative if we discovered it in the library.. surely
-			RelativePath:     &f.RelativePath, // TODO: make sure it's actually relative
-			Size:             f.Size,
+			OriginalFilePath: &discoveredFile.RelativePath, // this should always be relative if we discovered it in the library.. surely
+			RelativePath:     &discoveredFile.RelativePath, // TODO: make sure it's actually relative
+			Size:             discoveredFile.Size,
 		}
 
-		movieFileID, err := m.storage.CreateMovieFile(ctx, mf)
+		log.Debug("discovered new movie file", zap.String("path", discoveredFile.RelativePath))
+
+		id, err := m.storage.CreateMovieFile(ctx, mf)
 		if err != nil {
 			log.Errorf("couldn't store movie file: %w", err)
 			continue
 		}
 
-		err = m.storage.UpdateMovieMovieFileID(ctx, movID, movieFileID)
-		if err != nil {
-			log.Error("couldn't add movie file", zap.Any("file", mf), zap.Error(err))
+		log.Debug("created new movie file in storage", zap.Int64("movie file id", id))
+	}
+
+	// pull the updated movie file list in case we added anything above
+	movieFiles, err = m.storage.ListMovieFiles(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to list movie files: %w", err)
+	}
+
+	for _, f := range movieFiles {
+		foundMovie, err := m.storage.GetMovieByMovieFileID(ctx, int64(f.ID))
+		if err == nil {
+			log.Debug("movie file associated with movie already", zap.Any("movie file id", foundMovie.ID))
 			continue
 		}
+		if !errors.Is(err, qrm.ErrNoRows) {
+			log.Debug("error fetching movie", zap.Error(err))
+			continue
+		}
+
+		log.Debug("movie file does not have associated movie")
+
+		movie := storage.Movie{
+			Movie: model.Movie{
+				MovieFileID: &f.ID,
+				Path:        f.RelativePath,
+				Monitored:   1,
+			},
+		}
+
+		_, err = m.storage.CreateMovie(ctx, movie, storage.MovieStateDiscovered)
+		if err != nil {
+			log.Errorf("couldn't create new movie for discovered file: %w", err)
+			continue
+		}
+
+		log.Debug("successfully created movie for discovered movie file")
 	}
 
 	return nil
@@ -568,11 +579,9 @@ func (m MediaManager) addMovieFileToLibrary(ctx context.Context, title, filePath
 	}
 
 	_, err = m.storage.CreateMovieFile(ctx, model.MovieFile{
-		MovieID:          int32(movie.ID),
 		RelativePath:     &mf.RelativePath,
 		Size:             mf.Size,
 		OriginalFilePath: &filePath,
-		DateAdded:        time.Now(),
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create movie file: %v", err)
@@ -849,23 +858,4 @@ func nullableDefault[T any](n nullable.Nullable[T]) T {
 
 func isMovieReleased(now time.Time, det *model.MovieMetadata) bool {
 	return det.ReleaseDate != nil && now.After(*det.ReleaseDate)
-}
-
-var validMediaExtensions = []string{
-	".mp4",
-	".mkv",
-	".mov",
-	".avi",
-	".wmv",
-	".m4v",
-}
-
-func isVideoFile(path string) bool {
-	ext := strings.ToLower(filepath.Ext(path))
-	for _, validExt := range validMediaExtensions {
-		if ext == validExt {
-			return true
-		}
-	}
-	return false
 }

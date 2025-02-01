@@ -18,7 +18,6 @@ type movieFileTable struct {
 
 	// Columns
 	ID               sqlite.ColumnInteger
-	MovieID          sqlite.ColumnInteger
 	Quality          sqlite.ColumnString
 	Size             sqlite.ColumnInteger
 	DateAdded        sqlite.ColumnTimestamp
@@ -71,7 +70,6 @@ func newMovieFileTable(schemaName, tableName, alias string) *MovieFileTable {
 func newMovieFileTableImpl(schemaName, tableName, alias string) movieFileTable {
 	var (
 		IDColumn               = sqlite.IntegerColumn("id")
-		MovieIDColumn          = sqlite.IntegerColumn("movie_id")
 		QualityColumn          = sqlite.StringColumn("quality")
 		SizeColumn             = sqlite.IntegerColumn("size")
 		DateAddedColumn        = sqlite.TimestampColumn("date_added")
@@ -83,8 +81,8 @@ func newMovieFileTableImpl(schemaName, tableName, alias string) movieFileTable {
 		LanguagesColumn        = sqlite.StringColumn("languages")
 		IndexerFlagsColumn     = sqlite.IntegerColumn("indexer_flags")
 		OriginalFilePathColumn = sqlite.StringColumn("original_file_path")
-		allColumns             = sqlite.ColumnList{IDColumn, MovieIDColumn, QualityColumn, SizeColumn, DateAddedColumn, SceneNameColumn, MediaInfoColumn, ReleaseGroupColumn, RelativePathColumn, EditionColumn, LanguagesColumn, IndexerFlagsColumn, OriginalFilePathColumn}
-		mutableColumns         = sqlite.ColumnList{MovieIDColumn, QualityColumn, SizeColumn, DateAddedColumn, SceneNameColumn, MediaInfoColumn, ReleaseGroupColumn, RelativePathColumn, EditionColumn, LanguagesColumn, IndexerFlagsColumn, OriginalFilePathColumn}
+		allColumns             = sqlite.ColumnList{IDColumn, QualityColumn, SizeColumn, DateAddedColumn, SceneNameColumn, MediaInfoColumn, ReleaseGroupColumn, RelativePathColumn, EditionColumn, LanguagesColumn, IndexerFlagsColumn, OriginalFilePathColumn}
+		mutableColumns         = sqlite.ColumnList{QualityColumn, SizeColumn, DateAddedColumn, SceneNameColumn, MediaInfoColumn, ReleaseGroupColumn, RelativePathColumn, EditionColumn, LanguagesColumn, IndexerFlagsColumn, OriginalFilePathColumn}
 	)
 
 	return movieFileTable{
@@ -92,7 +90,6 @@ func newMovieFileTableImpl(schemaName, tableName, alias string) movieFileTable {
 
 		//Columns
 		ID:               IDColumn,
-		MovieID:          MovieIDColumn,
 		Quality:          QualityColumn,
 		Size:             SizeColumn,
 		DateAdded:        DateAddedColumn,

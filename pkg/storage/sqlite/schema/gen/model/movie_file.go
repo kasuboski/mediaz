@@ -13,7 +13,6 @@ import (
 
 type MovieFile struct {
 	ID               int32 `sql:"primary_key"`
-	MovieID          int32
 	Quality          string
 	Size             int64
 	DateAdded        time.Time
