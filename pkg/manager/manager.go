@@ -167,7 +167,7 @@ func (m MediaManager) ListMoviesInLibrary(ctx context.Context) ([]library.MovieF
 func (m MediaManager) Run(ctx context.Context) error {
 	log := logger.FromCtx(ctx)
 
-	movieIndexTicker := time.NewTicker(time.Second * 10)
+	movieIndexTicker := time.NewTicker(time.Minute * 10)
 	defer movieIndexTicker.Stop()
 	movieReconcileTicker := time.NewTicker(time.Minute * 10)
 	defer movieReconcileTicker.Stop()
