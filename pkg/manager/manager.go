@@ -188,6 +188,7 @@ func (m MediaManager) Run(ctx context.Context) error {
 			return ctx.Err()
 		case <-movieIndexTicker.C:
 			if !movieIndexerLock.TryLock() {
+				log.Debug("movie indexer lock is locked")
 				continue
 			}
 			movieIndexerLock.Lock()
@@ -200,6 +201,7 @@ func (m MediaManager) Run(ctx context.Context) error {
 			}
 		case <-movieReconcileTicker.C:
 			if !movieReconcileLock.TryLock() {
+				log.Debug("movie reconcile lock is locked")
 				continue
 			}
 			movieReconcileLock.Lock()
