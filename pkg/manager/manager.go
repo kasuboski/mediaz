@@ -172,20 +172,39 @@ func (m MediaManager) Run(ctx context.Context) error {
 
 	movieIndexTicker := time.NewTicker(m.configs.Jobs.MovieIndex)
 	defer movieIndexTicker.Stop()
+	movieIndexerLock := new(sync.Mutex)
+
 	movieReconcileTicker := time.NewTicker(m.configs.Jobs.MovieReconcile)
 	defer movieReconcileTicker.Stop()
+	movieReconcileLock := new(sync.Mutex)
+
+	var unlock = func(mu *sync.Mutex) {
+		mu.Unlock()
+	}
 
 	for {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
 		case <-movieIndexTicker.C:
+			if !movieIndexerLock.TryLock() {
+				continue
+			}
+			movieIndexerLock.Lock()
+			defer unlock(movieIndexerLock)
+
 			err := m.IndexMovieLibrary(ctx)
 			if err != nil {
 				log.Errorf("movie indexing failed: %w", err)
 				continue
 			}
 		case <-movieReconcileTicker.C:
+			if !movieReconcileLock.TryLock() {
+				continue
+			}
+			movieReconcileLock.Lock()
+			defer unlock(movieReconcileLock)
+
 			err := m.ReconcileMovies(ctx)
 			if err != nil {
 				log.Errorf("movie reconciling failed: %w", err)
