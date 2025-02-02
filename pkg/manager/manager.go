@@ -184,30 +184,37 @@ func (m MediaManager) Run(ctx context.Context) error {
 			return ctx.Err()
 		case <-movieIndexTicker.C:
 			if !movieIndexerLock.TryLock() {
-				log.Debug("movie indexer lock is locked")
 				continue
 			}
-			movieIndexerLock.Lock()
 
-			err := m.IndexMovieLibrary(ctx)
-			if err != nil {
-				log.Errorf("movie indexing failed: %w", err)
-			}
-			movieIndexerLock.Unlock()
+			go lock(movieIndexerLock, func() {
+				err := m.IndexMovieLibrary(ctx)
+				if err != nil {
+					log.Errorf("movie library indexing failed", zap.Error(err))
+				}
+			})
+
 		case <-movieReconcileTicker.C:
 			if !movieReconcileLock.TryLock() {
-				log.Debug("movie reconcile lock is locked")
 				continue
 			}
-			movieReconcileLock.Lock()
 
-			err := m.ReconcileMovies(ctx)
-			if err != nil {
-				log.Errorf("movie reconciling failed: %w", err)
-			}
-			movieReconcileLock.Unlock()
+			go lock(movieReconcileLock, func() {
+				err := m.ReconcileMovies(ctx)
+				if err != nil {
+					log.Errorf("movie reconcile failed", zap.Error(err))
+				}
+			})
 		}
 	}
+}
+
+func lock(mu *sync.Mutex, fn func()) {
+	if mu == nil {
+		return
+	}
+	defer mu.Unlock()
+	fn()
 }
 
 // IndexMovieLibrary indexes the movie library directory for new files that are not yet monitored. The movies are then stored with a state of discovered.
