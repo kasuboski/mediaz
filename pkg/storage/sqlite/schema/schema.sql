@@ -91,6 +91,79 @@ CREATE TABLE IF NOT EXISTS "movie" (
     "last_search_time" DATETIME
 );
 
+CREATE TABLE IF NOT EXISTS "show" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "monitored" INTEGER NOT NULL,
+    "quality_profile_id" INTEGER NOT NULL,
+    "added" DATETIME DEFAULT current_timestamp,
+    "tags" TEXT,
+    "add_options" TEXT,
+    "show_metadata" INTEGER UNIQUE,
+    "last_search_time" DATETIME
+);
+
+CREATE TABLE IF NOT EXISTS "show_metadata" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "tmdb_id" INTEGER NOT NULL,
+    "seasons" INTEGER,
+    "images" TEXT NOT NULL,
+    "genres" TEXT,
+    "title" TEXT NOT NULL,
+    "sort_title" TEXT,
+    "clean_title" TEXT,
+    "original_title" TEXT,
+    "clean_original_title" TEXT,
+    "original_language" INTEGER NOT NULL,
+    "status" INTEGER NOT NULL,
+    "last_info_sync" DATETIME,
+    "release_date" DATETIME,
+    "year" INTEGER,
+    "secondary_year" INTEGER,
+    "ratings" TEXT,
+    "recommendations" TEXT NOT NULL,
+    "certification" TEXT,
+    "youtube_trailer_id" TEXT,
+    "studio" TEXT,
+    "overview" TEXT,
+    "website" TEXT,
+    "popularity" NUMERIC,
+    "collection_tmdb_id" INTEGER,
+    "collection_title" TEXT
+);
+
+CREATE TABLE IF NOT EXISTS "season" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "show_id" INTEGER NOT NULL,
+    "season_metadata_id" INTEGER UNIQUE,
+    FOREIGN KEY ("show_id") REFERENCES "show" ("id")
+);
+
+CREATE TABLE IF NOT EXISTS "season_metadata" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "tmdb_id" INTEGER NOT NULL,
+    "episode_count" INTEGER NOT NULL,
+    "number" TEXT,
+    "images" TEXT,
+    "air_date" DATETIME
+);
+
+CREATE TABLE IF NOT EXISTS "episode" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "season_id" INTEGER NOT NULL,
+    "episode_number" INTEGER NOT NULL,
+    "monitored" INTEGER NOT NULL,
+    "episode_metadata_id" INTEGER UNIQUE,
+    FOREIGN KEY ("season_id") REFERENCES "season" ("id")
+);
+
+CREATE TABLE IF NOT EXISTS "episode_metadata" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "tmdb_id" INTEGER NOT NULL,
+    "title" TEXT NOT NULL,
+    "air_date" DATETIME,
+    "runtime" INTEGER
+);
+
 CREATE TABLE IF NOT EXISTS "movie_transition" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     "movie_id" INTEGER NOT NULL REFERENCES "movie"("id"),
