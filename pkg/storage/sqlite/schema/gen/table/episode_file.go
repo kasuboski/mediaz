@@ -22,7 +22,6 @@ type episodeFileTable struct {
 	Size             sqlite.ColumnInteger
 	DateAdded        sqlite.ColumnTimestamp
 	RelativePath     sqlite.ColumnString
-	Languages        sqlite.ColumnString
 	OriginalFilePath sqlite.ColumnString
 
 	AllColumns     sqlite.ColumnList
@@ -69,10 +68,9 @@ func newEpisodeFileTableImpl(schemaName, tableName, alias string) episodeFileTab
 		SizeColumn             = sqlite.IntegerColumn("size")
 		DateAddedColumn        = sqlite.TimestampColumn("date_added")
 		RelativePathColumn     = sqlite.StringColumn("relative_path")
-		LanguagesColumn        = sqlite.StringColumn("languages")
 		OriginalFilePathColumn = sqlite.StringColumn("original_file_path")
-		allColumns             = sqlite.ColumnList{IDColumn, QualityColumn, SizeColumn, DateAddedColumn, RelativePathColumn, LanguagesColumn, OriginalFilePathColumn}
-		mutableColumns         = sqlite.ColumnList{QualityColumn, SizeColumn, DateAddedColumn, RelativePathColumn, LanguagesColumn, OriginalFilePathColumn}
+		allColumns             = sqlite.ColumnList{IDColumn, QualityColumn, SizeColumn, DateAddedColumn, RelativePathColumn, OriginalFilePathColumn}
+		mutableColumns         = sqlite.ColumnList{QualityColumn, SizeColumn, DateAddedColumn, RelativePathColumn, OriginalFilePathColumn}
 	)
 
 	return episodeFileTable{
@@ -84,7 +82,6 @@ func newEpisodeFileTableImpl(schemaName, tableName, alias string) episodeFileTab
 		Size:             SizeColumn,
 		DateAdded:        DateAddedColumn,
 		RelativePath:     RelativePathColumn,
-		Languages:        LanguagesColumn,
 		OriginalFilePath: OriginalFilePathColumn,
 
 		AllColumns:     allColumns,

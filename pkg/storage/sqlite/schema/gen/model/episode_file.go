@@ -17,6 +17,5 @@ type EpisodeFile struct {
 	Size             int64
 	DateAdded        time.Time
 	RelativePath     *string
-	Languages        string
 	OriginalFilePath *string
 }

@@ -145,7 +145,6 @@ CREATE TABLE IF NOT EXISTS "episode_file" (
     "size" BIGINT NOT NULL,
     "date_added" DATETIME NOT NULL DEFAULT current_timestamp,
     "relative_path" TEXT UNIQUE,
-    "languages" TEXT NOT NULL,
     "original_file_path" TEXT
 );
 
