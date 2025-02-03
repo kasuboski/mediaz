@@ -22,6 +22,7 @@ type episodeTable struct {
 	EpisodeNumber     sqlite.ColumnInteger
 	Monitored         sqlite.ColumnInteger
 	EpisodeMetadataID sqlite.ColumnInteger
+	MovieFileID       sqlite.ColumnInteger
 
 	AllColumns     sqlite.ColumnList
 	MutableColumns sqlite.ColumnList
@@ -67,8 +68,9 @@ func newEpisodeTableImpl(schemaName, tableName, alias string) episodeTable {
 		EpisodeNumberColumn     = sqlite.IntegerColumn("episode_number")
 		MonitoredColumn         = sqlite.IntegerColumn("monitored")
 		EpisodeMetadataIDColumn = sqlite.IntegerColumn("episode_metadata_id")
-		allColumns              = sqlite.ColumnList{IDColumn, SeasonIDColumn, EpisodeNumberColumn, MonitoredColumn, EpisodeMetadataIDColumn}
-		mutableColumns          = sqlite.ColumnList{SeasonIDColumn, EpisodeNumberColumn, MonitoredColumn, EpisodeMetadataIDColumn}
+		MovieFileIDColumn       = sqlite.IntegerColumn("movie_file_id")
+		allColumns              = sqlite.ColumnList{IDColumn, SeasonIDColumn, EpisodeNumberColumn, MonitoredColumn, EpisodeMetadataIDColumn, MovieFileIDColumn}
+		mutableColumns          = sqlite.ColumnList{SeasonIDColumn, EpisodeNumberColumn, MonitoredColumn, EpisodeMetadataIDColumn, MovieFileIDColumn}
 	)
 
 	return episodeTable{
@@ -80,6 +82,7 @@ func newEpisodeTableImpl(schemaName, tableName, alias string) episodeTable {
 		EpisodeNumber:     EpisodeNumberColumn,
 		Monitored:         MonitoredColumn,
 		EpisodeMetadataID: EpisodeMetadataIDColumn,
+		MovieFileID:       MovieFileIDColumn,
 
 		AllColumns:     allColumns,
 		MutableColumns: mutableColumns,

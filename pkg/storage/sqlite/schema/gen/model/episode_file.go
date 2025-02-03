@@ -11,11 +11,12 @@ import (
 	"time"
 )
 
-type Show struct {
+type EpisodeFile struct {
 	ID               int32 `sql:"primary_key"`
-	Monitored        int32
-	QualityProfileID int32
-	Added            *time.Time
-	ShowMetadata     *int32
-	LastSearchTime   *time.Time
+	Quality          string
+	Size             int64
+	DateAdded        time.Time
+	RelativePath     *string
+	Languages        string
+	OriginalFilePath *string
 }

@@ -12,7 +12,9 @@ package table
 func UseSchema(schema string) {
 	DownloadClient = DownloadClient.FromSchema(schema)
 	Episode = Episode.FromSchema(schema)
+	EpisodeFile = EpisodeFile.FromSchema(schema)
 	EpisodeMetadata = EpisodeMetadata.FromSchema(schema)
+	EpisodeTransition = EpisodeTransition.FromSchema(schema)
 	Indexer = Indexer.FromSchema(schema)
 	Movie = Movie.FromSchema(schema)
 	MovieFile = MovieFile.FromSchema(schema)

@@ -21,8 +21,6 @@ type showTable struct {
 	Monitored        sqlite.ColumnInteger
 	QualityProfileID sqlite.ColumnInteger
 	Added            sqlite.ColumnTimestamp
-	Tags             sqlite.ColumnString
-	AddOptions       sqlite.ColumnString
 	ShowMetadata     sqlite.ColumnInteger
 	LastSearchTime   sqlite.ColumnTimestamp
 
@@ -69,12 +67,10 @@ func newShowTableImpl(schemaName, tableName, alias string) showTable {
 		MonitoredColumn        = sqlite.IntegerColumn("monitored")
 		QualityProfileIDColumn = sqlite.IntegerColumn("quality_profile_id")
 		AddedColumn            = sqlite.TimestampColumn("added")
-		TagsColumn             = sqlite.StringColumn("tags")
-		AddOptionsColumn       = sqlite.StringColumn("add_options")
 		ShowMetadataColumn     = sqlite.IntegerColumn("show_metadata")
 		LastSearchTimeColumn   = sqlite.TimestampColumn("last_search_time")
-		allColumns             = sqlite.ColumnList{IDColumn, MonitoredColumn, QualityProfileIDColumn, AddedColumn, TagsColumn, AddOptionsColumn, ShowMetadataColumn, LastSearchTimeColumn}
-		mutableColumns         = sqlite.ColumnList{MonitoredColumn, QualityProfileIDColumn, AddedColumn, TagsColumn, AddOptionsColumn, ShowMetadataColumn, LastSearchTimeColumn}
+		allColumns             = sqlite.ColumnList{IDColumn, MonitoredColumn, QualityProfileIDColumn, AddedColumn, ShowMetadataColumn, LastSearchTimeColumn}
+		mutableColumns         = sqlite.ColumnList{MonitoredColumn, QualityProfileIDColumn, AddedColumn, ShowMetadataColumn, LastSearchTimeColumn}
 	)
 
 	return showTable{
@@ -85,8 +81,6 @@ func newShowTableImpl(schemaName, tableName, alias string) showTable {
 		Monitored:        MonitoredColumn,
 		QualityProfileID: QualityProfileIDColumn,
 		Added:            AddedColumn,
-		Tags:             TagsColumn,
-		AddOptions:       AddOptionsColumn,
 		ShowMetadata:     ShowMetadataColumn,
 		LastSearchTime:   LastSearchTimeColumn,
 
