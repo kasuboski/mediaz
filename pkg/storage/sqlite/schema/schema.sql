@@ -107,8 +107,8 @@ CREATE TABLE IF NOT EXISTS "show_metadata" (
     "last_info_sync" DATETIME,
     "first_air_date" DATETIME,
     "last_air_date" DATETIME,
-    "seasons" INTEGER NOT NULL,
-    "episodes" INTEGER NOT NULL,
+    "season_count" INTEGER NOT NULL,
+    "episode_count" INTEGER NOT NULL,
     "status" TEXT NOT NULL
 );
 

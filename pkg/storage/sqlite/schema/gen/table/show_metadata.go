@@ -23,8 +23,8 @@ type showMetadataTable struct {
 	LastInfoSync sqlite.ColumnTimestamp
 	FirstAirDate sqlite.ColumnTimestamp
 	LastAirDate  sqlite.ColumnTimestamp
-	Seasons      sqlite.ColumnInteger
-	Episodes     sqlite.ColumnInteger
+	SeasonCount  sqlite.ColumnInteger
+	EpisodeCount sqlite.ColumnInteger
 	Status       sqlite.ColumnString
 
 	AllColumns     sqlite.ColumnList
@@ -72,11 +72,11 @@ func newShowMetadataTableImpl(schemaName, tableName, alias string) showMetadataT
 		LastInfoSyncColumn = sqlite.TimestampColumn("last_info_sync")
 		FirstAirDateColumn = sqlite.TimestampColumn("first_air_date")
 		LastAirDateColumn  = sqlite.TimestampColumn("last_air_date")
-		SeasonsColumn      = sqlite.IntegerColumn("seasons")
-		EpisodesColumn     = sqlite.IntegerColumn("episodes")
+		SeasonCountColumn  = sqlite.IntegerColumn("season_count")
+		EpisodeCountColumn = sqlite.IntegerColumn("episode_count")
 		StatusColumn       = sqlite.StringColumn("status")
-		allColumns         = sqlite.ColumnList{IDColumn, TmdbIDColumn, TitleColumn, LastInfoSyncColumn, FirstAirDateColumn, LastAirDateColumn, SeasonsColumn, EpisodesColumn, StatusColumn}
-		mutableColumns     = sqlite.ColumnList{TmdbIDColumn, TitleColumn, LastInfoSyncColumn, FirstAirDateColumn, LastAirDateColumn, SeasonsColumn, EpisodesColumn, StatusColumn}
+		allColumns         = sqlite.ColumnList{IDColumn, TmdbIDColumn, TitleColumn, LastInfoSyncColumn, FirstAirDateColumn, LastAirDateColumn, SeasonCountColumn, EpisodeCountColumn, StatusColumn}
+		mutableColumns     = sqlite.ColumnList{TmdbIDColumn, TitleColumn, LastInfoSyncColumn, FirstAirDateColumn, LastAirDateColumn, SeasonCountColumn, EpisodeCountColumn, StatusColumn}
 	)
 
 	return showMetadataTable{
@@ -89,8 +89,8 @@ func newShowMetadataTableImpl(schemaName, tableName, alias string) showMetadataT
 		LastInfoSync: LastInfoSyncColumn,
 		FirstAirDate: FirstAirDateColumn,
 		LastAirDate:  LastAirDateColumn,
-		Seasons:      SeasonsColumn,
-		Episodes:     EpisodesColumn,
+		SeasonCount:  SeasonCountColumn,
+		EpisodeCount: EpisodeCountColumn,
 		Status:       StatusColumn,
 
 		AllColumns:     allColumns,

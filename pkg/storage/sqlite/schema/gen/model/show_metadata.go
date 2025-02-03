@@ -18,7 +18,7 @@ type ShowMetadata struct {
 	LastInfoSync *time.Time
 	FirstAirDate *time.Time
 	LastAirDate  *time.Time
-	Seasons      int32
-	Episodes     int32
+	SeasonCount  int32
+	EpisodeCount int32
 	Status       string
 }
