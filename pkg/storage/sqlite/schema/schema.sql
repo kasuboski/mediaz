@@ -103,30 +103,13 @@ CREATE TABLE IF NOT EXISTS "show" (
 CREATE TABLE IF NOT EXISTS "show_metadata" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     "tmdb_id" INTEGER NOT NULL,
-    "seasons" INTEGER,
-    "images" TEXT NOT NULL,
-    "genres" TEXT,
     "title" TEXT NOT NULL,
-    "sort_title" TEXT,
-    "clean_title" TEXT,
-    "original_title" TEXT,
-    "clean_original_title" TEXT,
-    "original_language" INTEGER NOT NULL,
-    "status" INTEGER NOT NULL,
     "last_info_sync" DATETIME,
-    "release_date" DATETIME,
-    "year" INTEGER,
-    "secondary_year" INTEGER,
-    "ratings" TEXT,
-    "recommendations" TEXT NOT NULL,
-    "certification" TEXT,
-    "youtube_trailer_id" TEXT,
-    "studio" TEXT,
-    "overview" TEXT,
-    "website" TEXT,
-    "popularity" NUMERIC,
-    "collection_tmdb_id" INTEGER,
-    "collection_title" TEXT
+    "first_air_date" DATETIME,
+    "last_air_date" DATETIME,
+    "seasons" INTEGER NOT NULL,
+    "episodes" INTEGER NOT NULL,
+    "status" TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS "season" (
@@ -138,8 +121,11 @@ CREATE TABLE IF NOT EXISTS "season" (
 
 CREATE TABLE IF NOT EXISTS "season_metadata" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "tmdb_id" INTEGER NOT NULL UNIQUE,
+    "title" TEXT,
+    "overview" TEXT,
     "episode_count" INTEGER NOT NULL,
-    "number" TEXT,
+    "number" INTEGER NOT NULL,
     "air_date" DATETIME
 );
 
@@ -165,7 +151,9 @@ CREATE TABLE IF NOT EXISTS "episode_file" (
 
 CREATE TABLE IF NOT EXISTS "episode_metadata" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-    "title" TEXT NOT NULL,
+    "tmdb_id" INTEGER NOT NULL UNIQUE,
+    "title" TEXT,
+    "overview" TEXT,
     "air_date" DATETIME,
     "runtime" INTEGER
 );

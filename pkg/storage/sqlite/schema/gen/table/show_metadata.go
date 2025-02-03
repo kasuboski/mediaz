@@ -17,32 +17,15 @@ type showMetadataTable struct {
 	sqlite.Table
 
 	// Columns
-	ID                 sqlite.ColumnInteger
-	TmdbID             sqlite.ColumnInteger
-	Seasons            sqlite.ColumnInteger
-	Images             sqlite.ColumnString
-	Genres             sqlite.ColumnString
-	Title              sqlite.ColumnString
-	SortTitle          sqlite.ColumnString
-	CleanTitle         sqlite.ColumnString
-	OriginalTitle      sqlite.ColumnString
-	CleanOriginalTitle sqlite.ColumnString
-	OriginalLanguage   sqlite.ColumnInteger
-	Status             sqlite.ColumnInteger
-	LastInfoSync       sqlite.ColumnTimestamp
-	ReleaseDate        sqlite.ColumnTimestamp
-	Year               sqlite.ColumnInteger
-	SecondaryYear      sqlite.ColumnInteger
-	Ratings            sqlite.ColumnString
-	Recommendations    sqlite.ColumnString
-	Certification      sqlite.ColumnString
-	YoutubeTrailerID   sqlite.ColumnString
-	Studio             sqlite.ColumnString
-	Overview           sqlite.ColumnString
-	Website            sqlite.ColumnString
-	Popularity         sqlite.ColumnFloat
-	CollectionTmdbID   sqlite.ColumnInteger
-	CollectionTitle    sqlite.ColumnString
+	ID           sqlite.ColumnInteger
+	TmdbID       sqlite.ColumnInteger
+	Title        sqlite.ColumnString
+	LastInfoSync sqlite.ColumnTimestamp
+	FirstAirDate sqlite.ColumnTimestamp
+	LastAirDate  sqlite.ColumnTimestamp
+	Seasons      sqlite.ColumnInteger
+	Episodes     sqlite.ColumnInteger
+	Status       sqlite.ColumnString
 
 	AllColumns     sqlite.ColumnList
 	MutableColumns sqlite.ColumnList
@@ -83,66 +66,32 @@ func newShowMetadataTable(schemaName, tableName, alias string) *ShowMetadataTabl
 
 func newShowMetadataTableImpl(schemaName, tableName, alias string) showMetadataTable {
 	var (
-		IDColumn                 = sqlite.IntegerColumn("id")
-		TmdbIDColumn             = sqlite.IntegerColumn("tmdb_id")
-		SeasonsColumn            = sqlite.IntegerColumn("seasons")
-		ImagesColumn             = sqlite.StringColumn("images")
-		GenresColumn             = sqlite.StringColumn("genres")
-		TitleColumn              = sqlite.StringColumn("title")
-		SortTitleColumn          = sqlite.StringColumn("sort_title")
-		CleanTitleColumn         = sqlite.StringColumn("clean_title")
-		OriginalTitleColumn      = sqlite.StringColumn("original_title")
-		CleanOriginalTitleColumn = sqlite.StringColumn("clean_original_title")
-		OriginalLanguageColumn   = sqlite.IntegerColumn("original_language")
-		StatusColumn             = sqlite.IntegerColumn("status")
-		LastInfoSyncColumn       = sqlite.TimestampColumn("last_info_sync")
-		ReleaseDateColumn        = sqlite.TimestampColumn("release_date")
-		YearColumn               = sqlite.IntegerColumn("year")
-		SecondaryYearColumn      = sqlite.IntegerColumn("secondary_year")
-		RatingsColumn            = sqlite.StringColumn("ratings")
-		RecommendationsColumn    = sqlite.StringColumn("recommendations")
-		CertificationColumn      = sqlite.StringColumn("certification")
-		YoutubeTrailerIDColumn   = sqlite.StringColumn("youtube_trailer_id")
-		StudioColumn             = sqlite.StringColumn("studio")
-		OverviewColumn           = sqlite.StringColumn("overview")
-		WebsiteColumn            = sqlite.StringColumn("website")
-		PopularityColumn         = sqlite.FloatColumn("popularity")
-		CollectionTmdbIDColumn   = sqlite.IntegerColumn("collection_tmdb_id")
-		CollectionTitleColumn    = sqlite.StringColumn("collection_title")
-		allColumns               = sqlite.ColumnList{IDColumn, TmdbIDColumn, SeasonsColumn, ImagesColumn, GenresColumn, TitleColumn, SortTitleColumn, CleanTitleColumn, OriginalTitleColumn, CleanOriginalTitleColumn, OriginalLanguageColumn, StatusColumn, LastInfoSyncColumn, ReleaseDateColumn, YearColumn, SecondaryYearColumn, RatingsColumn, RecommendationsColumn, CertificationColumn, YoutubeTrailerIDColumn, StudioColumn, OverviewColumn, WebsiteColumn, PopularityColumn, CollectionTmdbIDColumn, CollectionTitleColumn}
-		mutableColumns           = sqlite.ColumnList{TmdbIDColumn, SeasonsColumn, ImagesColumn, GenresColumn, TitleColumn, SortTitleColumn, CleanTitleColumn, OriginalTitleColumn, CleanOriginalTitleColumn, OriginalLanguageColumn, StatusColumn, LastInfoSyncColumn, ReleaseDateColumn, YearColumn, SecondaryYearColumn, RatingsColumn, RecommendationsColumn, CertificationColumn, YoutubeTrailerIDColumn, StudioColumn, OverviewColumn, WebsiteColumn, PopularityColumn, CollectionTmdbIDColumn, CollectionTitleColumn}
+		IDColumn           = sqlite.IntegerColumn("id")
+		TmdbIDColumn       = sqlite.IntegerColumn("tmdb_id")
+		TitleColumn        = sqlite.StringColumn("title")
+		LastInfoSyncColumn = sqlite.TimestampColumn("last_info_sync")
+		FirstAirDateColumn = sqlite.TimestampColumn("first_air_date")
+		LastAirDateColumn  = sqlite.TimestampColumn("last_air_date")
+		SeasonsColumn      = sqlite.IntegerColumn("seasons")
+		EpisodesColumn     = sqlite.IntegerColumn("episodes")
+		StatusColumn       = sqlite.StringColumn("status")
+		allColumns         = sqlite.ColumnList{IDColumn, TmdbIDColumn, TitleColumn, LastInfoSyncColumn, FirstAirDateColumn, LastAirDateColumn, SeasonsColumn, EpisodesColumn, StatusColumn}
+		mutableColumns     = sqlite.ColumnList{TmdbIDColumn, TitleColumn, LastInfoSyncColumn, FirstAirDateColumn, LastAirDateColumn, SeasonsColumn, EpisodesColumn, StatusColumn}
 	)
 
 	return showMetadataTable{
 		Table: sqlite.NewTable(schemaName, tableName, alias, allColumns...),
 
 		//Columns
-		ID:                 IDColumn,
-		TmdbID:             TmdbIDColumn,
-		Seasons:            SeasonsColumn,
-		Images:             ImagesColumn,
-		Genres:             GenresColumn,
-		Title:              TitleColumn,
-		SortTitle:          SortTitleColumn,
-		CleanTitle:         CleanTitleColumn,
-		OriginalTitle:      OriginalTitleColumn,
-		CleanOriginalTitle: CleanOriginalTitleColumn,
-		OriginalLanguage:   OriginalLanguageColumn,
-		Status:             StatusColumn,
-		LastInfoSync:       LastInfoSyncColumn,
-		ReleaseDate:        ReleaseDateColumn,
-		Year:               YearColumn,
-		SecondaryYear:      SecondaryYearColumn,
-		Ratings:            RatingsColumn,
-		Recommendations:    RecommendationsColumn,
-		Certification:      CertificationColumn,
-		YoutubeTrailerID:   YoutubeTrailerIDColumn,
-		Studio:             StudioColumn,
-		Overview:           OverviewColumn,
-		Website:            WebsiteColumn,
-		Popularity:         PopularityColumn,
-		CollectionTmdbID:   CollectionTmdbIDColumn,
-		CollectionTitle:    CollectionTitleColumn,
+		ID:           IDColumn,
+		TmdbID:       TmdbIDColumn,
+		Title:        TitleColumn,
+		LastInfoSync: LastInfoSyncColumn,
+		FirstAirDate: FirstAirDateColumn,
+		LastAirDate:  LastAirDateColumn,
+		Seasons:      SeasonsColumn,
+		Episodes:     EpisodesColumn,
+		Status:       StatusColumn,
 
 		AllColumns:     allColumns,
 		MutableColumns: mutableColumns,

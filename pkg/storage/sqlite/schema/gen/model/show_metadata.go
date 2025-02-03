@@ -12,30 +12,13 @@ import (
 )
 
 type ShowMetadata struct {
-	ID                 int32 `sql:"primary_key"`
-	TmdbID             int32
-	Seasons            *int32
-	Images             string
-	Genres             *string
-	Title              string
-	SortTitle          *string
-	CleanTitle         *string
-	OriginalTitle      *string
-	CleanOriginalTitle *string
-	OriginalLanguage   int32
-	Status             int32
-	LastInfoSync       *time.Time
-	ReleaseDate        *time.Time
-	Year               *int32
-	SecondaryYear      *int32
-	Ratings            *string
-	Recommendations    string
-	Certification      *string
-	YoutubeTrailerID   *string
-	Studio             *string
-	Overview           *string
-	Website            *string
-	Popularity         *float64
-	CollectionTmdbID   *int32
-	CollectionTitle    *string
+	ID           int32 `sql:"primary_key"`
+	TmdbID       int32
+	Title        string
+	LastInfoSync *time.Time
+	FirstAirDate *time.Time
+	LastAirDate  *time.Time
+	Seasons      int32
+	Episodes     int32
+	Status       string
 }
