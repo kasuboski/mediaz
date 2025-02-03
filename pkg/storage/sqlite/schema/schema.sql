@@ -135,7 +135,7 @@ CREATE TABLE IF NOT EXISTS "episode" (
     "episode_number" INTEGER NOT NULL,
     "monitored" INTEGER NOT NULL,
     "episode_metadata_id" INTEGER UNIQUE,
-    "movie_file_id" INTEGER,
+    "episode_file_id" INTEGER,
     FOREIGN KEY ("season_id") REFERENCES "season" ("id")
 );
 

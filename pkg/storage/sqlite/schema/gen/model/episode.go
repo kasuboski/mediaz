@@ -13,5 +13,5 @@ type Episode struct {
 	EpisodeNumber     int32
 	Monitored         int32
 	EpisodeMetadataID *int32
-	MovieFileID       *int32
+	EpisodeFileID     *int32
 }
