@@ -4,6 +4,7 @@ import (
 	"errors"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/kasuboski/mediaz/config/mocks"
 	"github.com/spf13/viper"
@@ -48,6 +49,12 @@ func TestNew(t *testing.T) {
 				Host:   "my-prowlarr-host",
 				APIKey: "my-prowlarr-api-key",
 			},
+			Manager: Manager{
+				Jobs: Jobs{
+					MovieIndex:     time.Minute * 15,
+					MovieReconcile: time.Minute * 10,
+				},
+			},
 		}
 
 		if !reflect.DeepEqual(c, wantConfig) {
@@ -61,6 +68,8 @@ func TestNew(t *testing.T) {
 		cu.SetDefault("tmdb.scheme", "https")
 		cu.SetDefault("tmdb.apiKey", "fake-key")
 		cu.SetDefault("prowlarr.scheme", "http")
+		cu.SetDefault("manager.jobs.movieIndex", time.Minute*15)
+		cu.SetDefault("manager.jobs.movieReconcile", time.Minute*10)
 		c, err := New(cu)
 		if err != nil {
 			t.Errorf("TestNew() err = %v, want %v", err, nil)
@@ -73,6 +82,12 @@ func TestNew(t *testing.T) {
 			},
 			Prowlarr: Prowlarr{
 				Scheme: "http",
+			},
+			Manager: Manager{
+				Jobs: Jobs{
+					MovieIndex:     time.Minute * 15,
+					MovieReconcile: time.Minute * 10,
+				},
 			},
 		}
 

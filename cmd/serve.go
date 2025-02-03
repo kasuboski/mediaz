@@ -95,7 +95,7 @@ var serveCmd = &cobra.Command{
 		)
 
 		factory := download.NewDownloadClientFactory(cfg.Library.DownloadMountDir)
-		manager := manager.New(tmdbClient, prowlarrClient, library, store, factory)
+		manager := manager.New(tmdbClient, prowlarrClient, library, store, factory, cfg.Manager)
 
 		go func() {
 			log.Fatal(manager.Run(context.Background()))
