@@ -11,6 +11,10 @@ package table
 // this method only once at the beginning of the program.
 func UseSchema(schema string) {
 	DownloadClient = DownloadClient.FromSchema(schema)
+	Episode = Episode.FromSchema(schema)
+	EpisodeFile = EpisodeFile.FromSchema(schema)
+	EpisodeMetadata = EpisodeMetadata.FromSchema(schema)
+	EpisodeTransition = EpisodeTransition.FromSchema(schema)
 	Indexer = Indexer.FromSchema(schema)
 	Movie = Movie.FromSchema(schema)
 	MovieFile = MovieFile.FromSchema(schema)
@@ -19,4 +23,8 @@ func UseSchema(schema string) {
 	QualityDefinition = QualityDefinition.FromSchema(schema)
 	QualityProfile = QualityProfile.FromSchema(schema)
 	QualityProfileItem = QualityProfileItem.FromSchema(schema)
+	Season = Season.FromSchema(schema)
+	SeasonMetadata = SeasonMetadata.FromSchema(schema)
+	Show = Show.FromSchema(schema)
+	ShowMetadata = ShowMetadata.FromSchema(schema)
 }

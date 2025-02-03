@@ -91,9 +91,88 @@ CREATE TABLE IF NOT EXISTS "movie" (
     "last_search_time" DATETIME
 );
 
+CREATE TABLE IF NOT EXISTS "show" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "monitored" INTEGER NOT NULL,
+    "quality_profile_id" INTEGER NOT NULL,
+    "added" DATETIME DEFAULT current_timestamp,
+    "show_metadata" INTEGER UNIQUE,
+    "last_search_time" DATETIME
+);
+
+CREATE TABLE IF NOT EXISTS "show_metadata" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "tmdb_id" INTEGER NOT NULL,
+    "title" TEXT NOT NULL,
+    "last_info_sync" DATETIME,
+    "first_air_date" DATETIME,
+    "last_air_date" DATETIME,
+    "season_count" INTEGER NOT NULL,
+    "episode_count" INTEGER NOT NULL,
+    "status" TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS "season" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "show_id" INTEGER NOT NULL,
+    "season_metadata_id" INTEGER UNIQUE,
+    FOREIGN KEY ("show_id") REFERENCES "show" ("id")
+);
+
+CREATE TABLE IF NOT EXISTS "season_metadata" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "tmdb_id" INTEGER NOT NULL UNIQUE,
+    "title" TEXT,
+    "overview" TEXT,
+    "episode_count" INTEGER NOT NULL,
+    "number" INTEGER NOT NULL,
+    "air_date" DATETIME
+);
+
+CREATE TABLE IF NOT EXISTS "episode" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "season_id" INTEGER NOT NULL,
+    "episode_number" INTEGER NOT NULL,
+    "monitored" INTEGER NOT NULL,
+    "episode_metadata_id" INTEGER UNIQUE,
+    "episode_file_id" INTEGER,
+    FOREIGN KEY ("season_id") REFERENCES "season" ("id")
+);
+
+CREATE TABLE IF NOT EXISTS "episode_file" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "quality" TEXT NOT NULL,
+    "size" BIGINT NOT NULL,
+    "date_added" DATETIME NOT NULL DEFAULT current_timestamp,
+    "relative_path" TEXT UNIQUE,
+    "original_file_path" TEXT
+);
+
+CREATE TABLE IF NOT EXISTS "episode_metadata" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "tmdb_id" INTEGER NOT NULL UNIQUE,
+    "title" TEXT,
+    "overview" TEXT,
+    "air_date" DATETIME,
+    "runtime" INTEGER
+);
+
 CREATE TABLE IF NOT EXISTS "movie_transition" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     "movie_id" INTEGER NOT NULL REFERENCES "movie"("id"),
+    "to_state" TEXT NOT NULL,
+    "from_state" TEXT,
+    "most_recent" BOOLEAN NOT NULL,
+    "sort_key" INTEGER NOT NULL,
+    "download_client_id" INTEGER REFERENCES "download_client"("id"),
+    "download_id" TEXT,
+    "created_at" DATETIME DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS "episode_transition" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "episode_id" INTEGER NOT NULL REFERENCES "episode"("id"),
     "to_state" TEXT NOT NULL,
     "from_state" TEXT,
     "most_recent" BOOLEAN NOT NULL,
