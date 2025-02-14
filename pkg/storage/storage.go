@@ -19,6 +19,7 @@ type Storage interface {
 	MovieStorage
 	MovieMetadataStorage
 	DownloadClientStorage
+	ShowStorage
 }
 
 type IndexerStorage interface {
@@ -124,6 +125,40 @@ type QualityDefinition struct {
 	MinSize       float64 `alias:"quality_definition.min_size" json:"minSize"`
 	MaxSize       float64 `alias:"quality_definition.max_size" json:"maxSize"`
 	QualityID     int32   `alias:"quality_definition.quality_id" json:"-"`
+}
+
+type Episode struct {
+	model.Episode
+	State            EpisodeState `json:"state"`
+	DownloadID       string       `json:"-"`
+	DownloadClientID int32        `json:"-"`
+}
+
+type EpisodeState string
+
+const (
+	EpisodeStateNew         EpisodeState = ""
+	EpisodeStateMissing     EpisodeState = "missing"
+	EpisodeStateUnreleased  EpisodeState = "unreleased"
+	EpisodeStateDownloading EpisodeState = "downloading"
+)
+
+type ShowStorage interface {
+	GetShow(ctx context.Context, id int64) (*model.Show, error)
+	CreateShow(ctx context.Context, show model.Show) (int64, error)
+	DeleteShow(ctx context.Context, id int64) error
+	ListShows(ctx context.Context) ([]*model.Show, error)
+
+	GetSeason(ctx context.Context, id int64) (*model.Season, error)
+	CreateSeason(ctx context.Context, season model.Season) (int64, error)
+	DeleteSeason(ctx context.Context, id int64) error
+	ListSeasons(ctx context.Context, showID int64) ([]*model.Season, error)
+
+	GetEpisode(ctx context.Context, id int64) (*Episode, error)
+	CreateEpisode(ctx context.Context, episode Episode) (int64, error)
+	DeleteEpisode(ctx context.Context, id int64) error
+	ListEpisodes(ctx context.Context, seasonID int64) ([]*Episode, error)
+	ListEpisodesByState(ctx context.Context, state EpisodeState) ([]*Episode, error)
 }
 
 func ReadSchemaFiles(files ...string) ([]string, error) {
