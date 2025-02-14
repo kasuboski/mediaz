@@ -956,3 +956,115 @@ func (s SQLite) ListEpisodesByState(ctx context.Context, state storage.EpisodeSt
 
 	return episodes, nil
 }
+
+// GetEpisodeByEpisodeFileID gets an episode by its associated file ID
+func (s SQLite) GetEpisodeByEpisodeFileID(ctx context.Context, fileID int64) (*storage.Episode, error) {
+	stmt := sqlite.SELECT(
+		table.Episode.AllColumns,
+		table.EpisodeTransition.ToState,
+		table.EpisodeTransition.DownloadID,
+		table.EpisodeTransition.DownloadClientID,
+	).
+		FROM(table.Episode.
+			LEFT_JOIN(table.EpisodeTransition,
+				table.Episode.ID.EQ(table.EpisodeTransition.EpisodeID),
+			)).
+		WHERE(table.Episode.EpisodeFileID.EQ(sqlite.Int64(fileID)))
+
+	var episode storage.Episode
+	err := stmt.QueryContext(ctx, s.db, &episode)
+	if err != nil {
+		if errors.Is(err, qrm.ErrNoRows) {
+			return nil, storage.ErrNotFound
+		}
+		return nil, fmt.Errorf("failed to get episode by file id: %w", err)
+	}
+
+	return &episode, nil
+}
+
+// UpdateEpisodeEpisodeFileID updates the episode file id for an episode
+func (s SQLite) UpdateEpisodeEpisodeFileID(ctx context.Context, id int64, fileID int64) error {
+	stmt := table.Episode.
+		UPDATE().
+		SET(table.Episode.EpisodeFileID.SET(sqlite.Int64(fileID))).
+		WHERE(table.Episode.ID.EQ(sqlite.Int64(id)))
+
+	_, err := s.handleStatement(ctx, stmt)
+	if err != nil {
+		return fmt.Errorf("failed to update episode file id: %w", err)
+	}
+
+	return nil
+}
+
+// GetEpisodeFiles gets all episode files for an episode
+func (s SQLite) GetEpisodeFiles(ctx context.Context, id int64) ([]*model.EpisodeFile, error) {
+	stmt := table.EpisodeFile.
+		SELECT(table.EpisodeFile.AllColumns).
+		FROM(table.EpisodeFile).
+		WHERE(table.EpisodeFile.ID.EQ(sqlite.Int64(id)))
+
+	var result []*model.EpisodeFile
+	err := stmt.QueryContext(ctx, s.db, &result)
+	if err != nil {
+		return result, err
+	}
+
+	if len(result) == 0 {
+		return nil, storage.ErrNotFound
+	}
+
+	return result, err
+}
+
+// CreateEpisodeFile stores an episode file
+func (s SQLite) CreateEpisodeFile(ctx context.Context, file model.EpisodeFile) (int64, error) {
+	// Exclude DateAdded so that the default is used
+	stmt := table.EpisodeFile.
+		INSERT(table.EpisodeFile.MutableColumns.Except(table.EpisodeFile.DateAdded).Except(table.EpisodeFile.ID)).
+		RETURNING(table.EpisodeFile.ID).
+		MODEL(file)
+
+	result, err := s.handleInsert(ctx, stmt)
+	if err != nil {
+		return 0, err
+	}
+
+	inserted, err := result.LastInsertId()
+	if err != nil {
+		return 0, err
+	}
+
+	return inserted, nil
+}
+
+// DeleteEpisodeFile removes an episode file by id
+func (s SQLite) DeleteEpisodeFile(ctx context.Context, id int64) error {
+	stmt := table.EpisodeFile.
+		DELETE().
+		WHERE(table.EpisodeFile.ID.EQ(sqlite.Int64(id))).
+		RETURNING(table.EpisodeFile.ID)
+
+	_, err := s.handleDelete(ctx, stmt)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// ListEpisodeFiles lists all episode files
+func (s SQLite) ListEpisodeFiles(ctx context.Context) ([]*model.EpisodeFile, error) {
+	episodeFiles := make([]*model.EpisodeFile, 0)
+	stmt := table.EpisodeFile.
+		SELECT(table.EpisodeFile.AllColumns).
+		FROM(table.EpisodeFile).
+		ORDER_BY(table.EpisodeFile.ID.ASC())
+
+	err := stmt.QueryContext(ctx, s.db, &episodeFiles)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list episode files: %w", err)
+	}
+
+	return episodeFiles, nil
+}

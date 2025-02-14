@@ -155,10 +155,17 @@ type ShowStorage interface {
 	ListSeasons(ctx context.Context, showID int64) ([]*model.Season, error)
 
 	GetEpisode(ctx context.Context, id int64) (*Episode, error)
+	GetEpisodeByEpisodeFileID(ctx context.Context, fileID int64) (*Episode, error)
 	CreateEpisode(ctx context.Context, episode Episode) (int64, error)
 	DeleteEpisode(ctx context.Context, id int64) error
 	ListEpisodes(ctx context.Context, seasonID int64) ([]*Episode, error)
 	ListEpisodesByState(ctx context.Context, state EpisodeState) ([]*Episode, error)
+	UpdateEpisodeEpisodeFileID(ctx context.Context, id int64, fileID int64) error
+
+	GetEpisodeFiles(ctx context.Context, id int64) ([]*model.EpisodeFile, error)
+	CreateEpisodeFile(ctx context.Context, episodeFile model.EpisodeFile) (int64, error)
+	DeleteEpisodeFile(ctx context.Context, id int64) error
+	ListEpisodeFiles(ctx context.Context) ([]*model.EpisodeFile, error)
 }
 
 func ReadSchemaFiles(files ...string) ([]string, error) {
