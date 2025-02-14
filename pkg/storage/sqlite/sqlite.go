@@ -1068,3 +1068,207 @@ func (s SQLite) ListEpisodeFiles(ctx context.Context) ([]*model.EpisodeFile, err
 
 	return episodeFiles, nil
 }
+
+// CreateShowMetadata creates the given showMeta
+func (s SQLite) CreateShowMetadata(ctx context.Context, showMeta model.ShowMetadata) (int64, error) {
+	stmt := table.ShowMetadata.
+		INSERT(table.ShowMetadata.MutableColumns).
+		MODEL(showMeta).
+		RETURNING(table.ShowMetadata.ID)
+
+	result, err := s.handleInsert(ctx, stmt)
+	if err != nil {
+		return 0, fmt.Errorf("failed to create show metadata: %w", err)
+	}
+
+	inserted, err := result.LastInsertId()
+	if err != nil {
+		return 0, err
+	}
+
+	return inserted, nil
+}
+
+// DeleteShowMetadata deletes a show metadata by id
+func (s SQLite) DeleteShowMetadata(ctx context.Context, id int64) error {
+	stmt := table.ShowMetadata.
+		DELETE().
+		WHERE(table.ShowMetadata.ID.EQ(sqlite.Int64(id)))
+
+	_, err := s.handleDelete(ctx, stmt)
+	if err != nil {
+		return fmt.Errorf("failed to delete show metadata: %w", err)
+	}
+
+	return nil
+}
+
+// ListShowMetadata lists all show metadata
+func (s SQLite) ListShowMetadata(ctx context.Context) ([]*model.ShowMetadata, error) {
+	stmt := table.ShowMetadata.
+		SELECT(table.ShowMetadata.AllColumns).
+		FROM(table.ShowMetadata)
+
+	var showMetadata []*model.ShowMetadata
+	err := stmt.QueryContext(ctx, s.db, &showMetadata)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list show metadata: %w", err)
+	}
+
+	return showMetadata, nil
+}
+
+// GetShowMetadata get a show metadata for the given where
+func (s SQLite) GetShowMetadata(ctx context.Context, where sqlite.BoolExpression) (*model.ShowMetadata, error) {
+	stmt := table.ShowMetadata.
+		SELECT(table.ShowMetadata.AllColumns).
+		FROM(table.ShowMetadata).
+		WHERE(where)
+
+	var showMetadata model.ShowMetadata
+	err := stmt.QueryContext(ctx, s.db, &showMetadata)
+	if err != nil {
+		if errors.Is(err, qrm.ErrNoRows) {
+			return nil, storage.ErrNotFound
+		}
+		return nil, fmt.Errorf("failed to get show metadata: %w", err)
+	}
+
+	return &showMetadata, nil
+}
+
+// CreateSeasonMetadata creates the given seasonMeta
+func (s SQLite) CreateSeasonMetadata(ctx context.Context, seasonMeta model.SeasonMetadata) (int64, error) {
+	stmt := table.SeasonMetadata.
+		INSERT(table.SeasonMetadata.MutableColumns).
+		MODEL(seasonMeta).
+		RETURNING(table.SeasonMetadata.ID)
+
+	result, err := s.handleInsert(ctx, stmt)
+	if err != nil {
+		return 0, fmt.Errorf("failed to create season metadata: %w", err)
+	}
+
+	inserted, err := result.LastInsertId()
+	if err != nil {
+		return 0, err
+	}
+
+	return inserted, nil
+}
+
+// DeleteSeasonMetadata deletes a season metadata by id
+func (s SQLite) DeleteSeasonMetadata(ctx context.Context, id int64) error {
+	stmt := table.SeasonMetadata.
+		DELETE().
+		WHERE(table.SeasonMetadata.ID.EQ(sqlite.Int64(id)))
+
+	_, err := s.handleDelete(ctx, stmt)
+	if err != nil {
+		return fmt.Errorf("failed to delete season metadata: %w", err)
+	}
+
+	return nil
+}
+
+// ListSeasonMetadata lists all season metadata
+func (s SQLite) ListSeasonMetadata(ctx context.Context) ([]*model.SeasonMetadata, error) {
+	stmt := table.SeasonMetadata.
+		SELECT(table.SeasonMetadata.AllColumns).
+		FROM(table.SeasonMetadata)
+
+	var seasonMetadata []*model.SeasonMetadata
+	err := stmt.QueryContext(ctx, s.db, &seasonMetadata)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list season metadata: %w", err)
+	}
+
+	return seasonMetadata, nil
+}
+
+// GetSeasonMetadata get a season metadata for the given where
+func (s SQLite) GetSeasonMetadata(ctx context.Context, where sqlite.BoolExpression) (*model.SeasonMetadata, error) {
+	stmt := table.SeasonMetadata.
+		SELECT(table.SeasonMetadata.AllColumns).
+		FROM(table.SeasonMetadata).
+		WHERE(where)
+
+	var seasonMetadata model.SeasonMetadata
+	err := stmt.QueryContext(ctx, s.db, &seasonMetadata)
+	if err != nil {
+		if errors.Is(err, qrm.ErrNoRows) {
+			return nil, storage.ErrNotFound
+		}
+		return nil, fmt.Errorf("failed to get season metadata: %w", err)
+	}
+
+	return &seasonMetadata, nil
+}
+
+// CreateEpisodeMetadata creates the given episodeMeta
+func (s SQLite) CreateEpisodeMetadata(ctx context.Context, episodeMeta model.EpisodeMetadata) (int64, error) {
+	stmt := table.EpisodeMetadata.
+		INSERT(table.EpisodeMetadata.MutableColumns).
+		MODEL(episodeMeta).
+		RETURNING(table.EpisodeMetadata.ID)
+
+	result, err := s.handleInsert(ctx, stmt)
+	if err != nil {
+		return 0, fmt.Errorf("failed to create episode metadata: %w", err)
+	}
+
+	inserted, err := result.LastInsertId()
+	if err != nil {
+		return 0, err
+	}
+
+	return inserted, nil
+}
+
+// DeleteEpisodeMetadata deletes an episode metadata by id
+func (s SQLite) DeleteEpisodeMetadata(ctx context.Context, id int64) error {
+	stmt := table.EpisodeMetadata.
+		DELETE().
+		WHERE(table.EpisodeMetadata.ID.EQ(sqlite.Int64(id)))
+
+	_, err := s.handleDelete(ctx, stmt)
+	if err != nil {
+		return fmt.Errorf("failed to delete episode metadata: %w", err)
+	}
+
+	return nil
+}
+
+// ListEpisodeMetadata lists all episode metadata
+func (s SQLite) ListEpisodeMetadata(ctx context.Context) ([]*model.EpisodeMetadata, error) {
+	stmt := table.EpisodeMetadata.
+		SELECT(table.EpisodeMetadata.AllColumns).
+		FROM(table.EpisodeMetadata)
+
+	var episodeMetadata []*model.EpisodeMetadata
+	err := stmt.QueryContext(ctx, s.db, &episodeMetadata)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list episode metadata: %w", err)
+	}
+
+	return episodeMetadata, nil
+}
+
+// GetEpisodeMetadata get an episode metadata for the given where
+func (s SQLite) GetEpisodeMetadata(ctx context.Context, where sqlite.BoolExpression) (*model.EpisodeMetadata, error) {
+	stmt := table.EpisodeMetadata.
+		SELECT(table.EpisodeMetadata.AllColumns).
+		FROM(table.EpisodeMetadata).
+		WHERE(where)
+
+	var episodeMetadata model.EpisodeMetadata
+	err := stmt.QueryContext(ctx, s.db, &episodeMetadata)
+	if err != nil {
+		if errors.Is(err, qrm.ErrNoRows) {
+			return nil, storage.ErrNotFound
+		}
+		return nil, fmt.Errorf("failed to get episode metadata: %w", err)
+	}
+
+	return &episodeMetadata, nil
+}

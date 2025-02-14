@@ -20,6 +20,7 @@ type Storage interface {
 	MovieMetadataStorage
 	DownloadClientStorage
 	ShowStorage
+	ShowMetadataStorage
 }
 
 type IndexerStorage interface {
@@ -166,6 +167,23 @@ type ShowStorage interface {
 	CreateEpisodeFile(ctx context.Context, episodeFile model.EpisodeFile) (int64, error)
 	DeleteEpisodeFile(ctx context.Context, id int64) error
 	ListEpisodeFiles(ctx context.Context) ([]*model.EpisodeFile, error)
+}
+
+type ShowMetadataStorage interface {
+	CreateShowMetadata(ctx context.Context, showMeta model.ShowMetadata) (int64, error)
+	DeleteShowMetadata(ctx context.Context, id int64) error
+	ListShowMetadata(ctx context.Context) ([]*model.ShowMetadata, error)
+	GetShowMetadata(ctx context.Context, where sqlite.BoolExpression) (*model.ShowMetadata, error)
+
+	CreateSeasonMetadata(ctx context.Context, seasonMeta model.SeasonMetadata) (int64, error)
+	DeleteSeasonMetadata(ctx context.Context, id int64) error
+	ListSeasonMetadata(ctx context.Context) ([]*model.SeasonMetadata, error)
+	GetSeasonMetadata(ctx context.Context, where sqlite.BoolExpression) (*model.SeasonMetadata, error)
+
+	CreateEpisodeMetadata(ctx context.Context, episodeMeta model.EpisodeMetadata) (int64, error)
+	DeleteEpisodeMetadata(ctx context.Context, id int64) error
+	ListEpisodeMetadata(ctx context.Context) ([]*model.EpisodeMetadata, error)
+	GetEpisodeMetadata(ctx context.Context, where sqlite.BoolExpression) (*model.EpisodeMetadata, error)
 }
 
 func ReadSchemaFiles(files ...string) ([]string, error) {
