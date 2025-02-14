@@ -140,9 +140,22 @@ type EpisodeState string
 const (
 	EpisodeStateNew         EpisodeState = ""
 	EpisodeStateMissing     EpisodeState = "missing"
+	EpisodeStateDiscovered  EpisodeState = "discovered"
 	EpisodeStateUnreleased  EpisodeState = "unreleased"
 	EpisodeStateDownloading EpisodeState = "downloading"
+	EpisodeStateDownloaded  EpisodeState = "downloaded"
 )
+
+type EpisodeTransition model.EpisodeTransition
+
+func (e Episode) Machine() *machine.StateMachine[EpisodeState] {
+	return machine.New(e.State,
+		machine.From(EpisodeStateNew).To(EpisodeStateUnreleased, EpisodeStateMissing, EpisodeStateDiscovered),
+		machine.From(EpisodeStateMissing).To(EpisodeStateDiscovered, EpisodeStateDownloading),
+		machine.From(EpisodeStateUnreleased).To(EpisodeStateDiscovered, EpisodeStateMissing),
+		machine.From(EpisodeStateDownloading).To(EpisodeStateDownloaded),
+	)
+}
 
 type ShowStorage interface {
 	GetShow(ctx context.Context, id int64) (*model.Show, error)
@@ -157,7 +170,7 @@ type ShowStorage interface {
 
 	GetEpisode(ctx context.Context, id int64) (*Episode, error)
 	GetEpisodeByEpisodeFileID(ctx context.Context, fileID int64) (*Episode, error)
-	CreateEpisode(ctx context.Context, episode Episode) (int64, error)
+	CreateEpisode(ctx context.Context, episode Episode, state EpisodeState) (int64, error)
 	DeleteEpisode(ctx context.Context, id int64) error
 	ListEpisodes(ctx context.Context, seasonID int64) ([]*Episode, error)
 	ListEpisodesByState(ctx context.Context, state EpisodeState) ([]*Episode, error)

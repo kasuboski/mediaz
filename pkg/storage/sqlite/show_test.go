@@ -22,13 +22,12 @@ func TestShowStorage(t *testing.T) {
 	shows, err := store.ListShows(ctx)
 	assert.Nil(t, err)
 	assert.Empty(t, shows)
-	time := time.Now()
 
 	// Test creating a show
 	show := model.Show{
 		Monitored:        1,
 		QualityProfileID: 1,
-		Added:            &time,
+		Added:            ptr(time.Now()),
 	}
 
 	id, err := store.CreateShow(ctx, show)
@@ -138,10 +137,9 @@ func TestEpisodeStorage(t *testing.T) {
 			EpisodeNumber: 1,
 			Monitored:     1,
 		},
-		State: storage.EpisodeState("wanted"),
 	}
 
-	id, err := store.CreateEpisode(ctx, episode)
+	id, err := store.CreateEpisode(ctx, episode, storage.EpisodeStateMissing)
 	assert.Nil(t, err)
 	assert.Greater(t, id, int64(0))
 
@@ -161,7 +159,7 @@ func TestEpisodeStorage(t *testing.T) {
 	assert.Equal(t, episode.EpisodeNumber, episodes[0].EpisodeNumber)
 
 	// Test listing episodes by state
-	stateEpisodes, err := store.ListEpisodesByState(ctx, storage.EpisodeState("wanted"))
+	stateEpisodes, err := store.ListEpisodesByState(ctx, storage.EpisodeStateMissing)
 	assert.Nil(t, err)
 	assert.Len(t, stateEpisodes, 1)
 	assert.Equal(t, episode.State, stateEpisodes[0].State)

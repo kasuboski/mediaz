@@ -31,13 +31,17 @@ func (s SQLite) CreateShow(ctx context.Context, show model.Show) (int64, error) 
 		ON_CONFLICT(table.Show.ID).
 		DO_UPDATE(sqlite.SET(table.Show.MutableColumns.SET(sqlite.ROW(setColumns...))))
 
-	var id int64
-	err := stmt.QueryContext(ctx, s.db, &id)
+	result, err := s.handleInsert(ctx, stmt)
 	if err != nil {
-		return 0, fmt.Errorf("failed to create show: %w", err)
+		return 0, err
 	}
 
-	return id, nil
+	inserted, err := result.LastInsertId()
+	if err != nil {
+		return 0, err
+	}
+
+	return inserted, nil
 }
 
 // GetShow gets a show by id
@@ -105,13 +109,17 @@ func (s SQLite) CreateSeason(ctx context.Context, season model.Season) (int64, e
 		ON_CONFLICT(table.Season.ID).
 		DO_UPDATE(sqlite.SET(table.Season.MutableColumns.SET(sqlite.ROW(setColumns...))))
 
-	var id int64
-	err := stmt.QueryContext(ctx, s.db, &id)
+	result, err := s.handleInsert(ctx, stmt)
 	if err != nil {
-		return 0, fmt.Errorf("failed to create season: %w", err)
+		return 0, err
 	}
 
-	return id, nil
+	inserted, err := result.LastInsertId()
+	if err != nil {
+		return 0, err
+	}
+
+	return inserted, nil
 }
 
 // GetSeason gets a season by id
@@ -162,11 +170,21 @@ func (s SQLite) ListSeasons(ctx context.Context, showID int64) ([]*model.Season,
 }
 
 // CreateEpisode stores an episode and creates an initial transition state
-func (s SQLite) CreateEpisode(ctx context.Context, episode storage.Episode) (int64, error) {
+func (s SQLite) CreateEpisode(ctx context.Context, episode storage.Episode, initialState storage.EpisodeState) (int64, error) {
+	if episode.State == "" {
+		episode.State = storage.EpisodeStateNew
+	}
+
+	err := episode.Machine().ToState(initialState)
+	if err != nil {
+		return 0, err
+	}
+
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return 0, err
 	}
+	defer tx.Rollback()
 
 	setColumns := make([]sqlite.Expression, len(table.Episode.MutableColumns))
 	for i, c := range table.Episode.MutableColumns {
@@ -185,42 +203,43 @@ func (s SQLite) CreateEpisode(ctx context.Context, episode storage.Episode) (int
 		ON_CONFLICT(table.Episode.ID).
 		DO_UPDATE(sqlite.SET(table.Episode.MutableColumns.SET(sqlite.ROW(setColumns...))))
 
-	var id int64
-	err = stmt.QueryContext(ctx, tx, &id)
+	result, err := stmt.ExecContext(ctx, tx)
+	if err != nil {
+		return 0, err
+	}
+
+	inserted, err := result.LastInsertId()
 	if err != nil {
 		tx.Rollback()
-		return 0, fmt.Errorf("failed to create episode: %w", err)
+		return 0, err
 	}
 
-	// Create initial transition
-	transition := model.EpisodeTransition{
-		EpisodeID: int32(id),
-		ToState:   string(episode.State),
+	// Create initial transition state
+	state := model.EpisodeTransition{
+		EpisodeID:  int32(inserted),
+		ToState:    string(initialState),
+		MostRecent: true,
+		SortKey:    1,
 	}
 
-	if episode.DownloadID != "" {
-		transition.DownloadID = &episode.DownloadID
-	}
-	if episode.DownloadClientID != 0 {
-		transition.DownloadClientID = &episode.DownloadClientID
-	}
+	transitionStmt := table.EpisodeTransition.
+		INSERT(table.EpisodeTransition.AllColumns.
+			Except(table.EpisodeTransition.ID, table.EpisodeTransition.CreatedAt, table.EpisodeTransition.UpdatedAt)).
+		MODEL(state)
 
-	stmt = table.EpisodeTransition.
-		INSERT(table.EpisodeTransition.MutableColumns).
-		MODEL(transition)
-
-	_, err = s.handleStatement(ctx, stmt)
+	_, err = transitionStmt.ExecContext(ctx, tx)
 	if err != nil {
 		tx.Rollback()
-		return 0, fmt.Errorf("failed to create episode transition: %w", err)
+		return 0, err
 	}
 
 	err = tx.Commit()
 	if err != nil {
-		return 0, fmt.Errorf("failed to commit transaction: %w", err)
+		tx.Rollback()
+		return 0, err
 	}
 
-	return id, nil
+	return inserted, nil
 }
 
 // GetEpisode gets an episode by id
@@ -233,7 +252,8 @@ func (s SQLite) GetEpisode(ctx context.Context, id int64) (*storage.Episode, err
 	).
 		FROM(table.Episode.
 			LEFT_JOIN(table.EpisodeTransition,
-				table.Episode.ID.EQ(table.EpisodeTransition.EpisodeID),
+				table.Episode.ID.EQ(table.EpisodeTransition.EpisodeID).
+					AND(table.EpisodeTransition.MostRecent.IS_TRUE()),
 			)).
 		WHERE(table.Episode.ID.EQ(sqlite.Int64(id)))
 
@@ -273,7 +293,8 @@ func (s SQLite) ListEpisodes(ctx context.Context, seasonID int64) ([]*storage.Ep
 	).
 		FROM(table.Episode.
 			LEFT_JOIN(table.EpisodeTransition,
-				table.Episode.ID.EQ(table.EpisodeTransition.EpisodeID),
+				table.Episode.ID.EQ(table.EpisodeTransition.EpisodeID).
+					AND(table.EpisodeTransition.MostRecent.IS_TRUE()),
 			)).
 		WHERE(table.Episode.SeasonID.EQ(sqlite.Int64(seasonID)))
 
@@ -295,8 +316,9 @@ func (s SQLite) ListEpisodesByState(ctx context.Context, state storage.EpisodeSt
 		table.EpisodeTransition.DownloadClientID,
 	).
 		FROM(table.Episode.
-			LEFT_JOIN(table.EpisodeTransition,
-				table.Episode.ID.EQ(table.EpisodeTransition.EpisodeID),
+			INNER_JOIN(table.EpisodeTransition,
+				table.Episode.ID.EQ(table.EpisodeTransition.EpisodeID).
+					AND(table.EpisodeTransition.MostRecent.IS_TRUE()),
 			)).
 		WHERE(table.EpisodeTransition.ToState.EQ(sqlite.String(string(state))))
 
@@ -319,7 +341,8 @@ func (s SQLite) GetEpisodeByEpisodeFileID(ctx context.Context, fileID int64) (*s
 	).
 		FROM(table.Episode.
 			LEFT_JOIN(table.EpisodeTransition,
-				table.Episode.ID.EQ(table.EpisodeTransition.EpisodeID),
+				table.Episode.ID.EQ(table.EpisodeTransition.EpisodeID).
+					AND(table.EpisodeTransition.MostRecent.IS_TRUE()),
 			)).
 		WHERE(table.Episode.EpisodeFileID.EQ(sqlite.Int64(fileID)))
 
@@ -372,11 +395,22 @@ func (s SQLite) GetEpisodeFiles(ctx context.Context, id int64) ([]*model.Episode
 
 // CreateEpisodeFile stores an episode file
 func (s SQLite) CreateEpisodeFile(ctx context.Context, file model.EpisodeFile) (int64, error) {
-	// Exclude DateAdded so that the default is used
+	setColumns := make([]sqlite.Expression, len(table.EpisodeFile.MutableColumns))
+	for i, c := range table.EpisodeFile.MutableColumns {
+		setColumns[i] = c
+	}
+	// don't insert a zeroed ID
+	insertColumns := table.EpisodeFile.MutableColumns
+	if file.ID != 0 {
+		insertColumns = table.EpisodeFile.AllColumns
+	}
+
 	stmt := table.EpisodeFile.
-		INSERT(table.EpisodeFile.MutableColumns.Except(table.EpisodeFile.DateAdded).Except(table.EpisodeFile.ID)).
+		INSERT(insertColumns).
+		MODEL(file).
 		RETURNING(table.EpisodeFile.ID).
-		MODEL(file)
+		ON_CONFLICT(table.EpisodeFile.ID).
+		DO_UPDATE(sqlite.SET(table.EpisodeFile.MutableColumns.SET(sqlite.ROW(setColumns...))))
 
 	result, err := s.handleInsert(ctx, stmt)
 	if err != nil {
@@ -423,14 +457,26 @@ func (s SQLite) ListEpisodeFiles(ctx context.Context) ([]*model.EpisodeFile, err
 
 // CreateShowMetadata creates the given showMeta
 func (s SQLite) CreateShowMetadata(ctx context.Context, showMeta model.ShowMetadata) (int64, error) {
+	setColumns := make([]sqlite.Expression, len(table.ShowMetadata.MutableColumns))
+	for i, c := range table.ShowMetadata.MutableColumns {
+		setColumns[i] = c
+	}
+	// don't insert a zeroed ID
+	insertColumns := table.ShowMetadata.MutableColumns
+	if showMeta.ID != 0 {
+		insertColumns = table.ShowMetadata.AllColumns
+	}
+
 	stmt := table.ShowMetadata.
-		INSERT(table.ShowMetadata.MutableColumns).
+		INSERT(insertColumns).
 		MODEL(showMeta).
-		RETURNING(table.ShowMetadata.ID)
+		RETURNING(table.ShowMetadata.ID).
+		ON_CONFLICT(table.ShowMetadata.ID).
+		DO_UPDATE(sqlite.SET(table.ShowMetadata.MutableColumns.SET(sqlite.ROW(setColumns...))))
 
 	result, err := s.handleInsert(ctx, stmt)
 	if err != nil {
-		return 0, fmt.Errorf("failed to create show metadata: %w", err)
+		return 0, err
 	}
 
 	inserted, err := result.LastInsertId()
@@ -491,14 +537,26 @@ func (s SQLite) GetShowMetadata(ctx context.Context, where sqlite.BoolExpression
 
 // CreateSeasonMetadata creates the given seasonMeta
 func (s SQLite) CreateSeasonMetadata(ctx context.Context, seasonMeta model.SeasonMetadata) (int64, error) {
+	setColumns := make([]sqlite.Expression, len(table.SeasonMetadata.MutableColumns))
+	for i, c := range table.SeasonMetadata.MutableColumns {
+		setColumns[i] = c
+	}
+	// don't insert a zeroed ID
+	insertColumns := table.SeasonMetadata.MutableColumns
+	if seasonMeta.ID != 0 {
+		insertColumns = table.SeasonMetadata.AllColumns
+	}
+
 	stmt := table.SeasonMetadata.
-		INSERT(table.SeasonMetadata.MutableColumns).
+		INSERT(insertColumns).
 		MODEL(seasonMeta).
-		RETURNING(table.SeasonMetadata.ID)
+		RETURNING(table.SeasonMetadata.ID).
+		ON_CONFLICT(table.SeasonMetadata.ID).
+		DO_UPDATE(sqlite.SET(table.SeasonMetadata.MutableColumns.SET(sqlite.ROW(setColumns...))))
 
 	result, err := s.handleInsert(ctx, stmt)
 	if err != nil {
-		return 0, fmt.Errorf("failed to create season metadata: %w", err)
+		return 0, err
 	}
 
 	inserted, err := result.LastInsertId()
@@ -559,14 +617,26 @@ func (s SQLite) GetSeasonMetadata(ctx context.Context, where sqlite.BoolExpressi
 
 // CreateEpisodeMetadata creates the given episodeMeta
 func (s SQLite) CreateEpisodeMetadata(ctx context.Context, episodeMeta model.EpisodeMetadata) (int64, error) {
+	setColumns := make([]sqlite.Expression, len(table.EpisodeMetadata.MutableColumns))
+	for i, c := range table.EpisodeMetadata.MutableColumns {
+		setColumns[i] = c
+	}
+	// don't insert a zeroed ID
+	insertColumns := table.EpisodeMetadata.MutableColumns
+	if episodeMeta.ID != 0 {
+		insertColumns = table.EpisodeMetadata.AllColumns
+	}
+
 	stmt := table.EpisodeMetadata.
-		INSERT(table.EpisodeMetadata.MutableColumns).
+		INSERT(insertColumns).
 		MODEL(episodeMeta).
-		RETURNING(table.EpisodeMetadata.ID)
+		RETURNING(table.EpisodeMetadata.ID).
+		ON_CONFLICT(table.EpisodeMetadata.ID).
+		DO_UPDATE(sqlite.SET(table.EpisodeMetadata.MutableColumns.SET(sqlite.ROW(setColumns...))))
 
 	result, err := s.handleInsert(ctx, stmt)
 	if err != nil {
-		return 0, fmt.Errorf("failed to create episode metadata: %w", err)
+		return 0, err
 	}
 
 	inserted, err := result.LastInsertId()
