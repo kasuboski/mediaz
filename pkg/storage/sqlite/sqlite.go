@@ -347,11 +347,11 @@ func (s SQLite) GetMovieByMetadataID(ctx context.Context, metadataID int) (*stor
 	return movie, nil
 }
 
-func (s SQLite) GetMovieFiles(ctx context.Context, id int64) ([]*model.MovieFile, error) {
+func (s SQLite) GetMovieFilesByMovieID(ctx context.Context, id int64) ([]*model.MovieFile, error) {
 	stmt := table.MovieFile.
 		SELECT(table.MovieFile.AllColumns).
 		FROM(table.MovieFile).
-		WHERE(table.MovieFile.ID.EQ(sqlite.Int64(id)))
+		WHERE(table.MovieFile.ID.EQ(sqlite.Int64(id))) // TODO: This isn't searching the correct column
 
 	var result []*model.MovieFile
 	err := stmt.QueryContext(ctx, s.db, &result)

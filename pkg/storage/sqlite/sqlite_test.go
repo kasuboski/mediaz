@@ -154,7 +154,7 @@ func TestMovieStorage(t *testing.T) {
 	assert.Nil(t, err)
 	assert.NotEmpty(t, res)
 
-	files, err := store.GetMovieFiles(ctx, int64(res))
+	files, err := store.GetMovieFilesByMovieID(ctx, int64(res))
 	assert.NoError(t, err)
 	actualFile := files[0]
 	actualFile.DateAdded = time.Time{}

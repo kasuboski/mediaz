@@ -542,7 +542,7 @@ func (m MediaManager) reconcileDownloadingMovie(ctx context.Context, movie *stor
 		return nil
 	}
 
-	_, err := m.storage.GetMovieFiles(ctx, int64(movie.ID))
+	_, err := m.storage.GetMovieFilesByMovieID(ctx, int64(movie.ID))
 	if err == nil {
 		log.Info("movie files already tracked")
 		return m.updateMovieState(ctx, movie, storage.MovieStateDownloaded, nil)
