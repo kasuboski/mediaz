@@ -156,3 +156,60 @@ func TestRateLimitedHTTPClient_Do(t *testing.T) {
 		assert.Equal(t, http.StatusTooManyRequests, resp.StatusCode)
 	})
 }
+
+func TestRateLimitedClient_getRetryAfter(t *testing.T) {
+	type fields struct {
+		client      HTTPClient
+		baseBackoff time.Duration
+		maxRetries  int
+	}
+	type args struct {
+		resp    *http.Response
+		attempt int
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		args   args
+		want   time.Duration
+	}{
+		{
+			name: "retry after header",
+			fields: fields{
+				baseBackoff: time.Second,
+			},
+			args: args{
+				resp: &http.Response{
+					Header: http.Header{
+						"Retry-After": []string{"1"},
+					},
+				},
+				attempt: 0,
+			},
+			want: time.Second,
+		},
+		{
+			name: "exponential backoff",
+			fields: fields{
+				baseBackoff: time.Second,
+			},
+			args: args{
+				resp:    &http.Response{},
+				attempt: 3,
+			},
+			want: time.Second * 8, // 2^3 * 1 second
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := &RateLimitedClient{
+				client:      tt.fields.client,
+				baseBackoff: tt.fields.baseBackoff,
+				maxRetries:  tt.fields.maxRetries,
+			}
+			if got := c.getRetryAfter(tt.args.resp, tt.args.attempt); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("RateLimitedClient.getRetryAfter() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

@@ -4,10 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
-	"sync"
 	"time"
-
-	"golang.org/x/exp/rand"
 )
 
 const (
@@ -15,12 +12,7 @@ const (
 	DefaultBaseBackoff = time.Millisecond * 500
 )
 
-type HTTPClient interface {
-	Do(req *http.Request) (*http.Response, error)
-}
-
 type RateLimitedClient struct {
-	mu          sync.Mutex
 	client      HTTPClient
 	baseBackoff time.Duration
 	maxRetries  int
@@ -30,13 +22,11 @@ type RateLimitedClient struct {
 type ClientOption func(*RateLimitedClient)
 
 // NewRateLimitedHTTPClient creates a new RateLimitedHTTPClient that respects 429 status codes
-// The client can be used concurrently
 func NewRateLimitedHTTPClient(opts ...ClientOption) *RateLimitedClient {
 	c := &RateLimitedClient{
 		client:      http.DefaultClient,
 		maxRetries:  DefaultMaxRetries,
 		baseBackoff: DefaultBaseBackoff,
-		mu:          sync.Mutex{},
 	}
 
 	for _, opt := range opts {
@@ -67,18 +57,6 @@ func WithHTTPClient(client HTTPClient) ClientOption {
 	}
 }
 
-func (c *RateLimitedClient) getBackoff() time.Duration {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	return c.baseBackoff
-}
-
-func (c *RateLimitedClient) getMaxRetries() int {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	return c.maxRetries
-}
-
 // Do executes the HTTP request while respecting 429 rate limits
 // This is a blocking call until the request completes successfully or the backoff reaches the maximum retries
 // If the maximum number of retries is reached, the response returned will be the last response received
@@ -86,7 +64,7 @@ func (c *RateLimitedClient) Do(req *http.Request) (*http.Response, error) {
 	var resp *http.Response
 	var err error
 
-	for attempt := 0; attempt < c.getMaxRetries(); attempt++ {
+	for attempt := 0; attempt < c.maxRetries; attempt++ {
 		resp, err = c.client.Do(req)
 		if err != nil {
 			return nil, err
@@ -118,13 +96,6 @@ func (c *RateLimitedClient) getRetryAfter(resp *http.Response, attempt int) time
 		}
 	}
 
-	baseBackoff := c.getBackoff()
-
 	// 2^n backoff
-	expBackoff := time.Duration(1<<attempt) * baseBackoff
-
-	// staggers the backoff to avoid a thundering herd
-	jitter := time.Duration(rand.Int63n(int64(baseBackoff)))
-
-	return expBackoff + jitter
+	return time.Duration(1<<attempt) * c.baseBackoff
 }
