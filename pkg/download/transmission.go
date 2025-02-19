@@ -14,12 +14,13 @@ import (
 	"strconv"
 	"sync"
 
+	mhttp "github.com/kasuboski/mediaz/pkg/http"
 	"github.com/kasuboski/mediaz/pkg/logger"
 	"go.uber.org/zap"
 )
 
 type TransmissionClient struct {
-	http        HTTPClient
+	http        mhttp.HTTPClient
 	scheme      string
 	host        string
 	mutex       *sync.Mutex
@@ -40,7 +41,7 @@ const (
 	GetTorrentMethod torrentMethod = "torrent-get"
 )
 
-func NewTransmissionClient(http HTTPClient, scheme, host, mountPrefix string, port int) DownloadClient {
+func NewTransmissionClient(http mhttp.HTTPClient, scheme, host, mountPrefix string, port int) DownloadClient {
 	if port != 0 {
 		host = fmt.Sprintf("%s:%d", host, port)
 	}

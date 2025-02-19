@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"testing"
 
-	httpMock "github.com/kasuboski/mediaz/pkg/download/mocks/http"
+	httpMock "github.com/kasuboski/mediaz/pkg/http/mocks"
 	"github.com/kasuboski/mediaz/pkg/prowlarr"
 	"github.com/oapi-codegen/nullable"
 	"github.com/stretchr/testify/assert"

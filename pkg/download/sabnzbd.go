@@ -12,19 +12,20 @@ import (
 	"strconv"
 	"strings"
 
+	mhttp "github.com/kasuboski/mediaz/pkg/http"
 	"github.com/kasuboski/mediaz/pkg/logger"
 	"go.uber.org/zap"
 )
 
 type SabnzbdClient struct {
-	http        HTTPClient
+	http        mhttp.HTTPClient
 	scheme      string
 	host        string
 	apiKey      string
 	mountPrefix string
 }
 
-func NewSabnzbdClient(http HTTPClient, scheme, host, mountPrefix, apiKey string) DownloadClient {
+func NewSabnzbdClient(http mhttp.HTTPClient, scheme, host, mountPrefix, apiKey string) DownloadClient {
 	return &SabnzbdClient{
 		http,
 		scheme,

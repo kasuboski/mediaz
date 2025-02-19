@@ -10,10 +10,6 @@ import (
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
 )
 
-type HTTPClient interface {
-	Do(req *http.Request) (*http.Response, error)
-}
-
 type DownloadClient interface {
 	Add(ctx context.Context, request AddRequest) (Status, error)
 	Get(ctx context.Context, request GetRequest) (Status, error)
