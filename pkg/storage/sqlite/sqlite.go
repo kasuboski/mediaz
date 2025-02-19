@@ -380,14 +380,13 @@ func (s SQLite) GetMovieFilesByMovieName(ctx context.Context, name string) ([]*m
 		),
 		).
 		WHERE(table.Movie.Path.EQ(sqlite.String(name)))
-	log := logger.FromCtx(ctx)
-	log.Debug("getting movie files by movie name", zap.String("name", name))
+
 	var result []*model.MovieFile
 	err := stmt.QueryContext(ctx, s.db, &result)
 	if err != nil {
 		return result, err
 	}
-	log.Debugw("files found", "files", result)
+
 	if len(result) == 0 {
 		return nil, storage.ErrNotFound
 	}
