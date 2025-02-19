@@ -11,6 +11,7 @@ import (
 
 	"github.com/kasuboski/mediaz/pkg/http/mocks"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
 
@@ -130,7 +131,8 @@ func TestRateLimitedHTTPClient_Do(t *testing.T) {
 		client := NewRateLimitedHTTPClient(WithHTTPClient(mhttp), WithMaxRetries(1))
 		resp, err := client.Do(req)
 		assert.Error(t, err)
-		assert.Nil(t, resp)
+		require.NotNil(t, resp)
+		assert.Equal(t, http.StatusTooManyRequests, resp.StatusCode)
 	})
 
 	t.Run("429 response - with retry header", func(t *testing.T) {
