@@ -7,10 +7,6 @@ import (
 	"time"
 )
 
-type HTTPClient interface {
-	Do(req *http.Request) (*http.Response, error)
-}
-
 const (
 	DefaultMaxRetries  = 3
 	DefaultBaseBackoff = time.Millisecond * 500
