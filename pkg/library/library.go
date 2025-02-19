@@ -207,6 +207,13 @@ func isVideoFile(name string) bool {
 	return false
 }
 
+// MovieNameFromFilepath builds a sanitized name from the path to a movie file
+// Example /movies/My Movie/my-movie.mpv -> My Movie
+func MovieNameFromFilepath(path string) string {
+	dir := dirName(path)
+	return sanitizeName(dir)
+}
+
 func sanitizeName(name string) string {
 	return strings.Trim(strings.TrimSpace(name), "'")
 }
