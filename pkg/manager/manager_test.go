@@ -925,7 +925,7 @@ func Test_Manager_reconcileDownloadingMovie(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, storage.MovieStateDownloaded, mov.State)
 
-		mfs, err := store.GetMovieFiles(ctx, 1)
+		mfs, err := store.GetMovieFilesByMovieID(ctx, 1)
 		require.NoError(t, err)
 		require.Len(t, mfs, 1)
 		mf := mfs[0]
