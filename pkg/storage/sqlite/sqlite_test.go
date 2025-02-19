@@ -75,7 +75,7 @@ func TestMovieStorage(t *testing.T) {
 	store := initSqlite(t, ctx)
 	assert.NotNil(t, store)
 
-	path := "Title/Title.mkv"
+	path := "Title"
 	movie := storage.Movie{
 		Movie: model.Movie{
 			ID:              1,
@@ -146,16 +146,22 @@ func TestMovieStorage(t *testing.T) {
 	assert.Nil(t, err)
 
 	file := model.MovieFile{
-		ID:      1,
-		Quality: "HDTV-720p",
-		Size:    1_000_000_000,
+		ID:           1,
+		Quality:      "HDTV-720p",
+		Size:         1_000_000_000,
+		RelativePath: ptr("Title/Title.mkv"),
 	}
 	res, err = store.CreateMovieFile(ctx, file)
 	assert.Nil(t, err)
 	assert.NotEmpty(t, res)
 
-	files, err := store.GetMovieFilesByMovieID(ctx, int64(res))
-	assert.NoError(t, err)
+	movie.ID = 2
+	mRes, err := store.CreateMovie(ctx, movie, storage.MovieStateMissing)
+	assert.Nil(t, err)
+	assert.NotEmpty(t, mRes)
+
+	files, err := store.GetMovieFilesByMovieName(ctx, "Title")
+	require.NoError(t, err)
 	actualFile := files[0]
 	actualFile.DateAdded = time.Time{}
 	// clear non-deterministic date field

@@ -347,6 +347,29 @@ func (s SQLite) GetMovieByMetadataID(ctx context.Context, metadataID int) (*stor
 	return movie, nil
 }
 
+// GetMovieByPath gets a movie by path
+func (s SQLite) GetMovieByPath(ctx context.Context, path string) (*storage.Movie, error) {
+	stmt := table.Movie.
+		SELECT(
+			table.Movie.AllColumns,
+			table.MovieTransition.ToState,
+			table.MovieTransition.DownloadClientID,
+			table.MovieTransition.DownloadID,
+			table.MovieTransition.MostRecent).
+		FROM(
+			table.Movie.INNER_JOIN(
+				table.MovieTransition,
+				table.Movie.ID.EQ(table.MovieTransition.MovieID))).
+		WHERE(
+			table.Movie.Path.EQ(sqlite.String(path)).
+				AND(table.MovieTransition.MostRecent.EQ(sqlite.Bool(true))),
+		)
+
+	movie := new(storage.Movie)
+	err := stmt.QueryContext(ctx, s.db, movie)
+	return movie, err
+}
+
 func (s SQLite) GetMovieFilesByMovieID(ctx context.Context, id int64) ([]*model.MovieFile, error) {
 	stmt := table.MovieFile.
 		SELECT(table.MovieFile.AllColumns).
@@ -359,6 +382,31 @@ func (s SQLite) GetMovieFilesByMovieID(ctx context.Context, id int64) ([]*model.
 		return result, err
 	}
 
+	if len(result) == 0 {
+		return nil, storage.ErrNotFound
+	}
+
+	return result, err
+}
+
+// GetMovieFilesByMovieName gets all movie files given a movie name
+// It assumes the movie name is the prefix of the relative path for a movie file
+func (s SQLite) GetMovieFilesByMovieName(ctx context.Context, name string) ([]*model.MovieFile, error) {
+	stmt := table.MovieFile.
+		SELECT(table.MovieFile.AllColumns).
+		FROM(table.MovieFile.INNER_JOIN(table.Movie,
+			table.MovieFile.RelativePath.LIKE(table.Movie.Path.CONCAT(sqlite.String("%"))),
+		),
+		).
+		WHERE(table.Movie.Path.EQ(sqlite.String(name)))
+	log := logger.FromCtx(ctx)
+	log.Debug("getting movie files by movie name", zap.String("name", name))
+	var result []*model.MovieFile
+	err := stmt.QueryContext(ctx, s.db, &result)
+	if err != nil {
+		return result, err
+	}
+	log.Debugw("files found", "files", result)
 	if len(result) == 0 {
 		return nil, storage.ErrNotFound
 	}

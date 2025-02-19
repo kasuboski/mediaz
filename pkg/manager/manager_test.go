@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"strconv"
@@ -113,6 +114,7 @@ func TestAddMovietoLibrary(t *testing.T) {
 			Monitored:        1,
 			QualityProfileID: 1,
 			MovieMetadataID:  &movieMetadataID,
+			Path:             ptr("test movie"),
 		},
 		State: storage.MovieStateMissing,
 	}, movie)
@@ -363,8 +365,8 @@ func TestIndexMovieLibrary(t *testing.T) {
 		mockLibrary := mockLibrary.NewMockLibrary(ctrl)
 
 		discoveredFiles := []library.MovieFile{
-			{RelativePath: "movie1.mp4", AbsolutePath: "/movies/movie1.mp4", Size: 1024},
-			{RelativePath: "movie2.mkv", AbsolutePath: "/movies/movie2.mkv", Size: 2048},
+			{RelativePath: "Movie 1/movie1.mp4", AbsolutePath: "/movies/movie1.mp4", Size: 1024},
+			{RelativePath: "Movie 2/movie2.mkv", AbsolutePath: "/movies/movie2.mkv", Size: 2048},
 		}
 
 		mockLibrary.EXPECT().FindMovies(ctx).Times(1).Return(discoveredFiles, nil)
@@ -383,15 +385,15 @@ func TestIndexMovieLibrary(t *testing.T) {
 		require.NoError(t, err)
 		assert.Len(t, movieFiles, 2)
 
-		assert.Equal(t, "movie1.mp4", *movieFiles[0].RelativePath)
+		assert.Equal(t, "Movie 1/movie1.mp4", *movieFiles[0].RelativePath)
 		assert.Equal(t, int64(1024), movieFiles[0].Size)
-		assert.Equal(t, "movie2.mkv", *movieFiles[1].RelativePath)
+		assert.Equal(t, "Movie 2/movie2.mkv", *movieFiles[1].RelativePath)
 		assert.Equal(t, int64(2048), movieFiles[1].Size)
 
 		assert.Equal(t, int32(1), *movies[0].MovieFileID)
-		assert.Equal(t, "movie1.mp4", *movies[0].Path)
+		assert.Equal(t, "Movie 1", *movies[0].Path)
 		assert.Equal(t, int32(2), *movies[1].MovieFileID)
-		assert.Equal(t, "movie2.mkv", *movies[1].Path)
+		assert.Equal(t, "Movie 2", *movies[1].Path)
 	})
 
 	t.Run("create movie for already tracked file", func(t *testing.T) {
@@ -403,13 +405,13 @@ func TestIndexMovieLibrary(t *testing.T) {
 
 		_, err := store.CreateMovieFile(ctx, model.MovieFile{
 			Size:             1024,
-			RelativePath:     ptr("/movies/movie1.mp4"),
-			OriginalFilePath: ptr("/movies/movie1.mp4"),
+			RelativePath:     ptr("Movie 1/movie1.mp4"),
+			OriginalFilePath: ptr("/movies/Movie 1/movie1.mp4"),
 		})
 		require.NoError(t, err)
 
 		discoveredFiles := []library.MovieFile{
-			{RelativePath: "/movies/movie1.mp4", AbsolutePath: "/movies/movie1.mp4"},
+			{RelativePath: "Movie 1/movie1.mp4", AbsolutePath: "/movies/Movie 1/movie1.mp4"},
 		}
 
 		mockLibrary.EXPECT().FindMovies(ctx).Times(1).Return(discoveredFiles, nil)
@@ -429,7 +431,63 @@ func TestIndexMovieLibrary(t *testing.T) {
 		require.Len(t, movies, 1)
 
 		assert.Equal(t, int32(1), *movies[0].MovieFileID)
-		assert.Equal(t, "/movies/movie1.mp4", *movies[0].Path)
+		assert.Equal(t, "Movie 1", *movies[0].Path)
+	})
+
+	t.Run("link new movie file to existing movie", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		ctx := context.Background()
+
+		store := newStore(t, ctx)
+		mockLibrary := mockLibrary.NewMockLibrary(ctrl)
+
+		_, err := store.CreateMovieFile(ctx, model.MovieFile{
+			Size:             1024,
+			RelativePath:     ptr("Movie 1/movie1.mp4"),
+			OriginalFilePath: ptr("/movies/Movie 1/movie1.mp4"),
+		})
+		require.NoError(t, err)
+
+		discoveredFiles := []library.MovieFile{
+			{RelativePath: "Movie 1/movie1.mp4", AbsolutePath: "/movies/Movie 1/movie1.mp4"},
+		}
+
+		mockLibrary.EXPECT().FindMovies(ctx).Times(1).Return(discoveredFiles, nil)
+
+		m := New(nil, nil, mockLibrary, store, nil, config.Manager{})
+		require.NotNil(t, m)
+
+		err = m.IndexMovieLibrary(ctx)
+		assert.NoError(t, err)
+
+		movieFiles, err := store.ListMovieFiles(ctx)
+		require.NoError(t, err)
+		assert.Len(t, movieFiles, 1)
+
+		movies, err := store.ListMovies(ctx)
+		require.NoError(t, err)
+		require.Len(t, movies, 1)
+
+		assert.Equal(t, int32(1), *movies[0].MovieFileID)
+		assert.Equal(t, "Movie 1", *movies[0].Path)
+
+		discoveredFiles = []library.MovieFile{
+			{RelativePath: "Movie 1/movie1.mp4", AbsolutePath: "/movies/Movie 1/movie1.mp4"},
+			{RelativePath: "Movie 1/movie1.mkv", AbsolutePath: "/movies/Movie 1/movie1.mkv"},
+		}
+
+		mockLibrary.EXPECT().FindMovies(ctx).Times(1).Return(discoveredFiles, nil)
+
+		err = m.IndexMovieLibrary(ctx)
+		assert.NoError(t, err)
+
+		movieFiles, err = store.ListMovieFiles(ctx)
+		require.NoError(t, err)
+		assert.Len(t, movieFiles, 2)
+
+		movies, err = store.ListMovies(ctx)
+		require.NoError(t, err)
+		require.Len(t, movies, 1)
 	})
 }
 
@@ -556,14 +614,14 @@ func Test_Manager_reconcileDownloadingMovie(t *testing.T) {
 		m := New(nil, nil, nil, store, nil, config.Manager{})
 		require.NotNil(t, m)
 
-		movie := storage.Movie{Movie: model.Movie{ID: 1, Monitored: 1}}
+		movie := storage.Movie{Movie: model.Movie{ID: 1, Monitored: 1, Path: ptr("Movie 1")}}
 		_, err := store.CreateMovie(ctx, movie, storage.MovieStateMissing)
 		require.NoError(t, err)
 
 		err = m.updateMovieState(ctx, &movie, storage.MovieStateDownloading, nil)
 		require.NoError(t, err)
 
-		_, err = store.CreateMovieFile(ctx, model.MovieFile{})
+		_, err = store.CreateMovieFile(ctx, model.MovieFile{RelativePath: ptr("Movie 1/movie1.mp4")})
 		require.NoError(t, err)
 
 		snapshot := newReconcileSnapshot(nil, nil)
@@ -616,7 +674,7 @@ func Test_Manager_reconcileDownloadingMovie(t *testing.T) {
 		m := New(nil, nil, nil, store, mockFactory, config.Manager{})
 		require.NotNil(t, m)
 
-		movieID, err := m.storage.CreateMovie(ctx, storage.Movie{Movie: model.Movie{ID: 1, Monitored: 1, QualityProfileID: 1}}, storage.MovieStateMissing)
+		movieID, err := m.storage.CreateMovie(ctx, storage.Movie{Movie: model.Movie{ID: 1, Monitored: 1, QualityProfileID: 1, Path: ptr("Movie 1")}}, storage.MovieStateMissing)
 		require.NoError(t, err)
 
 		movie, err := m.storage.GetMovie(ctx, movieID)
@@ -667,7 +725,7 @@ func Test_Manager_reconcileDownloadingMovie(t *testing.T) {
 		m := New(nil, nil, nil, store, mockFactory, config.Manager{})
 		require.NotNil(t, m)
 
-		movieID, err := m.storage.CreateMovie(ctx, storage.Movie{Movie: model.Movie{ID: 1, Monitored: 1, QualityProfileID: 1}}, storage.MovieStateMissing)
+		movieID, err := m.storage.CreateMovie(ctx, storage.Movie{Movie: model.Movie{ID: 1, Monitored: 1, QualityProfileID: 1, Path: ptr("Movie 1")}}, storage.MovieStateMissing)
 		require.NoError(t, err)
 
 		movie, err := m.storage.GetMovie(ctx, movieID)
@@ -721,7 +779,7 @@ func Test_Manager_reconcileDownloadingMovie(t *testing.T) {
 		m := New(nil, nil, nil, store, mockFactory, config.Manager{})
 		require.NotNil(t, m)
 
-		movieID, err := m.storage.CreateMovie(ctx, storage.Movie{Movie: model.Movie{ID: 1, Monitored: 1, QualityProfileID: 1}}, storage.MovieStateMissing)
+		movieID, err := m.storage.CreateMovie(ctx, storage.Movie{Movie: model.Movie{ID: 1, Monitored: 1, QualityProfileID: 1, Path: ptr("my-movie")}}, storage.MovieStateMissing)
 		require.NoError(t, err)
 
 		movie, err := m.storage.GetMovie(ctx, movieID)
@@ -773,7 +831,7 @@ func Test_Manager_reconcileDownloadingMovie(t *testing.T) {
 		m := New(nil, nil, nil, store, mockFactory, config.Manager{})
 		require.NotNil(t, m)
 
-		movieID, err := m.storage.CreateMovie(ctx, storage.Movie{Movie: model.Movie{ID: 1, Monitored: 1, QualityProfileID: 1, MovieMetadataID: intPtr(1)}}, storage.MovieStateMissing)
+		movieID, err := m.storage.CreateMovie(ctx, storage.Movie{Movie: model.Movie{ID: 1, Monitored: 1, QualityProfileID: 1, MovieMetadataID: intPtr(1), Path: ptr("Movie 1")}}, storage.MovieStateMissing)
 		require.NoError(t, err)
 
 		movie, err := m.storage.GetMovie(ctx, movieID)
@@ -830,7 +888,7 @@ func Test_Manager_reconcileDownloadingMovie(t *testing.T) {
 		m := New(nil, nil, mockLibrary, store, mockFactory, config.Manager{})
 		require.NotNil(t, m)
 
-		movieID, err := m.storage.CreateMovie(ctx, storage.Movie{Movie: model.Movie{ID: 1, Monitored: 1, QualityProfileID: 1, MovieMetadataID: intPtr(1)}}, storage.MovieStateMissing)
+		movieID, err := m.storage.CreateMovie(ctx, storage.Movie{Movie: model.Movie{ID: 1, Monitored: 1, QualityProfileID: 1, MovieMetadataID: intPtr(1), Path: ptr("Movie 1")}}, storage.MovieStateMissing)
 		require.NoError(t, err)
 
 		movie, err := m.storage.GetMovie(ctx, movieID)
@@ -865,8 +923,8 @@ func Test_Manager_reconcileDownloadingMovie(t *testing.T) {
 		store := newStore(t, ctx)
 		mockLibrary := mockLibrary.NewMockLibrary(ctrl)
 		mockLibrary.EXPECT().AddMovie(gomock.Any(), "my-movie", "/downloads/movie.mp4").Return(library.MovieFile{
-			Name:         "test movie",
-			RelativePath: "/movies/my-movie/movie.mp4",
+			Name:         "my-movie",
+			RelativePath: "my-movie/movie.mp4",
 			AbsolutePath: "/movies/my-movie/movie.mp4",
 			Size:         1024,
 		}, nil)
@@ -896,7 +954,7 @@ func Test_Manager_reconcileDownloadingMovie(t *testing.T) {
 		m := New(nil, nil, mockLibrary, store, mockFactory, config.Manager{})
 		require.NotNil(t, m)
 
-		movieID, err := m.storage.CreateMovie(ctx, storage.Movie{Movie: model.Movie{ID: 1, Monitored: 1, QualityProfileID: 1, MovieMetadataID: intPtr(1)}}, storage.MovieStateMissing)
+		movieID, err := m.storage.CreateMovie(ctx, storage.Movie{Movie: model.Movie{ID: 1, Monitored: 1, QualityProfileID: 1, MovieMetadataID: intPtr(1), Path: ptr("my-movie")}}, storage.MovieStateMissing)
 		require.NoError(t, err)
 
 		movie, err := m.storage.GetMovie(ctx, movieID)
@@ -925,11 +983,16 @@ func Test_Manager_reconcileDownloadingMovie(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, storage.MovieStateDownloaded, mov.State)
 
-		mfs, err := store.GetMovieFilesByMovieID(ctx, 1)
+		dmfs, err := store.ListMovieFiles(ctx)
+		require.NoError(t, err)
+		require.Len(t, dmfs, 1)
+		log.Println(dmfs)
+
+		mfs, err := store.GetMovieFilesByMovieName(ctx, "my-movie")
 		require.NoError(t, err)
 		require.Len(t, mfs, 1)
 		mf := mfs[0]
-		assert.Equal(t, "/movies/my-movie/movie.mp4", *mf.RelativePath)
+		assert.Equal(t, "my-movie/movie.mp4", *mf.RelativePath)
 		assert.Equal(t, "/downloads/movie.mp4", *mf.OriginalFilePath)
 		assert.Equal(t, int64(1024), mf.Size)
 	})

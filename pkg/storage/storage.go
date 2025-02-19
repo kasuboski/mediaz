@@ -83,6 +83,7 @@ func (m Movie) Machine() *machine.StateMachine[MovieState] {
 type MovieStorage interface {
 	GetMovie(ctx context.Context, id int64) (*Movie, error)
 	GetMovieByMovieFileID(ctx context.Context, fileID int64) (*Movie, error)
+	GetMovieByPath(ctx context.Context, path string) (*Movie, error)
 	GetMovieByMetadataID(ctx context.Context, metadataID int) (*Movie, error)
 	CreateMovie(ctx context.Context, movie Movie, state MovieState) (int64, error)
 	DeleteMovie(ctx context.Context, id int64) error
@@ -92,6 +93,7 @@ type MovieStorage interface {
 	UpdateMovieMovieFileID(ctx context.Context, id int64, fileID int64) error
 
 	GetMovieFilesByMovieID(ctx context.Context, id int64) ([]*model.MovieFile, error)
+	GetMovieFilesByMovieName(ctx context.Context, name string) ([]*model.MovieFile, error)
 	CreateMovieFile(ctx context.Context, movieFile model.MovieFile) (int64, error)
 	DeleteMovieFile(ctx context.Context, id int64) error
 	ListMovieFiles(ctx context.Context) ([]*model.MovieFile, error)
