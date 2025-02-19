@@ -18,11 +18,11 @@ type RateLimitedClient struct {
 	maxRetries  int
 }
 
-// ClientOption is a function that can be used to configure a RateLimitedHTTPClient
+// ClientOption is a function that can be used to configure a NewRateLimitedClient
 type ClientOption func(*RateLimitedClient)
 
-// NewRateLimitedHTTPClient creates a new RateLimitedHTTPClient that respects 429 status codes
-func NewRateLimitedHTTPClient(opts ...ClientOption) *RateLimitedClient {
+// NewRateLimitedClient creates a new NewRateLimitedClient that respects 429 status codes
+func NewRateLimitedClient(opts ...ClientOption) *RateLimitedClient {
 	c := &RateLimitedClient{
 		client:      http.DefaultClient,
 		maxRetries:  DefaultMaxRetries,
