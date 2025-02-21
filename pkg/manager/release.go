@@ -73,7 +73,9 @@ type ParsedReleaseFile struct {
 	Releasegroup          *string `json:"releasegroup"`
 }
 
-var releaseFileRegex = regexp.MustCompile(`^(?P<title>.*?)(?:\\s*[(\\[]?(?P<year>\\d{4})[)\\]]?)?\\s*(?P<edition>\\{[^}]+\\})?\\s*((?:\\[[^\\]]+\\])*)?(?:[._-]*(?P<releasegroup>[^._-\\s][^._-]*))?(?:\\.(?:mkv|mp4|avi|torrent|nzb))?$`)
+const filePattern = `^(?P<title>.*?)(?:\s*[([?(?P<year>\d{4})[)\]]?)?(?:\s*\{(?P<edition>[^}]+)\})?(?:\s*(?P<customformat>(?:\[[^\]]+\](?:\s*\[[^\]]+\])*)))?(?:[._-]*(?P<releasegroup>[^._\-\s][^._-]*?))?(?:\.(?:mkv|mp4|avi|torrent|nzb))?$`
+
+var releaseFileRegex = regexp.MustCompile(filePattern)
 
 // parseReleaseFilename parses a release filename into a ParsedReleaseFile struct
 // if the filename does not match ok will be false
