@@ -73,7 +73,7 @@ type ParsedReleaseFile struct {
 	Releasegroup          *string `json:"releasegroup"`
 }
 
-const filePattern = `^(?P<title>.*?)(?:\\s*[(\\[]?(?P<year>\\d{4})[)\\]]?)?(?:\\s*\{(?P<edition>[^}]+)\})?(?:\\s*((?:\\[[^\\]]+\\])*))?(?:[._-]*(?P<releasegroup>[^._-\\s][^._-]*))?(?:\\.(?:mkv|mp4|avi|torrent|nzb))?$`
+const filePattern = `^(?P<title>(?:\w|\s|')+)(?:\s*[(\[]?(?P<year>\d{4})[)\]]?)?(?:\s*\{(?P<edition>[^}]+)\})?(?:\s*(?P<customformat>(?:\[[^\]]+\])*))?(?:[._-]*(?P<releasegroup>[^._\-\s][^._-]*))?$`
 
 var releaseFileRegex = regexp.MustCompile(filePattern)
 
@@ -85,8 +85,11 @@ func parseReleaseFilename(filename string) (ParsedReleaseFile, bool) {
 		Filename: filename,
 	}
 
+	// prepdFilename := strings.ReplaceAll(filename, ".", " ")
+	prepdFilename := filename
+
 	// Find matches in the filename
-	matches := releaseFileRegex.FindStringSubmatch(filename)
+	matches := releaseFileRegex.FindStringSubmatch(prepdFilename)
 	if len(matches) == 0 {
 		return result, false
 	}
@@ -110,7 +113,8 @@ func parseReleaseFilename(filename string) (ParsedReleaseFile, bool) {
 		// Set the appropriate field based on group name
 		switch name {
 		case "title":
-			result.Title = strings.TrimSpace(value)
+			result.Title = strings.TrimSpace(strings.ReplaceAll(value, ".", " "))
+
 		case "year":
 			year, err := strconv.Atoi(value)
 			if err == nil {
@@ -119,6 +123,7 @@ func parseReleaseFilename(filename string) (ParsedReleaseFile, bool) {
 		case "edition":
 			// Remove the curly braces
 			edition := strings.Trim(value, "{}")
+			edition = strings.Replace(edition, "edition-", "", 1)
 			result.Edition = &edition
 		case "customformat":
 			// Remove the square brackets
@@ -137,6 +142,8 @@ func parseReleaseFilename(filename string) (ParsedReleaseFile, bool) {
 
 			// Try to identify the type of format
 			switch {
+			case strings.Contains(format, "IMAX") || strings.Contains(format, "AMZN"):
+				result.Customformat = &format
 			case strings.Contains(format, "3D"):
 				result.Mediainfo3D = &format
 			case strings.Contains(format, "HDR") || strings.Contains(format, "DV"):
