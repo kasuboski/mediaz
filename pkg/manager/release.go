@@ -85,8 +85,9 @@ func parseReleaseFilename(filename string) (ParsedReleaseFile, bool) {
 		Filename: filename,
 	}
 
-	// prepdFilename := strings.ReplaceAll(filename, ".", " ")
-	prepdFilename := filename
+	sep := determineSeparator(filename)
+	prepdFilename := strings.ReplaceAll(filename, sep, " ")
+	// prepdFilename := filename
 
 	// Find matches in the filename
 	matches := releaseFileRegex.FindStringSubmatch(prepdFilename)
@@ -159,4 +160,20 @@ func parseReleaseFilename(filename string) (ParsedReleaseFile, bool) {
 	}
 
 	return result, true
+}
+
+// determineSeparator tries to determine the separator between the various parts of the filename
+// It assumes it is one of `.`, `_`, `-`, ` `
+// It decides based on which on is most present in the filename
+func determineSeparator(filename string) string {
+	count := 0
+	currSep := ""
+	for _, sep := range []string{".", "_", "-", " "} {
+		if strings.Count(filename, sep) > count {
+			count = strings.Count(filename, sep)
+			currSep = sep
+		}
+	}
+
+	return currSep
 }

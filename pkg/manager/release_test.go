@@ -42,6 +42,47 @@ func TestParseReleaseFilename(t *testing.T) {
 	}
 }
 
+func TestDetermineSeparator(t *testing.T) {
+	tests := []struct {
+		name string
+		args string
+		want string
+	}{
+		{
+			name: "dash",
+			args: "movie-name-2021",
+			want: "-",
+		},
+		{
+			name: "underscore",
+			args: "movie_name_2021",
+			want: "_",
+		},
+		{
+			name: "dot",
+			args: "movie.name.2021",
+			want: ".",
+		},
+		{
+			name: "space",
+			args: "movie name 2021",
+			want: " ",
+		},
+		{
+			name: "mixed",
+			args: "movie_name_2021-RAR.mkv",
+			want: "_",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := determineSeparator(tt.args); got != tt.want {
+				t.Errorf("determineSeparator() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func equalValuesPrettyPrint(t testing.TB, expected, actual interface{}) bool {
 	return assert.EqualValues(t, expected, actual, "exp=%v, got=%v", reflect.Indirect(reflect.ValueOf(expected)), reflect.Indirect(reflect.ValueOf(actual)))
 }
