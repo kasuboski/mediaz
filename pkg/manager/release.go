@@ -73,7 +73,7 @@ type ParsedReleaseFile struct {
 	Releasegroup          *string `json:"releasegroup"`
 }
 
-const filePattern = `^(?P<title>.*?)(?:\s*[(\\[]?(?P<year>\d{4})[)\\]]?)?(?:\s*\{(?P<edition>[^}]+)\})?(?:\s*((?:\\[[^\\]]+\\])*))?(?:[._-]*(?P<releasegroup>[^._-\\s][^._-]*))?(?:\\.(?:mkv|mp4|avi|torrent|nzb))?$`
+const filePattern = `^(?P<title>.*?)(?:\\s*[(\\[]?(?P<year>\\d{4})[)\\]]?)?(?:\\s*\{(?P<edition>[^}]+)\})?(?:\\s*((?:\\[[^\\]]+\\])*))?(?:[._-]*(?P<releasegroup>[^._-\s][^._\\-]*))?(?:\\.(?:mkv|mp4|avi|torrent|nzb))?$`
 
 var releaseFileRegex = regexp.MustCompile(filePattern)
 
