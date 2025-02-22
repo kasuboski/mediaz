@@ -72,7 +72,12 @@ func TestFindQuality(t *testing.T) {
 			name:     "WEB quality",
 			filename: "Brothers 2024 1080p AMZN WEB DLip ExKinoRay",
 			want:     "WEB-1080p",
-		},
+		}, // TODO: We want to match web-dl, but return webdl
+		// {
+		// 	name:     "WEB-DL quality",
+		// 	filename: "The.Brothers.Karamazov.1969.(Dostoevsky.Mini.Series).1080p.WEB-DL.x264.Classics",
+		// 	want:     "WEBDL-1080p",
+		// },
 		// Edge cases
 		{
 			name:     "empty string",

@@ -100,6 +100,12 @@ func parseReleaseFilename(filename string) (ParsedReleaseFile, bool) {
 		}
 	}
 
+	if strings.Contains(prepdFilename, "3d") {
+		info := "3D"
+		result.Mediainfo3D = &info
+		prepdFilename = strings.Replace(prepdFilename, "3d", "", 1)
+	}
+
 	// Find matches in the filename
 	matches := releaseFileRegex.FindStringSubmatch(prepdFilename)
 	if len(matches) == 0 {
@@ -156,8 +162,6 @@ func parseReleaseFilename(filename string) (ParsedReleaseFile, bool) {
 			switch {
 			case strings.Contains(format, "IMAX") || strings.Contains(format, "AMZN"):
 				result.Customformat = &format
-			case strings.Contains(format, "3D"):
-				result.Mediainfo3D = &format
 			case strings.Contains(format, "HDR") || strings.Contains(format, "DV"):
 				result.MediainfoDynamicrange = &format
 			case strings.Contains(format, "DTS") || strings.Contains(format, "DD") || strings.Contains(format, "Atmos") || strings.Contains(format, "5.1") || strings.Contains(format, "7.1"):
@@ -175,7 +179,7 @@ func parseReleaseFilename(filename string) (ParsedReleaseFile, bool) {
 func findQuality(filename string) (quality string, matches []string) {
 	// Define a list of quality strings
 	resolutions := []string{"720", "1080", "2160"}
-	media := []string{"Bluray", "BRRip", "WEB", "HD", "HDTV", "WEBDL", "WEBRip", "Remux", "SDTV", "DVD"}
+	media := []string{"Bluray", "BRRip", "HDTV", "WEBDL", "WEBRip", "Remux", "SDTV", "DVD", "WEB", "HD"}
 	qualities := make([]string, 0)
 
 	// media-resolution with p
