@@ -205,7 +205,7 @@ func findVideoInfo(filename string) []string {
 func findAudioInfo(filename string) []string {
 	// Define a list of audio strings
 	formats := []string{"DDPlus", "TrueHD", "DTS-HD", "DTS X", "DD", "DTS", "Atmos"}
-	channels := []string{"stereo", "2.0", "5.1", "7.1"}
+	channels := []string{"stereo", "2.0", "5.1", "7.1", "7_1"}
 
 	audioStrings := make([]string, 0)
 	name := strings.ToLower(filename)
