@@ -42,6 +42,74 @@ func TestParseReleaseFilename(t *testing.T) {
 	}
 }
 
+func TestFindQuality(t *testing.T) {
+	tests := []struct {
+		name     string
+		filename string
+		want     string
+	}{
+		{
+			name:     "full quality string with multiple formats",
+			filename: "The Movie Title (2010) {edition-Ultimate Extended Edition} [IMAX HYBRID][Bluray-1080p Proper][3D][DV HDR10][DTS 5.1][x264]-EVOLVE",
+			want:     "Bluray-1080p",
+		},
+		{
+			name:     "simple 720p quality",
+			filename: "Brothers 2024 720p [broski]",
+			want:     "720p",
+		},
+		{
+			name:     "2160p with multiple formats",
+			filename: "Step Brothers 2008 2160p UNRATED Bluray x265 DDP Atmos DTS KiNGDOM",
+			want:     "Bluray-2160p",
+		},
+		{
+			name:     "BRRip quality",
+			filename: "The-Brothers-Karamazov-1969-(Dostoevsky-Mini-Series)-1080p-BRRip-x264-Classics",
+			want:     "BRRip-1080p",
+		},
+		{
+			name:     "WEB quality",
+			filename: "Brothers 2024 1080p AMZN WEB DLip ExKinoRay",
+			want:     "WEB-1080p",
+		},
+		// Edge cases
+		{
+			name:     "empty string",
+			filename: "",
+			want:     "",
+		},
+		{
+			name:     "no quality string",
+			filename: "Just A Movie Title",
+			want:     "",
+		},
+		{
+			name:     "mixed case quality",
+			filename: "Movie (2024) bLuRaY 1080P",
+			want:     "Bluray-1080p",
+		},
+		{
+			name:     "HD only",
+			filename: "Movie (2024) HD",
+			want:     "HD",
+		},
+		{
+			name:     "similar but invalid quality",
+			filename: "Movie (2024) 1081",
+			want:     "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// not testing what it matched
+			got, _ := findQuality(tt.filename)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
 func TestDetermineSeparator(t *testing.T) {
 	tests := []struct {
 		name string

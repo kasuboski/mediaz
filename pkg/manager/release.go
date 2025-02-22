@@ -3,6 +3,7 @@ package manager
 import (
 	"cmp"
 	"context"
+	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
@@ -11,6 +12,8 @@ import (
 	"github.com/kasuboski/mediaz/pkg/prowlarr"
 	"github.com/kasuboski/mediaz/pkg/storage"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 // rejectReleaseFunc returns a function that returns true if the given release should be rejected
@@ -86,8 +89,16 @@ func parseReleaseFilename(filename string) (ParsedReleaseFile, bool) {
 	}
 
 	sep := determineSeparator(filename)
-	prepdFilename := strings.ReplaceAll(filename, sep, " ")
-	// prepdFilename := filename
+	prepdFilename := strings.ToLower(strings.ReplaceAll(filename, sep, " "))
+
+	quality, qMatches := findQuality(filename)
+	if len(qMatches) > 0 {
+		result.Quality = &quality
+		// remove quality matches from filename
+		for _, m := range qMatches {
+			prepdFilename = strings.Replace(prepdFilename, m, "", 1)
+		}
+	}
 
 	// Find matches in the filename
 	matches := releaseFileRegex.FindStringSubmatch(prepdFilename)
@@ -114,8 +125,8 @@ func parseReleaseFilename(filename string) (ParsedReleaseFile, bool) {
 		// Set the appropriate field based on group name
 		switch name {
 		case "title":
-			result.Title = strings.TrimSpace(strings.ReplaceAll(value, ".", " "))
-
+			caser := cases.Title(language.English)
+			result.Title = strings.TrimSpace(caser.String(value))
 		case "year":
 			year, err := strconv.Atoi(value)
 			if err == nil {
@@ -153,13 +164,66 @@ func parseReleaseFilename(filename string) (ParsedReleaseFile, bool) {
 				result.MediainfoAudio = &format
 			case strings.Contains(format, "x264") || strings.Contains(format, "x265") || strings.Contains(format, "XviD") || strings.Contains(format, "H.264") || strings.Contains(format, "H264") || strings.Contains(format, "RHS"):
 				result.MediainfoVideo = &format
-			case strings.Contains(format, "1080p") || strings.Contains(format, "720p") || strings.Contains(format, "2160p") || strings.Contains(format, "Bluray") || strings.Contains(format, "BRRip") || strings.Contains(format, "WEB"):
-				result.Quality = &format
 			}
 		}
 	}
 
 	return result, true
+}
+
+// findQuality parses the filename looking for a quality from a predefined list
+func findQuality(filename string) (quality string, matches []string) {
+	// Define a list of quality strings
+	resolutions := []string{"720", "1080", "2160"}
+	media := []string{"Bluray", "BRRip", "WEB", "HD", "HDTV", "WEBDL", "WEBRip", "Remux", "SDTV", "DVD"}
+	qualities := make([]string, 0)
+
+	// media-resolution with p
+	for _, res := range resolutions {
+		for _, med := range media {
+			qualities = append(qualities, fmt.Sprintf("%s-%sp", med, res))
+		}
+	}
+
+	name := strings.ToLower(filename)
+	for _, quality := range qualities {
+		q := strings.ToLower(quality)
+		if strings.Contains(name, q) {
+			// if we find a quality with both media and resolution, return it
+			return quality, []string{q}
+		}
+	}
+
+	// otherwise check if we can find the media and resolution separately
+	foundMedia := ""
+	for _, med := range media {
+		if strings.Contains(name, strings.ToLower(med)) {
+			foundMedia = med
+			break
+		}
+	}
+
+	foundResolution := ""
+	for _, res := range resolutions {
+		if strings.Contains(name, strings.ToLower(res)) {
+			foundResolution = res
+			break
+		}
+	}
+
+	if foundMedia != "" && foundResolution != "" {
+		return fmt.Sprintf("%s-%sp", foundMedia, foundResolution), []string{foundMedia, foundResolution}
+	}
+
+	if foundMedia != "" && foundResolution == "" {
+		return foundMedia, []string{foundMedia}
+	}
+
+	if foundMedia == "" && foundResolution != "" {
+		return foundResolution + "p", []string{foundResolution}
+	}
+
+	return "", nil
 }
 
 // determineSeparator tries to determine the separator between the various parts of the filename
