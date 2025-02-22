@@ -162,6 +162,40 @@ func TestDetermineSeparator(t *testing.T) {
 	}
 }
 
+func TestRemoveFromName(t *testing.T) {
+	tests := []struct {
+		name     string
+		filename string
+		toRemove []string
+		want     string
+	}{
+		{
+			name:     "remove year",
+			filename: "The Movie Title (2010) {edition-Ultimate Extended Edition} [IMAX HYBRID][Bluray-1080p Proper][3D][DV HDR10][DTS 5.1][x264]-EVOLVE",
+			toRemove: []string{"2010"},
+			want:     "The Movie Title  {edition-Ultimate Extended Edition} [IMAX HYBRID][Bluray-1080p Proper][3D][DV HDR10][DTS 5.1][x264]-EVOLVE",
+		},
+		{
+			name:     "remove quality",
+			filename: "The Movie Title (2010) {edition-Ultimate Extended Edition} [IMAX HYBRID][Bluray-1080p Proper][3D][DV HDR10][DTS 5.1][x264]-EVOLVE",
+			toRemove: []string{"Bluray-1080p"},
+			want:     "The Movie Title (2010) {edition-Ultimate Extended Edition} [IMAX HYBRID][3D][DV HDR10][DTS 5.1][x264]-EVOLVE",
+		},
+		{
+			name:     "remove audio info",
+			filename: "The Movie Title (2010) {edition-Ultimate Extended Edition} [IMAX HYBRID][Bluray-1080p Proper][3D][DV HDR10][DTS 5.1][x264]-EVOLVE",
+			toRemove: []string{"DTS 5.1"},
+			want:     "The Movie Title (2010) {edition-Ultimate Extended Edition} [IMAX HYBRID][Bluray-1080p Proper][3D][DV HDR10][x264]-EVOLVE",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := removeFromName(tt.filename, tt.toRemove...)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
 func equalValuesPrettyPrint(t testing.TB, expected, actual interface{}) bool {
 	return assert.EqualValues(t, expected, actual, "exp=%v, got=%v", reflect.Indirect(reflect.ValueOf(expected)), reflect.Indirect(reflect.ValueOf(actual)))
 }

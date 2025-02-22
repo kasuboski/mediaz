@@ -314,11 +314,9 @@ func titleCase(title string) string {
 }
 
 func removeFromName(filename string, toRemove ...string) string {
-	for _, r := range toRemove {
-		filename = strings.ReplaceAll(filename, strings.ToLower(r), "")
+	rmRegex, err := regexp.Compile(fmt.Sprintf(`[\[\(]+[^\](]*(?:%s)[^[)]*[\]\)]+`, strings.Join(toRemove, "|")))
+	if err != nil {
+		return filename
 	}
-
-	filename = strings.TrimSpace(strings.ReplaceAll(filename, "[]", ""))
-
-	return filename
+	return rmRegex.ReplaceAllLiteralString(filename, "")
 }
