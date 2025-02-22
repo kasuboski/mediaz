@@ -94,18 +94,37 @@ func parseReleaseFilename(filename string) (ParsedReleaseFile, bool) {
 	quality, qMatches := findQuality(filename)
 	if len(qMatches) > 0 {
 		result.Quality = &quality
-		// remove quality matches from filename
-		for _, m := range qMatches {
-			prepdFilename = strings.Replace(prepdFilename, m, "", 1)
-		}
+		prepdFilename = removeFromName(prepdFilename, qMatches...)
+	}
+
+	dynamicRange := findDynamicRange(filename)
+	if len(dynamicRange) > 0 {
+		dRange := strings.Join(dynamicRange, " ")
+		result.MediainfoDynamicrange = &dRange
+		prepdFilename = removeFromName(prepdFilename, dynamicRange...)
+	}
+
+	audioInfo := findAudioInfo(filename)
+	if len(audioInfo) > 0 {
+		audio := strings.Join(audioInfo, " ")
+		result.MediainfoAudio = &audio
+		prepdFilename = removeFromName(prepdFilename, audioInfo...)
+	}
+
+	videoInfo := findVideoInfo(filename)
+	if len(videoInfo) > 0 {
+		video := strings.Join(videoInfo, " ")
+		result.MediainfoVideo = &video
+		prepdFilename = removeFromName(prepdFilename, videoInfo...)
 	}
 
 	if strings.Contains(prepdFilename, "3d") {
 		info := "3D"
 		result.Mediainfo3D = &info
-		prepdFilename = strings.Replace(prepdFilename, "3d", "", 1)
+		prepdFilename = removeFromName(prepdFilename, "3d")
 	}
 
+	// log.Println("prepdFilename", prepdFilename)
 	// Find matches in the filename
 	matches := releaseFileRegex.FindStringSubmatch(prepdFilename)
 	if len(matches) == 0 {
@@ -131,8 +150,7 @@ func parseReleaseFilename(filename string) (ParsedReleaseFile, bool) {
 		// Set the appropriate field based on group name
 		switch name {
 		case "title":
-			caser := cases.Title(language.English)
-			result.Title = strings.TrimSpace(caser.String(value))
+			result.Title = titleCase(value)
 		case "year":
 			year, err := strconv.Atoi(value)
 			if err == nil {
@@ -148,7 +166,8 @@ func parseReleaseFilename(filename string) (ParsedReleaseFile, bool) {
 			customformat := strings.Trim(value, "[]")
 			result.Customformat = &customformat
 		case "releasegroup":
-			result.Releasegroup = &value
+			group := titleCase(value)
+			result.Releasegroup = &group
 		}
 	}
 
@@ -162,17 +181,60 @@ func parseReleaseFilename(filename string) (ParsedReleaseFile, bool) {
 			switch {
 			case strings.Contains(format, "IMAX") || strings.Contains(format, "AMZN"):
 				result.Customformat = &format
-			case strings.Contains(format, "HDR") || strings.Contains(format, "DV"):
-				result.MediainfoDynamicrange = &format
-			case strings.Contains(format, "DTS") || strings.Contains(format, "DD") || strings.Contains(format, "Atmos") || strings.Contains(format, "5.1") || strings.Contains(format, "7.1"):
-				result.MediainfoAudio = &format
-			case strings.Contains(format, "x264") || strings.Contains(format, "x265") || strings.Contains(format, "XviD") || strings.Contains(format, "H.264") || strings.Contains(format, "H264") || strings.Contains(format, "RHS"):
-				result.MediainfoVideo = &format
 			}
 		}
 	}
 
 	return result, true
+}
+
+// findVideoInfo looks for all video related info in the filename. It returns all of them
+func findVideoInfo(filename string) []string {
+	encodings := []string{"x264", "x265", "H.264", "H264"}
+	videoStrings := make([]string, 0)
+	name := strings.ToLower(filename)
+	for _, e := range encodings {
+		if strings.Contains(name, strings.ToLower(e)) {
+			videoStrings = append(videoStrings, e)
+		}
+	}
+	return videoStrings
+}
+
+// findAudioInfo looks for all audio related info in the filename. It returns all of them
+func findAudioInfo(filename string) []string {
+	// Define a list of audio strings
+	formats := []string{"DDPlus", "TrueHD", "DTS-HD", "DTS X", "DD", "DTS", "Atmos"}
+	channels := []string{"stereo", "2.0", "5.1", "7.1"}
+
+	audioStrings := make([]string, 0)
+	name := strings.ToLower(filename)
+	for _, f := range formats {
+		if strings.Contains(name, strings.ToLower(f)) {
+			audioStrings = append(audioStrings, f)
+		}
+	}
+	for _, c := range channels {
+		if strings.Contains(name, strings.ToLower(c)) {
+			audioStrings = append(audioStrings, c)
+		}
+	}
+	return audioStrings
+}
+
+// findDynamicRange parses the filename looking for a dynamic range from a predefined list
+func findDynamicRange(filename string) []string {
+	// TODO: don't match HDR as part of HDR10
+	dynamicRanges := []string{"DV", "HDR10", "HDR"}
+	name := strings.ToLower(filename)
+
+	found := make([]string, 0)
+	for _, dr := range dynamicRanges {
+		if strings.Contains(name, strings.ToLower(dr)) {
+			found = append(found, dr)
+		}
+	}
+	return found
 }
 
 // findQuality parses the filename looking for a quality from a predefined list
@@ -232,7 +294,7 @@ func findQuality(filename string) (quality string, matches []string) {
 
 // determineSeparator tries to determine the separator between the various parts of the filename
 // It assumes it is one of `.`, `_`, `-`, ` `
-// It decides based on which on is most present in the filename
+// It decides based on which one is most present in the filename
 func determineSeparator(filename string) string {
 	count := 0
 	currSep := ""
@@ -244,4 +306,19 @@ func determineSeparator(filename string) string {
 	}
 
 	return currSep
+}
+
+func titleCase(title string) string {
+	caser := cases.Title(language.English)
+	return strings.TrimSpace(caser.String(title))
+}
+
+func removeFromName(filename string, toRemove ...string) string {
+	for _, r := range toRemove {
+		filename = strings.ReplaceAll(filename, strings.ToLower(r), "")
+	}
+
+	filename = strings.TrimSpace(strings.ReplaceAll(filename, "[]", ""))
+
+	return filename
 }

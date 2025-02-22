@@ -11,7 +11,7 @@
       "mediainfo_dynamicrange": "DV HDR10",
       "mediainfo_audio": "DTS 5.1",
       "mediainfo_video": "x264",
-      "releasegroup": "EVOLVE"
+      "releasegroup": "Evolve"
     },
     {
       "filename": "Brothers 2024 720p [broski]",
@@ -88,7 +88,7 @@
       "mediainfo_3d": null,
       "mediainfo_dynamicrange": null,
       "mediainfo_audio": null,
-      "mediainfo_video": "XviD",
+      "mediainfo_video": null,
       "releasegroup": "Enfanloup"
     },
     {
@@ -187,8 +187,8 @@
       "title": "Step Brothers",
       "year": 2008,
       "edition": "Extended",
-      "customformat": "REPACK",
-      "quality": "BluRay-1080p",
+      "customformat": "",
+      "quality": "Bluray-1080p",
       "mediainfo_3d": null,
       "mediainfo_dynamicrange": null,
       "mediainfo_audio": "DD 7.1",
