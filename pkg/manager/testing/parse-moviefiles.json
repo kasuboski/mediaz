@@ -114,7 +114,7 @@
       "mediainfo_3d": null,
       "mediainfo_dynamicrange": null,
       "mediainfo_audio": null,
-      "mediainfo_video": "",
+      "mediainfo_video": null,
       "releasegroup": "scarfilm org"
     },
     {
@@ -192,7 +192,7 @@
       "mediainfo_3d": null,
       "mediainfo_dynamicrange": null,
       "mediainfo_audio": "DD 7.1",
-      "mediainfo_video": "X265",
+      "mediainfo_video": "x265",
       "releasegroup": "Ralphy"
     }
   ]
