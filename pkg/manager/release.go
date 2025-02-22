@@ -214,10 +214,15 @@ func findAudioInfo(filename string) []string {
 			audioStrings = append(audioStrings, f)
 		}
 	}
+	channelValue := ""
 	for _, c := range channels {
 		if strings.Contains(name, strings.ToLower(c)) {
-			audioStrings = append(audioStrings, c)
+			channelValue = c
+			break
 		}
+	}
+	if channelValue != "" {
+		audioStrings = append(audioStrings, channelValue)
 	}
 	return audioStrings
 }
