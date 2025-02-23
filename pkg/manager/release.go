@@ -125,7 +125,7 @@ func parseReleaseFilename(filename string) (ParsedReleaseFile, bool) {
 		prepdFilename = removeFromName(prepdFilename, "3d")
 	}
 
-	// log.Println("prepdFilename", prepdFilename)
+	log.Println("prepdFilename", prepdFilename)
 	// Find matches in the filename
 	matches := releaseFileRegex.FindStringSubmatch(prepdFilename)
 	if len(matches) == 0 {
@@ -205,7 +205,7 @@ func findVideoInfo(filename string) []string {
 // findAudioInfo looks for all audio related info in the filename. It returns all of them
 func findAudioInfo(filename string) []string {
 	// Define a list of audio strings
-	formats := []string{"DDPlus", "TrueHD", "DTS-HD", "DTS X", "DD", "DTS", "Atmos"}
+	formats := []string{"DDPlus", "TrueHD", "DTS-HD", "DTS X", "DDP", "DD", "DTS", "Atmos"}
 	channels := []string{"stereo", "2.0", "2_0", "5.1", "5_1", "7.1", "7_1", "7 1"}
 
 	audioStrings := make([]string, 0)
@@ -216,7 +216,6 @@ func findAudioInfo(filename string) []string {
 		}
 	}
 	channelValue := ""
-	log.Println("name", name)
 	for _, c := range channels {
 		if strings.Contains(name, strings.ToLower(c)) {
 			channelValue = c
@@ -232,7 +231,6 @@ func findAudioInfo(filename string) []string {
 
 // findDynamicRange parses the filename looking for a dynamic range from a predefined list
 func findDynamicRange(filename string) []string {
-	dynamicRanges := []string{"DV", "HDR10", "HDR"}
 	name := strings.ToLower(filename)
 
 	found := make([]string, 0)
@@ -327,9 +325,37 @@ func titleCase(title string) string {
 }
 
 func removeFromName(filename string, toRemove ...string) string {
-	rmRegex, err := regexp.Compile(fmt.Sprintf(`[\[\(]+[^\](]*(?:%s)[^[)]*[\]\)]+`, strings.Join(toRemove, "|")))
+	lowerRemove := make([]string, len(toRemove))
+	for i, r := range toRemove {
+		lowerRemove[i] = strings.ToLower(r)
+	}
+	rmRegex, err := regexp.Compile(fmt.Sprintf(`[\[\(]+[^\](]*(?:%s)[^[)]*[\]\)]+`, strings.Join(lowerRemove, "|")))
 	if err != nil {
 		return filename
 	}
 	return rmRegex.ReplaceAllLiteralString(filename, "")
+}
+
+// findMatchingWords takes a source string and a slice of candidate words
+// Returns a slice of words that were found as exact matches
+func findMatchingWords(source string, candidates []string) []string {
+	// Convert source to lowercase and split into words
+	reg := regexp.MustCompile(`\b\w+\b`)
+	sourceWords := reg.FindAllString(strings.ToLower(source), -1)
+
+	// Create a map for O(1) lookup
+	wordMap := make(map[string]bool)
+	for _, word := range sourceWords {
+		wordMap[word] = true
+	}
+
+	// Check each candidate for exact matches
+	matches := make([]string, 0)
+	for _, candidate := range candidates {
+		if wordMap[strings.ToLower(candidate)] {
+			matches = append(matches, candidate)
+		}
+	}
+
+	return matches
 }
