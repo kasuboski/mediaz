@@ -77,7 +77,7 @@ type ParsedReleaseFile struct {
 	Releasegroup          *string `json:"releasegroup"`
 }
 
-const filePattern = `^(?P<title>(?:\w|\s|')+)(?:\s*[(\[]?(?P<year>\d{4})[)\]]?)?(?:\s*\{(?P<edition>[^}]+)\})?(?:\s*(?P<customformat>(?:\[[^\]]+\])*))?(?:[._-]*(?P<releasegroup>[^._\-\s][^._-]*))?$`
+const filePattern = `^(?P<title>(?:\w|\s|')+)(?:\s*[(\[]?(?P<year>\d{4})[)\]]?)?(?:\s*\{(?P<edition>[^}]+)\})?(?:\s*(?P<customformat>(?:\[[^\]]+\])*))?.*$`
 
 var releaseFileRegex = regexp.MustCompile(filePattern)
 
@@ -125,6 +125,18 @@ func parseReleaseFilename(filename string) (ParsedReleaseFile, bool) {
 		prepdFilename = removeFromName(prepdFilename, "3d")
 	}
 
+	stream := findStreamingService(prepdFilename)
+	if stream != "" {
+		prepdFilename = removeFromName(prepdFilename, stream)
+	}
+
+	group, matched := findReleaseGroup(prepdFilename)
+	if group != "" {
+		group = titleCase(group)
+		result.Releasegroup = &group
+		prepdFilename = removeFromName(prepdFilename, matched)
+	}
+
 	log.Println("prepdFilename", prepdFilename)
 	// Find matches in the filename
 	matches := releaseFileRegex.FindStringSubmatch(prepdFilename)
@@ -164,11 +176,9 @@ func parseReleaseFilename(filename string) (ParsedReleaseFile, bool) {
 			result.Edition = &edition
 		case "customformat":
 			// Remove the square brackets
-			customformat := strings.Trim(value, "[]")
-			result.Customformat = &customformat
-		case "releasegroup":
-			group := titleCase(value)
-			result.Releasegroup = &group
+			customFormat := strings.Trim(value, "[]")
+			combined := customFormat + stream
+			result.Customformat = &combined
 		}
 	}
 
@@ -184,6 +194,10 @@ func parseReleaseFilename(filename string) (ParsedReleaseFile, bool) {
 				result.Customformat = &format
 			}
 		}
+	}
+
+	if result.Customformat == nil && stream != "" {
+		result.Customformat = &stream
 	}
 
 	return result, true
@@ -320,6 +334,34 @@ func findQuality(filename string) (quality string, matches []string) {
 	}
 
 	return "", nil
+}
+
+var regexGroup = regexp.MustCompile(`[-\(]([^-\(\)]+)\)?$`)
+
+func findReleaseGroup(filename string) (group string, matched string) {
+	matches := regexGroup.FindStringSubmatch(filename)
+	// expected 2 matches. 1 for the full match, 1 for the group
+	if len(matches) != 2 {
+		return "", ""
+	}
+
+	return matches[1], matches[0]
+
+}
+
+func findStreamingService(filename string) string {
+	name := strings.ToLower(filename)
+
+	if strings.Contains(name, "netflix") {
+		return "NF"
+	} else if len(findMatchingWords(name, []string{"amazon", "amzn"})) > 0 {
+		return "AMZN"
+	} else if strings.Contains(name, "hulu") {
+		return "Hulu"
+	} else if len(findMatchingWords(name, []string{"disney", "dsnp"})) > 0 {
+		return "DSNP"
+	}
+	return ""
 }
 
 // determineSeparator tries to determine the separator between the various parts of the filename

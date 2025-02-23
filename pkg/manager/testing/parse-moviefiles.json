@@ -141,7 +141,7 @@
       "mediainfo_dynamicrange": null,
       "mediainfo_audio": "DD5.1",
       "mediainfo_video": "x264",
-      "releasegroup": "GalaxyRG"
+      "releasegroup": "Galaxyrg"
     },
     {
       "filename": "The Blues Brothers (1980) 1080p BrRip x264 -YIFY",
@@ -154,7 +154,7 @@
       "mediainfo_dynamicrange": null,
       "mediainfo_audio": null,
       "mediainfo_video": "x264",
-      "releasegroup": "YIFY"
+      "releasegroup": "Yify"
     },
     {
       "filename": "The.Menendez.Brothers.2024.1080p.WEBRip.1400MB.DD5.1.x264-Galaxy",
@@ -180,7 +180,7 @@
       "mediainfo_dynamicrange": null,
       "mediainfo_audio": "DDP 5.1",
       "mediainfo_video": "H.264",
-      "releasegroup": "PiRaTeS"
+      "releasegroup": "Pirates"
     },
     {
       "filename": "Step Brothers 2008 Extended REPACK 1080p BluRay DD 7 1 X265-Ralphy",
