@@ -232,16 +232,21 @@ func findAudioInfo(filename string) []string {
 
 // findDynamicRange parses the filename looking for a dynamic range from a predefined list
 func findDynamicRange(filename string) []string {
-	// TODO: don't match HDR as part of HDR10
 	dynamicRanges := []string{"DV", "HDR10", "HDR"}
 	name := strings.ToLower(filename)
 
 	found := make([]string, 0)
-	for _, dr := range dynamicRanges {
-		if strings.Contains(name, strings.ToLower(dr)) {
-			found = append(found, dr)
-		}
+
+	if strings.Contains(name, strings.ToLower("DV")) {
+		found = append(found, "DV")
 	}
+
+	if strings.Contains(name, strings.ToLower("HDR10")) {
+		found = append(found, "HDR10")
+	} else if strings.Contains(name, strings.ToLower("HDR")) {
+		found = append(found, "HDR")
+	}
+
 	return found
 }
 
