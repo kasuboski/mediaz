@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"context"
 	"fmt"
+	"log"
 	"regexp"
 	"strconv"
 	"strings"
@@ -159,7 +160,7 @@ func parseReleaseFilename(filename string) (ParsedReleaseFile, bool) {
 		case "edition":
 			// Remove the curly braces
 			edition := strings.Trim(value, "{}")
-			edition = strings.Replace(edition, "edition-", "", 1)
+			edition = titleCase(strings.Replace(edition, "edition-", "", 1))
 			result.Edition = &edition
 		case "customformat":
 			// Remove the square brackets
@@ -205,7 +206,7 @@ func findVideoInfo(filename string) []string {
 func findAudioInfo(filename string) []string {
 	// Define a list of audio strings
 	formats := []string{"DDPlus", "TrueHD", "DTS-HD", "DTS X", "DD", "DTS", "Atmos"}
-	channels := []string{"stereo", "2.0", "5.1", "7.1", "7_1"}
+	channels := []string{"stereo", "2.0", "2_0", "5.1", "5_1", "7.1", "7_1", "7 1"}
 
 	audioStrings := make([]string, 0)
 	name := strings.ToLower(filename)
@@ -215,6 +216,7 @@ func findAudioInfo(filename string) []string {
 		}
 	}
 	channelValue := ""
+	log.Println("name", name)
 	for _, c := range channels {
 		if strings.Contains(name, strings.ToLower(c)) {
 			channelValue = c
@@ -222,7 +224,8 @@ func findAudioInfo(filename string) []string {
 		}
 	}
 	if channelValue != "" {
-		audioStrings = append(audioStrings, channelValue)
+		normalized := strings.ReplaceAll(strings.ReplaceAll(channelValue, "_", "."), " ", ".")
+		audioStrings = append(audioStrings, normalized)
 	}
 	return audioStrings
 }
