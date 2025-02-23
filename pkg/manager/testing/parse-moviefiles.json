@@ -5,8 +5,8 @@
       "title": "The Movie Title",
       "year": 2010,
       "edition": "Ultimate Extended Edition",
-      "customformat": "IMAX HYBRID",
-      "quality": "Bluray-1080p Proper",
+      "customformat": "imax hybrid",
+      "quality": "Bluray-1080p",
       "mediainfo_3d": "3D",
       "mediainfo_dynamicrange": "DV HDR10",
       "mediainfo_audio": "DTS 5.1",
@@ -14,7 +14,7 @@
       "releasegroup": "Evolve"
     },
     {
-      "filename": "Brothers 2024 720p [broski]",
+      "filename": "Brothers 2024 720p",
       "title": "Brothers",
       "year": 2024,
       "edition": null,
@@ -24,7 +24,7 @@
       "mediainfo_dynamicrange": null,
       "mediainfo_audio": null,
       "mediainfo_video": null,
-      "releasegroup": "broski"
+      "releasegroup": null
     },
     {
       "filename": "10 Brothers Of Shaolin [720] HD (1977)",
@@ -165,7 +165,7 @@
       "quality": "WEBRip-1080p",
       "mediainfo_3d": null,
       "mediainfo_dynamicrange": null,
-      "mediainfo_audio": "DD 5.1",
+      "mediainfo_audio": "DD5.1",
       "mediainfo_video": "x264",
       "releasegroup": "Galaxy"
     },
@@ -178,7 +178,7 @@
       "quality": "WEBDL-1080p",
       "mediainfo_3d": null,
       "mediainfo_dynamicrange": null,
-      "mediainfo_audio": "DDP.5.1",
+      "mediainfo_audio": "DDP 5.1",
       "mediainfo_video": "H.264",
       "releasegroup": "PiRaTeS"
     },

@@ -207,14 +207,32 @@ func findAudioInfo(filename string) []string {
 	// Define a list of audio strings
 	formats := []string{"DDPlus", "TrueHD", "DTS-HD", "DTS X", "DDP", "DD", "DTS", "Atmos"}
 	channels := []string{"stereo", "2.0", "2_0", "5.1", "5_1", "7.1", "7_1", "7 1"}
+	combo := make([]string, 0)
 
 	audioStrings := make([]string, 0)
 	name := strings.ToLower(filename)
+
 	for _, f := range formats {
-		if strings.Contains(name, strings.ToLower(f)) {
-			audioStrings = append(audioStrings, f)
+		for _, c := range channels {
+			combo = append(combo, f+c)
 		}
 	}
+	foundValue := ""
+	for _, c := range combo {
+		if strings.Contains(name, strings.ToLower(c)) {
+			foundValue = c
+			break
+		}
+	}
+	if foundValue != "" {
+		normalized := strings.ReplaceAll(strings.ReplaceAll(foundValue, "_", "."), " ", ".")
+		audioStrings = append(audioStrings, normalized)
+		// if found a combo assume done
+		return audioStrings
+	}
+
+	foundFormats := findMatchingWords(name, formats)
+	audioStrings = append(audioStrings, foundFormats...)
 	channelValue := ""
 	for _, c := range channels {
 		if strings.Contains(name, strings.ToLower(c)) {
@@ -226,6 +244,7 @@ func findAudioInfo(filename string) []string {
 		normalized := strings.ReplaceAll(strings.ReplaceAll(channelValue, "_", "."), " ", ".")
 		audioStrings = append(audioStrings, normalized)
 	}
+
 	return audioStrings
 }
 
@@ -340,9 +359,10 @@ func removeFromName(filename string, toRemove ...string) string {
 // Returns a slice of words that were found as exact matches
 func findMatchingWords(source string, candidates []string) []string {
 	// Convert source to lowercase and split into words
-	reg := regexp.MustCompile(`\b\w+\b`)
+	reg := regexp.MustCompile(`\b[\w]+\b`)
 	sourceWords := reg.FindAllString(strings.ToLower(source), -1)
 
+	log.Println("source", sourceWords)
 	// Create a map for O(1) lookup
 	wordMap := make(map[string]bool)
 	for _, word := range sourceWords {
