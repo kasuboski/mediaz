@@ -4,7 +4,6 @@ import (
 	"cmp"
 	"context"
 	"fmt"
-	"log"
 	"regexp"
 	"strconv"
 	"strings"
@@ -35,11 +34,20 @@ func rejectReleaseFunc(ctx context.Context, det *model.MovieMetadata, profile st
 				return true
 			}
 		}
+
+		if r.FileName.IsSpecified() {
+			_, parsed := parseReleaseFilename(r.FileName.MustGet())
+			if !parsed {
+				return true
+			}
+		}
+
 		// bytes to megabytes
 		sizeMB := *r.Size >> 20
 
 		// items are assumed to be sorted quality so the highest media quality available is selected
 		for _, quality := range profile.Qualities {
+
 			metQuality := MeetsQualitySize(quality, uint64(sizeMB), uint64(det.Runtime))
 
 			if metQuality {
@@ -137,8 +145,6 @@ func parseReleaseFilename(filename string) (ParsedReleaseFile, bool) {
 		prepdFilename = removeFromName(prepdFilename, matched)
 	}
 
-	log.Println("prepdFilename", prepdFilename)
-	// Find matches in the filename
 	matches := releaseFileRegex.FindStringSubmatch(prepdFilename)
 	if len(matches) == 0 {
 		return result, false
@@ -296,6 +302,9 @@ func findQuality(filename string) (quality string, matches []string) {
 	}
 
 	name := strings.ToLower(filename)
+	// Normalize WEB-DL to WEBDL
+	name = strings.ReplaceAll(name, "web-dl", "webdl")
+
 	for _, quality := range qualities {
 		q := strings.ToLower(quality)
 		if strings.Contains(name, q) {
@@ -307,7 +316,9 @@ func findQuality(filename string) (quality string, matches []string) {
 	// otherwise check if we can find the media and resolution separately
 	foundMedia := ""
 	for _, med := range media {
-		if strings.Contains(name, strings.ToLower(med)) {
+		medLower := strings.ToLower(med)
+		// Also check for hyphenated version
+		if strings.Contains(name, medLower) || strings.Contains(name, strings.ReplaceAll(medLower, "dl", "-dl")) {
 			foundMedia = med
 			break
 		}
@@ -388,9 +399,10 @@ func titleCase(title string) string {
 func removeFromName(filename string, toRemove ...string) string {
 	lowerRemove := make([]string, len(toRemove))
 	for i, r := range toRemove {
-		lowerRemove[i] = strings.ToLower(r)
+		lowerRemove[i] = regexp.QuoteMeta(strings.ToLower(r))
 	}
-	rmRegex, err := regexp.Compile(fmt.Sprintf(`[\[\(]+[^\](]*(?:%s)[^[)]*[\]\)]+`, strings.Join(lowerRemove, "|")))
+
+	rmRegex, err := regexp.Compile(fmt.Sprintf(`(?i)[\[\(]+[^\](]*(?:%s)[^[)]*[\]\)]+`, strings.Join(lowerRemove, "|")))
 	if err != nil {
 		return filename
 	}
@@ -404,8 +416,6 @@ func findMatchingWords(source string, candidates []string) []string {
 	reg := regexp.MustCompile(`\b[\w]+\b`)
 	sourceWords := reg.FindAllString(strings.ToLower(source), -1)
 
-	log.Println("source", sourceWords)
-	// Create a map for O(1) lookup
 	wordMap := make(map[string]bool)
 	for _, word := range sourceWords {
 		wordMap[word] = true
