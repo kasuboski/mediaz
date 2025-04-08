@@ -409,6 +409,21 @@ func (mr *MockStorageMockRecorder) GetQualityProfileItem(ctx, id any) *gomock.Ca
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetQualityProfileItem", reflect.TypeOf((*MockStorage)(nil).GetQualityProfileItem), ctx, id)
 }
 
+// GetSeriesMetadata mocks base method.
+func (m *MockStorage) GetSeriesMetadata(ctx context.Context, where sqlite.BoolExpression) (*storage.SeriesMetadata, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetSeriesMetadata", ctx, where)
+	ret0, _ := ret[0].(*storage.SeriesMetadata)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetSeriesMetadata indicates an expected call of GetSeriesMetadata.
+func (mr *MockStorageMockRecorder) GetSeriesMetadata(ctx, where any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSeriesMetadata", reflect.TypeOf((*MockStorage)(nil).GetSeriesMetadata), ctx, where)
+}
+
 // Init mocks base method.
 func (m *MockStorage) Init(ctx context.Context, schemas ...string) error {
 	m.ctrl.T.Helper()
@@ -1152,6 +1167,44 @@ func (m *MockMovieMetadataStorage) ListMovieMetadata(ctx context.Context) ([]*mo
 func (mr *MockMovieMetadataStorageMockRecorder) ListMovieMetadata(ctx any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListMovieMetadata", reflect.TypeOf((*MockMovieMetadataStorage)(nil).ListMovieMetadata), ctx)
+}
+
+// MockSeriesMetadataStorage is a mock of SeriesMetadataStorage interface.
+type MockSeriesMetadataStorage struct {
+	ctrl     *gomock.Controller
+	recorder *MockSeriesMetadataStorageMockRecorder
+}
+
+// MockSeriesMetadataStorageMockRecorder is the mock recorder for MockSeriesMetadataStorage.
+type MockSeriesMetadataStorageMockRecorder struct {
+	mock *MockSeriesMetadataStorage
+}
+
+// NewMockSeriesMetadataStorage creates a new mock instance.
+func NewMockSeriesMetadataStorage(ctrl *gomock.Controller) *MockSeriesMetadataStorage {
+	mock := &MockSeriesMetadataStorage{ctrl: ctrl}
+	mock.recorder = &MockSeriesMetadataStorageMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockSeriesMetadataStorage) EXPECT() *MockSeriesMetadataStorageMockRecorder {
+	return m.recorder
+}
+
+// GetSeriesMetadata mocks base method.
+func (m *MockSeriesMetadataStorage) GetSeriesMetadata(ctx context.Context, where sqlite.BoolExpression) (*storage.SeriesMetadata, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetSeriesMetadata", ctx, where)
+	ret0, _ := ret[0].(*storage.SeriesMetadata)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetSeriesMetadata indicates an expected call of GetSeriesMetadata.
+func (mr *MockSeriesMetadataStorageMockRecorder) GetSeriesMetadata(ctx, where any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSeriesMetadata", reflect.TypeOf((*MockSeriesMetadataStorage)(nil).GetSeriesMetadata), ctx, where)
 }
 
 // MockDownloadClientStorage is a mock of DownloadClientStorage interface.

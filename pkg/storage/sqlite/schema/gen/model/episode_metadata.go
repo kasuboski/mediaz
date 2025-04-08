@@ -13,8 +13,10 @@ import (
 
 type EpisodeMetadata struct {
 	ID       int32 `sql:"primary_key"`
+	SeasonID int32
+	Number   int32
 	TmdbID   int32
-	Title    *string
+	Title    string
 	Overview *string
 	AirDate  *time.Time
 	Runtime  *int32

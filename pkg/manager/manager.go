@@ -28,10 +28,8 @@ import (
 	"go.uber.org/zap"
 )
 
-type TMDBClientInterface tmdb.ITmdb
-
 type MediaManager struct {
-	tmdb    TMDBClientInterface
+	tmdb    tmdb.ITmdb
 	indexer IndexerStore
 	library library.Library
 	storage storage.Storage
@@ -39,7 +37,7 @@ type MediaManager struct {
 	configs config.Manager
 }
 
-func New(tmbdClient TMDBClientInterface, prowlarrClient prowlarr.IProwlarr, library library.Library, storage storage.Storage, factory download.Factory, managerConfigs config.Manager) MediaManager {
+func New(tmbdClient tmdb.ITmdb, prowlarrClient prowlarr.IProwlarr, library library.Library, storage storage.Storage, factory download.Factory, managerConfigs config.Manager) MediaManager {
 	return MediaManager{
 		tmdb:    tmbdClient,
 		indexer: NewIndexerStore(prowlarrClient, storage),
@@ -132,6 +130,15 @@ func (m MediaManager) SearchTV(ctx context.Context, query string) (*SearchMediaR
 	}
 
 	return result, nil
+}
+
+func (m MediaManager) GetSeriesDetails(ctx context.Context, tmdbID int) (*storage.SeriesMetadata, error) {
+	det, err := m.tmdb.GetSeriesDetails(ctx, tmdbID)
+	if err != nil {
+		return nil, err
+	}
+
+	return FromSeriesDetails(*det)
 }
 
 func parseMediaResult(res *http.Response) (*SearchMediaResponse, error) {
@@ -327,6 +334,12 @@ type AddMovieRequest struct {
 	QualityProfileID int32 `json:"qualityProfileID"`
 }
 
+// AddSeriesRequest describes what is required to add a series to a library
+type AddSeriesRequest struct {
+	TMDBID           int   `json:"tmdbID"`
+	QualityProfileID int32 `json:"qualityProfileID"`
+}
+
 // AddMovieToLibrary adds a movie to be managed by mediaz
 // TODO: check status of movie before doing anything else.. do we already have it tracked? is it downloaded or already discovered? error state?
 func (m MediaManager) AddMovieToLibrary(ctx context.Context, request AddMovieRequest) (*storage.Movie, error) {
@@ -384,6 +397,37 @@ func (m MediaManager) AddMovieToLibrary(ctx context.Context, request AddMovieReq
 	}
 
 	return movie, nil
+}
+
+// AddSeriesToLibrary adds a series to be managed by mediaz
+func (m MediaManager) AddSeriesToLibrary(ctx context.Context, request AddSeriesRequest) (*storage.Movie, error) {
+	// log := logger.FromCtx(ctx)
+
+	// _, err := m.storage.GetQualityProfile(ctx, int64(request.QualityProfileID))
+	// if err != nil {
+	// 	log.Debug("failed to get quality profile", zap.Int32("id", request.QualityProfileID), zap.Error(err))
+	// 	return nil, err
+	// }
+
+	// det, err := m.GetSeriesMetadata(ctx, request.TMDBID)
+	// if err != nil {
+	// 	log.Debug("failed to get movie metadata", zap.Error(err))
+	// 	return nil, err
+	// }
+
+	// movie, err := m.storage.GetSeriesMetadata(ctx, table.SeriesMetadata.ID.EQ(sqlite.Int32(det.ID)))
+	// // if we find the movie we're done
+	// if err == nil {
+	// 	return movie, err
+	// }
+
+	// // anything other than a not found error is an internal error
+	// if !errors.Is(err, storage.ErrNotFound) {
+	// 	log.Warnw("couldn't find movie by metadata", "meta_id", det.ID, "err", err)
+	// 	return nil, err
+	// }
+
+	return nil, nil
 }
 
 // ReconcileSnapshot is a thread safe snapshot of the current reconcile loop state

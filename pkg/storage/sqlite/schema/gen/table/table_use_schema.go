@@ -25,6 +25,6 @@ func UseSchema(schema string) {
 	QualityProfileItem = QualityProfileItem.FromSchema(schema)
 	Season = Season.FromSchema(schema)
 	SeasonMetadata = SeasonMetadata.FromSchema(schema)
-	Show = Show.FromSchema(schema)
-	ShowMetadata = ShowMetadata.FromSchema(schema)
+	Series = Series.FromSchema(schema)
+	SeriesMetadata = SeriesMetadata.FromSchema(schema)
 }

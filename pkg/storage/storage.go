@@ -18,6 +18,7 @@ type Storage interface {
 	QualityStorage
 	MovieStorage
 	MovieMetadataStorage
+	SeriesMetadataStorage
 	DownloadClientStorage
 }
 
@@ -46,6 +47,8 @@ type QualityStorage interface {
 
 type MovieState string
 
+type EpisodeState string
+
 const (
 	MovieStateNew         MovieState = ""
 	MovieStateMissing     MovieState = "missing"
@@ -53,6 +56,13 @@ const (
 	MovieStateUnreleased  MovieState = "unreleased"
 	MovieStateDownloading MovieState = "downloading"
 	MovieStateDownloaded  MovieState = "downloaded"
+
+	EpisodeStateNew         EpisodeState = ""
+	EpisodeStateMissing     EpisodeState = "missing"
+	EpisodeStateDiscovered  EpisodeState = "discovered"
+	EpisodeStateUnreleased  EpisodeState = "unreleased"
+	EpisodeStateDownloading EpisodeState = "downloading"
+	EpisodeStateDownloaded  EpisodeState = "downloaded"
 )
 
 type MovieStateMetadata struct {
@@ -100,6 +110,38 @@ type MovieMetadataStorage interface {
 	DeleteMovieMetadata(ctx context.Context, id int64) error
 	ListMovieMetadata(ctx context.Context) ([]*model.MovieMetadata, error)
 	GetMovieMetadata(ctx context.Context, where sqlite.BoolExpression) (*model.MovieMetadata, error)
+}
+
+type SeriesMetadata struct {
+	model.SeriesMetadata
+	SeasonMetadata []SeasonMetadata `sql:"alias:season_metadata"`
+}
+
+type SeasonMetadata struct {
+	model.SeasonMetadata
+	Episodes []model.EpisodeMetadata `sql:"alias:episode_metadata"`
+}
+
+type SeriesMetadataStorage interface {
+	// TODO: add other crud operations
+	GetSeriesMetadata(ctx context.Context, where sqlite.BoolExpression) (*SeriesMetadata, error)
+}
+
+type EpisodeTransition model.Episode
+
+type Episode struct {
+	model.Episode
+	State            EpisodeState `alias:"episode_transition.to_state" json:"state"`
+	DownloadID       string       `alias:"episode_transition.download_id" json:"-"`
+	DownloadClientID int32        `alias:"episode_transition.download_client_id" json:"-"`
+}
+
+func (e Episode) Machine() *machine.StateMachine[EpisodeState] {
+	return machine.New(e.State,
+		machine.From(EpisodeStateNew).To(EpisodeStateUnreleased, EpisodeStateMissing, EpisodeStateDiscovered),
+		machine.From(EpisodeStateNew).To(EpisodeStateUnreleased, EpisodeStateMissing, EpisodeStateDiscovered),
+		machine.From(EpisodeStateMissing).To(EpisodeStateDiscovered, EpisodeStateDownloading),
+	)
 }
 
 type DownloadClientStorage interface {

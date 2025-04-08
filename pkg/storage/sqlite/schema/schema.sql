@@ -91,19 +91,21 @@ CREATE TABLE IF NOT EXISTS "movie" (
     "last_search_time" DATETIME
 );
 
-CREATE TABLE IF NOT EXISTS "show" (
+CREATE TABLE IF NOT EXISTS "series" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "tmdb_id" INTEGER NOT NULL,
     "monitored" INTEGER NOT NULL,
     "quality_profile_id" INTEGER NOT NULL,
     "added" DATETIME DEFAULT current_timestamp,
-    "show_metadata" INTEGER UNIQUE,
+    "series_metadata" INTEGER UNIQUE,
     "last_search_time" DATETIME
 );
 
-CREATE TABLE IF NOT EXISTS "show_metadata" (
+CREATE TABLE IF NOT EXISTS "series_metadata" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     "tmdb_id" INTEGER NOT NULL,
     "title" TEXT NOT NULL,
+    "overview" TEXT,
     "last_info_sync" DATETIME,
     "first_air_date" DATETIME,
     "last_air_date" DATETIME,
@@ -114,19 +116,21 @@ CREATE TABLE IF NOT EXISTS "show_metadata" (
 
 CREATE TABLE IF NOT EXISTS "season" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-    "show_id" INTEGER NOT NULL,
+    "series_id" INTEGER NOT NULL,
     "season_metadata_id" INTEGER UNIQUE,
-    FOREIGN KEY ("show_id") REFERENCES "show" ("id")
+    FOREIGN KEY ("series_id") REFERENCES "series" ("id")
 );
 
 CREATE TABLE IF NOT EXISTS "season_metadata" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-    "tmdb_id" INTEGER NOT NULL UNIQUE,
-    "title" TEXT,
-    "overview" TEXT,
-    "episode_count" INTEGER NOT NULL,
+    "series_id" INTEGER NOT NULL,
     "number" INTEGER NOT NULL,
-    "air_date" DATETIME
+    "tmdb_id" INTEGER NOT NULL UNIQUE,
+    "title" TEXT NOT NULL,
+    "overview" TEXT,
+    "air_date" DATETIME,
+    "runtime" INTEGER,
+    FOREIGN KEY ("series_id") REFERENCES "series_metadata" ("id")
 );
 
 CREATE TABLE IF NOT EXISTS "episode" (
@@ -150,11 +154,14 @@ CREATE TABLE IF NOT EXISTS "episode_file" (
 
 CREATE TABLE IF NOT EXISTS "episode_metadata" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "season_id" INTEGER NOT NULL,
+    "number" INTEGER NOT NULL,
     "tmdb_id" INTEGER NOT NULL UNIQUE,
-    "title" TEXT,
+    "title" TEXT NOT NULL,
     "overview" TEXT,
     "air_date" DATETIME,
-    "runtime" INTEGER
+    "runtime" INTEGER,
+    FOREIGN KEY ("season_id") REFERENCES "season_metadata" ("id")
 );
 
 CREATE TABLE IF NOT EXISTS "movie_transition" (

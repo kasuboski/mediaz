@@ -17,6 +17,7 @@ import (
 	"github.com/kasuboski/mediaz/config"
 	"github.com/kasuboski/mediaz/pkg/download"
 	downloadMock "github.com/kasuboski/mediaz/pkg/download/mocks"
+	mhttpMock "github.com/kasuboski/mediaz/pkg/http/mocks"
 	mio "github.com/kasuboski/mediaz/pkg/io"
 	"github.com/kasuboski/mediaz/pkg/library"
 	mockLibrary "github.com/kasuboski/mediaz/pkg/library/mocks"
@@ -26,7 +27,6 @@ import (
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
 	"github.com/kasuboski/mediaz/pkg/tmdb"
-	"github.com/kasuboski/mediaz/pkg/tmdb/mocks"
 	"github.com/oapi-codegen/nullable"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -35,7 +35,6 @@ import (
 
 func TestAddMovietoLibrary(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	tmdbMock := mocks.NewMockClientInterface(ctrl)
 
 	store, err := sqlite.New(":memory:")
 	require.NoError(t, err)
@@ -49,7 +48,6 @@ func TestAddMovietoLibrary(t *testing.T) {
 
 	// create a date in the past
 	releaseDate := time.Now().AddDate(0, 0, -1).Format(tmdb.ReleaseDateFormat)
-	tmdbMock.EXPECT().MovieDetails(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(mediaDetailsResponse("test movie", 120, releaseDate), nil).Times(1)
 
 	prowlarrMock := prowlMock.NewMockClientInterface(ctrl)
 
@@ -81,8 +79,10 @@ func TestAddMovietoLibrary(t *testing.T) {
 	pClient.ClientInterface = prowlarrMock
 	require.NoError(t, err)
 
-	tClient, err := tmdb.New(":", "1234")
-	tClient.ClientInterface = tmdbMock
+	tmdbHttpMock := mhttpMock.NewMockHTTPClient(ctrl)
+	tmdbHttpMock.EXPECT().Do(gomock.Any()).Return(mediaDetailsResponse("test movie", 120, releaseDate), nil).Times(1)
+
+	tClient, err := tmdb.New("https://api.themoviedb.org", "1234", tmdb.WithHTTPClient(tmdbHttpMock))
 	require.NoError(t, err)
 
 	mockFactory := downloadMock.NewMockFactory(ctrl)
@@ -120,7 +120,6 @@ func TestAddMovietoLibrary(t *testing.T) {
 
 func Test_Manager_reconcileMissingMovie(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	tmdbMock := mocks.NewMockClientInterface(ctrl)
 
 	store, err := sqlite.New(":memory:")
 	require.NoError(t, err)
@@ -132,12 +131,8 @@ func Test_Manager_reconcileMissingMovie(t *testing.T) {
 	err = store.Init(ctx, schemas...)
 	require.NoError(t, err)
 
-	releaseDate := time.Now().AddDate(0, 0, -1).Format(tmdb.ReleaseDateFormat)
-	tmdbMock.EXPECT().MovieDetails(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(mediaDetailsResponse("test movie", 120, releaseDate), nil).Times(1)
-
 	prowlarrMock := prowlMock.NewMockClientInterface(ctrl)
 	indexers := []Indexer{{ID: 1, Name: "test", Priority: 1}, {ID: 3, Name: "test2", Priority: 10}}
-	// prowlarrMock.EXPECT().GetAPIV1Indexer(gomock.Any()).Return(indexersResponse(t, indexers), nil).Times(1)
 
 	bigSeeders := nullable.NewNullNullable[int32]()
 	bigSeeders.Set(23)
@@ -163,8 +158,12 @@ func Test_Manager_reconcileMissingMovie(t *testing.T) {
 	pClient.ClientInterface = prowlarrMock
 	require.NoError(t, err)
 
-	tClient, err := tmdb.New(":", "1234")
-	tClient.ClientInterface = tmdbMock
+	releaseDate := time.Now().AddDate(0, 0, -1).Format(tmdb.ReleaseDateFormat)
+
+	tmdbHttpMock := mhttpMock.NewMockHTTPClient(ctrl)
+	tmdbHttpMock.EXPECT().Do(gomock.Any()).Return(mediaDetailsResponse("test movie", 120, releaseDate), nil).Times(1)
+
+	tClient, err := tmdb.New("https://api.themoviedb.org", "1234", tmdb.WithHTTPClient(tmdbHttpMock))
 	require.NoError(t, err)
 
 	downloadClient := model.DownloadClient{
@@ -229,7 +228,6 @@ func Test_Manager_reconcileMissingMovie(t *testing.T) {
 
 func Test_Manager_reconcileUnreleasedMovie(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	tmdbMock := mocks.NewMockClientInterface(ctrl)
 
 	store, err := sqlite.New(":memory:")
 	require.NoError(t, err)
@@ -241,9 +239,6 @@ func Test_Manager_reconcileUnreleasedMovie(t *testing.T) {
 	err = store.Init(ctx, schemas...)
 	require.NoError(t, err)
 
-	releaseDate := time.Now().AddDate(0, 0, +5).Format(tmdb.ReleaseDateFormat)
-	tmdbMock.EXPECT().MovieDetails(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(mediaDetailsResponse("test movie", 120, releaseDate), nil).Times(1)
-
 	prowlarrMock := prowlMock.NewMockClientInterface(ctrl)
 	indexers := []Indexer{{ID: 1, Name: "test", Priority: 1}, {ID: 3, Name: "test2", Priority: 10}}
 
@@ -251,8 +246,11 @@ func Test_Manager_reconcileUnreleasedMovie(t *testing.T) {
 	pClient.ClientInterface = prowlarrMock
 	require.NoError(t, err)
 
-	tClient, err := tmdb.New(":", "1234")
-	tClient.ClientInterface = tmdbMock
+	releaseDate := time.Now().AddDate(0, 0, +5).Format(tmdb.ReleaseDateFormat)
+
+	tmdbHttpMock := mhttpMock.NewMockHTTPClient(ctrl)
+	tmdbHttpMock.EXPECT().Do(gomock.Any()).Return(mediaDetailsResponse("test movie", 120, releaseDate), nil).Times(1)
+	tClient, err := tmdb.New("https://api.themoviedb.org", "1234", tmdb.WithHTTPClient(tmdbHttpMock))
 	require.NoError(t, err)
 
 	downloadClient := model.DownloadClient{
@@ -435,7 +433,6 @@ func TestIndexMovieLibrary(t *testing.T) {
 
 func TestRun(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	tmdbMock := mocks.NewMockClientInterface(ctrl)
 	prowlarrMock := prowlMock.NewMockClientInterface(ctrl)
 	store, err := sqlite.New(":memory:")
 	require.Nil(t, err)
@@ -466,12 +463,10 @@ func TestRun(t *testing.T) {
 	pClient.ClientInterface = prowlarrMock
 	require.NoError(t, err)
 
-	tClient, err := tmdb.New(":", "1234")
-	tClient.ClientInterface = tmdbMock
 	require.NoError(t, err)
 
 	mockFactory := downloadMock.NewMockFactory(ctrl)
-	m := New(tClient, pClient, lib, store, mockFactory, config.Manager{
+	m := New(nil, pClient, lib, store, mockFactory, config.Manager{
 		Jobs: config.Jobs{
 			MovieReconcile: time.Minute * 1,
 			MovieIndex:     time.Minute * 1,
