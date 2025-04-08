@@ -39,14 +39,18 @@ func NewRateLimitedClient(opts ...ClientOption) *RateLimitedClient {
 // WithMaxRetries sets the maximum number of retries for the client
 func WithMaxRetries(maxRetries int) ClientOption {
 	return func(c *RateLimitedClient) {
-		c.maxRetries = maxRetries
+		if maxRetries != 0 {
+			c.maxRetries = maxRetries
+		}
 	}
 }
 
 // WithBaseBackoff sets the base backoff time for the client
 func WithBaseBackoff(baseBackoff time.Duration) ClientOption {
 	return func(c *RateLimitedClient) {
-		c.baseBackoff = baseBackoff
+		if baseBackoff != 0 {
+			c.baseBackoff = baseBackoff
+		}
 	}
 }
 
