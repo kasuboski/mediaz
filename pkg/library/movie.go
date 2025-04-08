@@ -18,9 +18,8 @@ func (mf MovieFile) String() string {
 
 func FromPath(path string) MovieFile {
 	// Use the directory name to find the movie name
-	name := dirName(path)
 	return MovieFile{
-		Name:         sanitizeName(name),
+		Name:         MovieNameFromFilepath(path),
 		RelativePath: path,
 	}
 }

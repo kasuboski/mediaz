@@ -296,9 +296,10 @@ func (m MediaManager) IndexMovieLibrary(ctx context.Context) error {
 	}
 
 	for _, f := range movieFiles {
-		foundMovie, err := m.storage.GetMovieByMovieFileID(ctx, int64(f.ID))
+		movieName := library.MovieNameFromFilepath(*f.RelativePath)
+		foundMovie, err := m.storage.GetMovieByPath(ctx, movieName)
 		if err == nil {
-			log.Debug("movie file associated with movie already", zap.Any("movie file id", foundMovie.ID))
+			log.Debug("movie file associated with movie already", zap.Any("movie id", foundMovie.ID))
 			continue
 		}
 		if !errors.Is(err, qrm.ErrNoRows) {
@@ -311,7 +312,7 @@ func (m MediaManager) IndexMovieLibrary(ctx context.Context) error {
 		movie := storage.Movie{
 			Movie: model.Movie{
 				MovieFileID: &f.ID,
-				Path:        f.RelativePath,
+				Path:        &movieName,
 				Monitored:   1,
 			},
 		}
@@ -375,6 +376,7 @@ func (m MediaManager) AddMovieToLibrary(ctx context.Context, request AddMovieReq
 			MovieMetadataID:  &det.ID,
 			QualityProfileID: profile.ID,
 			Monitored:        1,
+			Path:             &det.Title,
 		},
 	}
 
@@ -586,7 +588,12 @@ func (m MediaManager) reconcileDownloadingMovie(ctx context.Context, movie *stor
 		return nil
 	}
 
-	_, err := m.storage.GetMovieFiles(ctx, int64(movie.ID))
+	if movie.Path == nil {
+		log.Debug("movie path is nil, skipping reconcile")
+		return nil
+	}
+
+	_, err := m.storage.GetMovieFilesByMovieName(ctx, *movie.Path)
 	if err == nil {
 		log.Info("movie files already tracked")
 		return m.updateMovieState(ctx, movie, storage.MovieStateDownloaded, nil)
@@ -655,6 +662,8 @@ func (m MediaManager) addMovieFileToLibrary(ctx context.Context, title, filePath
 	if err != nil {
 		return fmt.Errorf("failed to create movie file: %v", err)
 	}
+
+	log.Debug("created movie file", zap.String("path", mf.RelativePath))
 
 	return nil
 }

@@ -31,3 +31,4 @@ local.yaml
 
 # db files
 *.sqlite
+.aider*

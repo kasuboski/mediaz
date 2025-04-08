@@ -20,6 +20,8 @@ type Storage interface {
 	MovieMetadataStorage
 	SeriesMetadataStorage
 	DownloadClientStorage
+	ShowStorage
+	ShowMetadataStorage
 }
 
 type IndexerStorage interface {
@@ -91,6 +93,7 @@ func (m Movie) Machine() *machine.StateMachine[MovieState] {
 type MovieStorage interface {
 	GetMovie(ctx context.Context, id int64) (*Movie, error)
 	GetMovieByMovieFileID(ctx context.Context, fileID int64) (*Movie, error)
+	GetMovieByPath(ctx context.Context, path string) (*Movie, error)
 	GetMovieByMetadataID(ctx context.Context, metadataID int) (*Movie, error)
 	CreateMovie(ctx context.Context, movie Movie, state MovieState) (int64, error)
 	DeleteMovie(ctx context.Context, id int64) error
@@ -99,7 +102,7 @@ type MovieStorage interface {
 	UpdateMovieState(ctx context.Context, id int64, state MovieState, metadata *MovieStateMetadata) error
 	UpdateMovieMovieFileID(ctx context.Context, id int64, fileID int64) error
 
-	GetMovieFiles(ctx context.Context, id int64) ([]*model.MovieFile, error)
+	GetMovieFilesByMovieName(ctx context.Context, name string) ([]*model.MovieFile, error)
 	CreateMovieFile(ctx context.Context, movieFile model.MovieFile) (int64, error)
 	DeleteMovieFile(ctx context.Context, id int64) error
 	ListMovieFiles(ctx context.Context) ([]*model.MovieFile, error)
@@ -166,6 +169,77 @@ type QualityDefinition struct {
 	MinSize       float64 `alias:"quality_definition.min_size" json:"minSize"`
 	MaxSize       float64 `alias:"quality_definition.max_size" json:"maxSize"`
 	QualityID     int32   `alias:"quality_definition.quality_id" json:"-"`
+}
+
+type Episode struct {
+	model.Episode
+	State            EpisodeState `json:"state"`
+	DownloadID       string       `json:"-"`
+	DownloadClientID int32        `json:"-"`
+}
+
+type EpisodeState string
+
+const (
+	EpisodeStateNew         EpisodeState = ""
+	EpisodeStateMissing     EpisodeState = "missing"
+	EpisodeStateDiscovered  EpisodeState = "discovered"
+	EpisodeStateUnreleased  EpisodeState = "unreleased"
+	EpisodeStateDownloading EpisodeState = "downloading"
+	EpisodeStateDownloaded  EpisodeState = "downloaded"
+)
+
+type EpisodeTransition model.EpisodeTransition
+
+func (e Episode) Machine() *machine.StateMachine[EpisodeState] {
+	return machine.New(e.State,
+		machine.From(EpisodeStateNew).To(EpisodeStateUnreleased, EpisodeStateMissing, EpisodeStateDiscovered),
+		machine.From(EpisodeStateMissing).To(EpisodeStateDiscovered, EpisodeStateDownloading),
+		machine.From(EpisodeStateUnreleased).To(EpisodeStateDiscovered, EpisodeStateMissing),
+		machine.From(EpisodeStateDownloading).To(EpisodeStateDownloaded),
+	)
+}
+
+type ShowStorage interface {
+	GetShow(ctx context.Context, id int64) (*model.Show, error)
+	CreateShow(ctx context.Context, show model.Show) (int64, error)
+	DeleteShow(ctx context.Context, id int64) error
+	ListShows(ctx context.Context) ([]*model.Show, error)
+
+	GetSeason(ctx context.Context, id int64) (*model.Season, error)
+	CreateSeason(ctx context.Context, season model.Season) (int64, error)
+	DeleteSeason(ctx context.Context, id int64) error
+	ListSeasons(ctx context.Context, showID int64) ([]*model.Season, error)
+
+	GetEpisode(ctx context.Context, id int64) (*Episode, error)
+	GetEpisodeByEpisodeFileID(ctx context.Context, fileID int64) (*Episode, error)
+	CreateEpisode(ctx context.Context, episode Episode, state EpisodeState) (int64, error)
+	DeleteEpisode(ctx context.Context, id int64) error
+	ListEpisodes(ctx context.Context, seasonID int64) ([]*Episode, error)
+	ListEpisodesByState(ctx context.Context, state EpisodeState) ([]*Episode, error)
+	UpdateEpisodeEpisodeFileID(ctx context.Context, id int64, fileID int64) error
+
+	GetEpisodeFiles(ctx context.Context, id int64) ([]*model.EpisodeFile, error)
+	CreateEpisodeFile(ctx context.Context, episodeFile model.EpisodeFile) (int64, error)
+	DeleteEpisodeFile(ctx context.Context, id int64) error
+	ListEpisodeFiles(ctx context.Context) ([]*model.EpisodeFile, error)
+}
+
+type ShowMetadataStorage interface {
+	CreateShowMetadata(ctx context.Context, showMeta model.ShowMetadata) (int64, error)
+	DeleteShowMetadata(ctx context.Context, id int64) error
+	ListShowMetadata(ctx context.Context) ([]*model.ShowMetadata, error)
+	GetShowMetadata(ctx context.Context, where sqlite.BoolExpression) (*model.ShowMetadata, error)
+
+	CreateSeasonMetadata(ctx context.Context, seasonMeta model.SeasonMetadata) (int64, error)
+	DeleteSeasonMetadata(ctx context.Context, id int64) error
+	ListSeasonMetadata(ctx context.Context) ([]*model.SeasonMetadata, error)
+	GetSeasonMetadata(ctx context.Context, where sqlite.BoolExpression) (*model.SeasonMetadata, error)
+
+	CreateEpisodeMetadata(ctx context.Context, episodeMeta model.EpisodeMetadata) (int64, error)
+	DeleteEpisodeMetadata(ctx context.Context, id int64) error
+	ListEpisodeMetadata(ctx context.Context) ([]*model.EpisodeMetadata, error)
+	GetEpisodeMetadata(ctx context.Context, where sqlite.BoolExpression) (*model.EpisodeMetadata, error)
 }
 
 func ReadSchemaFiles(files ...string) ([]string, error) {
