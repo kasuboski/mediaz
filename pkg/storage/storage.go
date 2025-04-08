@@ -49,8 +49,6 @@ type QualityStorage interface {
 
 type MovieState string
 
-type EpisodeState string
-
 const (
 	MovieStateNew         MovieState = ""
 	MovieStateMissing     MovieState = "missing"
@@ -58,13 +56,6 @@ const (
 	MovieStateUnreleased  MovieState = "unreleased"
 	MovieStateDownloading MovieState = "downloading"
 	MovieStateDownloaded  MovieState = "downloaded"
-
-	EpisodeStateNew         EpisodeState = ""
-	EpisodeStateMissing     EpisodeState = "missing"
-	EpisodeStateDiscovered  EpisodeState = "discovered"
-	EpisodeStateUnreleased  EpisodeState = "unreleased"
-	EpisodeStateDownloading EpisodeState = "downloading"
-	EpisodeStateDownloaded  EpisodeState = "downloaded"
 )
 
 type MovieStateMetadata struct {
@@ -130,15 +121,6 @@ type SeriesMetadataStorage interface {
 	GetSeriesMetadata(ctx context.Context, where sqlite.BoolExpression) (*SeriesMetadata, error)
 }
 
-type EpisodeTransition model.Episode
-
-type Episode struct {
-	model.Episode
-	State            EpisodeState `alias:"episode_transition.to_state" json:"state"`
-	DownloadID       string       `alias:"episode_transition.download_id" json:"-"`
-	DownloadClientID int32        `alias:"episode_transition.download_client_id" json:"-"`
-}
-
 func (e Episode) Machine() *machine.StateMachine[EpisodeState] {
 	return machine.New(e.State,
 		machine.From(EpisodeStateNew).To(EpisodeStateUnreleased, EpisodeStateMissing, EpisodeStateDiscovered),
@@ -191,20 +173,11 @@ const (
 
 type EpisodeTransition model.EpisodeTransition
 
-func (e Episode) Machine() *machine.StateMachine[EpisodeState] {
-	return machine.New(e.State,
-		machine.From(EpisodeStateNew).To(EpisodeStateUnreleased, EpisodeStateMissing, EpisodeStateDiscovered),
-		machine.From(EpisodeStateMissing).To(EpisodeStateDiscovered, EpisodeStateDownloading),
-		machine.From(EpisodeStateUnreleased).To(EpisodeStateDiscovered, EpisodeStateMissing),
-		machine.From(EpisodeStateDownloading).To(EpisodeStateDownloaded),
-	)
-}
-
 type ShowStorage interface {
-	GetShow(ctx context.Context, id int64) (*model.Show, error)
-	CreateShow(ctx context.Context, show model.Show) (int64, error)
+	GetShow(ctx context.Context, id int64) (*model.Series, error)
+	CreateShow(ctx context.Context, show model.Series) (int64, error)
 	DeleteShow(ctx context.Context, id int64) error
-	ListShows(ctx context.Context) ([]*model.Show, error)
+	ListShows(ctx context.Context) ([]*model.Series, error)
 
 	GetSeason(ctx context.Context, id int64) (*model.Season, error)
 	CreateSeason(ctx context.Context, season model.Season) (int64, error)
@@ -226,10 +199,10 @@ type ShowStorage interface {
 }
 
 type ShowMetadataStorage interface {
-	CreateShowMetadata(ctx context.Context, showMeta model.ShowMetadata) (int64, error)
+	CreateShowMetadata(ctx context.Context, showMeta model.SeriesMetadata) (int64, error)
 	DeleteShowMetadata(ctx context.Context, id int64) error
-	ListShowMetadata(ctx context.Context) ([]*model.ShowMetadata, error)
-	GetShowMetadata(ctx context.Context, where sqlite.BoolExpression) (*model.ShowMetadata, error)
+	ListShowMetadata(ctx context.Context) ([]*model.SeriesMetadata, error)
+	GetShowMetadata(ctx context.Context, where sqlite.BoolExpression) (*model.SeriesMetadata, error)
 
 	CreateSeasonMetadata(ctx context.Context, seasonMeta model.SeasonMetadata) (int64, error)
 	DeleteSeasonMetadata(ctx context.Context, id int64) error

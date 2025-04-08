@@ -24,7 +24,7 @@ func TestShowStorage(t *testing.T) {
 	assert.Empty(t, shows)
 
 	// Test creating a show
-	show := model.Show{
+	show := model.Series{
 		Monitored:        1,
 		QualityProfileID: 1,
 		Added:            ptr(time.Now()),
@@ -67,17 +67,17 @@ func TestSeasonStorage(t *testing.T) {
 	assert.NotNil(t, store)
 
 	// Create a show first
-	show := model.Show{
+	show := model.Series{
 		Monitored:        1,
 		QualityProfileID: 1,
 		Added:            ptr(time.Now()),
 	}
-	showID, err := store.CreateShow(ctx, show)
+	SeriesID, err := store.CreateShow(ctx, show)
 	require.Nil(t, err)
 
 	// Test creating a season
 	season := model.Season{
-		ShowID: int32(showID),
+		SeriesID: int32(SeriesID),
 	}
 
 	id, err := store.CreateSeason(ctx, season)
@@ -88,20 +88,20 @@ func TestSeasonStorage(t *testing.T) {
 	retrieved, err := store.GetSeason(ctx, id)
 	assert.Nil(t, err)
 	assert.NotNil(t, retrieved)
-	assert.Equal(t, season.ShowID, retrieved.ShowID)
+	assert.Equal(t, season.SeriesID, retrieved.SeriesID)
 
 	// Test listing seasons
-	seasons, err := store.ListSeasons(ctx, showID)
+	seasons, err := store.ListSeasons(ctx, SeriesID)
 	assert.Nil(t, err)
 	assert.Len(t, seasons, 1)
-	assert.Equal(t, season.ShowID, seasons[0].ShowID)
+	assert.Equal(t, season.SeriesID, seasons[0].SeriesID)
 
 	// Test deleting the season
 	err = store.DeleteSeason(ctx, id)
 	assert.Nil(t, err)
 
 	// Verify deletion
-	seasons, err = store.ListSeasons(ctx, showID)
+	seasons, err = store.ListSeasons(ctx, SeriesID)
 	assert.Nil(t, err)
 	assert.Empty(t, seasons)
 
@@ -116,16 +116,16 @@ func TestEpisodeStorage(t *testing.T) {
 	assert.NotNil(t, store)
 
 	// Create a show and season first
-	show := model.Show{
+	show := model.Series{
 		Monitored:        1,
 		QualityProfileID: 1,
 		Added:            ptr(time.Now()),
 	}
-	showID, err := store.CreateShow(ctx, show)
+	SeriesID, err := store.CreateShow(ctx, show)
 	require.Nil(t, err)
 
 	season := model.Season{
-		ShowID: int32(showID),
+		SeriesID: int32(SeriesID),
 	}
 	seasonID, err := store.CreateSeason(ctx, season)
 	require.Nil(t, err)
@@ -237,7 +237,7 @@ func TestShowMetadataStorage(t *testing.T) {
 	assert.NotNil(t, store)
 
 	// Test creating show metadata
-	metadata := model.ShowMetadata{
+	metadata := model.SeriesMetadata{
 		TmdbID:       12345,
 		Title:        "Test Show",
 		SeasonCount:  1,
@@ -250,7 +250,7 @@ func TestShowMetadataStorage(t *testing.T) {
 	assert.Greater(t, id, int64(0))
 
 	// Test getting the show metadata
-	where := table.ShowMetadata.ID.EQ(sqlite.Int64(id))
+	where := table.SeriesMetadata.ID.EQ(sqlite.Int64(id))
 	retrieved, err := store.GetShowMetadata(ctx, where)
 	assert.Nil(t, err)
 	assert.NotNil(t, retrieved)
@@ -287,11 +287,10 @@ func TestSeasonMetadataStorage(t *testing.T) {
 
 	// Test creating season metadata
 	metadata := model.SeasonMetadata{
-		TmdbID:       12345,
-		Title:        ptr("Season 1"),
-		Overview:     ptr("Test season overview"),
-		EpisodeCount: 10,
-		Number:       1,
+		TmdbID:   12345,
+		Title:    "Season 1",
+		Overview: ptr("Test season overview"),
+		Number:   1,
 	}
 
 	id, err := store.CreateSeasonMetadata(ctx, metadata)
@@ -306,7 +305,6 @@ func TestSeasonMetadataStorage(t *testing.T) {
 	assert.Equal(t, metadata.TmdbID, retrieved.TmdbID)
 	assert.Equal(t, metadata.Title, retrieved.Title)
 	assert.Equal(t, metadata.Overview, retrieved.Overview)
-	assert.Equal(t, metadata.EpisodeCount, retrieved.EpisodeCount)
 	assert.Equal(t, metadata.Number, retrieved.Number)
 
 	// Test listing season metadata
@@ -337,7 +335,7 @@ func TestEpisodeMetadataStorage(t *testing.T) {
 	// Test creating episode metadata
 	metadata := model.EpisodeMetadata{
 		TmdbID:   12345,
-		Title:    ptr("Test Episode"),
+		Title:    "Test Episode",
 		Overview: ptr("Test episode overview"),
 		Runtime:  ptr(int32(45)),
 	}

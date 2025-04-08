@@ -13,23 +13,23 @@ import (
 )
 
 // CreateShow stores a show in the database
-func (s SQLite) CreateShow(ctx context.Context, show model.Show) (int64, error) {
-	setColumns := make([]sqlite.Expression, len(table.Show.MutableColumns))
-	for i, c := range table.Show.MutableColumns {
+func (s SQLite) CreateShow(ctx context.Context, show model.Series) (int64, error) {
+	setColumns := make([]sqlite.Expression, len(table.Series.MutableColumns))
+	for i, c := range table.Series.MutableColumns {
 		setColumns[i] = c
 	}
 	// don't insert a zeroed ID
-	insertColumns := table.Show.MutableColumns
+	insertColumns := table.Series.MutableColumns
 	if show.ID != 0 {
-		insertColumns = table.Show.AllColumns
+		insertColumns = table.Series.AllColumns
 	}
 
-	stmt := table.Show.
+	stmt := table.Series.
 		INSERT(insertColumns).
 		MODEL(show).
-		RETURNING(table.Show.ID).
-		ON_CONFLICT(table.Show.ID).
-		DO_UPDATE(sqlite.SET(table.Show.MutableColumns.SET(sqlite.ROW(setColumns...))))
+		RETURNING(table.Series.ID).
+		ON_CONFLICT(table.Series.ID).
+		DO_UPDATE(sqlite.SET(table.Series.MutableColumns.SET(sqlite.ROW(setColumns...))))
 
 	result, err := s.handleInsert(ctx, stmt)
 	if err != nil {
@@ -45,12 +45,12 @@ func (s SQLite) CreateShow(ctx context.Context, show model.Show) (int64, error) 
 }
 
 // GetShow gets a show by id
-func (s SQLite) GetShow(ctx context.Context, id int64) (*model.Show, error) {
-	stmt := table.Show.
-		SELECT(table.Show.AllColumns).
-		WHERE(table.Show.ID.EQ(sqlite.Int64(id)))
+func (s SQLite) GetShow(ctx context.Context, id int64) (*model.Series, error) {
+	stmt := table.Series.
+		SELECT(table.Series.AllColumns).
+		WHERE(table.Series.ID.EQ(sqlite.Int64(id)))
 
-	var show model.Show
+	var show model.Series
 	err := stmt.QueryContext(ctx, s.db, &show)
 	if err != nil {
 		if errors.Is(err, qrm.ErrNoRows) {
@@ -64,9 +64,9 @@ func (s SQLite) GetShow(ctx context.Context, id int64) (*model.Show, error) {
 
 // DeleteShow removes a show by id
 func (s SQLite) DeleteShow(ctx context.Context, id int64) error {
-	stmt := table.Show.
+	stmt := table.Series.
 		DELETE().
-		WHERE(table.Show.ID.EQ(sqlite.Int64(id)))
+		WHERE(table.Series.ID.EQ(sqlite.Int64(id)))
 
 	_, err := s.handleDelete(ctx, stmt)
 	if err != nil {
@@ -77,11 +77,11 @@ func (s SQLite) DeleteShow(ctx context.Context, id int64) error {
 }
 
 // ListShows lists all shows
-func (s SQLite) ListShows(ctx context.Context) ([]*model.Show, error) {
-	stmt := table.Show.
-		SELECT(table.Show.AllColumns)
+func (s SQLite) ListShows(ctx context.Context) ([]*model.Series, error) {
+	stmt := table.Series.
+		SELECT(table.Series.AllColumns)
 
-	var shows []*model.Show
+	var shows []*model.Series
 	err := stmt.QueryContext(ctx, s.db, &shows)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list shows: %w", err)
@@ -158,7 +158,7 @@ func (s SQLite) DeleteSeason(ctx context.Context, id int64) error {
 func (s SQLite) ListSeasons(ctx context.Context, showID int64) ([]*model.Season, error) {
 	stmt := table.Season.
 		SELECT(table.Season.AllColumns).
-		WHERE(table.Season.ShowID.EQ(sqlite.Int64(showID)))
+		WHERE(table.Season.SeriesID.EQ(sqlite.Int64(showID)))
 
 	var seasons []*model.Season
 	err := stmt.QueryContext(ctx, s.db, &seasons)
@@ -456,23 +456,23 @@ func (s SQLite) ListEpisodeFiles(ctx context.Context) ([]*model.EpisodeFile, err
 }
 
 // CreateShowMetadata creates the given showMeta
-func (s SQLite) CreateShowMetadata(ctx context.Context, showMeta model.ShowMetadata) (int64, error) {
-	setColumns := make([]sqlite.Expression, len(table.ShowMetadata.MutableColumns))
-	for i, c := range table.ShowMetadata.MutableColumns {
+func (s SQLite) CreateShowMetadata(ctx context.Context, showMeta model.SeriesMetadata) (int64, error) {
+	setColumns := make([]sqlite.Expression, len(table.SeriesMetadata.MutableColumns))
+	for i, c := range table.SeriesMetadata.MutableColumns {
 		setColumns[i] = c
 	}
 	// don't insert a zeroed ID
-	insertColumns := table.ShowMetadata.MutableColumns
+	insertColumns := table.SeriesMetadata.MutableColumns
 	if showMeta.ID != 0 {
-		insertColumns = table.ShowMetadata.AllColumns
+		insertColumns = table.SeriesMetadata.AllColumns
 	}
 
-	stmt := table.ShowMetadata.
+	stmt := table.SeriesMetadata.
 		INSERT(insertColumns).
 		MODEL(showMeta).
-		RETURNING(table.ShowMetadata.ID).
-		ON_CONFLICT(table.ShowMetadata.ID).
-		DO_UPDATE(sqlite.SET(table.ShowMetadata.MutableColumns.SET(sqlite.ROW(setColumns...))))
+		RETURNING(table.SeriesMetadata.ID).
+		ON_CONFLICT(table.SeriesMetadata.ID).
+		DO_UPDATE(sqlite.SET(table.SeriesMetadata.MutableColumns.SET(sqlite.ROW(setColumns...))))
 
 	result, err := s.handleInsert(ctx, stmt)
 	if err != nil {
@@ -489,9 +489,9 @@ func (s SQLite) CreateShowMetadata(ctx context.Context, showMeta model.ShowMetad
 
 // DeleteShowMetadata deletes a show metadata by id
 func (s SQLite) DeleteShowMetadata(ctx context.Context, id int64) error {
-	stmt := table.ShowMetadata.
+	stmt := table.SeriesMetadata.
 		DELETE().
-		WHERE(table.ShowMetadata.ID.EQ(sqlite.Int64(id)))
+		WHERE(table.SeriesMetadata.ID.EQ(sqlite.Int64(id)))
 
 	_, err := s.handleDelete(ctx, stmt)
 	if err != nil {
@@ -502,12 +502,12 @@ func (s SQLite) DeleteShowMetadata(ctx context.Context, id int64) error {
 }
 
 // ListShowMetadata lists all show metadata
-func (s SQLite) ListShowMetadata(ctx context.Context) ([]*model.ShowMetadata, error) {
-	stmt := table.ShowMetadata.
-		SELECT(table.ShowMetadata.AllColumns).
-		FROM(table.ShowMetadata)
+func (s SQLite) ListShowMetadata(ctx context.Context) ([]*model.SeriesMetadata, error) {
+	stmt := table.SeriesMetadata.
+		SELECT(table.SeriesMetadata.AllColumns).
+		FROM(table.SeriesMetadata)
 
-	var showMetadata []*model.ShowMetadata
+	var showMetadata []*model.SeriesMetadata
 	err := stmt.QueryContext(ctx, s.db, &showMetadata)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list show metadata: %w", err)
@@ -517,13 +517,13 @@ func (s SQLite) ListShowMetadata(ctx context.Context) ([]*model.ShowMetadata, er
 }
 
 // GetShowMetadata get a show metadata for the given where
-func (s SQLite) GetShowMetadata(ctx context.Context, where sqlite.BoolExpression) (*model.ShowMetadata, error) {
-	stmt := table.ShowMetadata.
-		SELECT(table.ShowMetadata.AllColumns).
-		FROM(table.ShowMetadata).
+func (s SQLite) GetShowMetadata(ctx context.Context, where sqlite.BoolExpression) (*model.SeriesMetadata, error) {
+	stmt := table.SeriesMetadata.
+		SELECT(table.SeriesMetadata.AllColumns).
+		FROM(table.SeriesMetadata).
 		WHERE(where)
 
-	var showMetadata model.ShowMetadata
+	var showMetadata model.SeriesMetadata
 	err := stmt.QueryContext(ctx, s.db, &showMetadata)
 	if err != nil {
 		if errors.Is(err, qrm.ErrNoRows) {

@@ -15,11 +15,7 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
-<<<<<<< HEAD
 func TestNewRateLimitedClient(t *testing.T) {
-=======
-func TestNewRateLimitedHTTPClient(t *testing.T) {
->>>>>>> eda80ad3de4b642f8f7f03b28e2f6c1270b3eba3
 	type args struct {
 		opts []ClientOption
 	}
@@ -84,11 +80,7 @@ func TestRateLimitedHTTPClient_Do(t *testing.T) {
 		}
 
 		mhttp.EXPECT().Do(req).Return(nil, errors.New("http error"))
-<<<<<<< HEAD
 		client := NewRateLimitedClient(WithHTTPClient(mhttp))
-=======
-		client := NewRateLimitedHTTPClient(WithHTTPClient(mhttp))
->>>>>>> eda80ad3de4b642f8f7f03b28e2f6c1270b3eba3
 		resp, err := client.Do(req)
 		assert.Error(t, err)
 		assert.Nil(t, resp)
@@ -109,11 +101,7 @@ func TestRateLimitedHTTPClient_Do(t *testing.T) {
 			Body:       io.NopCloser(bytes.NewBuffer([]byte("non 429 response"))),
 		}, nil)
 
-<<<<<<< HEAD
 		client := NewRateLimitedClient(WithHTTPClient(mhttp))
-=======
-		client := NewRateLimitedHTTPClient(WithHTTPClient(mhttp))
->>>>>>> eda80ad3de4b642f8f7f03b28e2f6c1270b3eba3
 		resp, err := client.Do(req)
 		assert.NoError(t, err)
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
@@ -140,11 +128,7 @@ func TestRateLimitedHTTPClient_Do(t *testing.T) {
 			StatusCode: http.StatusTooManyRequests,
 			Body:       io.NopCloser(bytes.NewBuffer([]byte("429 response"))),
 		}, nil)
-<<<<<<< HEAD
 		client := NewRateLimitedClient(WithHTTPClient(mhttp), WithMaxRetries(1))
-=======
-		client := NewRateLimitedHTTPClient(WithHTTPClient(mhttp), WithMaxRetries(1))
->>>>>>> eda80ad3de4b642f8f7f03b28e2f6c1270b3eba3
 		resp, err := client.Do(req)
 		assert.Error(t, err)
 		require.NotNil(t, resp)
@@ -168,11 +152,7 @@ func TestRateLimitedHTTPClient_Do(t *testing.T) {
 			},
 			Body: io.NopCloser(bytes.NewBuffer([]byte("429 response"))),
 		}, nil)
-<<<<<<< HEAD
 		client := NewRateLimitedClient(WithHTTPClient(mhttp), WithMaxRetries(1))
-=======
-		client := NewRateLimitedHTTPClient(WithHTTPClient(mhttp), WithMaxRetries(1))
->>>>>>> eda80ad3de4b642f8f7f03b28e2f6c1270b3eba3
 		resp, err := client.Do(req)
 		assert.ErrorContains(t, err, "rate limit exceeded after 1 retries")
 		assert.Equal(t, http.StatusTooManyRequests, resp.StatusCode)
