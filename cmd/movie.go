@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/kasuboski/mediaz/config"
+	mhttp "github.com/kasuboski/mediaz/pkg/http"
 	mio "github.com/kasuboski/mediaz/pkg/io"
 	"github.com/kasuboski/mediaz/pkg/library"
 	"github.com/kasuboski/mediaz/pkg/logger"
@@ -35,7 +36,7 @@ var discoverMovieCmd = &cobra.Command{
 			Host:   cfg.TMDB.Host,
 		}
 
-		c, err := tmdb.NewClient(u.String())
+		c, err := tmdb.NewClient(u.String(), tmdb.WithHTTPClient(mhttp.NewRateLimitedClient()))
 		if err != nil {
 			log.Fatalf("failed to create tmdb client: %v", err)
 		}
