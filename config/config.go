@@ -16,9 +16,11 @@ type Config struct {
 }
 
 type TMDB struct {
-	Scheme string `json:"scheme" yaml:"scheme" mapstructure:"scheme"`
-	Host   string `json:"host" yaml:"host" mapstructure:"host"`
-	APIKey string `json:"apiKey" yaml:"apiKey" mapstructure:"apiKey"`
+	Scheme      string        `json:"scheme" yaml:"scheme" mapstructure:"scheme"`
+	Host        string        `json:"host" yaml:"host" mapstructure:"host"`
+	APIKey      string        `json:"apiKey" yaml:"apiKey" mapstructure:"apiKey"`
+	BaseBackoff time.Duration `json:"backoff" yaml:"backoff" mapstructure:"backoff"`
+	MaxRetries  int           `json:"maxRetries" yaml:"maxRetries" mapstructure:"maxRetries"`
 }
 
 type Server struct {
