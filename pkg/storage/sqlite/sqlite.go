@@ -687,8 +687,3 @@ func (s SQLite) CreateDownloadClient(ctx context.Context, profile model.Download
 
 	return inserted, nil
 }
-
-// TODO: implement me
-func (s SQLite) GetSeriesMetadata(ctx context.Context, where sqlite.BoolExpression) (*storage.SeriesMetadata, error) {
-	return nil, storage.ErrNotFound
-}

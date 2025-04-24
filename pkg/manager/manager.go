@@ -132,13 +132,15 @@ func (m MediaManager) SearchTV(ctx context.Context, query string) (*SearchMediaR
 	return result, nil
 }
 
-func (m MediaManager) GetSeriesDetails(ctx context.Context, tmdbID int) (*storage.SeriesMetadata, error) {
+func (m MediaManager) GetSeriesDetails(ctx context.Context, tmdbID int) (model.SeriesMetadata, error) {
+	var model model.SeriesMetadata
 	det, err := m.tmdb.GetSeriesDetails(ctx, tmdbID)
 	if err != nil {
-		return nil, err
+		return model, err
 	}
 
-	return FromSeriesDetails(*det)
+	model, err = FromSeriesDetails(*det)
+	return model, err
 }
 
 func parseMediaResult(res *http.Response) (*SearchMediaResponse, error) {

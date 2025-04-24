@@ -18,10 +18,9 @@ type Storage interface {
 	QualityStorage
 	MovieStorage
 	MovieMetadataStorage
-	SeriesMetadataStorage
 	DownloadClientStorage
-	ShowStorage
-	ShowMetadataStorage
+	SeriesStorage
+	SeriesMetadataStorage
 }
 
 type IndexerStorage interface {
@@ -116,11 +115,6 @@ type SeasonMetadata struct {
 	Episodes []model.EpisodeMetadata `sql:"alias:episode_metadata"`
 }
 
-type SeriesMetadataStorage interface {
-	// TODO: add other crud operations
-	GetSeriesMetadata(ctx context.Context, where sqlite.BoolExpression) (*SeriesMetadata, error)
-}
-
 func (e Episode) Machine() *machine.StateMachine[EpisodeState] {
 	return machine.New(e.State,
 		machine.From(EpisodeStateNew).To(EpisodeStateUnreleased, EpisodeStateMissing, EpisodeStateDiscovered),
@@ -173,16 +167,16 @@ const (
 
 type EpisodeTransition model.EpisodeTransition
 
-type ShowStorage interface {
-	GetShow(ctx context.Context, id int64) (*model.Series, error)
-	CreateShow(ctx context.Context, show model.Series) (int64, error)
-	DeleteShow(ctx context.Context, id int64) error
-	ListShows(ctx context.Context) ([]*model.Series, error)
+type SeriesStorage interface {
+	GetSeries(ctx context.Context, id int64) (*model.Series, error)
+	CreateSeries(ctx context.Context, Series model.Series) (int64, error)
+	DeleteSeries(ctx context.Context, id int64) error
+	ListSeriess(ctx context.Context) ([]*model.Series, error)
 
 	GetSeason(ctx context.Context, id int64) (*model.Season, error)
 	CreateSeason(ctx context.Context, season model.Season) (int64, error)
 	DeleteSeason(ctx context.Context, id int64) error
-	ListSeasons(ctx context.Context, showID int64) ([]*model.Season, error)
+	ListSeasons(ctx context.Context, SeriesID int64) ([]*model.Season, error)
 
 	GetEpisode(ctx context.Context, id int64) (*Episode, error)
 	GetEpisodeByEpisodeFileID(ctx context.Context, fileID int64) (*Episode, error)
@@ -198,11 +192,11 @@ type ShowStorage interface {
 	ListEpisodeFiles(ctx context.Context) ([]*model.EpisodeFile, error)
 }
 
-type ShowMetadataStorage interface {
-	CreateShowMetadata(ctx context.Context, showMeta model.SeriesMetadata) (int64, error)
-	DeleteShowMetadata(ctx context.Context, id int64) error
-	ListShowMetadata(ctx context.Context) ([]*model.SeriesMetadata, error)
-	GetShowMetadata(ctx context.Context, where sqlite.BoolExpression) (*model.SeriesMetadata, error)
+type SeriesMetadataStorage interface {
+	CreateSeriesMetadata(ctx context.Context, SeriesMeta model.SeriesMetadata) (int64, error)
+	DeleteSeriesMetadata(ctx context.Context, id int64) error
+	ListSeriesMetadata(ctx context.Context) ([]*model.SeriesMetadata, error)
+	GetSeriesMetadata(ctx context.Context, where sqlite.BoolExpression) (*model.SeriesMetadata, error)
 
 	CreateSeasonMetadata(ctx context.Context, seasonMeta model.SeasonMetadata) (int64, error)
 	DeleteSeasonMetadata(ctx context.Context, id int64) error
