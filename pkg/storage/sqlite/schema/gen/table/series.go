@@ -18,11 +18,12 @@ type seriesTable struct {
 
 	// Columns
 	ID               sqlite.ColumnInteger
-	TmdbID           sqlite.ColumnInteger
+	Path             sqlite.ColumnString
 	Monitored        sqlite.ColumnInteger
-	QualityProfileID sqlite.ColumnInteger
 	Added            sqlite.ColumnTimestamp
-	SeriesMetadata   sqlite.ColumnInteger
+	TmdbID           sqlite.ColumnInteger
+	QualityProfileID sqlite.ColumnInteger
+	SeriesMetadataID sqlite.ColumnInteger
 	LastSearchTime   sqlite.ColumnTimestamp
 
 	AllColumns     sqlite.ColumnList
@@ -65,14 +66,15 @@ func newSeriesTable(schemaName, tableName, alias string) *SeriesTable {
 func newSeriesTableImpl(schemaName, tableName, alias string) seriesTable {
 	var (
 		IDColumn               = sqlite.IntegerColumn("id")
-		TmdbIDColumn           = sqlite.IntegerColumn("tmdb_id")
+		PathColumn             = sqlite.StringColumn("path")
 		MonitoredColumn        = sqlite.IntegerColumn("monitored")
-		QualityProfileIDColumn = sqlite.IntegerColumn("quality_profile_id")
 		AddedColumn            = sqlite.TimestampColumn("added")
-		SeriesMetadataColumn   = sqlite.IntegerColumn("series_metadata")
+		TmdbIDColumn           = sqlite.IntegerColumn("tmdb_id")
+		QualityProfileIDColumn = sqlite.IntegerColumn("quality_profile_id")
+		SeriesMetadataIDColumn = sqlite.IntegerColumn("series_metadata_id")
 		LastSearchTimeColumn   = sqlite.TimestampColumn("last_search_time")
-		allColumns             = sqlite.ColumnList{IDColumn, TmdbIDColumn, MonitoredColumn, QualityProfileIDColumn, AddedColumn, SeriesMetadataColumn, LastSearchTimeColumn}
-		mutableColumns         = sqlite.ColumnList{TmdbIDColumn, MonitoredColumn, QualityProfileIDColumn, AddedColumn, SeriesMetadataColumn, LastSearchTimeColumn}
+		allColumns             = sqlite.ColumnList{IDColumn, PathColumn, MonitoredColumn, AddedColumn, TmdbIDColumn, QualityProfileIDColumn, SeriesMetadataIDColumn, LastSearchTimeColumn}
+		mutableColumns         = sqlite.ColumnList{PathColumn, MonitoredColumn, AddedColumn, TmdbIDColumn, QualityProfileIDColumn, SeriesMetadataIDColumn, LastSearchTimeColumn}
 	)
 
 	return seriesTable{
@@ -80,11 +82,12 @@ func newSeriesTableImpl(schemaName, tableName, alias string) seriesTable {
 
 		//Columns
 		ID:               IDColumn,
-		TmdbID:           TmdbIDColumn,
+		Path:             PathColumn,
 		Monitored:        MonitoredColumn,
-		QualityProfileID: QualityProfileIDColumn,
 		Added:            AddedColumn,
-		SeriesMetadata:   SeriesMetadataColumn,
+		TmdbID:           TmdbIDColumn,
+		QualityProfileID: QualityProfileIDColumn,
+		SeriesMetadataID: SeriesMetadataIDColumn,
 		LastSearchTime:   LastSearchTimeColumn,
 
 		AllColumns:     allColumns,

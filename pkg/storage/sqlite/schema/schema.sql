@@ -82,7 +82,7 @@ CREATE TABLE IF NOT EXISTS "movie" (
     "path" TEXT,
     "monitored" INTEGER NOT NULL,
     "quality_profile_id" INTEGER NOT NULL,
-    "added" DATETIME,
+    "added" DATETIME DEFAULT current_timestamp,
     "tags" TEXT,
     "add_options" TEXT,
     "movie_file_id" INTEGER,
@@ -93,11 +93,12 @@ CREATE TABLE IF NOT EXISTS "movie" (
 
 CREATE TABLE IF NOT EXISTS "series" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-    "tmdb_id" INTEGER NOT NULL,
+    "path" TEXT,
     "monitored" INTEGER NOT NULL,
-    "quality_profile_id" INTEGER NOT NULL,
     "added" DATETIME DEFAULT current_timestamp,
-    "series_metadata" INTEGER UNIQUE,
+    "tmdb_id" INTEGER NOT NULL,
+    "quality_profile_id" INTEGER NOT NULL,
+    "series_metadata_id" INTEGER UNIQUE,
     "last_search_time" DATETIME
 );
 
@@ -173,6 +174,28 @@ CREATE TABLE IF NOT EXISTS "movie_transition" (
     "sort_key" INTEGER NOT NULL,
     "download_client_id" INTEGER REFERENCES "download_client"("id"),
     "download_id" TEXT,
+    "created_at" DATETIME DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS "series_transition" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "series_id" INTEGER NOT NULL REFERENCES "series"("id"),
+    "to_state" TEXT NOT NULL,
+    "from_state" TEXT,
+    "most_recent" BOOLEAN NOT NULL,
+    "sort_key" INTEGER NOT NULL,
+    "created_at" DATETIME DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS "season_transition" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "season_id" INTEGER NOT NULL REFERENCES "season"("id"),
+    "to_state" TEXT NOT NULL,
+    "from_state" TEXT,
+    "most_recent" BOOLEAN NOT NULL,
+    "sort_key" INTEGER NOT NULL,
     "created_at" DATETIME DEFAULT CURRENT_TIMESTAMP,
     "updated_at" DATETIME DEFAULT CURRENT_TIMESTAMP
 );

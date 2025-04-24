@@ -105,24 +105,6 @@ type MovieMetadataStorage interface {
 	GetMovieMetadata(ctx context.Context, where sqlite.BoolExpression) (*model.MovieMetadata, error)
 }
 
-type SeriesMetadata struct {
-	model.SeriesMetadata
-	SeasonMetadata []SeasonMetadata `sql:"alias:season_metadata"`
-}
-
-type SeasonMetadata struct {
-	model.SeasonMetadata
-	Episodes []model.EpisodeMetadata `sql:"alias:episode_metadata"`
-}
-
-func (e Episode) Machine() *machine.StateMachine[EpisodeState] {
-	return machine.New(e.State,
-		machine.From(EpisodeStateNew).To(EpisodeStateUnreleased, EpisodeStateMissing, EpisodeStateDiscovered),
-		machine.From(EpisodeStateNew).To(EpisodeStateUnreleased, EpisodeStateMissing, EpisodeStateDiscovered),
-		machine.From(EpisodeStateMissing).To(EpisodeStateDiscovered, EpisodeStateDownloading),
-	)
-}
-
 type DownloadClientStorage interface {
 	CreateDownloadClient(ctx context.Context, client model.DownloadClient) (int64, error)
 	GetDownloadClient(ctx context.Context, id int64) (model.DownloadClient, error)
@@ -147,16 +129,29 @@ type QualityDefinition struct {
 	QualityID     int32   `alias:"quality_definition.quality_id" json:"-"`
 }
 
-type Episode struct {
-	model.Episode
-	State            EpisodeState `json:"state"`
-	DownloadID       string       `json:"-"`
-	DownloadClientID int32        `json:"-"`
-}
-
-type EpisodeState string
+type (
+	SeriesState  string
+	SeasonState  string
+	EpisodeState string
+)
 
 const (
+	SeriesStateNew         SeriesState = ""
+	SeriesStateMissing     SeriesState = "missing"
+	SeriesStateDiscovered  SeriesState = "discovered"
+	SeriesStateUnreleased  SeriesState = "unreleased"
+	SeriesStateContinuing  SeriesState = "continuing"
+	SeriesStateDownloading SeriesState = "downloading"
+	SeriesStateEnded       SeriesState = "ended"
+
+	SeasonStateNew         SeasonState = ""
+	SeasonStateMissing     SeasonState = "missing"
+	SeasonStateDiscovered  SeasonState = "discovered"
+	SeasonStateUnreleased  SeasonState = "unreleased"
+	SeasonStateContinuing  SeasonState = "continuing"
+	SeasonStateDownloading SeasonState = "downloading"
+	SeasonStateEnded       SeasonState = "ended"
+
 	EpisodeStateNew         EpisodeState = ""
 	EpisodeStateMissing     EpisodeState = "missing"
 	EpisodeStateDiscovered  EpisodeState = "discovered"
@@ -165,22 +160,73 @@ const (
 	EpisodeStateDownloaded  EpisodeState = "downloaded"
 )
 
+type Series struct {
+	model.Series
+	State            SeriesState `alias:"series_transition.to_state" json:"state"`
+	DownloadID       string      `alias:"series_transition.download_id" json:"-"`
+	DownloadClientID int32       `alias:"series_transition.download_client_id" json:"-"`
+}
+
+type SeriesTransition model.SeriesTransition
+
+func (s Series) Machine() *machine.StateMachine[SeriesState] {
+	return machine.New(s.State,
+		machine.From(SeriesStateNew).To(SeriesStateUnreleased, SeriesStateMissing, SeriesStateDiscovered),
+		machine.From(SeriesStateMissing).To(SeriesStateDiscovered, SeriesStateDownloading),
+		machine.From(SeriesStateUnreleased).To(SeriesStateDiscovered, SeriesStateMissing),
+		machine.From(SeriesStateDownloading).To(SeriesStateContinuing, SeriesStateEnded),
+	)
+}
+
+type Season struct {
+	model.Season
+	State            SeasonState `alias:"season_transition.to_state" json:"state"`
+	DownloadID       string      `alias:"season_transition.download_id" json:"-"`
+	DownloadClientID int32       `alias:"season_transition.download_client_id" json:"-"`
+}
+
+type SeasonTransition model.SeasonTransition
+
+func (s Season) Machine() *machine.StateMachine[SeasonState] {
+	return machine.New(s.State,
+		machine.From(SeasonStateNew).To(SeasonStateUnreleased, SeasonStateMissing, SeasonStateDiscovered),
+		machine.From(SeasonStateMissing).To(SeasonStateDiscovered, SeasonStateDownloading),
+		machine.From(SeasonStateUnreleased).To(SeasonStateDiscovered, SeasonStateMissing),
+		machine.From(SeasonStateDownloading).To(SeasonStateContinuing, SeasonStateEnded),
+	)
+}
+
+type Episode struct {
+	model.Episode
+	State            EpisodeState `alias:"episode_transition.to_state" json:"state"`
+	DownloadID       string       `json:"-"`
+	DownloadClientID int32        `json:"-"`
+}
+
 type EpisodeTransition model.EpisodeTransition
 
-type SeriesStorage interface {
-	GetSeries(ctx context.Context, id int64) (*model.Series, error)
-	CreateSeries(ctx context.Context, Series model.Series) (int64, error)
-	DeleteSeries(ctx context.Context, id int64) error
-	ListSeriess(ctx context.Context) ([]*model.Series, error)
+func (e Episode) Machine() *machine.StateMachine[EpisodeState] {
+	return machine.New(e.State,
+		machine.From(EpisodeStateNew).To(EpisodeStateUnreleased, EpisodeStateMissing, EpisodeStateDiscovered),
+		machine.From(EpisodeStateNew).To(EpisodeStateUnreleased, EpisodeStateMissing, EpisodeStateDiscovered),
+		machine.From(EpisodeStateMissing).To(EpisodeStateDiscovered, EpisodeStateDownloading),
+	)
+}
 
-	GetSeason(ctx context.Context, id int64) (*model.Season, error)
-	CreateSeason(ctx context.Context, season model.Season) (int64, error)
+type SeriesStorage interface {
+	GetSeries(ctx context.Context, where sqlite.BoolExpression) (*Series, error)
+	CreateSeries(ctx context.Context, Series Series, initialState SeriesState) (int64, error)
+	DeleteSeries(ctx context.Context, id int64) error
+	ListSeries(ctx context.Context) ([]*Series, error)
+
+	GetSeason(ctx context.Context, id int64) (*Season, error)
+	CreateSeason(ctx context.Context, season Season, initialState SeasonState) (int64, error)
 	DeleteSeason(ctx context.Context, id int64) error
-	ListSeasons(ctx context.Context, SeriesID int64) ([]*model.Season, error)
+	ListSeasons(ctx context.Context, SeriesID int64) ([]*Season, error)
 
 	GetEpisode(ctx context.Context, id int64) (*Episode, error)
 	GetEpisodeByEpisodeFileID(ctx context.Context, fileID int64) (*Episode, error)
-	CreateEpisode(ctx context.Context, episode Episode, state EpisodeState) (int64, error)
+	CreateEpisode(ctx context.Context, episode Episode, initialState EpisodeState) (int64, error)
 	DeleteEpisode(ctx context.Context, id int64) error
 	ListEpisodes(ctx context.Context, seasonID int64) ([]*Episode, error)
 	ListEpisodesByState(ctx context.Context, state EpisodeState) ([]*Episode, error)

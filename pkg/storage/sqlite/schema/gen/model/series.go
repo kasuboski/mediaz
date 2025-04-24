@@ -13,10 +13,11 @@ import (
 
 type Series struct {
 	ID               int32 `sql:"primary_key"`
-	TmdbID           int32
+	Path             *string
 	Monitored        int32
-	QualityProfileID int32
 	Added            *time.Time
-	SeriesMetadata   *int32
+	TmdbID           int32
+	QualityProfileID int32
+	SeriesMetadataID *int32
 	LastSearchTime   *time.Time
 }

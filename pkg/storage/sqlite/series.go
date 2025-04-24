@@ -13,53 +13,104 @@ import (
 )
 
 // CreateSeries stores a Series in the database
-func (s SQLite) CreateSeries(ctx context.Context, Series model.Series) (int64, error) {
+func (s SQLite) CreateSeries(ctx context.Context, series storage.Series, initialState storage.SeriesState) (int64, error) {
+	if series.State == "" {
+		series.State = storage.SeriesStateNew
+	}
+
+	err := series.Machine().ToState(initialState)
+	if err != nil {
+		return 0, err
+	}
+
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return 0, err
+	}
+
 	setColumns := make([]sqlite.Expression, len(table.Series.MutableColumns))
 	for i, c := range table.Series.MutableColumns {
 		setColumns[i] = c
 	}
 	// don't insert a zeroed ID
 	insertColumns := table.Series.MutableColumns
-	if Series.ID != 0 {
+	if series.ID != 0 {
 		insertColumns = table.Series.AllColumns
 	}
 
 	stmt := table.Series.
 		INSERT(insertColumns).
-		MODEL(Series).
+		MODEL(series.Series).
 		RETURNING(table.Series.ID).
 		ON_CONFLICT(table.Series.ID).
 		DO_UPDATE(sqlite.SET(table.Series.MutableColumns.SET(sqlite.ROW(setColumns...))))
 
-	result, err := s.handleInsert(ctx, stmt)
+	result, err := stmt.ExecContext(ctx, tx)
 	if err != nil {
 		return 0, err
 	}
 
 	inserted, err := result.LastInsertId()
 	if err != nil {
+		tx.Rollback()
+		return 0, err
+	}
+
+	state := storage.SeriesTransition{
+		SeriesID:   int32(inserted),
+		ToState:    string(initialState),
+		MostRecent: true,
+		SortKey:    1,
+	}
+
+	transitionStmt := table.SeriesTransition.
+		INSERT(table.SeriesTransition.AllColumns.
+			Except(table.SeriesTransition.ID, table.SeriesTransition.CreatedAt, table.SeriesTransition.UpdatedAt)).
+		MODEL(state)
+
+	_, err = transitionStmt.ExecContext(ctx, tx)
+	if err != nil {
+		tx.Rollback()
+		return 0, err
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		tx.Rollback()
 		return 0, err
 	}
 
 	return inserted, nil
 }
 
-// GetSeries gets a Series by id
-func (s SQLite) GetSeries(ctx context.Context, id int64) (*model.Series, error) {
+// GetSeries looks for a series given a where condition
+func (s SQLite) GetSeries(ctx context.Context, where sqlite.BoolExpression) (*storage.Series, error) {
 	stmt := table.Series.
-		SELECT(table.Series.AllColumns).
-		WHERE(table.Series.ID.EQ(sqlite.Int64(id)))
+		SELECT(
+			table.Series.AllColumns,
+			table.SeriesTransition.AllColumns,
+		).
+		FROM(
+			table.Series.
+				INNER_JOIN(
+					table.SeriesTransition,
+					table.Series.ID.EQ(table.SeriesTransition.SeriesID).
+						AND(table.SeriesTransition.MostRecent.EQ(sqlite.Bool(true)))),
+		).
+		WHERE(
+			where,
+		)
 
-	var Series model.Series
-	err := stmt.QueryContext(ctx, s.db, &Series)
+	var series storage.Series
+	err := stmt.QueryContext(ctx, s.db, &series)
 	if err != nil {
 		if errors.Is(err, qrm.ErrNoRows) {
 			return nil, storage.ErrNotFound
 		}
-		return nil, fmt.Errorf("failed to get Series: %w", err)
+		return nil, fmt.Errorf("failed to get series: %w", err)
 	}
 
-	return &Series, nil
+	return &series, nil
 }
 
 // DeleteSeries removes a Series by id
@@ -76,22 +127,46 @@ func (s SQLite) DeleteSeries(ctx context.Context, id int64) error {
 	return nil
 }
 
-// ListSeriess lists all Seriess
-func (s SQLite) ListSeriess(ctx context.Context) ([]*model.Series, error) {
+// ListSeries lists all Series
+func (s SQLite) ListSeries(ctx context.Context) ([]*storage.Series, error) {
 	stmt := table.Series.
-		SELECT(table.Series.AllColumns)
+		SELECT(
+			table.Series.AllColumns,
+			table.SeriesTransition.AllColumns,
+		).
+		FROM(
+			table.Series.
+				INNER_JOIN(
+					table.SeriesTransition,
+					table.Series.ID.EQ(table.SeriesTransition.SeriesID).
+						AND(table.SeriesTransition.MostRecent.EQ(sqlite.Bool(true)))),
+		)
 
-	var Seriess []*model.Series
-	err := stmt.QueryContext(ctx, s.db, &Seriess)
+	var Series []*storage.Series
+	err := stmt.QueryContext(ctx, s.db, &Series)
 	if err != nil {
-		return nil, fmt.Errorf("failed to list Seriess: %w", err)
+		return nil, fmt.Errorf("failed to list Series: %w", err)
 	}
 
-	return Seriess, nil
+	return Series, nil
 }
 
 // CreateSeason stores a season in the database
-func (s SQLite) CreateSeason(ctx context.Context, season model.Season) (int64, error) {
+func (s SQLite) CreateSeason(ctx context.Context, season storage.Season, initialState storage.SeasonState) (int64, error) {
+	if season.State == "" {
+		season.State = storage.SeasonStateNew
+	}
+
+	err := season.Machine().ToState(initialState)
+	if err != nil {
+		return 0, err
+	}
+
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return 0, err
+	}
+
 	setColumns := make([]sqlite.Expression, len(table.Season.MutableColumns))
 	for i, c := range table.Season.MutableColumns {
 		setColumns[i] = c
@@ -104,18 +179,43 @@ func (s SQLite) CreateSeason(ctx context.Context, season model.Season) (int64, e
 
 	stmt := table.Season.
 		INSERT(insertColumns).
-		MODEL(season).
+		MODEL(season.Season).
 		RETURNING(table.Season.ID).
 		ON_CONFLICT(table.Season.ID).
 		DO_UPDATE(sqlite.SET(table.Season.MutableColumns.SET(sqlite.ROW(setColumns...))))
 
-	result, err := s.handleInsert(ctx, stmt)
+	result, err := stmt.ExecContext(ctx, tx)
 	if err != nil {
 		return 0, err
 	}
 
 	inserted, err := result.LastInsertId()
 	if err != nil {
+		tx.Rollback()
+		return 0, err
+	}
+
+	state := storage.SeasonTransition{
+		SeasonID:   int32(inserted),
+		ToState:    string(initialState),
+		MostRecent: true,
+		SortKey:    1,
+	}
+
+	transitionStmt := table.SeasonTransition.
+		INSERT(table.SeasonTransition.AllColumns.
+			Except(table.SeasonTransition.ID, table.SeasonTransition.CreatedAt, table.SeasonTransition.UpdatedAt)).
+		MODEL(state)
+
+	_, err = transitionStmt.ExecContext(ctx, tx)
+	if err != nil {
+		tx.Rollback()
+		return 0, err
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		tx.Rollback()
 		return 0, err
 	}
 
@@ -123,12 +223,19 @@ func (s SQLite) CreateSeason(ctx context.Context, season model.Season) (int64, e
 }
 
 // GetSeason gets a season by id
-func (s SQLite) GetSeason(ctx context.Context, id int64) (*model.Season, error) {
-	stmt := table.Season.
-		SELECT(table.Season.AllColumns).
+func (s SQLite) GetSeason(ctx context.Context, id int64) (*storage.Season, error) {
+	stmt := sqlite.SELECT(
+		table.Season.AllColumns,
+		table.SeasonTransition.AllColumns,
+	).
+		FROM(table.Season.
+			LEFT_JOIN(table.SeasonTransition,
+				table.Season.ID.EQ(table.SeasonTransition.SeasonID).
+					AND(table.SeasonTransition.MostRecent.IS_TRUE()),
+			)).
 		WHERE(table.Season.ID.EQ(sqlite.Int64(id)))
 
-	var season model.Season
+	var season storage.Season
 	err := stmt.QueryContext(ctx, s.db, &season)
 	if err != nil {
 		if errors.Is(err, qrm.ErrNoRows) {
@@ -155,12 +262,12 @@ func (s SQLite) DeleteSeason(ctx context.Context, id int64) error {
 }
 
 // ListSeasons lists all seasons for a Series
-func (s SQLite) ListSeasons(ctx context.Context, SeriesID int64) ([]*model.Season, error) {
+func (s SQLite) ListSeasons(ctx context.Context, SeriesID int64) ([]*storage.Season, error) {
 	stmt := table.Season.
 		SELECT(table.Season.AllColumns).
 		WHERE(table.Season.SeriesID.EQ(sqlite.Int64(SeriesID)))
 
-	var seasons []*model.Season
+	var seasons []*storage.Season
 	err := stmt.QueryContext(ctx, s.db, &seasons)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list seasons: %w", err)
@@ -184,7 +291,6 @@ func (s SQLite) CreateEpisode(ctx context.Context, episode storage.Episode, init
 	if err != nil {
 		return 0, err
 	}
-	defer tx.Rollback()
 
 	setColumns := make([]sqlite.Expression, len(table.Episode.MutableColumns))
 	for i, c := range table.Episode.MutableColumns {
@@ -214,8 +320,7 @@ func (s SQLite) CreateEpisode(ctx context.Context, episode storage.Episode, init
 		return 0, err
 	}
 
-	// Create initial transition state
-	state := model.EpisodeTransition{
+	state := storage.EpisodeTransition{
 		EpisodeID:  int32(inserted),
 		ToState:    string(initialState),
 		MostRecent: true,
@@ -246,9 +351,7 @@ func (s SQLite) CreateEpisode(ctx context.Context, episode storage.Episode, init
 func (s SQLite) GetEpisode(ctx context.Context, id int64) (*storage.Episode, error) {
 	stmt := sqlite.SELECT(
 		table.Episode.AllColumns,
-		table.EpisodeTransition.ToState,
-		table.EpisodeTransition.DownloadID,
-		table.EpisodeTransition.DownloadClientID,
+		table.EpisodeTransition.AllColumns,
 	).
 		FROM(table.Episode.
 			LEFT_JOIN(table.EpisodeTransition,
