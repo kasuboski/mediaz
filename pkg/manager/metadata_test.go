@@ -8,44 +8,173 @@ import (
 	"time"
 
 	"github.com/kasuboski/mediaz/config"
+	storeMocks "github.com/kasuboski/mediaz/pkg/storage/mocks"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
 	"github.com/kasuboski/mediaz/pkg/tmdb"
-	mockTmdb "github.com/kasuboski/mediaz/pkg/tmdb/mocks"
+	tmdbMocks "github.com/kasuboski/mediaz/pkg/tmdb/mocks"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
 
 func TestMediaManager_GetSeriesMetadata(t *testing.T) {
-	// t.Run("get series metadata", func(t *testing.T) {
-	// 	ctx := context.Background()
-	// 	ctrl := gomock.NewController(t)
+	t.Run("error getting storage series metadata", func(t *testing.T) {
+		ctx := context.Background()
+		ctrl := gomock.NewController(t)
 
-	// 	store := storeMocks.NewMockStorage(ctrl)
-	// 	store.EXPECT().GetSeriesMetadata(ctx, gomock.Any()).Return(nil, storage.ErrNotFound)
+		store := storeMocks.NewMockStorage(ctrl)
+		store.EXPECT().GetSeriesMetadata(ctx, gomock.Any()).Return(nil, errors.New("expected testing error"))
 
-	// 	tmdbHttpMock := tmdbMock.NewMockITmdb(ctrl)
-	// 	tmdbHttpMock.EXPECT().GetSeriesDetails(gomock.Any(), gomock.Any()).Return(&tmdb.SeriesDetails{
-	// 		ID:           1,
-	// 		Name:         "Test Series",
-	// 		FirstAirDate: "2023-01-01",
-	// 	}, nil)
+		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
 
-	// 	m := MediaManager{
-	// 		tmdb:    tmdbHttpMock,
-	// 		library: nil,
-	// 		storage: store,
-	// 		factory: nil,
-	// 		configs: config.Manager{},
-	// 	}
+		m := MediaManager{
+			tmdb:    tmdbMock,
+			library: nil,
+			storage: store,
+			factory: nil,
+			configs: config.Manager{},
+		}
 
-	// 	details, err := m.GetSeriesMetadata(ctx, 0)
-	// 	require.NoError(t, err)
+		details, err := m.GetSeriesMetadata(ctx, 0)
+		require.Error(t, err)
+		require.Equal(t, "expected testing error", err.Error())
 
-	// 	require.NotNil(t, details)
-	// 	require.Equal(t, "Test Series", details.Title)
-	// 	require.Equal(t, int32(1), details.TmdbID)
-	// })
+		assert.Nil(t, details)
+	})
+
+	t.Run("success getting storage series metadata", func(t *testing.T) {
+		ctx := context.Background()
+		ctrl := gomock.NewController(t)
+
+		store := newStore(t, ctx)
+
+		_, err := store.CreateSeriesMetadata(ctx, model.SeriesMetadata{
+			ID:           1,
+			TmdbID:       1234,
+			Title:        "Test Series",
+			FirstAirDate: ptr(time.Now().Add(-time.Hour * 2)),
+		})
+		require.NoError(t, err)
+
+		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
+
+		m := MediaManager{
+			tmdb:    tmdbMock,
+			library: nil,
+			storage: store,
+			factory: nil,
+			configs: config.Manager{},
+		}
+
+		details, err := m.GetSeriesMetadata(ctx, 1234)
+		require.NoError(t, err)
+		require.NotNil(t, details)
+		require.Equal(t, "Test Series", details.Title)
+		require.Equal(t, int32(1234), details.TmdbID)
+		assert.Equal(t, int32(1), details.ID)
+	})
+
+	t.Run("success getting series metadata from tdmb", func(t *testing.T) {
+		ctx := context.Background()
+		ctrl := gomock.NewController(t)
+
+		store := newStore(t, ctx)
+
+		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
+		tmdbMock.EXPECT().GetSeriesDetails(ctx, 1234).Return(&tmdb.SeriesDetails{
+			ID:              1234,
+			Name:            "Test Series",
+			FirstAirDate:    "2023-01-01",
+			NumberOfSeasons: 2,
+			Seasons: []tmdb.Season{
+				{
+					ID:           1,
+					Name:         "Test Season 1",
+					AirDate:      "2023-01-01",
+					SeasonNumber: 1,
+					Episodes: []tmdb.Episode{
+						{
+							ID:            1,
+							Name:          "Test Season 1 Episode 1",
+							AirDate:       "2023-01-01",
+							EpisodeNumber: 1,
+						},
+						{
+							ID:            2,
+							Name:          "Test Season 1 Episode 2",
+							AirDate:       "2023-01-02",
+							EpisodeNumber: 2,
+						},
+					},
+				},
+				{
+					ID:           2,
+					Name:         "Test Season 2",
+					AirDate:      "2023-01-08",
+					SeasonNumber: 2,
+					Episodes: []tmdb.Episode{
+						{
+							ID:            3,
+							Name:          "Test Season 2 Episode 1",
+							AirDate:       "2023-01-08",
+							EpisodeNumber: 1,
+						},
+						{
+							ID:            4,
+							Name:          "Test Season 2 Episode 2",
+							AirDate:       "2023-01-09",
+							EpisodeNumber: 2,
+						},
+					},
+				},
+			},
+		}, nil)
+
+		m := MediaManager{
+			tmdb:    tmdbMock,
+			library: nil,
+			storage: store,
+			factory: nil,
+			configs: config.Manager{},
+		}
+
+		details, err := m.GetSeriesMetadata(ctx, 1234)
+		require.Nil(t, err)
+		require.NotNil(t, details)
+		require.Equal(t, "Test Series", details.Title)
+		require.Equal(t, int32(1234), details.TmdbID)
+		assert.Equal(t, int32(1), details.ID)
+
+		seasons, err := store.ListSeasonMetadata(ctx)
+		require.NoError(t, err)
+		require.Len(t, seasons, 2)
+
+		assert.Equal(t, int32(1), seasons[0].ID)
+		assert.Equal(t, int32(1), seasons[0].Number)
+		assert.Equal(t, "Test Season 1", seasons[0].Title)
+
+		assert.Equal(t, int32(2), seasons[1].ID)
+		assert.Equal(t, int32(2), seasons[1].Number)
+		assert.Equal(t, "Test Season 2", seasons[1].Title)
+
+		episodes, err := store.ListEpisodeMetadata(ctx)
+		require.NoError(t, err)
+		require.Len(t, episodes, 4)
+		assert.Equal(t, int32(1), episodes[0].ID)
+		assert.Equal(t, int32(1), episodes[0].Number)
+		assert.Equal(t, "Test Season 1 Episode 1", episodes[0].Title)
+		assert.Equal(t, int32(2), episodes[1].ID)
+		assert.Equal(t, int32(2), episodes[1].Number)
+		assert.Equal(t, "Test Season 1 Episode 2", episodes[1].Title)
+		assert.Equal(t, int32(3), episodes[2].ID)
+		assert.Equal(t, int32(1), episodes[2].Number)
+		assert.Equal(t, "Test Season 2 Episode 1", episodes[2].Title)
+		assert.Equal(t, int32(4), episodes[3].ID)
+		assert.Equal(t, int32(2), episodes[3].Number)
+		assert.Equal(t, "Test Season 2 Episode 2", episodes[3].Title)
+	})
 }
+
 func TestFromSeriesDetails(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -213,28 +342,4 @@ func TestFromSeriesEpisodes(t *testing.T) {
 			}
 		})
 	}
-}
-func TestMediaManager_loadSeriesMetadata(t *testing.T) {
-	t.Run("error loading series metadata", func(t *testing.T) {
-		ctx := context.Background()
-		ctrl := gomock.NewController(t)
-
-		tmdbHttpMock := mockTmdb.NewMockITmdb(ctrl)
-		tmdbHttpMock.EXPECT().GetSeriesDetails(gomock.Any(), gomock.Any()).Return(&tmdb.SeriesDetails{
-			ID:           1,
-			Name:         "Test Series",
-			FirstAirDate: "2023-01-01",
-		}, nil)
-
-		m := MediaManager{
-			tmdb:    tmdbHttpMock,
-			library: nil,
-			storage: st,
-			factory: nil,
-			configs: config.Manager{},
-		}
-		_, err := m.loadSeriesMetadata(ctx, 0)
-		require.Error(t, err)
-		require.Equal(t, errors.New("no series metadata"), err)
-	})
 }

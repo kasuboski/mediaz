@@ -688,10 +688,10 @@ func (mr *MockStorageMockRecorder) GetQualityProfileItem(ctx, id any) *gomock.Ca
 }
 
 // GetSeason mocks base method.
-func (m *MockStorage) GetSeason(ctx context.Context, id int64) (*model.Season, error) {
+func (m *MockStorage) GetSeason(ctx context.Context, id int64) (*storage.Season, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetSeason", ctx, id)
-	ret0, _ := ret[0].(*model.Season)
+	ret0, _ := ret[0].(*storage.Season)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -977,10 +977,10 @@ func (mr *MockStorageMockRecorder) ListSeasonMetadata(ctx any) *gomock.Call {
 }
 
 // ListSeasons mocks base method.
-func (m *MockStorage) ListSeasons(ctx context.Context, SeriesID int64) ([]*model.Season, error) {
+func (m *MockStorage) ListSeasons(ctx context.Context, SeriesID int64) ([]*storage.Season, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListSeasons", ctx, SeriesID)
-	ret0, _ := ret[0].([]*model.Season)
+	ret0, _ := ret[0].([]*storage.Season)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1908,10 +1908,10 @@ func (mr *MockSeriesStorageMockRecorder) GetEpisodeFiles(ctx, id any) *gomock.Ca
 }
 
 // GetSeason mocks base method.
-func (m *MockSeriesStorage) GetSeason(ctx context.Context, id int64) (*model.Season, error) {
+func (m *MockSeriesStorage) GetSeason(ctx context.Context, id int64) (*storage.Season, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetSeason", ctx, id)
-	ret0, _ := ret[0].(*model.Season)
+	ret0, _ := ret[0].(*storage.Season)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1983,10 +1983,10 @@ func (mr *MockSeriesStorageMockRecorder) ListEpisodesByState(ctx, state any) *go
 }
 
 // ListSeasons mocks base method.
-func (m *MockSeriesStorage) ListSeasons(ctx context.Context, SeriesID int64) ([]*model.Season, error) {
+func (m *MockSeriesStorage) ListSeasons(ctx context.Context, SeriesID int64) ([]*storage.Season, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListSeasons", ctx, SeriesID)
-	ret0, _ := ret[0].([]*model.Season)
+	ret0, _ := ret[0].([]*storage.Season)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

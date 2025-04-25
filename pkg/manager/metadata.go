@@ -79,8 +79,6 @@ func (m MediaManager) GetSeriesMetadata(ctx context.Context, tmdbID int) (*model
 	if err == nil {
 		return metadata, nil
 	}
-
-	// anything other than a not found error is an internal error
 	if !errors.Is(err, storage.ErrNotFound) {
 		return nil, err
 	}
@@ -132,7 +130,8 @@ func (m MediaManager) loadSeriesMetadata(ctx context.Context, tmdbID int) (*mode
 		}
 	}
 
-	return nil, nil
+	return m.storage.GetSeriesMetadata(ctx, table.SeriesMetadata.ID.EQ(sqlite.Int(seriesMetadataID)))
+
 }
 
 func FromSearchMediaResult(resp SearchMediaResult) library.MovieMetadata {

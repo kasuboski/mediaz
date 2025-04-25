@@ -383,7 +383,7 @@ func (m MediaManager) AddMovieToLibrary(ctx context.Context, request AddMovieReq
 	}
 
 	state := storage.MovieStateMissing
-	if !isMovieReleased(now(), det) {
+	if !isReleased(now(), det.ReleaseDate) {
 		state = storage.MovieStateUnreleased
 	}
 
@@ -404,34 +404,58 @@ func (m MediaManager) AddMovieToLibrary(ctx context.Context, request AddMovieReq
 }
 
 // AddSeriesToLibrary adds a series to be managed by mediaz
-func (m MediaManager) AddSeriesToLibrary(ctx context.Context, request AddSeriesRequest) (*storage.Movie, error) {
-	// log := logger.FromCtx(ctx)
+func (m MediaManager) AddSeriesToLibrary(ctx context.Context, request AddSeriesRequest) (*storage.Series, error) {
+	log := logger.FromCtx(ctx)
 
-	// _, err := m.storage.GetQualityProfile(ctx, int64(request.QualityProfileID))
-	// if err != nil {
-	// 	log.Debug("failed to get quality profile", zap.Int32("id", request.QualityProfileID), zap.Error(err))
-	// 	return nil, err
-	// }
+	qualityProfile, err := m.storage.GetQualityProfile(ctx, int64(request.QualityProfileID))
+	if err != nil {
+		log.Debug("failed to get quality profile", zap.Int32("id", request.QualityProfileID), zap.Error(err))
+		return nil, err
+	}
 
-	// det, err := m.GetSeriesMetadata(ctx, request.TMDBID)
-	// if err != nil {
-	// 	log.Debug("failed to get movie metadata", zap.Error(err))
-	// 	return nil, err
-	// }
+	seriesMetadata, err := m.GetSeriesMetadata(ctx, request.TMDBID)
+	if err != nil {
+		log.Debug("failed to get series metadata", zap.Error(err))
+		return nil, err
+	}
 
-	// movie, err := m.storage.GetSeriesMetadata(ctx, table.SeriesMetadata.ID.EQ(sqlite.Int32(det.ID)))
-	// // if we find the movie we're done
-	// if err == nil {
-	// 	return movie, err
-	// }
+	series, err := m.storage.GetSeries(ctx, table.Series.ID.EQ(sqlite.Int32(seriesMetadata.ID)))
+	// if we find the series we dont need to add it
+	if err == nil {
+		return series, err
+	}
+	if !errors.Is(err, storage.ErrNotFound) {
+		log.Warnw("couldn't find series by metadata", "meta_id", seriesMetadata.ID, "err", err)
+		return nil, err
+	}
 
-	// // anything other than a not found error is an internal error
-	// if !errors.Is(err, storage.ErrNotFound) {
-	// 	log.Warnw("couldn't find movie by metadata", "meta_id", det.ID, "err", err)
-	// 	return nil, err
-	// }
+	series = &storage.Series{
+		Series: model.Series{
+			SeriesMetadataID: &seriesMetadata.ID,
+			QualityProfileID: qualityProfile.ID,
+			Monitored:        1,
+		},
+	}
 
-	return nil, nil
+	state := storage.SeriesStateMissing
+	if !isReleased(now(), seriesMetadata.FirstAirDate) {
+		state = storage.SeriesStateUnreleased
+	}
+
+	id, err := m.storage.CreateSeries(ctx, *series, state)
+	if err != nil {
+		log.Warnw("failed to create movie", "err", err)
+		return nil, err
+	}
+
+	log.Debug("created series", zap.Any("series", series))
+
+	series, err = m.storage.GetSeries(ctx, table.Series.ID.EQ(sqlite.Int64(id)))
+	if err != nil {
+		log.Warnw("failed to get created series", "err", err)
+	}
+
+	return series, err
 }
 
 // ReconcileSnapshot is a thread safe snapshot of the current reconcile loop state
@@ -796,7 +820,7 @@ func (m *MediaManager) reconcileUnreleasedMovie(ctx context.Context, movie *stor
 		return err
 	}
 
-	if !isMovieReleased(snapshot.time, det) {
+	if !isReleased(snapshot.time, det.ReleaseDate) {
 		log.Debug("movie is still unreleased")
 		return nil
 	}
@@ -936,6 +960,6 @@ func nullableDefault[T any](n nullable.Nullable[T]) T {
 	return def
 }
 
-func isMovieReleased(now time.Time, det *model.MovieMetadata) bool {
-	return det.ReleaseDate != nil && now.After(*det.ReleaseDate)
+func isReleased(now time.Time, releaseDate *time.Time) bool {
+	return releaseDate != nil && now.After(*releaseDate)
 }
