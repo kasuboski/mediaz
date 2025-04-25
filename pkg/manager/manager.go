@@ -434,6 +434,8 @@ func (m MediaManager) AddSeriesToLibrary(ctx context.Context, request AddSeriesR
 			SeriesMetadataID: &seriesMetadata.ID,
 			QualityProfileID: qualityProfile.ID,
 			Monitored:        1,
+			TmdbID:           int32(seriesMetadata.TmdbID),
+			Path:             &seriesMetadata.Title,
 		},
 	}
 
