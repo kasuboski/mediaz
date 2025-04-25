@@ -15,7 +15,7 @@ type EpisodeFile struct {
 	ID               int32 `sql:"primary_key"`
 	Quality          string
 	Size             int64
-	DateAdded        time.Time
+	Added            time.Time
 	RelativePath     *string
 	OriginalFilePath *string
 }

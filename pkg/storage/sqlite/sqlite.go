@@ -106,12 +106,14 @@ func (s SQLite) CreateMovie(ctx context.Context, movie storage.Movie, initialSta
 	for i, c := range table.Movie.MutableColumns {
 		setColumns[i] = c
 	}
-	// don't insert a zeroed ID
-	insertColumns := table.Movie.MutableColumns
-	if movie.ID != 0 {
-		insertColumns = table.Movie.AllColumns
-	}
 
+	insertColumns := table.Movie.MutableColumns
+	if movie.ID == 0 {
+		insertColumns = insertColumns.Except(table.Movie.ID)
+	}
+	if movie.Added == nil || movie.Added.IsZero() {
+		insertColumns = insertColumns.Except(table.Movie.Added)
+	}
 	stmt := table.Movie.
 		INSERT(insertColumns).
 		MODEL(movie.Movie).

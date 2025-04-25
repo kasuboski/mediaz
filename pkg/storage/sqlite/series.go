@@ -32,10 +32,13 @@ func (s SQLite) CreateSeries(ctx context.Context, series storage.Series, initial
 	for i, c := range table.Series.MutableColumns {
 		setColumns[i] = c
 	}
-	// don't insert a zeroed ID
+
 	insertColumns := table.Series.MutableColumns
-	if series.ID != 0 {
-		insertColumns = table.Series.AllColumns
+	if series.ID == 0 {
+		insertColumns = insertColumns.Except(table.Series.ID)
+	}
+	if series.Added == nil || series.Added.IsZero() {
+		insertColumns = insertColumns.Except(table.Series.Added)
 	}
 
 	stmt := table.Series.
@@ -47,6 +50,7 @@ func (s SQLite) CreateSeries(ctx context.Context, series storage.Series, initial
 
 	result, err := stmt.ExecContext(ctx, tx)
 	if err != nil {
+		tx.Rollback()
 		return 0, err
 	}
 

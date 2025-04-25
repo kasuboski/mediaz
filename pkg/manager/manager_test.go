@@ -107,7 +107,7 @@ func TestAddMovietoLibrary(t *testing.T) {
 
 	movie, err := m.storage.GetMovie(ctx, int64(mov.ID))
 	require.Nil(t, err)
-
+	movie.Added = nil
 	movieMetadataID := int32(1)
 
 	assert.Equal(t, &storage.Movie{

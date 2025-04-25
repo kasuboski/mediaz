@@ -106,12 +106,14 @@ func TestMovieStorage(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Len(t, movies, 1)
 	actual := movies[0]
+	actual.Added = nil
 	assert.Equal(t, &wantMovie, actual)
 
 	movies, err = store.ListMovies(ctx)
 	assert.Nil(t, err)
 	assert.Len(t, movies, 1)
 	actual = movies[0]
+	actual.Added = nil
 	assert.Equal(t, &wantMovie, actual)
 
 	err = store.UpdateMovieState(ctx, int64(movies[0].ID), storage.MovieStateDownloading, &storage.MovieStateMetadata{
@@ -127,11 +129,13 @@ func TestMovieStorage(t *testing.T) {
 	wantMovie.State = storage.MovieStateDownloading
 	wantMovie.DownloadClientID = 1
 	wantMovie.DownloadID = "123"
+	actual.Added = nil
 	assert.Equal(t, &wantMovie, actual)
 
 	movies, err = store.ListMoviesByState(ctx, storage.MovieStateDownloading)
 	assert.Nil(t, err)
 	assert.Len(t, movies, 1)
+	movies[0].Added = nil
 	assert.Equal(t, &wantMovie, movies[0])
 
 	mov, err := store.GetMovieByMetadataID(ctx, 1)

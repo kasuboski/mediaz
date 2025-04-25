@@ -148,7 +148,7 @@ CREATE TABLE IF NOT EXISTS "episode_file" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     "quality" TEXT NOT NULL,
     "size" BIGINT NOT NULL,
-    "date_added" DATETIME NOT NULL DEFAULT current_timestamp,
+    "added" DATETIME NOT NULL DEFAULT current_timestamp,
     "relative_path" TEXT UNIQUE,
     "original_file_path" TEXT
 );
