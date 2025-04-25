@@ -238,12 +238,12 @@ func TestFromSeriesDetails(t *testing.T) {
 		})
 	}
 }
+
 func TestFromSeriesSeasons(t *testing.T) {
 	tests := []struct {
-		name    string
-		input   tmdb.Season
-		want    model.SeasonMetadata
-		wantErr bool
+		name  string
+		input tmdb.Season
+		want  model.SeasonMetadata
 	}{
 		{
 			name: "valid season",
@@ -265,29 +265,30 @@ func TestFromSeriesSeasons(t *testing.T) {
 				Number:   1,
 				Overview: func() *string { o := "Test overview"; return &o }(),
 			},
-			wantErr: false,
 		},
 		{
 			name: "invalid date",
 			input: tmdb.Season{
 				ID:           123,
 				Name:         "Season 1",
-				AirDate:      "invalid-date",
+				AirDate:      "",
 				SeasonNumber: 1,
+				Runtime:      45,
+				Overview:     "Test overview",
 			},
-			want:    model.SeasonMetadata{},
-			wantErr: true,
+			want: model.SeasonMetadata{
+				TmdbID:   123,
+				Title:    "Season 1",
+				Number:   1,
+				Overview: func() *string { o := "Test overview"; return &o }(),
+			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := FromSeriesSeasons(tt.input)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("FromSeriesSeasons() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !tt.wantErr && !reflect.DeepEqual(got, tt.want) {
+			got := FromSeriesSeasons(tt.input)
+			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("FromSeriesSeasons() = %v, want %v", got, tt.want)
 			}
 		})
@@ -296,10 +297,9 @@ func TestFromSeriesSeasons(t *testing.T) {
 
 func TestFromSeriesEpisodes(t *testing.T) {
 	tests := []struct {
-		name    string
-		input   tmdb.Episode
-		want    model.EpisodeMetadata
-		wantErr bool
+		name  string
+		input tmdb.Episode
+		want  model.EpisodeMetadata
 	}{
 		{
 			name: "valid episode",
@@ -322,29 +322,31 @@ func TestFromSeriesEpisodes(t *testing.T) {
 				Runtime:  func() *int32 { r := int32(45); return &r }(),
 				Overview: func() *string { o := "Test overview"; return &o }(),
 			},
-			wantErr: false,
 		},
 		{
 			name: "invalid date",
 			input: tmdb.Episode{
 				ID:            123,
 				Name:          "Test Episode",
-				AirDate:       "invalid-date",
+				AirDate:       "",
 				EpisodeNumber: 1,
+				Runtime:       45,
+				Overview:      "Test overview",
 			},
-			want:    model.EpisodeMetadata{},
-			wantErr: true,
+			want: model.EpisodeMetadata{
+				TmdbID:   123,
+				Title:    "Test Episode",
+				Number:   1,
+				Runtime:  func() *int32 { r := int32(45); return &r }(),
+				Overview: func() *string { o := "Test overview"; return &o }(),
+			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := FromSeriesEpisodes(tt.input)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("FromSeriesEpisodes() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !tt.wantErr && !reflect.DeepEqual(got, tt.want) {
+			got := FromSeriesEpisodes(tt.input)
+			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("FromSeriesEpisodes() = %v, want %v", got, tt.want)
 			}
 		})

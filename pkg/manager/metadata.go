@@ -59,10 +59,7 @@ func (m MediaManager) loadMovieMetadata(ctx context.Context, tmdbID int) (*model
 		return nil, err
 	}
 
-	metadata, err := FromMediaDetails(*det)
-	if err != nil {
-		return nil, err
-	}
+	metadata := FromMediaDetails(*det)
 
 	id, err := m.storage.CreateMovieMetadata(ctx, metadata)
 	if err != nil {
@@ -104,11 +101,7 @@ func (m MediaManager) loadSeriesMetadata(ctx context.Context, tmdbID int) (*mode
 	}
 
 	for _, s := range details.Seasons {
-		season, err := FromSeriesSeasons(s)
-		if err != nil {
-			return nil, err
-		}
-
+		season := FromSeriesSeasons(s)
 		season.SeriesID = int32(seriesMetadataID)
 
 		seasonMetadataID, err := m.storage.CreateSeasonMetadata(ctx, season)
@@ -117,11 +110,7 @@ func (m MediaManager) loadSeriesMetadata(ctx context.Context, tmdbID int) (*mode
 		}
 
 		for _, episode := range s.Episodes {
-			episodeMetadata, err := FromSeriesEpisodes(episode)
-			if err != nil {
-				return nil, err
-			}
-
+			episodeMetadata := FromSeriesEpisodes(episode)
 			episodeMetadata.SeasonID = int32(seasonMetadataID)
 			_, err = m.storage.CreateEpisodeMetadata(ctx, episodeMetadata)
 			if err != nil {
@@ -143,20 +132,22 @@ func FromSearchMediaResult(resp SearchMediaResult) library.MovieMetadata {
 	}
 }
 
-func FromMediaDetails(det tmdb.MediaDetails) (model.MovieMetadata, error) {
-	releaseDate, err := parseTMDBDate(*det.ReleaseDate)
-	if err != nil {
-		return model.MovieMetadata{}, err
-	}
-	return model.MovieMetadata{
+func FromMediaDetails(det tmdb.MediaDetails) model.MovieMetadata {
+	model := model.MovieMetadata{
 		TmdbID:        int32(det.ID),
 		ImdbID:        det.ImdbID,
 		Title:         *det.Title,
 		OriginalTitle: det.OriginalTitle,
 		Runtime:       int32(*det.Runtime),
 		Overview:      det.Overview,
-		ReleaseDate:   releaseDate,
-	}, nil
+	}
+
+	releaseDate, err := parseTMDBDate(*det.ReleaseDate)
+	if err == nil {
+		model.ReleaseDate = releaseDate
+	}
+
+	return model
 }
 
 func FromSeriesDetails(series tmdb.SeriesDetails) (model.SeriesMetadata, error) {
@@ -175,36 +166,38 @@ func FromSeriesDetails(series tmdb.SeriesDetails) (model.SeriesMetadata, error) 
 
 }
 
-func FromSeriesSeasons(tmdbSeason tmdb.Season) (model.SeasonMetadata, error) {
-	airDate, err := parseTMDBDate(tmdbSeason.AirDate)
-	if err != nil {
-		return model.SeasonMetadata{}, err
-	}
-
-	return model.SeasonMetadata{
+func FromSeriesSeasons(tmdbSeason tmdb.Season) model.SeasonMetadata {
+	model := model.SeasonMetadata{
 		TmdbID:   int32(tmdbSeason.ID),
 		Title:    tmdbSeason.Name,
-		AirDate:  airDate,
 		Number:   int32(tmdbSeason.SeasonNumber),
 		Overview: &tmdbSeason.Overview,
-	}, nil
-}
-
-func FromSeriesEpisodes(episode tmdb.Episode) (model.EpisodeMetadata, error) {
-	airDate, err := parseTMDBDate(episode.AirDate)
-	if err != nil {
-		return model.EpisodeMetadata{}, err
 	}
 
+	airDate, err := parseTMDBDate(tmdbSeason.AirDate)
+	if err == nil {
+		model.AirDate = airDate
+	}
+
+	return model
+}
+
+func FromSeriesEpisodes(episode tmdb.Episode) model.EpisodeMetadata {
 	runtime := int32(episode.Runtime)
-	return model.EpisodeMetadata{
+	model := model.EpisodeMetadata{
 		TmdbID:   int32(episode.ID),
 		Title:    episode.Name,
-		AirDate:  airDate,
 		Number:   int32(episode.EpisodeNumber),
 		Runtime:  &runtime,
 		Overview: &episode.Overview,
-	}, nil
+	}
+
+	airDate, err := parseTMDBDate(episode.AirDate)
+	if err == nil {
+		model.AirDate = airDate
+	}
+
+	return model
 }
 
 func parseTMDBDate(date string) (*time.Time, error) {
