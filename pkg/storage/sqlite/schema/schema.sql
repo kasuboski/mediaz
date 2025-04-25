@@ -141,6 +141,7 @@ CREATE TABLE IF NOT EXISTS "episode" (
     "monitored" INTEGER NOT NULL,
     "episode_metadata_id" INTEGER UNIQUE,
     "episode_file_id" INTEGER,
+    "runtime" INTEGER,
     FOREIGN KEY ("season_id") REFERENCES "season" ("id")
 );
 

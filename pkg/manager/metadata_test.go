@@ -98,12 +98,14 @@ func TestMediaManager_GetSeriesMetadata(t *testing.T) {
 							Name:          "Test Season 1 Episode 1",
 							AirDate:       "2023-01-01",
 							EpisodeNumber: 1,
+							Runtime:       45,
 						},
 						{
 							ID:            2,
 							Name:          "Test Season 1 Episode 2",
 							AirDate:       "2023-01-02",
 							EpisodeNumber: 2,
+							Runtime:       42,
 						},
 					},
 				},
@@ -118,12 +120,14 @@ func TestMediaManager_GetSeriesMetadata(t *testing.T) {
 							Name:          "Test Season 2 Episode 1",
 							AirDate:       "2023-01-08",
 							EpisodeNumber: 1,
+							Runtime:       45,
 						},
 						{
 							ID:            4,
 							Name:          "Test Season 2 Episode 2",
 							AirDate:       "2023-01-09",
 							EpisodeNumber: 2,
+							Runtime:       43,
 						},
 					},
 				},
@@ -163,15 +167,19 @@ func TestMediaManager_GetSeriesMetadata(t *testing.T) {
 		assert.Equal(t, int32(1), episodes[0].ID)
 		assert.Equal(t, int32(1), episodes[0].Number)
 		assert.Equal(t, "Test Season 1 Episode 1", episodes[0].Title)
+		assert.Equal(t, ptr(int32(45)), episodes[0].Runtime)
 		assert.Equal(t, int32(2), episodes[1].ID)
 		assert.Equal(t, int32(2), episodes[1].Number)
 		assert.Equal(t, "Test Season 1 Episode 2", episodes[1].Title)
+		assert.Equal(t, ptr(int32(42)), episodes[1].Runtime)
 		assert.Equal(t, int32(3), episodes[2].ID)
 		assert.Equal(t, int32(1), episodes[2].Number)
 		assert.Equal(t, "Test Season 2 Episode 1", episodes[2].Title)
+		assert.Equal(t, ptr(int32(45)), episodes[2].Runtime)
 		assert.Equal(t, int32(4), episodes[3].ID)
 		assert.Equal(t, int32(2), episodes[3].Number)
 		assert.Equal(t, "Test Season 2 Episode 2", episodes[3].Title)
+		assert.Equal(t, ptr(int32(43)), episodes[3].Runtime)
 	})
 }
 
