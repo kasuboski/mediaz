@@ -88,7 +88,6 @@ func (m MediaManager) GetSeriesMetadata(ctx context.Context, tmdbID int) (*model
 }
 
 func (m MediaManager) loadSeriesMetadata(ctx context.Context, tmdbID int) (*model.SeriesMetadata, error) {
-	log := logger.FromCtx(ctx)
 	details, err := m.tmdb.GetSeriesDetails(ctx, tmdbID)
 	if err != nil {
 		return nil, err
@@ -122,8 +121,6 @@ func (m MediaManager) loadSeriesMetadata(ctx context.Context, tmdbID int) (*mode
 			if err != nil {
 				return nil, err
 			}
-
-			log.Info("episode metadata", "id", episode.ID, "title", episode.Name, "runtime", episode.Runtime)
 
 			episodeMetadata.SeasonID = int32(seasonMetadataID)
 			_, err = m.storage.CreateEpisodeMetadata(ctx, episodeMetadata)
