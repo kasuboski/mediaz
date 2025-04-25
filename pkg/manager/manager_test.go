@@ -549,6 +549,7 @@ func TestRejectRelease(t *testing.T) {
 		profile := storage.QualityProfile{
 			Name: "test",
 			Qualities: []storage.QualityDefinition{{
+				Name:          "WEBDL-1080p",
 				MinSize:       17.0,
 				MaxSize:       2000,
 				PreferredSize: 1999,
