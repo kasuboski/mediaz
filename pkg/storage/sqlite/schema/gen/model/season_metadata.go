@@ -19,5 +19,4 @@ type SeasonMetadata struct {
 	Title    string
 	Overview *string
 	AirDate  *time.Time
-	Runtime  *int32
 }

@@ -263,7 +263,6 @@ func TestFromSeriesSeasons(t *testing.T) {
 					return &t
 				}(),
 				Number:   1,
-				Runtime:  func() *int32 { r := int32(45); return &r }(),
 				Overview: func() *string { o := "Test overview"; return &o }(),
 			},
 			wantErr: false,

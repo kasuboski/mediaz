@@ -24,7 +24,6 @@ type seasonMetadataTable struct {
 	Title    sqlite.ColumnString
 	Overview sqlite.ColumnString
 	AirDate  sqlite.ColumnTimestamp
-	Runtime  sqlite.ColumnInteger
 
 	AllColumns     sqlite.ColumnList
 	MutableColumns sqlite.ColumnList
@@ -72,9 +71,8 @@ func newSeasonMetadataTableImpl(schemaName, tableName, alias string) seasonMetad
 		TitleColumn    = sqlite.StringColumn("title")
 		OverviewColumn = sqlite.StringColumn("overview")
 		AirDateColumn  = sqlite.TimestampColumn("air_date")
-		RuntimeColumn  = sqlite.IntegerColumn("runtime")
-		allColumns     = sqlite.ColumnList{IDColumn, SeriesIDColumn, NumberColumn, TmdbIDColumn, TitleColumn, OverviewColumn, AirDateColumn, RuntimeColumn}
-		mutableColumns = sqlite.ColumnList{SeriesIDColumn, NumberColumn, TmdbIDColumn, TitleColumn, OverviewColumn, AirDateColumn, RuntimeColumn}
+		allColumns     = sqlite.ColumnList{IDColumn, SeriesIDColumn, NumberColumn, TmdbIDColumn, TitleColumn, OverviewColumn, AirDateColumn}
+		mutableColumns = sqlite.ColumnList{SeriesIDColumn, NumberColumn, TmdbIDColumn, TitleColumn, OverviewColumn, AirDateColumn}
 	)
 
 	return seasonMetadataTable{
@@ -88,7 +86,6 @@ func newSeasonMetadataTableImpl(schemaName, tableName, alias string) seasonMetad
 		Title:    TitleColumn,
 		Overview: OverviewColumn,
 		AirDate:  AirDateColumn,
-		Runtime:  RuntimeColumn,
 
 		AllColumns:     allColumns,
 		MutableColumns: mutableColumns,

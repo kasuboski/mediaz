@@ -132,6 +132,7 @@ func (t TvSeasonDetails) ToSeason() Season {
 			Name:           episode.Name,
 			SeasonNumber:   episode.SeasonNumber,
 			AirDate:        episode.AirDate,
+			Runtime:        episode.Runtime,
 			EpisodeNumber:  episode.EpisodeNumber,
 			Overview:       episode.Overview,
 			ProductionCode: episode.ProductionCode,

@@ -130,7 +130,6 @@ CREATE TABLE IF NOT EXISTS "season_metadata" (
     "title" TEXT NOT NULL,
     "overview" TEXT,
     "air_date" DATETIME,
-    "runtime" INTEGER,
     FOREIGN KEY ("series_id") REFERENCES "series_metadata" ("id")
 );
 
