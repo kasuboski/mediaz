@@ -562,7 +562,7 @@ func (s SQLite) ListEpisodeFiles(ctx context.Context) ([]*model.EpisodeFile, err
 	return episodeFiles, nil
 }
 
-// CreateSeriesMetadata creates the given SeriesMeta
+// CreateSeriesMetadata creates the given series metadata
 func (s SQLite) CreateSeriesMetadata(ctx context.Context, SeriesMeta model.SeriesMetadata) (int64, error) {
 	setColumns := make([]sqlite.Expression, len(table.SeriesMetadata.MutableColumns))
 	for i, c := range table.SeriesMetadata.MutableColumns {
@@ -630,8 +630,8 @@ func (s SQLite) GetSeriesMetadata(ctx context.Context, where sqlite.BoolExpressi
 		FROM(table.SeriesMetadata).
 		WHERE(where)
 
-	var SeriesMetadata model.SeriesMetadata
-	err := stmt.QueryContext(ctx, s.db, &SeriesMetadata)
+	var seriesMetadata model.SeriesMetadata
+	err := stmt.QueryContext(ctx, s.db, &seriesMetadata)
 	if err != nil {
 		if errors.Is(err, qrm.ErrNoRows) {
 			return nil, storage.ErrNotFound
@@ -639,7 +639,7 @@ func (s SQLite) GetSeriesMetadata(ctx context.Context, where sqlite.BoolExpressi
 		return nil, fmt.Errorf("failed to get Series metadata: %w", err)
 	}
 
-	return &SeriesMetadata, nil
+	return &seriesMetadata, nil
 }
 
 // CreateSeasonMetadata creates the given seasonMeta
