@@ -2,13 +2,21 @@ package cmd
 
 import (
 	"context"
+	"encoding/json"
+	"net/url"
 	"os"
 
+	"github.com/kasuboski/mediaz/config"
+	mhttp "github.com/kasuboski/mediaz/pkg/http"
 	mio "github.com/kasuboski/mediaz/pkg/io"
 	"github.com/kasuboski/mediaz/pkg/library"
 	"github.com/kasuboski/mediaz/pkg/logger"
+	"github.com/kasuboski/mediaz/pkg/manager"
+	"github.com/kasuboski/mediaz/pkg/tmdb"
+	"go.uber.org/zap"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 // listMovieCmd lists movies in a library
@@ -44,16 +52,54 @@ var listTVCmd = &cobra.Command{
 	},
 }
 
+var (
+	tmdbID int
+)
+
+// seriesDetailsCmd searches tmdb for a series and parses the response for all metadata
+var seriesDetailsCmd = &cobra.Command{
+	Use:   "series",
+	Short: "get series details",
+	Run: func(cmd *cobra.Command, args []string) {
+		log := logger.Get()
+
+		cfg, err := config.New(viper.GetViper())
+		if err != nil {
+			log.Fatal("failed to read configurations", zap.Error(err))
+		}
+
+		tmdbURL := url.URL{
+			Scheme: cfg.TMDB.Scheme,
+			Host:   cfg.TMDB.Host,
+		}
+
+		tmdbHttpClient := mhttp.NewRateLimitedClient()
+		tmdbClient, err := tmdb.New(tmdbURL.String(), cfg.TMDB.APIKey, tmdb.WithHTTPClient(tmdbHttpClient))
+		if err != nil {
+			log.Fatal("failed to create tmdb client", zap.Error(err))
+		}
+
+		m := manager.New(tmdbClient, nil, &library.MediaLibrary{}, nil, nil, cfg.Manager)
+
+		ctx := logger.WithCtx(context.Background(), log)
+		details, err := m.GetSeriesDetails(ctx, tmdbID)
+		if err != nil {
+			log.Fatal("failed to get series details", zap.Error(err))
+		}
+
+		b, err := json.Marshal(details)
+		if err != nil {
+			log.Fatal("failed to marshal series details", zap.Error(err))
+		}
+
+		log.Info(string(b))
+	},
+}
+
 func init() {
 	listCmd.AddCommand(listTVCmd)
 
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// tvCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// tvCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	seriesDetailsCmd.Flags().IntVarP(&tmdbID, "id", "i", 0, "tmdb id")
+	seriesDetailsCmd.MarkFlagRequired("id")
+	getCmd.AddCommand(seriesDetailsCmd)
 }

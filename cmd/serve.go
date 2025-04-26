@@ -8,6 +8,7 @@ import (
 
 	"github.com/kasuboski/mediaz/config"
 	"github.com/kasuboski/mediaz/pkg/download"
+	mhttp "github.com/kasuboski/mediaz/pkg/http"
 	mio "github.com/kasuboski/mediaz/pkg/io"
 	"github.com/kasuboski/mediaz/pkg/library"
 	"github.com/kasuboski/mediaz/pkg/logger"
@@ -42,7 +43,8 @@ var serveCmd = &cobra.Command{
 			Host:   cfg.TMDB.Host,
 		}
 
-		tmdbClient, err := tmdb.New(tmdbURL.String(), cfg.TMDB.APIKey)
+		tmdbHttpClient := mhttp.NewRateLimitedClient()
+		tmdbClient, err := tmdb.New(tmdbURL.String(), cfg.TMDB.APIKey, tmdb.WithHTTPClient(tmdbHttpClient))
 		if err != nil {
 			log.Fatal("failed to create tmdb client", zap.Error(err))
 		}

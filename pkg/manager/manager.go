@@ -27,10 +27,8 @@ import (
 	"go.uber.org/zap"
 )
 
-type TMDBClientInterface tmdb.ITmdb
-
 type MediaManager struct {
-	tmdb    TMDBClientInterface
+	tmdb    tmdb.ITmdb
 	indexer IndexerStore
 	library library.Library
 	storage storage.Storage
@@ -38,7 +36,7 @@ type MediaManager struct {
 	configs config.Manager
 }
 
-func New(tmbdClient TMDBClientInterface, prowlarrClient prowlarr.IProwlarr, library library.Library, storage storage.Storage, factory download.Factory, managerConfigs config.Manager) MediaManager {
+func New(tmbdClient tmdb.ITmdb, prowlarrClient prowlarr.IProwlarr, library library.Library, storage storage.Storage, factory download.Factory, managerConfigs config.Manager) MediaManager {
 	return MediaManager{
 		tmdb:    tmbdClient,
 		indexer: NewIndexerStore(prowlarrClient, storage),
@@ -131,6 +129,17 @@ func (m MediaManager) SearchTV(ctx context.Context, query string) (*SearchMediaR
 	}
 
 	return result, nil
+}
+
+func (m MediaManager) GetSeriesDetails(ctx context.Context, tmdbID int) (model.SeriesMetadata, error) {
+	var model model.SeriesMetadata
+	det, err := m.tmdb.GetSeriesDetails(ctx, tmdbID)
+	if err != nil {
+		return model, err
+	}
+
+	model, err = FromSeriesDetails(*det)
+	return model, err
 }
 
 func parseMediaResult(res *http.Response) (*SearchMediaResponse, error) {
@@ -327,6 +336,12 @@ type AddMovieRequest struct {
 	QualityProfileID int32 `json:"qualityProfileID"`
 }
 
+// AddSeriesRequest describes what is required to add a series to a library
+type AddSeriesRequest struct {
+	TMDBID           int   `json:"tmdbID"`
+	QualityProfileID int32 `json:"qualityProfileID"`
+}
+
 // AddMovieToLibrary adds a movie to be managed by mediaz
 // TODO: check status of movie before doing anything else.. do we already have it tracked? is it downloaded or already discovered? error state?
 func (m MediaManager) AddMovieToLibrary(ctx context.Context, request AddMovieRequest) (*storage.Movie, error) {
@@ -367,7 +382,7 @@ func (m MediaManager) AddMovieToLibrary(ctx context.Context, request AddMovieReq
 	}
 
 	state := storage.MovieStateMissing
-	if !isMovieReleased(now(), det) {
+	if !isReleased(now(), det.ReleaseDate) {
 		state = storage.MovieStateUnreleased
 	}
 
@@ -385,6 +400,63 @@ func (m MediaManager) AddMovieToLibrary(ctx context.Context, request AddMovieReq
 	}
 
 	return movie, nil
+}
+
+// AddSeriesToLibrary adds a series to be managed by mediaz
+func (m MediaManager) AddSeriesToLibrary(ctx context.Context, request AddSeriesRequest) (*storage.Series, error) {
+	log := logger.FromCtx(ctx)
+
+	qualityProfile, err := m.storage.GetQualityProfile(ctx, int64(request.QualityProfileID))
+	if err != nil {
+		log.Debug("failed to get quality profile", zap.Int32("id", request.QualityProfileID), zap.Error(err))
+		return nil, err
+	}
+
+	seriesMetadata, err := m.GetSeriesMetadata(ctx, request.TMDBID)
+	if err != nil {
+		log.Debug("failed to get series metadata", zap.Error(err))
+		return nil, err
+	}
+
+	series, err := m.storage.GetSeries(ctx, table.Series.ID.EQ(sqlite.Int32(seriesMetadata.ID)))
+	// if we find the series we dont need to add it
+	if err == nil {
+		return series, err
+	}
+	if !errors.Is(err, storage.ErrNotFound) {
+		log.Warnw("couldn't find series by metadata", "meta_id", seriesMetadata.ID, "err", err)
+		return nil, err
+	}
+
+	series = &storage.Series{
+		Series: model.Series{
+			SeriesMetadataID: &seriesMetadata.ID,
+			QualityProfileID: qualityProfile.ID,
+			Monitored:        1,
+			TmdbID:           int32(seriesMetadata.TmdbID),
+			Path:             &seriesMetadata.Title,
+		},
+	}
+
+	state := storage.SeriesStateMissing
+	if !isReleased(now(), seriesMetadata.FirstAirDate) {
+		state = storage.SeriesStateUnreleased
+	}
+
+	id, err := m.storage.CreateSeries(ctx, *series, state)
+	if err != nil {
+		log.Warnw("failed to create movie", "err", err)
+		return nil, err
+	}
+
+	log.Debug("created series", zap.Any("series", series))
+
+	series, err = m.storage.GetSeries(ctx, table.Series.ID.EQ(sqlite.Int64(id)))
+	if err != nil {
+		log.Warnw("failed to get created series", "err", err)
+	}
+
+	return series, err
 }
 
 // ReconcileSnapshot is a thread safe snapshot of the current reconcile loop state
@@ -749,7 +821,7 @@ func (m *MediaManager) reconcileUnreleasedMovie(ctx context.Context, movie *stor
 		return err
 	}
 
-	if !isMovieReleased(snapshot.time, det) {
+	if !isReleased(snapshot.time, det.ReleaseDate) {
 		log.Debug("movie is still unreleased")
 		return nil
 	}
@@ -844,6 +916,6 @@ func nullableDefault[T any](n nullable.Nullable[T]) T {
 	return def
 }
 
-func isMovieReleased(now time.Time, det *model.MovieMetadata) bool {
-	return det.ReleaseDate != nil && now.After(*det.ReleaseDate)
+func isReleased(now time.Time, releaseDate *time.Time) bool {
+	return releaseDate != nil && now.After(*releaseDate)
 }

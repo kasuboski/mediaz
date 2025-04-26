@@ -9,6 +9,6 @@ package model
 
 type Season struct {
 	ID               int32 `sql:"primary_key"`
-	ShowID           int32
+	SeriesID         int32
 	SeasonMetadataID *int32
 }

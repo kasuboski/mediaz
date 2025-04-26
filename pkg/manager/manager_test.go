@@ -18,16 +18,18 @@ import (
 	"github.com/kasuboski/mediaz/config"
 	"github.com/kasuboski/mediaz/pkg/download"
 	downloadMock "github.com/kasuboski/mediaz/pkg/download/mocks"
+	mhttpMock "github.com/kasuboski/mediaz/pkg/http/mocks"
 	mio "github.com/kasuboski/mediaz/pkg/io"
 	"github.com/kasuboski/mediaz/pkg/library"
 	mockLibrary "github.com/kasuboski/mediaz/pkg/library/mocks"
 	"github.com/kasuboski/mediaz/pkg/prowlarr"
 	prowlMock "github.com/kasuboski/mediaz/pkg/prowlarr/mocks"
 	"github.com/kasuboski/mediaz/pkg/storage"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite"
+	"github.com/kasuboski/mediaz/pkg/storage/mocks"
+	mediaSqlite "github.com/kasuboski/mediaz/pkg/storage/sqlite"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
 	"github.com/kasuboski/mediaz/pkg/tmdb"
-	"github.com/kasuboski/mediaz/pkg/tmdb/mocks"
+	tmdbMocks "github.com/kasuboski/mediaz/pkg/tmdb/mocks"
 	"github.com/oapi-codegen/nullable"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -36,9 +38,8 @@ import (
 
 func TestAddMovietoLibrary(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	tmdbMock := mocks.NewMockClientInterface(ctrl)
 
-	store, err := sqlite.New(":memory:")
+	store, err := mediaSqlite.New(":memory:")
 	require.NoError(t, err)
 
 	schemas, err := storage.ReadSchemaFiles("../storage/sqlite/schema/schema.sql", "../storage/sqlite/schema/defaults.sql")
@@ -50,7 +51,6 @@ func TestAddMovietoLibrary(t *testing.T) {
 
 	// create a date in the past
 	releaseDate := time.Now().AddDate(0, 0, -1).Format(tmdb.ReleaseDateFormat)
-	tmdbMock.EXPECT().MovieDetails(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(mediaDetailsResponse("test movie", 120, releaseDate), nil).Times(1)
 
 	prowlarrMock := prowlMock.NewMockClientInterface(ctrl)
 
@@ -82,8 +82,10 @@ func TestAddMovietoLibrary(t *testing.T) {
 	pClient.ClientInterface = prowlarrMock
 	require.NoError(t, err)
 
-	tClient, err := tmdb.New(":", "1234")
-	tClient.ClientInterface = tmdbMock
+	tmdbHttpMock := mhttpMock.NewMockHTTPClient(ctrl)
+	tmdbHttpMock.EXPECT().Do(gomock.Any()).Return(mediaDetailsResponse("test movie", 120, releaseDate), nil).Times(1)
+
+	tClient, err := tmdb.New("https://api.themoviedb.org", "1234", tmdb.WithHTTPClient(tmdbHttpMock))
 	require.NoError(t, err)
 
 	mockFactory := downloadMock.NewMockFactory(ctrl)
@@ -105,7 +107,7 @@ func TestAddMovietoLibrary(t *testing.T) {
 
 	movie, err := m.storage.GetMovie(ctx, int64(mov.ID))
 	require.Nil(t, err)
-
+	movie.Added = nil
 	movieMetadataID := int32(1)
 
 	assert.Equal(t, &storage.Movie{
@@ -122,9 +124,8 @@ func TestAddMovietoLibrary(t *testing.T) {
 
 func Test_Manager_reconcileMissingMovie(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	tmdbMock := mocks.NewMockClientInterface(ctrl)
 
-	store, err := sqlite.New(":memory:")
+	store, err := mediaSqlite.New(":memory:")
 	require.NoError(t, err)
 
 	schemas, err := storage.ReadSchemaFiles("../storage/sqlite/schema/schema.sql", "../storage/sqlite/schema/defaults.sql")
@@ -134,12 +135,8 @@ func Test_Manager_reconcileMissingMovie(t *testing.T) {
 	err = store.Init(ctx, schemas...)
 	require.NoError(t, err)
 
-	releaseDate := time.Now().AddDate(0, 0, -1).Format(tmdb.ReleaseDateFormat)
-	tmdbMock.EXPECT().MovieDetails(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(mediaDetailsResponse("test movie", 120, releaseDate), nil).Times(1)
-
 	prowlarrMock := prowlMock.NewMockClientInterface(ctrl)
 	indexers := []Indexer{{ID: 1, Name: "test", Priority: 1}, {ID: 3, Name: "test2", Priority: 10}}
-	// prowlarrMock.EXPECT().GetAPIV1Indexer(gomock.Any()).Return(indexersResponse(t, indexers), nil).Times(1)
 
 	bigSeeders := nullable.NewNullNullable[int32]()
 	bigSeeders.Set(23)
@@ -165,8 +162,12 @@ func Test_Manager_reconcileMissingMovie(t *testing.T) {
 	pClient.ClientInterface = prowlarrMock
 	require.NoError(t, err)
 
-	tClient, err := tmdb.New(":", "1234")
-	tClient.ClientInterface = tmdbMock
+	releaseDate := time.Now().AddDate(0, 0, -1).Format(tmdb.ReleaseDateFormat)
+
+	tmdbHttpMock := mhttpMock.NewMockHTTPClient(ctrl)
+	tmdbHttpMock.EXPECT().Do(gomock.Any()).Return(mediaDetailsResponse("test movie", 120, releaseDate), nil).Times(1)
+
+	tClient, err := tmdb.New("https://api.themoviedb.org", "1234", tmdb.WithHTTPClient(tmdbHttpMock))
 	require.NoError(t, err)
 
 	downloadClient := model.DownloadClient{
@@ -231,9 +232,8 @@ func Test_Manager_reconcileMissingMovie(t *testing.T) {
 
 func Test_Manager_reconcileUnreleasedMovie(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	tmdbMock := mocks.NewMockClientInterface(ctrl)
 
-	store, err := sqlite.New(":memory:")
+	store, err := mediaSqlite.New(":memory:")
 	require.NoError(t, err)
 
 	schemas, err := storage.ReadSchemaFiles("../storage/sqlite/schema/schema.sql", "../storage/sqlite/schema/defaults.sql")
@@ -243,9 +243,6 @@ func Test_Manager_reconcileUnreleasedMovie(t *testing.T) {
 	err = store.Init(ctx, schemas...)
 	require.NoError(t, err)
 
-	releaseDate := time.Now().AddDate(0, 0, +5).Format(tmdb.ReleaseDateFormat)
-	tmdbMock.EXPECT().MovieDetails(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(mediaDetailsResponse("test movie", 120, releaseDate), nil).Times(1)
-
 	prowlarrMock := prowlMock.NewMockClientInterface(ctrl)
 	indexers := []Indexer{{ID: 1, Name: "test", Priority: 1}, {ID: 3, Name: "test2", Priority: 10}}
 
@@ -253,8 +250,11 @@ func Test_Manager_reconcileUnreleasedMovie(t *testing.T) {
 	pClient.ClientInterface = prowlarrMock
 	require.NoError(t, err)
 
-	tClient, err := tmdb.New(":", "1234")
-	tClient.ClientInterface = tmdbMock
+	releaseDate := time.Now().AddDate(0, 0, +5).Format(tmdb.ReleaseDateFormat)
+
+	tmdbHttpMock := mhttpMock.NewMockHTTPClient(ctrl)
+	tmdbHttpMock.EXPECT().Do(gomock.Any()).Return(mediaDetailsResponse("test movie", 120, releaseDate), nil).Times(1)
+	tClient, err := tmdb.New("https://api.themoviedb.org", "1234", tmdb.WithHTTPClient(tmdbHttpMock))
 	require.NoError(t, err)
 
 	downloadClient := model.DownloadClient{
@@ -493,9 +493,8 @@ func TestIndexMovieLibrary(t *testing.T) {
 
 func TestRun(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	tmdbMock := mocks.NewMockClientInterface(ctrl)
 	prowlarrMock := prowlMock.NewMockClientInterface(ctrl)
-	store, err := sqlite.New(":memory:")
+	store, err := mediaSqlite.New(":memory:")
 	require.Nil(t, err)
 
 	schemas, err := storage.ReadSchemaFiles("../storage/sqlite/schema/schema.sql")
@@ -524,12 +523,10 @@ func TestRun(t *testing.T) {
 	pClient.ClientInterface = prowlarrMock
 	require.NoError(t, err)
 
-	tClient, err := tmdb.New(":", "1234")
-	tClient.ClientInterface = tmdbMock
 	require.NoError(t, err)
 
 	mockFactory := downloadMock.NewMockFactory(ctrl)
-	m := New(tClient, pClient, lib, store, mockFactory, config.Manager{
+	m := New(nil, pClient, lib, store, mockFactory, config.Manager{
 		Jobs: config.Jobs{
 			MovieReconcile: time.Minute * 1,
 			MovieIndex:     time.Minute * 1,
@@ -1053,7 +1050,7 @@ func ptr[A any](thing A) *A {
 }
 
 func newStore(t *testing.T, ctx context.Context) storage.Storage {
-	store, err := sqlite.New(":memory:")
+	store, err := mediaSqlite.New(":memory:")
 	require.NoError(t, err)
 
 	schemas, err := storage.ReadSchemaFiles("../storage/sqlite/schema/schema.sql", "../storage/sqlite/schema/defaults.sql")
@@ -1063,4 +1060,176 @@ func newStore(t *testing.T, ctx context.Context) storage.Storage {
 	require.NoError(t, err)
 
 	return store
+}
+
+func TestMediaManager_AddSeriesToLibrary(t *testing.T) {
+	t.Run("error getting quality profile", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		ctx := context.Background()
+
+		store := mocks.NewMockStorage(ctrl)
+		store.EXPECT().GetQualityProfile(gomock.Any(), int64(1)).Return(storage.QualityProfile{}, errors.New("expected testing error"))
+
+		m := New(nil, nil, nil, store, nil, config.Manager{})
+		require.NotNil(t, m)
+
+		req := AddSeriesRequest{
+			TMDBID:           1234,
+			QualityProfileID: 1,
+		}
+
+		_, err := m.AddSeriesToLibrary(ctx, req)
+		assert.Error(t, err)
+		assert.Equal(t, "expected testing error", err.Error())
+	})
+
+	t.Run("error getting series metadata from tdmb", func(t *testing.T) {
+		ctx := context.Background()
+		ctrl := gomock.NewController(t)
+
+		store := newStore(t, ctx)
+		store.CreateQualityProfile(ctx, model.QualityProfile{
+			ID:   1,
+			Name: "test-profile",
+		})
+
+		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
+		tmdbMock.EXPECT().GetSeriesDetails(gomock.Any(), gomock.Any()).Return(nil, errors.New("expected testing error"))
+
+		m := New(tmdbMock, nil, nil, store, nil, config.Manager{})
+		require.NotNil(t, m)
+
+		req := AddSeriesRequest{
+			TMDBID:           1234,
+			QualityProfileID: 1,
+		}
+
+		_, err := m.AddSeriesToLibrary(ctx, req)
+		assert.Error(t, err)
+		assert.Equal(t, "expected testing error", err.Error())
+	})
+
+	t.Run("series metadata exists in db - series exists", func(t *testing.T) {
+		ctx := context.Background()
+		ctrl := gomock.NewController(t)
+
+		store := newStore(t, ctx)
+		_, err := store.CreateQualityProfile(ctx, model.QualityProfile{
+			ID:   1,
+			Name: "test-profile",
+		})
+		require.NoError(t, err)
+
+		metadataID, err := store.CreateSeriesMetadata(ctx, model.SeriesMetadata{
+			ID:     1,
+			TmdbID: 1234,
+		})
+		require.NoError(t, err)
+
+		seriesID, err := store.CreateSeries(ctx, storage.Series{
+			Series: model.Series{
+				ID:               1,
+				SeriesMetadataID: ptr(int32(metadataID)),
+				Monitored:        1,
+				QualityProfileID: 1,
+				Added:            ptr(time.Now()),
+			},
+		}, storage.SeriesStateMissing)
+		require.NoError(t, err)
+
+		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
+
+		m := New(tmdbMock, nil, nil, store, nil, config.Manager{})
+		require.NotNil(t, m)
+
+		req := AddSeriesRequest{
+			TMDBID:           1234,
+			QualityProfileID: 1,
+		}
+
+		series, err := m.AddSeriesToLibrary(ctx, req)
+		require.NoError(t, err)
+
+		assert.Equal(t, series.ID, int32(seriesID))
+		assert.Equal(t, series.SeriesMetadataID, ptr(int32(metadataID)))
+		assert.Equal(t, series.Monitored, int32(1))
+		assert.Equal(t, series.QualityProfileID, int32(1))
+		assert.Equal(t, storage.SeriesStateMissing, series.State)
+	})
+
+	t.Run("series metadata exists in db - series does not exist - unreleased", func(t *testing.T) {
+		ctx := context.Background()
+		ctrl := gomock.NewController(t)
+
+		store := newStore(t, ctx)
+		_, err := store.CreateQualityProfile(ctx, model.QualityProfile{
+			ID:   1,
+			Name: "test-profile",
+		})
+		require.NoError(t, err)
+
+		metadataID, err := store.CreateSeriesMetadata(ctx, model.SeriesMetadata{
+			ID:           1,
+			TmdbID:       1234,
+			FirstAirDate: ptr(time.Now().Add(time.Hour * 24 * 7)),
+		})
+		require.NoError(t, err)
+
+		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
+
+		m := New(tmdbMock, nil, nil, store, nil, config.Manager{})
+		require.NotNil(t, m)
+
+		req := AddSeriesRequest{
+			TMDBID:           1234,
+			QualityProfileID: 1,
+		}
+
+		series, err := m.AddSeriesToLibrary(ctx, req)
+		require.NoError(t, err)
+
+		assert.Equal(t, series.ID, int32(1))
+		assert.Equal(t, series.SeriesMetadataID, ptr(int32(metadataID)))
+		assert.Equal(t, series.Monitored, int32(1))
+		assert.Equal(t, series.QualityProfileID, int32(1))
+		assert.Equal(t, storage.SeriesStateUnreleased, series.State)
+	})
+
+	t.Run("series metadata exists in db - series does not exist - released", func(t *testing.T) {
+		ctx := context.Background()
+		ctrl := gomock.NewController(t)
+
+		store := newStore(t, ctx)
+		_, err := store.CreateQualityProfile(ctx, model.QualityProfile{
+			ID:   1,
+			Name: "test-profile",
+		})
+		require.NoError(t, err)
+
+		metadataID, err := store.CreateSeriesMetadata(ctx, model.SeriesMetadata{
+			ID:           1,
+			TmdbID:       1234,
+			FirstAirDate: ptr(time.Now().Add(-time.Hour * 2)),
+		})
+		require.NoError(t, err)
+
+		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
+
+		m := New(tmdbMock, nil, nil, store, nil, config.Manager{})
+		require.NotNil(t, m)
+
+		req := AddSeriesRequest{
+			TMDBID:           1234,
+			QualityProfileID: 1,
+		}
+
+		series, err := m.AddSeriesToLibrary(ctx, req)
+		require.NoError(t, err)
+
+		assert.Equal(t, series.ID, int32(1))
+		assert.Equal(t, series.SeriesMetadataID, ptr(int32(metadataID)))
+		assert.Equal(t, series.Monitored, int32(1))
+		assert.Equal(t, series.QualityProfileID, int32(1))
+		assert.Equal(t, storage.SeriesStateMissing, series.State)
+	})
 }

@@ -19,8 +19,8 @@ type Storage interface {
 	MovieStorage
 	MovieMetadataStorage
 	DownloadClientStorage
-	ShowStorage
-	ShowMetadataStorage
+	SeriesStorage
+	SeriesMetadataStorage
 }
 
 type IndexerStorage interface {
@@ -129,16 +129,29 @@ type QualityDefinition struct {
 	QualityID     int32   `alias:"quality_definition.quality_id" json:"-"`
 }
 
-type Episode struct {
-	model.Episode
-	State            EpisodeState `json:"state"`
-	DownloadID       string       `json:"-"`
-	DownloadClientID int32        `json:"-"`
-}
-
-type EpisodeState string
+type (
+	SeriesState  string
+	SeasonState  string
+	EpisodeState string
+)
 
 const (
+	SeriesStateNew         SeriesState = ""
+	SeriesStateMissing     SeriesState = "missing"
+	SeriesStateDiscovered  SeriesState = "discovered"
+	SeriesStateUnreleased  SeriesState = "unreleased"
+	SeriesStateContinuing  SeriesState = "continuing"
+	SeriesStateDownloading SeriesState = "downloading"
+	SeriesStateEnded       SeriesState = "ended"
+
+	SeasonStateNew         SeasonState = ""
+	SeasonStateMissing     SeasonState = "missing"
+	SeasonStateDiscovered  SeasonState = "discovered"
+	SeasonStateUnreleased  SeasonState = "unreleased"
+	SeasonStateContinuing  SeasonState = "continuing"
+	SeasonStateDownloading SeasonState = "downloading"
+	SeasonStateEnded       SeasonState = "ended"
+
 	EpisodeStateNew         EpisodeState = ""
 	EpisodeStateMissing     EpisodeState = "missing"
 	EpisodeStateDiscovered  EpisodeState = "discovered"
@@ -147,31 +160,73 @@ const (
 	EpisodeStateDownloaded  EpisodeState = "downloaded"
 )
 
+type Series struct {
+	model.Series
+	State            SeriesState `alias:"series_transition.to_state" json:"state"`
+	DownloadID       string      `alias:"series_transition.download_id" json:"-"`
+	DownloadClientID int32       `alias:"series_transition.download_client_id" json:"-"`
+}
+
+type SeriesTransition model.SeriesTransition
+
+func (s Series) Machine() *machine.StateMachine[SeriesState] {
+	return machine.New(s.State,
+		machine.From(SeriesStateNew).To(SeriesStateUnreleased, SeriesStateMissing, SeriesStateDiscovered),
+		machine.From(SeriesStateMissing).To(SeriesStateDiscovered, SeriesStateDownloading),
+		machine.From(SeriesStateUnreleased).To(SeriesStateDiscovered, SeriesStateMissing),
+		machine.From(SeriesStateDownloading).To(SeriesStateContinuing, SeriesStateEnded),
+	)
+}
+
+type Season struct {
+	model.Season
+	State            SeasonState `alias:"season_transition.to_state" json:"state"`
+	DownloadID       string      `alias:"season_transition.download_id" json:"-"`
+	DownloadClientID int32       `alias:"season_transition.download_client_id" json:"-"`
+}
+
+type SeasonTransition model.SeasonTransition
+
+func (s Season) Machine() *machine.StateMachine[SeasonState] {
+	return machine.New(s.State,
+		machine.From(SeasonStateNew).To(SeasonStateUnreleased, SeasonStateMissing, SeasonStateDiscovered),
+		machine.From(SeasonStateMissing).To(SeasonStateDiscovered, SeasonStateDownloading),
+		machine.From(SeasonStateUnreleased).To(SeasonStateDiscovered, SeasonStateMissing),
+		machine.From(SeasonStateDownloading).To(SeasonStateContinuing, SeasonStateEnded),
+	)
+}
+
+type Episode struct {
+	model.Episode
+	State            EpisodeState `alias:"episode_transition.to_state" json:"state"`
+	DownloadID       string       `json:"-"`
+	DownloadClientID int32        `json:"-"`
+}
+
 type EpisodeTransition model.EpisodeTransition
 
 func (e Episode) Machine() *machine.StateMachine[EpisodeState] {
 	return machine.New(e.State,
 		machine.From(EpisodeStateNew).To(EpisodeStateUnreleased, EpisodeStateMissing, EpisodeStateDiscovered),
+		machine.From(EpisodeStateNew).To(EpisodeStateUnreleased, EpisodeStateMissing, EpisodeStateDiscovered),
 		machine.From(EpisodeStateMissing).To(EpisodeStateDiscovered, EpisodeStateDownloading),
-		machine.From(EpisodeStateUnreleased).To(EpisodeStateDiscovered, EpisodeStateMissing),
-		machine.From(EpisodeStateDownloading).To(EpisodeStateDownloaded),
 	)
 }
 
-type ShowStorage interface {
-	GetShow(ctx context.Context, id int64) (*model.Show, error)
-	CreateShow(ctx context.Context, show model.Show) (int64, error)
-	DeleteShow(ctx context.Context, id int64) error
-	ListShows(ctx context.Context) ([]*model.Show, error)
+type SeriesStorage interface {
+	GetSeries(ctx context.Context, where sqlite.BoolExpression) (*Series, error)
+	CreateSeries(ctx context.Context, Series Series, initialState SeriesState) (int64, error)
+	DeleteSeries(ctx context.Context, id int64) error
+	ListSeries(ctx context.Context) ([]*Series, error)
 
-	GetSeason(ctx context.Context, id int64) (*model.Season, error)
-	CreateSeason(ctx context.Context, season model.Season) (int64, error)
+	GetSeason(ctx context.Context, id int64) (*Season, error)
+	CreateSeason(ctx context.Context, season Season, initialState SeasonState) (int64, error)
 	DeleteSeason(ctx context.Context, id int64) error
-	ListSeasons(ctx context.Context, showID int64) ([]*model.Season, error)
+	ListSeasons(ctx context.Context, SeriesID int64) ([]*Season, error)
 
 	GetEpisode(ctx context.Context, id int64) (*Episode, error)
 	GetEpisodeByEpisodeFileID(ctx context.Context, fileID int64) (*Episode, error)
-	CreateEpisode(ctx context.Context, episode Episode, state EpisodeState) (int64, error)
+	CreateEpisode(ctx context.Context, episode Episode, initialState EpisodeState) (int64, error)
 	DeleteEpisode(ctx context.Context, id int64) error
 	ListEpisodes(ctx context.Context, seasonID int64) ([]*Episode, error)
 	ListEpisodesByState(ctx context.Context, state EpisodeState) ([]*Episode, error)
@@ -183,11 +238,11 @@ type ShowStorage interface {
 	ListEpisodeFiles(ctx context.Context) ([]*model.EpisodeFile, error)
 }
 
-type ShowMetadataStorage interface {
-	CreateShowMetadata(ctx context.Context, showMeta model.ShowMetadata) (int64, error)
-	DeleteShowMetadata(ctx context.Context, id int64) error
-	ListShowMetadata(ctx context.Context) ([]*model.ShowMetadata, error)
-	GetShowMetadata(ctx context.Context, where sqlite.BoolExpression) (*model.ShowMetadata, error)
+type SeriesMetadataStorage interface {
+	CreateSeriesMetadata(ctx context.Context, SeriesMeta model.SeriesMetadata) (int64, error)
+	DeleteSeriesMetadata(ctx context.Context, id int64) error
+	ListSeriesMetadata(ctx context.Context) ([]*model.SeriesMetadata, error)
+	GetSeriesMetadata(ctx context.Context, where sqlite.BoolExpression) (*model.SeriesMetadata, error)
 
 	CreateSeasonMetadata(ctx context.Context, seasonMeta model.SeasonMetadata) (int64, error)
 	DeleteSeasonMetadata(ctx context.Context, id int64) error

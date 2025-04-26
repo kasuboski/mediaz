@@ -18,7 +18,7 @@ type seasonTable struct {
 
 	// Columns
 	ID               sqlite.ColumnInteger
-	ShowID           sqlite.ColumnInteger
+	SeriesID         sqlite.ColumnInteger
 	SeasonMetadataID sqlite.ColumnInteger
 
 	AllColumns     sqlite.ColumnList
@@ -61,10 +61,10 @@ func newSeasonTable(schemaName, tableName, alias string) *SeasonTable {
 func newSeasonTableImpl(schemaName, tableName, alias string) seasonTable {
 	var (
 		IDColumn               = sqlite.IntegerColumn("id")
-		ShowIDColumn           = sqlite.IntegerColumn("show_id")
+		SeriesIDColumn         = sqlite.IntegerColumn("series_id")
 		SeasonMetadataIDColumn = sqlite.IntegerColumn("season_metadata_id")
-		allColumns             = sqlite.ColumnList{IDColumn, ShowIDColumn, SeasonMetadataIDColumn}
-		mutableColumns         = sqlite.ColumnList{ShowIDColumn, SeasonMetadataIDColumn}
+		allColumns             = sqlite.ColumnList{IDColumn, SeriesIDColumn, SeasonMetadataIDColumn}
+		mutableColumns         = sqlite.ColumnList{SeriesIDColumn, SeasonMetadataIDColumn}
 	)
 
 	return seasonTable{
@@ -72,7 +72,7 @@ func newSeasonTableImpl(schemaName, tableName, alias string) seasonTable {
 
 		//Columns
 		ID:               IDColumn,
-		ShowID:           ShowIDColumn,
+		SeriesID:         SeriesIDColumn,
 		SeasonMetadataID: SeasonMetadataIDColumn,
 
 		AllColumns:     allColumns,

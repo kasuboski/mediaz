@@ -52,6 +52,7 @@ $ mediaz --config <path>  # Specify config file
 ### TV Shows API
 - `GET /api/v1/library/tv` - List all TV shows
 - `GET /api/v1/discover/tv?query=<title>` - Search for TV shows
+- `POST /api/v1/library/tv` - Add a show to library
 
 ### Indexers API
 - `GET /api/v1/indexers` - List all indexers

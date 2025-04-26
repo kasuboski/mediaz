@@ -73,8 +73,7 @@ func (s Server) Serve(port int) error {
 	v1.HandleFunc("/library/movies", s.AddMovieToLibrary()).Methods(http.MethodPost)
 
 	v1.HandleFunc("/library/tv", s.ListTVShows()).Methods(http.MethodGet)
-	// TODO: add method to add a show to your library
-	// v1.HandleFunc("/library/tv", s.AddShowToLibrary()).Methods(http.MethodPost)
+	v1.HandleFunc("/library/tv", s.AddSeriesToLibrary()).Methods(http.MethodPost)
 
 	v1.HandleFunc("/discover/movie", s.SearchMovie()).Methods(http.MethodGet)
 	v1.HandleFunc("/discover/tv", s.SearchTV()).Methods(http.MethodGet)
@@ -596,5 +595,38 @@ func (s Server) ListDownloadClients() http.HandlerFunc {
 		writeResponse(w, http.StatusOK, GenericResponse{
 			Response: downloadClient,
 		})
+	}
+}
+
+func (s Server) AddSeriesToLibrary() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log := logger.FromCtx(r.Context())
+		b, err := io.ReadAll(r.Body)
+		if err != nil {
+			log.Debug("invalid request body", zap.Error(err))
+			http.Error(w, "invalid request body", http.StatusBadRequest)
+			return
+		}
+
+		var request manager.AddSeriesRequest
+		err = json.Unmarshal(b, &request)
+		if err != nil {
+			log.Debug("invalid request body", zap.String("body", string(b)))
+			http.Error(w, "invalid request body", http.StatusBadRequest)
+			return
+		}
+
+		release, err := s.manager.AddSeriesToLibrary(r.Context(), request)
+		if err != nil {
+			log.Error("couldn't add a series", zap.Error(err))
+			writeErrorResponse(w, http.StatusInternalServerError, err)
+			return
+		}
+
+		err = writeResponse(w, http.StatusOK, GenericResponse{Response: release})
+		if err != nil {
+			log.Error("failed to write response", zap.Error(err))
+			return
+		}
 	}
 }

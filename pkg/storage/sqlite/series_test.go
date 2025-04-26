@@ -14,50 +14,50 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestShowStorage(t *testing.T) {
+func TestSeriesStorage(t *testing.T) {
 	ctx := context.Background()
 	store := initSqlite(t, ctx)
-	assert.NotNil(t, store)
+	require.NotNil(t, store)
 
-	shows, err := store.ListShows(ctx)
+	seriesList, err := store.ListSeries(ctx)
 	assert.Nil(t, err)
-	assert.Empty(t, shows)
+	assert.Empty(t, seriesList)
 
-	// Test creating a show
-	show := model.Show{
-		Monitored:        1,
-		QualityProfileID: 1,
-		Added:            ptr(time.Now()),
+	series := storage.Series{
+		Series: model.Series{
+			Monitored:        1,
+			QualityProfileID: 1,
+			Added:            ptr(time.Now()),
+		},
 	}
 
-	id, err := store.CreateShow(ctx, show)
+	id, err := store.CreateSeries(ctx, series, storage.SeriesStateMissing)
 	assert.Nil(t, err)
-	assert.Greater(t, id, int64(0))
 
-	// Test getting the show
-	retrieved, err := store.GetShow(ctx, id)
+	// Test getting the Series
+	retrieved, err := store.GetSeries(ctx, table.Series.ID.EQ(sqlite.Int64(id)))
 	assert.Nil(t, err)
-	assert.NotNil(t, retrieved)
-	assert.Equal(t, show.Monitored, retrieved.Monitored)
-	assert.Equal(t, show.QualityProfileID, retrieved.QualityProfileID)
+	require.NotNil(t, retrieved)
+	assert.Equal(t, series.Monitored, retrieved.Monitored)
+	assert.Equal(t, series.QualityProfileID, retrieved.QualityProfileID)
 
-	// Test listing shows
-	shows, err = store.ListShows(ctx)
+	// Test listing series
+	seriesList, err = store.ListSeries(ctx)
 	assert.Nil(t, err)
-	assert.Len(t, shows, 1)
-	assert.Equal(t, show.Monitored, shows[0].Monitored)
+	assert.Len(t, seriesList, 1)
+	assert.Equal(t, series.Monitored, seriesList[0].Monitored)
 
-	// Test deleting the show
-	err = store.DeleteShow(ctx, id)
+	// Test deleting the Series
+	err = store.DeleteSeries(ctx, id)
 	assert.Nil(t, err)
 
 	// Verify deletion
-	shows, err = store.ListShows(ctx)
+	seriesList, err = store.ListSeries(ctx)
 	assert.Nil(t, err)
-	assert.Empty(t, shows)
+	assert.Empty(t, seriesList)
 
-	// Test getting non-existent show
-	_, err = store.GetShow(ctx, id)
+	// Test getting non-existent Series
+	_, err = store.GetSeries(ctx, table.Series.ID.EQ(sqlite.Int64(id)))
 	assert.ErrorIs(t, err, storage.ErrNotFound)
 }
 
@@ -66,21 +66,26 @@ func TestSeasonStorage(t *testing.T) {
 	store := initSqlite(t, ctx)
 	assert.NotNil(t, store)
 
-	// Create a show first
-	show := model.Show{
-		Monitored:        1,
-		QualityProfileID: 1,
-		Added:            ptr(time.Now()),
+	series := storage.Series{
+		Series: model.Series{
+			Monitored:        1,
+			QualityProfileID: 1,
+			Added:            ptr(time.Now()),
+		},
 	}
-	showID, err := store.CreateShow(ctx, show)
+
+	// Create a Series first
+	SeriesID, err := store.CreateSeries(ctx, series, storage.SeriesStateMissing)
 	require.Nil(t, err)
 
 	// Test creating a season
-	season := model.Season{
-		ShowID: int32(showID),
+	season := storage.Season{
+		Season: model.Season{
+			SeriesID: int32(SeriesID),
+		},
 	}
 
-	id, err := store.CreateSeason(ctx, season)
+	id, err := store.CreateSeason(ctx, season, storage.SeasonStateMissing)
 	assert.Nil(t, err)
 	assert.Greater(t, id, int64(0))
 
@@ -88,20 +93,21 @@ func TestSeasonStorage(t *testing.T) {
 	retrieved, err := store.GetSeason(ctx, id)
 	assert.Nil(t, err)
 	assert.NotNil(t, retrieved)
-	assert.Equal(t, season.ShowID, retrieved.ShowID)
+	assert.Equal(t, season.SeriesID, retrieved.SeriesID)
+	assert.Equal(t, storage.SeasonStateMissing, retrieved.State)
 
 	// Test listing seasons
-	seasons, err := store.ListSeasons(ctx, showID)
+	seasons, err := store.ListSeasons(ctx, SeriesID)
 	assert.Nil(t, err)
 	assert.Len(t, seasons, 1)
-	assert.Equal(t, season.ShowID, seasons[0].ShowID)
+	assert.Equal(t, season.SeriesID, seasons[0].SeriesID)
 
 	// Test deleting the season
 	err = store.DeleteSeason(ctx, id)
 	assert.Nil(t, err)
 
 	// Verify deletion
-	seasons, err = store.ListSeasons(ctx, showID)
+	seasons, err = store.ListSeasons(ctx, SeriesID)
 	assert.Nil(t, err)
 	assert.Empty(t, seasons)
 
@@ -115,19 +121,24 @@ func TestEpisodeStorage(t *testing.T) {
 	store := initSqlite(t, ctx)
 	assert.NotNil(t, store)
 
-	// Create a show and season first
-	show := model.Show{
-		Monitored:        1,
-		QualityProfileID: 1,
-		Added:            ptr(time.Now()),
+	series := storage.Series{
+		Series: model.Series{
+			Monitored:        1,
+			QualityProfileID: 1,
+			Added:            ptr(time.Now()),
+		},
 	}
-	showID, err := store.CreateShow(ctx, show)
+
+	seriesID, err := store.CreateSeries(ctx, series, storage.SeriesStateMissing)
 	require.Nil(t, err)
 
-	season := model.Season{
-		ShowID: int32(showID),
+	season := storage.Season{
+		Season: model.Season{
+			SeriesID: int32(seriesID),
+		},
 	}
-	seasonID, err := store.CreateSeason(ctx, season)
+
+	seasonID, err := store.CreateSeason(ctx, season, storage.SeasonStateMissing)
 	require.Nil(t, err)
 
 	// Test creating an episode
@@ -150,7 +161,7 @@ func TestEpisodeStorage(t *testing.T) {
 	assert.Equal(t, episode.SeasonID, retrieved.SeasonID)
 	assert.Equal(t, episode.EpisodeNumber, retrieved.EpisodeNumber)
 	assert.Equal(t, episode.Monitored, retrieved.Monitored)
-	assert.Equal(t, episode.State, retrieved.State)
+	assert.Equal(t, storage.EpisodeStateMissing, retrieved.State)
 
 	// Test listing episodes
 	episodes, err := store.ListEpisodes(ctx, seasonID)
@@ -162,7 +173,7 @@ func TestEpisodeStorage(t *testing.T) {
 	stateEpisodes, err := store.ListEpisodesByState(ctx, storage.EpisodeStateMissing)
 	assert.Nil(t, err)
 	assert.Len(t, stateEpisodes, 1)
-	assert.Equal(t, episode.State, stateEpisodes[0].State)
+	assert.Equal(t, storage.EpisodeStateMissing, stateEpisodes[0].State)
 
 	// Test updating episode file ID
 	err = store.UpdateEpisodeEpisodeFileID(ctx, id, 123)
@@ -231,27 +242,27 @@ func TestEpisodeFileStorage(t *testing.T) {
 	assert.ErrorIs(t, err, storage.ErrNotFound)
 }
 
-func TestShowMetadataStorage(t *testing.T) {
+func TestSeriesMetadataStorage(t *testing.T) {
 	ctx := context.Background()
 	store := initSqlite(t, ctx)
 	assert.NotNil(t, store)
 
-	// Test creating show metadata
-	metadata := model.ShowMetadata{
+	// Test creating Series metadata
+	metadata := model.SeriesMetadata{
 		TmdbID:       12345,
-		Title:        "Test Show",
+		Title:        "Test Series",
 		SeasonCount:  1,
 		EpisodeCount: 1,
 		Status:       "Continuing",
 	}
 
-	id, err := store.CreateShowMetadata(ctx, metadata)
+	id, err := store.CreateSeriesMetadata(ctx, metadata)
 	assert.Nil(t, err)
 	assert.Greater(t, id, int64(0))
 
-	// Test getting the show metadata
-	where := table.ShowMetadata.ID.EQ(sqlite.Int64(id))
-	retrieved, err := store.GetShowMetadata(ctx, where)
+	// Test getting the Series metadata
+	where := table.SeriesMetadata.ID.EQ(sqlite.Int64(id))
+	retrieved, err := store.GetSeriesMetadata(ctx, where)
 	assert.Nil(t, err)
 	assert.NotNil(t, retrieved)
 	assert.Equal(t, metadata.TmdbID, retrieved.TmdbID)
@@ -260,23 +271,23 @@ func TestShowMetadataStorage(t *testing.T) {
 	assert.Equal(t, metadata.EpisodeCount, retrieved.EpisodeCount)
 	assert.Equal(t, metadata.Status, retrieved.Status)
 
-	// Test listing show metadata
-	metadataList, err := store.ListShowMetadata(ctx)
+	// Test listing Series metadata
+	metadataList, err := store.ListSeriesMetadata(ctx)
 	assert.Nil(t, err)
 	assert.Len(t, metadataList, 1)
 	assert.Equal(t, metadata.Title, metadataList[0].Title)
 
-	// Test deleting the show metadata
-	err = store.DeleteShowMetadata(ctx, id)
+	// Test deleting the Series metadata
+	err = store.DeleteSeriesMetadata(ctx, id)
 	assert.Nil(t, err)
 
 	// Verify deletion
-	metadataList, err = store.ListShowMetadata(ctx)
+	metadataList, err = store.ListSeriesMetadata(ctx)
 	assert.Nil(t, err)
 	assert.Empty(t, metadataList)
 
-	// Test getting non-existent show metadata
-	_, err = store.GetShowMetadata(ctx, where)
+	// Test getting non-existent Series metadata
+	_, err = store.GetSeriesMetadata(ctx, where)
 	assert.ErrorIs(t, err, storage.ErrNotFound)
 }
 
@@ -287,11 +298,10 @@ func TestSeasonMetadataStorage(t *testing.T) {
 
 	// Test creating season metadata
 	metadata := model.SeasonMetadata{
-		TmdbID:       12345,
-		Title:        ptr("Season 1"),
-		Overview:     ptr("Test season overview"),
-		EpisodeCount: 10,
-		Number:       1,
+		TmdbID:   12345,
+		Title:    "Season 1",
+		Overview: ptr("Test season overview"),
+		Number:   1,
 	}
 
 	id, err := store.CreateSeasonMetadata(ctx, metadata)
@@ -306,7 +316,6 @@ func TestSeasonMetadataStorage(t *testing.T) {
 	assert.Equal(t, metadata.TmdbID, retrieved.TmdbID)
 	assert.Equal(t, metadata.Title, retrieved.Title)
 	assert.Equal(t, metadata.Overview, retrieved.Overview)
-	assert.Equal(t, metadata.EpisodeCount, retrieved.EpisodeCount)
 	assert.Equal(t, metadata.Number, retrieved.Number)
 
 	// Test listing season metadata
@@ -337,7 +346,7 @@ func TestEpisodeMetadataStorage(t *testing.T) {
 	// Test creating episode metadata
 	metadata := model.EpisodeMetadata{
 		TmdbID:   12345,
-		Title:    ptr("Test Episode"),
+		Title:    "Test Episode",
 		Overview: ptr("Test episode overview"),
 		Runtime:  ptr(int32(45)),
 	}

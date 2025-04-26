@@ -82,7 +82,7 @@ CREATE TABLE IF NOT EXISTS "movie" (
     "path" TEXT,
     "monitored" INTEGER NOT NULL,
     "quality_profile_id" INTEGER NOT NULL,
-    "added" DATETIME,
+    "added" DATETIME DEFAULT current_timestamp,
     "tags" TEXT,
     "add_options" TEXT,
     "movie_file_id" INTEGER,
@@ -91,19 +91,22 @@ CREATE TABLE IF NOT EXISTS "movie" (
     "last_search_time" DATETIME
 );
 
-CREATE TABLE IF NOT EXISTS "show" (
+CREATE TABLE IF NOT EXISTS "series" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "path" TEXT,
     "monitored" INTEGER NOT NULL,
-    "quality_profile_id" INTEGER NOT NULL,
     "added" DATETIME DEFAULT current_timestamp,
-    "show_metadata" INTEGER UNIQUE,
+    "tmdb_id" INTEGER NOT NULL,
+    "quality_profile_id" INTEGER NOT NULL,
+    "series_metadata_id" INTEGER UNIQUE,
     "last_search_time" DATETIME
 );
 
-CREATE TABLE IF NOT EXISTS "show_metadata" (
+CREATE TABLE IF NOT EXISTS "series_metadata" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     "tmdb_id" INTEGER NOT NULL,
     "title" TEXT NOT NULL,
+    "overview" TEXT,
     "last_info_sync" DATETIME,
     "first_air_date" DATETIME,
     "last_air_date" DATETIME,
@@ -114,19 +117,20 @@ CREATE TABLE IF NOT EXISTS "show_metadata" (
 
 CREATE TABLE IF NOT EXISTS "season" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-    "show_id" INTEGER NOT NULL,
+    "series_id" INTEGER NOT NULL,
     "season_metadata_id" INTEGER UNIQUE,
-    FOREIGN KEY ("show_id") REFERENCES "show" ("id")
+    FOREIGN KEY ("series_id") REFERENCES "series" ("id")
 );
 
 CREATE TABLE IF NOT EXISTS "season_metadata" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-    "tmdb_id" INTEGER NOT NULL UNIQUE,
-    "title" TEXT,
-    "overview" TEXT,
-    "episode_count" INTEGER NOT NULL,
+    "series_id" INTEGER NOT NULL,
     "number" INTEGER NOT NULL,
-    "air_date" DATETIME
+    "tmdb_id" INTEGER NOT NULL UNIQUE,
+    "title" TEXT NOT NULL,
+    "overview" TEXT,
+    "air_date" DATETIME,
+    FOREIGN KEY ("series_id") REFERENCES "series_metadata" ("id")
 );
 
 CREATE TABLE IF NOT EXISTS "episode" (
@@ -136,6 +140,7 @@ CREATE TABLE IF NOT EXISTS "episode" (
     "monitored" INTEGER NOT NULL,
     "episode_metadata_id" INTEGER UNIQUE,
     "episode_file_id" INTEGER,
+    "runtime" INTEGER,
     FOREIGN KEY ("season_id") REFERENCES "season" ("id")
 );
 
@@ -143,18 +148,21 @@ CREATE TABLE IF NOT EXISTS "episode_file" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     "quality" TEXT NOT NULL,
     "size" BIGINT NOT NULL,
-    "date_added" DATETIME NOT NULL DEFAULT current_timestamp,
+    "added" DATETIME NOT NULL DEFAULT current_timestamp,
     "relative_path" TEXT UNIQUE,
     "original_file_path" TEXT
 );
 
 CREATE TABLE IF NOT EXISTS "episode_metadata" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "season_id" INTEGER NOT NULL,
+    "number" INTEGER NOT NULL,
     "tmdb_id" INTEGER NOT NULL UNIQUE,
-    "title" TEXT,
+    "title" TEXT NOT NULL,
     "overview" TEXT,
     "air_date" DATETIME,
-    "runtime" INTEGER
+    "runtime" INTEGER,
+    FOREIGN KEY ("season_id") REFERENCES "season_metadata" ("id")
 );
 
 CREATE TABLE IF NOT EXISTS "movie_transition" (
@@ -166,6 +174,28 @@ CREATE TABLE IF NOT EXISTS "movie_transition" (
     "sort_key" INTEGER NOT NULL,
     "download_client_id" INTEGER REFERENCES "download_client"("id"),
     "download_id" TEXT,
+    "created_at" DATETIME DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS "series_transition" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "series_id" INTEGER NOT NULL REFERENCES "series"("id"),
+    "to_state" TEXT NOT NULL,
+    "from_state" TEXT,
+    "most_recent" BOOLEAN NOT NULL,
+    "sort_key" INTEGER NOT NULL,
+    "created_at" DATETIME DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS "season_transition" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "season_id" INTEGER NOT NULL REFERENCES "season"("id"),
+    "to_state" TEXT NOT NULL,
+    "from_state" TEXT,
+    "most_recent" BOOLEAN NOT NULL,
+    "sort_key" INTEGER NOT NULL,
     "created_at" DATETIME DEFAULT CURRENT_TIMESTAMP,
     "updated_at" DATETIME DEFAULT CURRENT_TIMESTAMP
 );
