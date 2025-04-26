@@ -1,7 +1,6 @@
 package manager
 
 import (
-	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
@@ -840,51 +839,6 @@ func (m MediaManager) updateMovieState(ctx context.Context, movie *storage.Movie
 
 	log.Info("successfully updated movie state")
 	return nil
-}
-
-// rejectReleaseFunc returns a function that returns true if the given release should be rejected
-func rejectReleaseFunc(ctx context.Context, det *model.MovieMetadata, profile storage.QualityProfile, protocolsAvailable map[string]struct{}) func(*prowlarr.ReleaseResource) bool {
-	log := logger.FromCtx(ctx)
-
-	return func(r *prowlarr.ReleaseResource) bool {
-		if r.Title != nil {
-			releaseTitle := strings.TrimSpace(r.Title.MustGet())
-			if !strings.HasPrefix(releaseTitle, det.Title) {
-				return true
-			}
-		}
-
-		if r.Protocol != nil {
-			// reject if we don't have a download client for it
-			if _, has := protocolsAvailable[string(*r.Protocol)]; !has {
-				return true
-			}
-		}
-		// bytes to megabytes
-		sizeMB := *r.Size >> 20
-
-		// items are assumed to be sorted quality so the highest media quality available is selected
-		for _, quality := range profile.Qualities {
-			metQuality := MeetsQualitySize(quality, uint64(sizeMB), uint64(det.Runtime))
-
-			if metQuality {
-				log.Debugw("accepting release", "release", r.Title, "metQuality", metQuality, "size", r.Size, "runtime", det.Runtime)
-				return false
-			}
-
-			// try again with the next item
-			log.Debugw("rejecting release", "release", r.Title, "metQuality", metQuality, "size", r.Size, "runtime", det.Runtime)
-		}
-
-		return true
-	}
-}
-
-// sortReleaseFunc returns a function that sorts releases by their number of seeders currently
-func sortReleaseFunc() func(*prowlarr.ReleaseResource, *prowlarr.ReleaseResource) int {
-	return func(r1 *prowlarr.ReleaseResource, r2 *prowlarr.ReleaseResource) int {
-		return cmp.Compare(nullableDefault(r1.Seeders), nullableDefault(r2.Seeders))
-	}
 }
 
 func (m MediaManager) SearchIndexers(ctx context.Context, indexers, categories []int32, query string) ([]*prowlarr.ReleaseResource, error) {
