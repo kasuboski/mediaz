@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/gkampitakis/go-snaps/snaps"
+	"github.com/go-jet/jet/v2/sqlite"
 	"github.com/kasuboski/mediaz/config"
 	"github.com/kasuboski/mediaz/pkg/download"
 	downloadMock "github.com/kasuboski/mediaz/pkg/download/mocks"
@@ -28,6 +29,7 @@ import (
 	"github.com/kasuboski/mediaz/pkg/storage/mocks"
 	mediaSqlite "github.com/kasuboski/mediaz/pkg/storage/sqlite"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
+	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/table"
 	"github.com/kasuboski/mediaz/pkg/tmdb"
 	tmdbMocks "github.com/kasuboski/mediaz/pkg/tmdb/mocks"
 	"github.com/oapi-codegen/nullable"
@@ -1045,10 +1047,6 @@ func sizeGBToBytes(gb int) *int64 {
 	return &b
 }
 
-func ptr[A any](thing A) *A {
-	return &thing
-}
-
 func newStore(t *testing.T, ctx context.Context) storage.Storage {
 	store, err := mediaSqlite.New(":memory:")
 	require.NoError(t, err)
@@ -1206,14 +1204,30 @@ func TestMediaManager_AddSeriesToLibrary(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		metadataID, err := store.CreateSeriesMetadata(ctx, model.SeriesMetadata{
-			ID:           1,
-			TmdbID:       1234,
-			FirstAirDate: ptr(time.Now().Add(-time.Hour * 2)),
-		})
-		require.NoError(t, err)
-
 		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
+		details := &tmdb.SeriesDetails{
+			ID:               1,
+			Name:             "test series",
+			FirstAirDate:     time.Now().Add(-time.Hour * 2).Format(tmdb.ReleaseDateFormat),
+			NumberOfSeasons:  1,
+			NumberOfEpisodes: 1,
+			Seasons: []tmdb.Season{
+				{
+					ID:           1,
+					Name:         "test season",
+					SeasonNumber: 1,
+					Episodes: []tmdb.Episode{
+						{
+							ID:            1,
+							Name:          "test episode",
+							EpisodeNumber: 1,
+						},
+					},
+				},
+			},
+		}
+
+		tmdbMock.EXPECT().GetSeriesDetails(gomock.Any(), gomock.Any()).Return(details, nil)
 
 		m := New(tmdbMock, nil, nil, store, nil, config.Manager{})
 		require.NotNil(t, m)
@@ -1226,10 +1240,24 @@ func TestMediaManager_AddSeriesToLibrary(t *testing.T) {
 		series, err := m.AddSeriesToLibrary(ctx, req)
 		require.NoError(t, err)
 
-		assert.Equal(t, series.ID, int32(1))
-		assert.Equal(t, series.SeriesMetadataID, ptr(int32(metadataID)))
-		assert.Equal(t, series.Monitored, int32(1))
-		assert.Equal(t, series.QualityProfileID, int32(1))
+		assert.Equal(t, int32(1), series.ID)
+		assert.Equal(t, ptr(int32(1)), series.SeriesMetadataID)
+		assert.Equal(t, int32(1), series.Monitored)
+		assert.Equal(t, int32(1), series.QualityProfileID)
 		assert.Equal(t, storage.SeriesStateMissing, series.State)
+
+		seasons, err := m.storage.ListSeasons(ctx, table.Season.SeriesID.EQ(sqlite.Int32(series.ID)))
+		assert.Nil(t, err)
+		require.Len(t, seasons, 1)
+		assert.Equal(t, int32(series.ID), seasons[0].SeriesID)
+		assert.Equal(t, seasons[0].State, storage.SeasonStateMissing)
+		assert.Equal(t, int32(1), seasons[0].Monitored)
+
+		episodes, err := m.storage.ListEpisodes(ctx, table.Episode.SeasonID.EQ(sqlite.Int32(seasons[0].ID)))
+		assert.Nil(t, err)
+		require.Len(t, episodes, 1)
+		assert.Equal(t, int32(1), episodes[0].EpisodeNumber)
+		assert.Equal(t, int32(1), episodes[0].Monitored)
+		assert.Equal(t, storage.EpisodeStateMissing, episodes[0].State)
 	})
 }

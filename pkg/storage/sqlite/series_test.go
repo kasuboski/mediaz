@@ -90,29 +90,30 @@ func TestSeasonStorage(t *testing.T) {
 	assert.Greater(t, id, int64(0))
 
 	// Test getting the season
-	retrieved, err := store.GetSeason(ctx, id)
+	retrieved, err := store.GetSeason(ctx, table.Season.ID.EQ(sqlite.Int64(id)))
 	assert.Nil(t, err)
 	assert.NotNil(t, retrieved)
 	assert.Equal(t, season.SeriesID, retrieved.SeriesID)
 	assert.Equal(t, storage.SeasonStateMissing, retrieved.State)
 
 	// Test listing seasons
-	seasons, err := store.ListSeasons(ctx, SeriesID)
+	seasons, err := store.ListSeasons(ctx, table.Season.SeriesID.EQ(sqlite.Int64(SeriesID)))
 	assert.Nil(t, err)
 	assert.Len(t, seasons, 1)
 	assert.Equal(t, season.SeriesID, seasons[0].SeriesID)
+	assert.Equal(t, storage.SeasonStateMissing, seasons[0].State)
 
 	// Test deleting the season
 	err = store.DeleteSeason(ctx, id)
 	assert.Nil(t, err)
 
 	// Verify deletion
-	seasons, err = store.ListSeasons(ctx, SeriesID)
+	seasons, err = store.ListSeasons(ctx, table.Season.SeriesID.EQ(sqlite.Int64(SeriesID)))
 	assert.Nil(t, err)
 	assert.Empty(t, seasons)
 
 	// Test getting non-existent season
-	_, err = store.GetSeason(ctx, id)
+	_, err = store.GetSeason(ctx, table.Season.ID.EQ(sqlite.Int64(id)))
 	assert.ErrorIs(t, err, storage.ErrNotFound)
 }
 
@@ -155,7 +156,7 @@ func TestEpisodeStorage(t *testing.T) {
 	assert.Greater(t, id, int64(0))
 
 	// Test getting the episode
-	retrieved, err := store.GetEpisode(ctx, id)
+	retrieved, err := store.GetEpisode(ctx, table.Episode.ID.EQ(sqlite.Int64(id)))
 	assert.Nil(t, err)
 	assert.NotNil(t, retrieved)
 	assert.Equal(t, episode.SeasonID, retrieved.SeasonID)
@@ -164,13 +165,14 @@ func TestEpisodeStorage(t *testing.T) {
 	assert.Equal(t, storage.EpisodeStateMissing, retrieved.State)
 
 	// Test listing episodes
-	episodes, err := store.ListEpisodes(ctx, seasonID)
+	episodes, err := store.ListEpisodes(ctx, table.Episode.SeasonID.EQ(sqlite.Int64(seasonID)))
 	assert.Nil(t, err)
 	assert.Len(t, episodes, 1)
 	assert.Equal(t, episode.EpisodeNumber, episodes[0].EpisodeNumber)
 
 	// Test listing episodes by state
-	stateEpisodes, err := store.ListEpisodesByState(ctx, storage.EpisodeStateMissing)
+	where := table.EpisodeTransition.ToState.EQ(sqlite.String(string(storage.EpisodeStateMissing))).AND(table.Episode.SeasonID.EQ(sqlite.Int64(seasonID)))
+	stateEpisodes, err := store.ListEpisodes(ctx, where)
 	assert.Nil(t, err)
 	assert.Len(t, stateEpisodes, 1)
 	assert.Equal(t, storage.EpisodeStateMissing, stateEpisodes[0].State)
@@ -189,12 +191,12 @@ func TestEpisodeStorage(t *testing.T) {
 	assert.Nil(t, err)
 
 	// Verify deletion
-	episodes, err = store.ListEpisodes(ctx, seasonID)
+	episodes, err = store.ListEpisodes(ctx, table.Episode.SeasonID.EQ(sqlite.Int64(seasonID)))
 	assert.Nil(t, err)
 	assert.Empty(t, episodes)
 
 	// Test getting non-existent episode
-	_, err = store.GetEpisode(ctx, id)
+	_, err = store.GetEpisode(ctx, table.Episode.ID.EQ(sqlite.Int64(id)))
 	assert.ErrorIs(t, err, storage.ErrNotFound)
 }
 

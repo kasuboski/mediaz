@@ -493,18 +493,18 @@ func (mr *MockStorageMockRecorder) GetDownloadClient(ctx, id any) *gomock.Call {
 }
 
 // GetEpisode mocks base method.
-func (m *MockStorage) GetEpisode(ctx context.Context, id int64) (*storage.Episode, error) {
+func (m *MockStorage) GetEpisode(ctx context.Context, where sqlite.BoolExpression) (*storage.Episode, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetEpisode", ctx, id)
+	ret := m.ctrl.Call(m, "GetEpisode", ctx, where)
 	ret0, _ := ret[0].(*storage.Episode)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetEpisode indicates an expected call of GetEpisode.
-func (mr *MockStorageMockRecorder) GetEpisode(ctx, id any) *gomock.Call {
+func (mr *MockStorageMockRecorder) GetEpisode(ctx, where any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetEpisode", reflect.TypeOf((*MockStorage)(nil).GetEpisode), ctx, id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetEpisode", reflect.TypeOf((*MockStorage)(nil).GetEpisode), ctx, where)
 }
 
 // GetEpisodeByEpisodeFileID mocks base method.
@@ -688,18 +688,18 @@ func (mr *MockStorageMockRecorder) GetQualityProfileItem(ctx, id any) *gomock.Ca
 }
 
 // GetSeason mocks base method.
-func (m *MockStorage) GetSeason(ctx context.Context, id int64) (*storage.Season, error) {
+func (m *MockStorage) GetSeason(ctx context.Context, where sqlite.BoolExpression) (*storage.Season, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetSeason", ctx, id)
+	ret := m.ctrl.Call(m, "GetSeason", ctx, where)
 	ret0, _ := ret[0].(*storage.Season)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetSeason indicates an expected call of GetSeason.
-func (mr *MockStorageMockRecorder) GetSeason(ctx, id any) *gomock.Call {
+func (mr *MockStorageMockRecorder) GetSeason(ctx, where any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSeason", reflect.TypeOf((*MockStorage)(nil).GetSeason), ctx, id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSeason", reflect.TypeOf((*MockStorage)(nil).GetSeason), ctx, where)
 }
 
 // GetSeasonMetadata mocks base method.
@@ -797,48 +797,43 @@ func (mr *MockStorageMockRecorder) ListEpisodeFiles(ctx any) *gomock.Call {
 }
 
 // ListEpisodeMetadata mocks base method.
-func (m *MockStorage) ListEpisodeMetadata(ctx context.Context) ([]*model.EpisodeMetadata, error) {
+func (m *MockStorage) ListEpisodeMetadata(ctx context.Context, where ...sqlite.BoolExpression) ([]*model.EpisodeMetadata, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListEpisodeMetadata", ctx)
+	varargs := []any{ctx}
+	for _, a := range where {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "ListEpisodeMetadata", varargs...)
 	ret0, _ := ret[0].([]*model.EpisodeMetadata)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListEpisodeMetadata indicates an expected call of ListEpisodeMetadata.
-func (mr *MockStorageMockRecorder) ListEpisodeMetadata(ctx any) *gomock.Call {
+func (mr *MockStorageMockRecorder) ListEpisodeMetadata(ctx any, where ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListEpisodeMetadata", reflect.TypeOf((*MockStorage)(nil).ListEpisodeMetadata), ctx)
+	varargs := append([]any{ctx}, where...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListEpisodeMetadata", reflect.TypeOf((*MockStorage)(nil).ListEpisodeMetadata), varargs...)
 }
 
 // ListEpisodes mocks base method.
-func (m *MockStorage) ListEpisodes(ctx context.Context, seasonID int64) ([]*storage.Episode, error) {
+func (m *MockStorage) ListEpisodes(ctx context.Context, where ...sqlite.BoolExpression) ([]*storage.Episode, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListEpisodes", ctx, seasonID)
+	varargs := []any{ctx}
+	for _, a := range where {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "ListEpisodes", varargs...)
 	ret0, _ := ret[0].([]*storage.Episode)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListEpisodes indicates an expected call of ListEpisodes.
-func (mr *MockStorageMockRecorder) ListEpisodes(ctx, seasonID any) *gomock.Call {
+func (mr *MockStorageMockRecorder) ListEpisodes(ctx any, where ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListEpisodes", reflect.TypeOf((*MockStorage)(nil).ListEpisodes), ctx, seasonID)
-}
-
-// ListEpisodesByState mocks base method.
-func (m *MockStorage) ListEpisodesByState(ctx context.Context, state storage.EpisodeState) ([]*storage.Episode, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListEpisodesByState", ctx, state)
-	ret0, _ := ret[0].([]*storage.Episode)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// ListEpisodesByState indicates an expected call of ListEpisodesByState.
-func (mr *MockStorageMockRecorder) ListEpisodesByState(ctx, state any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListEpisodesByState", reflect.TypeOf((*MockStorage)(nil).ListEpisodesByState), ctx, state)
+	varargs := append([]any{ctx}, where...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListEpisodes", reflect.TypeOf((*MockStorage)(nil).ListEpisodes), varargs...)
 }
 
 // ListIndexers mocks base method.
@@ -962,63 +957,83 @@ func (mr *MockStorageMockRecorder) ListQualityProfiles(ctx any) *gomock.Call {
 }
 
 // ListSeasonMetadata mocks base method.
-func (m *MockStorage) ListSeasonMetadata(ctx context.Context) ([]*model.SeasonMetadata, error) {
+func (m *MockStorage) ListSeasonMetadata(ctx context.Context, where ...sqlite.BoolExpression) ([]*model.SeasonMetadata, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListSeasonMetadata", ctx)
+	varargs := []any{ctx}
+	for _, a := range where {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "ListSeasonMetadata", varargs...)
 	ret0, _ := ret[0].([]*model.SeasonMetadata)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListSeasonMetadata indicates an expected call of ListSeasonMetadata.
-func (mr *MockStorageMockRecorder) ListSeasonMetadata(ctx any) *gomock.Call {
+func (mr *MockStorageMockRecorder) ListSeasonMetadata(ctx any, where ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListSeasonMetadata", reflect.TypeOf((*MockStorage)(nil).ListSeasonMetadata), ctx)
+	varargs := append([]any{ctx}, where...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListSeasonMetadata", reflect.TypeOf((*MockStorage)(nil).ListSeasonMetadata), varargs...)
 }
 
 // ListSeasons mocks base method.
-func (m *MockStorage) ListSeasons(ctx context.Context, SeriesID int64) ([]*storage.Season, error) {
+func (m *MockStorage) ListSeasons(ctx context.Context, where ...sqlite.BoolExpression) ([]*storage.Season, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListSeasons", ctx, SeriesID)
+	varargs := []any{ctx}
+	for _, a := range where {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "ListSeasons", varargs...)
 	ret0, _ := ret[0].([]*storage.Season)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListSeasons indicates an expected call of ListSeasons.
-func (mr *MockStorageMockRecorder) ListSeasons(ctx, SeriesID any) *gomock.Call {
+func (mr *MockStorageMockRecorder) ListSeasons(ctx any, where ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListSeasons", reflect.TypeOf((*MockStorage)(nil).ListSeasons), ctx, SeriesID)
+	varargs := append([]any{ctx}, where...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListSeasons", reflect.TypeOf((*MockStorage)(nil).ListSeasons), varargs...)
 }
 
 // ListSeries mocks base method.
-func (m *MockStorage) ListSeries(ctx context.Context) ([]*storage.Series, error) {
+func (m *MockStorage) ListSeries(ctx context.Context, where ...sqlite.BoolExpression) ([]*storage.Series, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListSeries", ctx)
+	varargs := []any{ctx}
+	for _, a := range where {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "ListSeries", varargs...)
 	ret0, _ := ret[0].([]*storage.Series)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListSeries indicates an expected call of ListSeries.
-func (mr *MockStorageMockRecorder) ListSeries(ctx any) *gomock.Call {
+func (mr *MockStorageMockRecorder) ListSeries(ctx any, where ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListSeries", reflect.TypeOf((*MockStorage)(nil).ListSeries), ctx)
+	varargs := append([]any{ctx}, where...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListSeries", reflect.TypeOf((*MockStorage)(nil).ListSeries), varargs...)
 }
 
 // ListSeriesMetadata mocks base method.
-func (m *MockStorage) ListSeriesMetadata(ctx context.Context) ([]*model.SeriesMetadata, error) {
+func (m *MockStorage) ListSeriesMetadata(ctx context.Context, where ...sqlite.BoolExpression) ([]*model.SeriesMetadata, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListSeriesMetadata", ctx)
+	varargs := []any{ctx}
+	for _, a := range where {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "ListSeriesMetadata", varargs...)
 	ret0, _ := ret[0].([]*model.SeriesMetadata)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListSeriesMetadata indicates an expected call of ListSeriesMetadata.
-func (mr *MockStorageMockRecorder) ListSeriesMetadata(ctx any) *gomock.Call {
+func (mr *MockStorageMockRecorder) ListSeriesMetadata(ctx any, where ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListSeriesMetadata", reflect.TypeOf((*MockStorage)(nil).ListSeriesMetadata), ctx)
+	varargs := append([]any{ctx}, where...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListSeriesMetadata", reflect.TypeOf((*MockStorage)(nil).ListSeriesMetadata), varargs...)
 }
 
 // UpdateEpisodeEpisodeFileID mocks base method.
@@ -1863,18 +1878,18 @@ func (mr *MockSeriesStorageMockRecorder) DeleteSeries(ctx, id any) *gomock.Call 
 }
 
 // GetEpisode mocks base method.
-func (m *MockSeriesStorage) GetEpisode(ctx context.Context, id int64) (*storage.Episode, error) {
+func (m *MockSeriesStorage) GetEpisode(ctx context.Context, where sqlite.BoolExpression) (*storage.Episode, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetEpisode", ctx, id)
+	ret := m.ctrl.Call(m, "GetEpisode", ctx, where)
 	ret0, _ := ret[0].(*storage.Episode)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetEpisode indicates an expected call of GetEpisode.
-func (mr *MockSeriesStorageMockRecorder) GetEpisode(ctx, id any) *gomock.Call {
+func (mr *MockSeriesStorageMockRecorder) GetEpisode(ctx, where any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetEpisode", reflect.TypeOf((*MockSeriesStorage)(nil).GetEpisode), ctx, id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetEpisode", reflect.TypeOf((*MockSeriesStorage)(nil).GetEpisode), ctx, where)
 }
 
 // GetEpisodeByEpisodeFileID mocks base method.
@@ -1908,18 +1923,18 @@ func (mr *MockSeriesStorageMockRecorder) GetEpisodeFiles(ctx, id any) *gomock.Ca
 }
 
 // GetSeason mocks base method.
-func (m *MockSeriesStorage) GetSeason(ctx context.Context, id int64) (*storage.Season, error) {
+func (m *MockSeriesStorage) GetSeason(ctx context.Context, where sqlite.BoolExpression) (*storage.Season, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetSeason", ctx, id)
+	ret := m.ctrl.Call(m, "GetSeason", ctx, where)
 	ret0, _ := ret[0].(*storage.Season)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetSeason indicates an expected call of GetSeason.
-func (mr *MockSeriesStorageMockRecorder) GetSeason(ctx, id any) *gomock.Call {
+func (mr *MockSeriesStorageMockRecorder) GetSeason(ctx, where any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSeason", reflect.TypeOf((*MockSeriesStorage)(nil).GetSeason), ctx, id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSeason", reflect.TypeOf((*MockSeriesStorage)(nil).GetSeason), ctx, where)
 }
 
 // GetSeries mocks base method.
@@ -1953,63 +1968,63 @@ func (mr *MockSeriesStorageMockRecorder) ListEpisodeFiles(ctx any) *gomock.Call 
 }
 
 // ListEpisodes mocks base method.
-func (m *MockSeriesStorage) ListEpisodes(ctx context.Context, seasonID int64) ([]*storage.Episode, error) {
+func (m *MockSeriesStorage) ListEpisodes(ctx context.Context, where ...sqlite.BoolExpression) ([]*storage.Episode, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListEpisodes", ctx, seasonID)
+	varargs := []any{ctx}
+	for _, a := range where {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "ListEpisodes", varargs...)
 	ret0, _ := ret[0].([]*storage.Episode)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListEpisodes indicates an expected call of ListEpisodes.
-func (mr *MockSeriesStorageMockRecorder) ListEpisodes(ctx, seasonID any) *gomock.Call {
+func (mr *MockSeriesStorageMockRecorder) ListEpisodes(ctx any, where ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListEpisodes", reflect.TypeOf((*MockSeriesStorage)(nil).ListEpisodes), ctx, seasonID)
-}
-
-// ListEpisodesByState mocks base method.
-func (m *MockSeriesStorage) ListEpisodesByState(ctx context.Context, state storage.EpisodeState) ([]*storage.Episode, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListEpisodesByState", ctx, state)
-	ret0, _ := ret[0].([]*storage.Episode)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// ListEpisodesByState indicates an expected call of ListEpisodesByState.
-func (mr *MockSeriesStorageMockRecorder) ListEpisodesByState(ctx, state any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListEpisodesByState", reflect.TypeOf((*MockSeriesStorage)(nil).ListEpisodesByState), ctx, state)
+	varargs := append([]any{ctx}, where...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListEpisodes", reflect.TypeOf((*MockSeriesStorage)(nil).ListEpisodes), varargs...)
 }
 
 // ListSeasons mocks base method.
-func (m *MockSeriesStorage) ListSeasons(ctx context.Context, SeriesID int64) ([]*storage.Season, error) {
+func (m *MockSeriesStorage) ListSeasons(ctx context.Context, where ...sqlite.BoolExpression) ([]*storage.Season, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListSeasons", ctx, SeriesID)
+	varargs := []any{ctx}
+	for _, a := range where {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "ListSeasons", varargs...)
 	ret0, _ := ret[0].([]*storage.Season)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListSeasons indicates an expected call of ListSeasons.
-func (mr *MockSeriesStorageMockRecorder) ListSeasons(ctx, SeriesID any) *gomock.Call {
+func (mr *MockSeriesStorageMockRecorder) ListSeasons(ctx any, where ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListSeasons", reflect.TypeOf((*MockSeriesStorage)(nil).ListSeasons), ctx, SeriesID)
+	varargs := append([]any{ctx}, where...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListSeasons", reflect.TypeOf((*MockSeriesStorage)(nil).ListSeasons), varargs...)
 }
 
 // ListSeries mocks base method.
-func (m *MockSeriesStorage) ListSeries(ctx context.Context) ([]*storage.Series, error) {
+func (m *MockSeriesStorage) ListSeries(ctx context.Context, where ...sqlite.BoolExpression) ([]*storage.Series, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListSeries", ctx)
+	varargs := []any{ctx}
+	for _, a := range where {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "ListSeries", varargs...)
 	ret0, _ := ret[0].([]*storage.Series)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListSeries indicates an expected call of ListSeries.
-func (mr *MockSeriesStorageMockRecorder) ListSeries(ctx any) *gomock.Call {
+func (mr *MockSeriesStorageMockRecorder) ListSeries(ctx any, where ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListSeries", reflect.TypeOf((*MockSeriesStorage)(nil).ListSeries), ctx)
+	varargs := append([]any{ctx}, where...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListSeries", reflect.TypeOf((*MockSeriesStorage)(nil).ListSeries), varargs...)
 }
 
 // UpdateEpisodeEpisodeFileID mocks base method.
@@ -2182,46 +2197,61 @@ func (mr *MockSeriesMetadataStorageMockRecorder) GetSeriesMetadata(ctx, where an
 }
 
 // ListEpisodeMetadata mocks base method.
-func (m *MockSeriesMetadataStorage) ListEpisodeMetadata(ctx context.Context) ([]*model.EpisodeMetadata, error) {
+func (m *MockSeriesMetadataStorage) ListEpisodeMetadata(ctx context.Context, where ...sqlite.BoolExpression) ([]*model.EpisodeMetadata, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListEpisodeMetadata", ctx)
+	varargs := []any{ctx}
+	for _, a := range where {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "ListEpisodeMetadata", varargs...)
 	ret0, _ := ret[0].([]*model.EpisodeMetadata)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListEpisodeMetadata indicates an expected call of ListEpisodeMetadata.
-func (mr *MockSeriesMetadataStorageMockRecorder) ListEpisodeMetadata(ctx any) *gomock.Call {
+func (mr *MockSeriesMetadataStorageMockRecorder) ListEpisodeMetadata(ctx any, where ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListEpisodeMetadata", reflect.TypeOf((*MockSeriesMetadataStorage)(nil).ListEpisodeMetadata), ctx)
+	varargs := append([]any{ctx}, where...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListEpisodeMetadata", reflect.TypeOf((*MockSeriesMetadataStorage)(nil).ListEpisodeMetadata), varargs...)
 }
 
 // ListSeasonMetadata mocks base method.
-func (m *MockSeriesMetadataStorage) ListSeasonMetadata(ctx context.Context) ([]*model.SeasonMetadata, error) {
+func (m *MockSeriesMetadataStorage) ListSeasonMetadata(ctx context.Context, where ...sqlite.BoolExpression) ([]*model.SeasonMetadata, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListSeasonMetadata", ctx)
+	varargs := []any{ctx}
+	for _, a := range where {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "ListSeasonMetadata", varargs...)
 	ret0, _ := ret[0].([]*model.SeasonMetadata)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListSeasonMetadata indicates an expected call of ListSeasonMetadata.
-func (mr *MockSeriesMetadataStorageMockRecorder) ListSeasonMetadata(ctx any) *gomock.Call {
+func (mr *MockSeriesMetadataStorageMockRecorder) ListSeasonMetadata(ctx any, where ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListSeasonMetadata", reflect.TypeOf((*MockSeriesMetadataStorage)(nil).ListSeasonMetadata), ctx)
+	varargs := append([]any{ctx}, where...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListSeasonMetadata", reflect.TypeOf((*MockSeriesMetadataStorage)(nil).ListSeasonMetadata), varargs...)
 }
 
 // ListSeriesMetadata mocks base method.
-func (m *MockSeriesMetadataStorage) ListSeriesMetadata(ctx context.Context) ([]*model.SeriesMetadata, error) {
+func (m *MockSeriesMetadataStorage) ListSeriesMetadata(ctx context.Context, where ...sqlite.BoolExpression) ([]*model.SeriesMetadata, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListSeriesMetadata", ctx)
+	varargs := []any{ctx}
+	for _, a := range where {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "ListSeriesMetadata", varargs...)
 	ret0, _ := ret[0].([]*model.SeriesMetadata)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListSeriesMetadata indicates an expected call of ListSeriesMetadata.
-func (mr *MockSeriesMetadataStorageMockRecorder) ListSeriesMetadata(ctx any) *gomock.Call {
+func (mr *MockSeriesMetadataStorageMockRecorder) ListSeriesMetadata(ctx any, where ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListSeriesMetadata", reflect.TypeOf((*MockSeriesMetadataStorage)(nil).ListSeriesMetadata), ctx)
+	varargs := append([]any{ctx}, where...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListSeriesMetadata", reflect.TypeOf((*MockSeriesMetadataStorage)(nil).ListSeriesMetadata), varargs...)
 }

@@ -181,8 +181,8 @@ func (s Series) Machine() *machine.StateMachine[SeriesState] {
 type Season struct {
 	model.Season
 	State            SeasonState `alias:"season_transition.to_state" json:"state"`
-	DownloadID       string      `alias:"season_transition.download_id" json:"-"`
-	DownloadClientID int32       `alias:"season_transition.download_client_id" json:"-"`
+	DownloadID       string      `json:"-"`
+	DownloadClientID int32       `json:"-"`
 }
 
 type SeasonTransition model.SeasonTransition
@@ -215,21 +215,20 @@ func (e Episode) Machine() *machine.StateMachine[EpisodeState] {
 
 type SeriesStorage interface {
 	GetSeries(ctx context.Context, where sqlite.BoolExpression) (*Series, error)
-	CreateSeries(ctx context.Context, Series Series, initialState SeriesState) (int64, error)
+	CreateSeries(ctx context.Context, series Series, initialState SeriesState) (int64, error)
 	DeleteSeries(ctx context.Context, id int64) error
-	ListSeries(ctx context.Context) ([]*Series, error)
+	ListSeries(ctx context.Context, where ...sqlite.BoolExpression) ([]*Series, error)
 
-	GetSeason(ctx context.Context, id int64) (*Season, error)
+	GetSeason(ctx context.Context, where sqlite.BoolExpression) (*Season, error)
 	CreateSeason(ctx context.Context, season Season, initialState SeasonState) (int64, error)
 	DeleteSeason(ctx context.Context, id int64) error
-	ListSeasons(ctx context.Context, SeriesID int64) ([]*Season, error)
+	ListSeasons(ctx context.Context, where ...sqlite.BoolExpression) ([]*Season, error)
 
-	GetEpisode(ctx context.Context, id int64) (*Episode, error)
+	GetEpisode(ctx context.Context, where sqlite.BoolExpression) (*Episode, error)
 	GetEpisodeByEpisodeFileID(ctx context.Context, fileID int64) (*Episode, error)
 	CreateEpisode(ctx context.Context, episode Episode, initialState EpisodeState) (int64, error)
 	DeleteEpisode(ctx context.Context, id int64) error
-	ListEpisodes(ctx context.Context, seasonID int64) ([]*Episode, error)
-	ListEpisodesByState(ctx context.Context, state EpisodeState) ([]*Episode, error)
+	ListEpisodes(ctx context.Context, where ...sqlite.BoolExpression) ([]*Episode, error)
 	UpdateEpisodeEpisodeFileID(ctx context.Context, id int64, fileID int64) error
 
 	GetEpisodeFiles(ctx context.Context, id int64) ([]*model.EpisodeFile, error)
@@ -241,17 +240,17 @@ type SeriesStorage interface {
 type SeriesMetadataStorage interface {
 	CreateSeriesMetadata(ctx context.Context, SeriesMeta model.SeriesMetadata) (int64, error)
 	DeleteSeriesMetadata(ctx context.Context, id int64) error
-	ListSeriesMetadata(ctx context.Context) ([]*model.SeriesMetadata, error)
+	ListSeriesMetadata(ctx context.Context, where ...sqlite.BoolExpression) ([]*model.SeriesMetadata, error)
 	GetSeriesMetadata(ctx context.Context, where sqlite.BoolExpression) (*model.SeriesMetadata, error)
 
 	CreateSeasonMetadata(ctx context.Context, seasonMeta model.SeasonMetadata) (int64, error)
 	DeleteSeasonMetadata(ctx context.Context, id int64) error
-	ListSeasonMetadata(ctx context.Context) ([]*model.SeasonMetadata, error)
+	ListSeasonMetadata(ctx context.Context, where ...sqlite.BoolExpression) ([]*model.SeasonMetadata, error)
 	GetSeasonMetadata(ctx context.Context, where sqlite.BoolExpression) (*model.SeasonMetadata, error)
 
 	CreateEpisodeMetadata(ctx context.Context, episodeMeta model.EpisodeMetadata) (int64, error)
 	DeleteEpisodeMetadata(ctx context.Context, id int64) error
-	ListEpisodeMetadata(ctx context.Context) ([]*model.EpisodeMetadata, error)
+	ListEpisodeMetadata(ctx context.Context, where ...sqlite.BoolExpression) ([]*model.EpisodeMetadata, error)
 	GetEpisodeMetadata(ctx context.Context, where sqlite.BoolExpression) (*model.EpisodeMetadata, error)
 }
 
