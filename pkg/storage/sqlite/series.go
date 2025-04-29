@@ -159,34 +159,6 @@ func (s SQLite) ListSeries(ctx context.Context, where ...sqlite.BoolExpression) 
 	return Series, nil
 }
 
-// ListSeries lists all Series
-func (s SQLite) ListSeriesByState(ctx context.Context, state storage.SeriesState) ([]*storage.Series, error) {
-	stmt := table.Series.
-		SELECT(
-			table.Series.AllColumns,
-			table.SeriesTransition.AllColumns,
-		).
-		FROM(
-			table.Series.
-				INNER_JOIN(
-					table.SeriesTransition,
-					table.Series.ID.EQ(table.SeriesTransition.SeriesID).
-						AND(table.SeriesTransition.MostRecent.EQ(sqlite.Bool(true)))),
-		).
-		WHERE(
-			table.SeriesTransition.MostRecent.EQ(sqlite.Bool(true).AND(
-				table.SeriesTransition.ToState.EQ(sqlite.String(string(state))))),
-		)
-
-	var Series []*storage.Series
-	err := stmt.QueryContext(ctx, s.db, &Series)
-	if err != nil {
-		return nil, fmt.Errorf("failed to list Series: %w", err)
-	}
-
-	return Series, nil
-}
-
 // CreateSeason stores a season in the database
 func (s SQLite) CreateSeason(ctx context.Context, season storage.Season, initialState storage.SeasonState) (int64, error) {
 	if season.State == "" {
