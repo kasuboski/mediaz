@@ -132,7 +132,7 @@ func (s SQLite) DeleteSeries(ctx context.Context, id int64) error {
 }
 
 // ListSeries lists all Series
-func (s SQLite) ListSeries(ctx context.Context) ([]*storage.Series, error) {
+func (s SQLite) ListSeries(ctx context.Context, where ...sqlite.BoolExpression) ([]*storage.Series, error) {
 	stmt := table.Series.
 		SELECT(
 			table.Series.AllColumns,
@@ -145,6 +145,10 @@ func (s SQLite) ListSeries(ctx context.Context) ([]*storage.Series, error) {
 					table.Series.ID.EQ(table.SeriesTransition.SeriesID).
 						AND(table.SeriesTransition.MostRecent.EQ(sqlite.Bool(true)))),
 		)
+
+	for _, w := range where {
+		stmt = stmt.WHERE(w)
+	}
 
 	var Series []*storage.Series
 	err := stmt.QueryContext(ctx, s.db, &Series)
@@ -227,17 +231,18 @@ func (s SQLite) CreateSeason(ctx context.Context, season storage.Season, initial
 }
 
 // GetSeason gets a season by id
-func (s SQLite) GetSeason(ctx context.Context, id int64) (*storage.Season, error) {
-	stmt := sqlite.SELECT(
-		table.Season.AllColumns,
-		table.SeasonTransition.AllColumns,
-	).
+func (s SQLite) GetSeason(ctx context.Context, where sqlite.BoolExpression) (*storage.Season, error) {
+	stmt := sqlite.
+		SELECT(
+			table.Season.AllColumns,
+			table.SeasonTransition.AllColumns,
+		).
 		FROM(table.Season.
 			LEFT_JOIN(table.SeasonTransition,
 				table.Season.ID.EQ(table.SeasonTransition.SeasonID).
 					AND(table.SeasonTransition.MostRecent.IS_TRUE()),
 			)).
-		WHERE(table.Season.ID.EQ(sqlite.Int64(id)))
+		WHERE(where)
 
 	var season storage.Season
 	err := stmt.QueryContext(ctx, s.db, &season)
@@ -266,10 +271,23 @@ func (s SQLite) DeleteSeason(ctx context.Context, id int64) error {
 }
 
 // ListSeasons lists all seasons for a Series
-func (s SQLite) ListSeasons(ctx context.Context, SeriesID int64) ([]*storage.Season, error) {
-	stmt := table.Season.
-		SELECT(table.Season.AllColumns).
-		WHERE(table.Season.SeriesID.EQ(sqlite.Int64(SeriesID)))
+func (s SQLite) ListSeasons(ctx context.Context, where ...sqlite.BoolExpression) ([]*storage.Season, error) {
+
+	stmt := sqlite.
+		SELECT(
+			table.Season.AllColumns,
+			table.SeasonTransition.ToState,
+		).
+		FROM(table.Season.
+			LEFT_JOIN(table.SeasonTransition,
+				table.Season.ID.EQ(table.SeasonTransition.SeasonID).
+					AND(table.SeasonTransition.MostRecent.IS_TRUE()),
+			),
+		)
+
+	for _, w := range where {
+		stmt = stmt.WHERE(w)
+	}
 
 	var seasons []*storage.Season
 	err := stmt.QueryContext(ctx, s.db, &seasons)
@@ -352,17 +370,18 @@ func (s SQLite) CreateEpisode(ctx context.Context, episode storage.Episode, init
 }
 
 // GetEpisode gets an episode by id
-func (s SQLite) GetEpisode(ctx context.Context, id int64) (*storage.Episode, error) {
-	stmt := sqlite.SELECT(
-		table.Episode.AllColumns,
-		table.EpisodeTransition.AllColumns,
-	).
+func (s SQLite) GetEpisode(ctx context.Context, where sqlite.BoolExpression) (*storage.Episode, error) {
+	stmt := sqlite.
+		SELECT(
+			table.Episode.AllColumns,
+			table.EpisodeTransition.AllColumns,
+		).
 		FROM(table.Episode.
 			LEFT_JOIN(table.EpisodeTransition,
 				table.Episode.ID.EQ(table.EpisodeTransition.EpisodeID).
 					AND(table.EpisodeTransition.MostRecent.IS_TRUE()),
 			)).
-		WHERE(table.Episode.ID.EQ(sqlite.Int64(id)))
+		WHERE(where)
 
 	var episode storage.Episode
 	err := stmt.QueryContext(ctx, s.db, &episode)
@@ -391,48 +410,29 @@ func (s SQLite) DeleteEpisode(ctx context.Context, id int64) error {
 }
 
 // ListEpisodes lists all episodes for a season
-func (s SQLite) ListEpisodes(ctx context.Context, seasonID int64) ([]*storage.Episode, error) {
-	stmt := sqlite.SELECT(
-		table.Episode.AllColumns,
-		table.EpisodeTransition.ToState,
-		table.EpisodeTransition.DownloadID,
-		table.EpisodeTransition.DownloadClientID,
-	).
+func (s SQLite) ListEpisodes(ctx context.Context, where ...sqlite.BoolExpression) ([]*storage.Episode, error) {
+	stmt := sqlite.
+		SELECT(
+			table.Episode.AllColumns,
+			table.EpisodeTransition.ToState,
+			table.EpisodeTransition.DownloadID,
+			table.EpisodeTransition.DownloadClientID,
+		).
 		FROM(table.Episode.
 			LEFT_JOIN(table.EpisodeTransition,
 				table.Episode.ID.EQ(table.EpisodeTransition.EpisodeID).
 					AND(table.EpisodeTransition.MostRecent.IS_TRUE()),
-			)).
-		WHERE(table.Episode.SeasonID.EQ(sqlite.Int64(seasonID)))
+			),
+		)
+
+	for _, w := range where {
+		stmt = stmt.WHERE(w)
+	}
 
 	var episodes []*storage.Episode
 	err := stmt.QueryContext(ctx, s.db, &episodes)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list episodes: %w", err)
-	}
-
-	return episodes, nil
-}
-
-// ListEpisodesByState lists all episodes in a given state
-func (s SQLite) ListEpisodesByState(ctx context.Context, state storage.EpisodeState) ([]*storage.Episode, error) {
-	stmt := sqlite.SELECT(
-		table.Episode.AllColumns,
-		table.EpisodeTransition.ToState,
-		table.EpisodeTransition.DownloadID,
-		table.EpisodeTransition.DownloadClientID,
-	).
-		FROM(table.Episode.
-			INNER_JOIN(table.EpisodeTransition,
-				table.Episode.ID.EQ(table.EpisodeTransition.EpisodeID).
-					AND(table.EpisodeTransition.MostRecent.IS_TRUE()),
-			)).
-		WHERE(table.EpisodeTransition.ToState.EQ(sqlite.String(string(state))))
-
-	var episodes []*storage.Episode
-	err := stmt.QueryContext(ctx, s.db, &episodes)
-	if err != nil {
-		return nil, fmt.Errorf("failed to list episodes by state: %w", err)
 	}
 
 	return episodes, nil
@@ -563,20 +563,20 @@ func (s SQLite) ListEpisodeFiles(ctx context.Context) ([]*model.EpisodeFile, err
 }
 
 // CreateSeriesMetadata creates the given series metadata
-func (s SQLite) CreateSeriesMetadata(ctx context.Context, SeriesMeta model.SeriesMetadata) (int64, error) {
+func (s SQLite) CreateSeriesMetadata(ctx context.Context, seriesMeta model.SeriesMetadata) (int64, error) {
 	setColumns := make([]sqlite.Expression, len(table.SeriesMetadata.MutableColumns))
 	for i, c := range table.SeriesMetadata.MutableColumns {
 		setColumns[i] = c
 	}
 	// don't insert a zeroed ID
 	insertColumns := table.SeriesMetadata.MutableColumns
-	if SeriesMeta.ID != 0 {
+	if seriesMeta.ID != 0 {
 		insertColumns = table.SeriesMetadata.AllColumns
 	}
 
 	stmt := table.SeriesMetadata.
 		INSERT(insertColumns).
-		MODEL(SeriesMeta).
+		MODEL(seriesMeta).
 		RETURNING(table.SeriesMetadata.ID).
 		ON_CONFLICT(table.SeriesMetadata.ID).
 		DO_UPDATE(sqlite.SET(table.SeriesMetadata.MutableColumns.SET(sqlite.ROW(setColumns...))))
@@ -609,10 +609,14 @@ func (s SQLite) DeleteSeriesMetadata(ctx context.Context, id int64) error {
 }
 
 // ListSeriesMetadata lists all Series metadata
-func (s SQLite) ListSeriesMetadata(ctx context.Context) ([]*model.SeriesMetadata, error) {
+func (s SQLite) ListSeriesMetadata(ctx context.Context, where ...sqlite.BoolExpression) ([]*model.SeriesMetadata, error) {
 	stmt := table.SeriesMetadata.
 		SELECT(table.SeriesMetadata.AllColumns).
 		FROM(table.SeriesMetadata)
+
+	for _, w := range where {
+		stmt = stmt.WHERE(w)
+	}
 
 	var SeriesMetadata []*model.SeriesMetadata
 	err := stmt.QueryContext(ctx, s.db, &SeriesMetadata)
@@ -689,10 +693,14 @@ func (s SQLite) DeleteSeasonMetadata(ctx context.Context, id int64) error {
 }
 
 // ListSeasonMetadata lists all season metadata
-func (s SQLite) ListSeasonMetadata(ctx context.Context) ([]*model.SeasonMetadata, error) {
+func (s SQLite) ListSeasonMetadata(ctx context.Context, where ...sqlite.BoolExpression) ([]*model.SeasonMetadata, error) {
 	stmt := table.SeasonMetadata.
 		SELECT(table.SeasonMetadata.AllColumns).
 		FROM(table.SeasonMetadata)
+
+	for _, w := range where {
+		stmt = stmt.WHERE(w)
+	}
 
 	var seasonMetadata []*model.SeasonMetadata
 	err := stmt.QueryContext(ctx, s.db, &seasonMetadata)
@@ -769,10 +777,14 @@ func (s SQLite) DeleteEpisodeMetadata(ctx context.Context, id int64) error {
 }
 
 // ListEpisodeMetadata lists all episode metadata
-func (s SQLite) ListEpisodeMetadata(ctx context.Context) ([]*model.EpisodeMetadata, error) {
+func (s SQLite) ListEpisodeMetadata(ctx context.Context, where ...sqlite.BoolExpression) ([]*model.EpisodeMetadata, error) {
 	stmt := table.EpisodeMetadata.
 		SELECT(table.EpisodeMetadata.AllColumns).
 		FROM(table.EpisodeMetadata)
+
+	for _, w := range where {
+		stmt = stmt.WHERE(w)
+	}
 
 	var episodeMetadata []*model.EpisodeMetadata
 	err := stmt.QueryContext(ctx, s.db, &episodeMetadata)

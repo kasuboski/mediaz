@@ -443,15 +443,67 @@ func (m MediaManager) AddSeriesToLibrary(ctx context.Context, request AddSeriesR
 		state = storage.SeriesStateUnreleased
 	}
 
-	id, err := m.storage.CreateSeries(ctx, *series, state)
+	seriesID, err := m.storage.CreateSeries(ctx, *series, state)
 	if err != nil {
-		log.Warnw("failed to create movie", "err", err)
+		log.Error("failed to create new missing series", zap.Error(err))
 		return nil, err
 	}
 
-	log.Debug("created series", zap.Any("series", series))
+	log.Debug("created new missing series", zap.Any("series", series))
 
-	series, err = m.storage.GetSeries(ctx, table.Series.ID.EQ(sqlite.Int64(id)))
+	where := table.SeasonMetadata.SeriesID.EQ(sqlite.Int(seriesID))
+	seasonMetadata, err := m.storage.ListSeasonMetadata(ctx, where)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, s := range seasonMetadata {
+		season := storage.Season{
+			Season: model.Season{
+				SeriesID:         int32(seriesID),
+				SeasonMetadataID: ptr(s.ID),
+				Monitored:        1,
+			},
+		}
+
+		seasonID, err := m.storage.CreateSeason(ctx, season, storage.SeasonStateMissing)
+		if err != nil {
+			log.Error("failed to create season", zap.Error(err))
+			return nil, err
+		}
+
+		log.Debug("created new missing season", zap.Any("season", season))
+
+		where := table.EpisodeMetadata.SeasonID.EQ(sqlite.Int64(seasonID))
+
+		episodesMetadata, err := m.storage.ListEpisodeMetadata(ctx, where)
+		if err != nil {
+			log.Error("failed to list episode metadata", zap.Error(err))
+			return nil, err
+		}
+
+		for _, e := range episodesMetadata {
+			episode := storage.Episode{
+				Episode: model.Episode{
+					EpisodeMetadataID: ptr(e.ID),
+					SeasonID:          int32(seasonID),
+					Monitored:         1,
+					Runtime:           e.Runtime,
+					EpisodeNumber:     e.Number,
+				},
+			}
+
+			_, err := m.storage.CreateEpisode(ctx, episode, storage.EpisodeStateMissing)
+			if err != nil {
+				log.Error("failed to create episode", zap.Error(err))
+				return nil, err
+			}
+
+			log.Debug("created new missing episode", zap.Any("episode", episode))
+		}
+	}
+
+	series, err = m.storage.GetSeries(ctx, table.Series.ID.EQ(sqlite.Int64(seriesID)))
 	if err != nil {
 		log.Warnw("failed to get created series", "err", err)
 	}
@@ -918,4 +970,8 @@ func nullableDefault[T any](n nullable.Nullable[T]) T {
 
 func isReleased(now time.Time, releaseDate *time.Time) bool {
 	return releaseDate != nil && now.After(*releaseDate)
+}
+
+func ptr[A any](thing A) *A {
+	return &thing
 }

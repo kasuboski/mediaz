@@ -11,4 +11,5 @@ type Season struct {
 	ID               int32 `sql:"primary_key"`
 	SeriesID         int32
 	SeasonMetadataID *int32
+	Monitored        int32
 }
