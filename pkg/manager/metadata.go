@@ -7,35 +7,11 @@ import (
 
 	"github.com/go-jet/jet/v2/sqlite"
 	"github.com/kasuboski/mediaz/pkg/library"
-	"github.com/kasuboski/mediaz/pkg/logger"
 	"github.com/kasuboski/mediaz/pkg/storage"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/table"
 	"github.com/kasuboski/mediaz/pkg/tmdb"
 )
-
-// IndexMovies finds metadata for each movie in the library
-func (m MediaManager) IndexMovies(ctx context.Context) error {
-	log := logger.FromCtx(ctx)
-	movies, err := m.ListMoviesInLibrary(ctx)
-	if err != nil {
-		return err
-	}
-
-	for _, mov := range movies {
-		resp, err := m.SearchMovie(ctx, mov.Name)
-		if err != nil {
-			return err
-		}
-		if len(resp.Results) == 0 {
-			log.Warn("no movie metadata", "name", mov.Name)
-			continue
-		}
-		res := resp.Results[0]
-		log.Debugw("metadata", "id", res.ID, "title", res.Title)
-	}
-	return nil
-}
 
 func (m MediaManager) GetMovieMetadata(ctx context.Context, tmdbID int) (*model.MovieMetadata, error) {
 	res, err := m.storage.GetMovieMetadata(ctx, table.MovieMetadata.TmdbID.EQ(sqlite.Int(int64(tmdbID))))
