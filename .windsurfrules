@@ -15,3 +15,19 @@ Storage is handled by `pkg/storage`. It manages a sqlite database. The interface
 3. Run `go test ./...` to run tests
 4. Fix any errors
 5. Repeat
+
+### Testing
+The project uses the `gomock` library to avoid external dependencies during testing.
+When testing data storage prefer using an in memory sqlite db vs a mock. Use a mock if the scenario would be hard to recreate in an in memory sqlite db.
+
+Components that interact with the outside world have generated mocks with `gomock`. These mocks are in a `mocks` folder next to the component.
+
+An example of setting up a storage mock:
+```go
+ctrl := gomock.NewController(t)
+store := mocks.NewMockStorage(ctrl)
+m := New(nil, nil, nil, store, nil, config.Manager{})
+store.EXPECT().ListMoviesByState(ctx, storage.MovieStateDiscovered).Return([]*storage.Movie{}, nil)
+store.EXPECT().ListMoviesByState(ctx, storage.MovieStateDownloaded).Return([]*storage.Movie{}, nil)
+// use components that you are testing
+```

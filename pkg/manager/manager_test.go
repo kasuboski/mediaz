@@ -121,6 +121,119 @@ func TestAddMovietoLibrary(t *testing.T) {
 	}, movie)
 }
 
+func TestListMoviesInLibrary(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("no movies in library", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		store := mocks.NewMockStorage(ctrl)
+		m := New(nil, nil, nil, store, nil, config.Manager{})
+
+		store.EXPECT().ListMoviesByState(ctx, storage.MovieStateDiscovered).Return([]*storage.Movie{}, nil)
+		store.EXPECT().ListMoviesByState(ctx, storage.MovieStateDownloaded).Return([]*storage.Movie{}, nil)
+
+		movies, err := m.ListMoviesInLibrary(ctx)
+		require.NoError(t, err)
+		assert.Empty(t, movies)
+	})
+
+	t.Run("movies with metadata", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		store := mocks.NewMockStorage(ctrl)
+		m := New(nil, nil, nil, store, nil, config.Manager{})
+
+		metadataID := int32(1)
+		path := "movie1"
+		discoveredMovie := &storage.Movie{
+			Movie: model.Movie{
+				MovieMetadataID: &metadataID,
+				Path:            &path,
+			},
+			State: storage.MovieStateDiscovered,
+		}
+
+		downloadedMovie := &storage.Movie{
+			Movie: model.Movie{
+				MovieMetadataID: &metadataID,
+				Path:            &path,
+			},
+			State: storage.MovieStateDownloaded,
+		}
+
+		year := int32(2024)
+		movieMetadata := &model.MovieMetadata{
+			ID:      1,
+			TmdbID:  123,
+			Title:   "Test Movie",
+			Images:  "poster.jpg",
+			Year:    &year,
+		}
+
+		store.EXPECT().ListMoviesByState(ctx, storage.MovieStateDiscovered).Return([]*storage.Movie{discoveredMovie}, nil)
+		store.EXPECT().ListMoviesByState(ctx, storage.MovieStateDownloaded).Return([]*storage.Movie{downloadedMovie}, nil)
+		store.EXPECT().GetMovieMetadata(ctx, gomock.Any()).Return(movieMetadata, nil).Times(2)
+
+		movies, err := m.ListMoviesInLibrary(ctx)
+		require.NoError(t, err)
+		assert.Len(t, movies, 2)
+
+		expectedMovie := LibraryMovie{
+			Path:       path,
+			TMDBID:     movieMetadata.TmdbID,
+			Title:      movieMetadata.Title,
+			PosterPath: movieMetadata.Images,
+			Year:       *movieMetadata.Year,
+		}
+
+		for _, movie := range movies {
+			assert.Equal(t, expectedMovie.Path, movie.Path)
+			assert.Equal(t, expectedMovie.TMDBID, movie.TMDBID)
+			assert.Equal(t, expectedMovie.Title, movie.Title)
+			assert.Equal(t, expectedMovie.PosterPath, movie.PosterPath)
+			assert.Equal(t, expectedMovie.Year, movie.Year)
+		}
+	})
+
+	t.Run("movies without metadata", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		store := mocks.NewMockStorage(ctrl)
+		m := New(nil, nil, nil, store, nil, config.Manager{})
+
+		path := "movie1"
+		discoveredMovie := &storage.Movie{
+			Movie: model.Movie{
+				Path: &path,
+			},
+			State: storage.MovieStateDiscovered,
+		}
+
+		store.EXPECT().ListMoviesByState(ctx, storage.MovieStateDiscovered).Return([]*storage.Movie{discoveredMovie}, nil)
+		store.EXPECT().ListMoviesByState(ctx, storage.MovieStateDownloaded).Return([]*storage.Movie{}, nil)
+
+		movies, err := m.ListMoviesInLibrary(ctx)
+		require.NoError(t, err)
+		assert.Len(t, movies, 1)
+
+		expectedMovie := LibraryMovie{
+			Path:  path,
+			State: string(storage.MovieStateDiscovered),
+		}
+		assert.Equal(t, expectedMovie, movies[0])
+	})
+
+	t.Run("error listing discovered movies", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		store := mocks.NewMockStorage(ctrl)
+		m := New(nil, nil, nil, store, nil, config.Manager{})
+
+		store.EXPECT().ListMoviesByState(ctx, storage.MovieStateDiscovered).Return(nil, errors.New("db error"))
+
+		movies, err := m.ListMoviesInLibrary(ctx)
+		assert.Error(t, err)
+		assert.Nil(t, movies)
+	})
+}
+
 func TestIndexMovieLibrary(t *testing.T) {
 	t.Run("error listing finding files in library", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
