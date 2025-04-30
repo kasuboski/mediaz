@@ -170,8 +170,25 @@ func (m MediaManager) ListShowsInLibrary(ctx context.Context) ([]string, error) 
 	return m.library.FindEpisodes(ctx)
 }
 
-func (m MediaManager) ListMoviesInLibrary(ctx context.Context) ([]library.MovieFile, error) {
-	return m.library.FindMovies(ctx)
+// ListMoviesInLibrary returns movies in the library for discovered or downloaded state
+func (m MediaManager) ListMoviesInLibrary(ctx context.Context) ([]storage.Movie, error) {
+	// fetch discovered movies
+	discovered, err := m.storage.ListMoviesByState(ctx, storage.MovieStateDiscovered)
+	if err != nil {
+		return nil, err
+	}
+	// fetch downloaded movies
+	downloaded, err := m.storage.ListMoviesByState(ctx, storage.MovieStateDownloaded)
+	if err != nil {
+		return nil, err
+	}
+	all := append(discovered, downloaded...)
+	// convert pointers to values
+	result := make([]storage.Movie, len(all))
+	for i, mptr := range all {
+		result[i] = *mptr
+	}
+	return result, nil
 }
 
 func (m MediaManager) Run(ctx context.Context) error {
