@@ -162,11 +162,11 @@ func TestListMoviesInLibrary(t *testing.T) {
 
 		year := int32(2024)
 		movieMetadata := &model.MovieMetadata{
-			ID:      1,
-			TmdbID:  123,
-			Title:   "Test Movie",
-			Images:  "poster.jpg",
-			Year:    &year,
+			ID:     1,
+			TmdbID: 123,
+			Title:  "Test Movie",
+			Images: "poster.jpg",
+			Year:   &year,
 		}
 
 		store.EXPECT().ListMoviesByState(ctx, storage.MovieStateDiscovered).Return([]*storage.Movie{discoveredMovie}, nil)
@@ -227,6 +227,19 @@ func TestListMoviesInLibrary(t *testing.T) {
 		m := New(nil, nil, nil, store, nil, config.Manager{})
 
 		store.EXPECT().ListMoviesByState(ctx, storage.MovieStateDiscovered).Return(nil, errors.New("db error"))
+
+		movies, err := m.ListMoviesInLibrary(ctx)
+		assert.Error(t, err)
+		assert.Nil(t, movies)
+	})
+
+	t.Run("error listing downloaded movies", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		store := mocks.NewMockStorage(ctrl)
+		m := New(nil, nil, nil, store, nil, config.Manager{})
+
+		store.EXPECT().ListMoviesByState(ctx, storage.MovieStateDiscovered).Return([]*storage.Movie{}, nil)
+		store.EXPECT().ListMoviesByState(ctx, storage.MovieStateDownloaded).Return(nil, errors.New("db error"))
 
 		movies, err := m.ListMoviesInLibrary(ctx)
 		assert.Error(t, err)
