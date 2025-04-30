@@ -3,10 +3,14 @@ package manager
 import (
 	"context"
 	"errors"
+	"io"
+	"net/http"
+	"strings"
 	"testing"
 	"testing/fstest"
 	"time"
 
+	"github.com/go-jet/jet/v2/sqlite"
 	"github.com/kasuboski/mediaz/config"
 	"github.com/kasuboski/mediaz/pkg/download"
 	downloadMock "github.com/kasuboski/mediaz/pkg/download/mocks"
@@ -17,8 +21,10 @@ import (
 	"github.com/kasuboski/mediaz/pkg/prowlarr"
 	prowlMock "github.com/kasuboski/mediaz/pkg/prowlarr/mocks"
 	"github.com/kasuboski/mediaz/pkg/storage"
+	"github.com/kasuboski/mediaz/pkg/storage/mocks"
 	mediaSqlite "github.com/kasuboski/mediaz/pkg/storage/sqlite"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
+	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/table"
 	"github.com/kasuboski/mediaz/pkg/tmdb"
 	"github.com/oapi-codegen/nullable"
 	"github.com/stretchr/testify/assert"
@@ -132,6 +138,177 @@ func Test_Manager_reconcileMissingMovie(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, mov.State, storage.MovieStateDownloading)
+}
+
+func Test_Manager_reconcileDiscoveredMovie(t *testing.T) {
+	ctrl := gomock.NewController(t)
+
+	store := mocks.NewMockStorage(ctrl)
+
+	prowlarrMock := prowlMock.NewMockClientInterface(ctrl)
+
+	pClient, err := prowlarr.New(":", "1234")
+	pClient.ClientInterface = prowlarrMock
+	require.NoError(t, err)
+
+	tmdbHttpMock := mhttpMock.NewMockHTTPClient(ctrl)
+
+	// Mock search response
+	searchResp := &http.Response{
+		Body: io.NopCloser(strings.NewReader(`{
+			"results": [{
+				"id": 1234,
+				"title": "test movie",
+				"overview": "test overview",
+				"poster_path": "/test.jpg"
+			}]
+		}`)),
+		StatusCode: http.StatusOK,
+	}
+	tmdbHttpMock.EXPECT().Do(gomock.Any()).Return(searchResp, nil).Times(1)
+
+	tClient, err := tmdb.New("https://api.themoviedb.org", "1234", tmdb.WithHTTPClient(tmdbHttpMock))
+	require.NoError(t, err)
+
+	mockFactory := downloadMock.NewMockFactory(ctrl)
+
+	movieFS := fstest.MapFS{}
+	tvFS := fstest.MapFS{}
+	lib := library.New(
+		library.FileSystem{
+			FS: movieFS,
+		},
+		library.FileSystem{
+			FS: tvFS,
+		},
+		&mio.MediaFileSystem{},
+	)
+
+	m := New(tClient, pClient, lib, store, mockFactory, config.Manager{})
+	require.NotNil(t, m)
+
+	movie := storage.Movie{
+		Movie: model.Movie{
+			Path: ptr("test movie"),
+			ID:   1,
+		},
+	}
+
+	ctx := context.Background()
+
+	store.EXPECT().GetMovieMetadata(ctx, table.MovieMetadata.TmdbID.EQ(sqlite.Int(1234))).Return(&model.MovieMetadata{ID: 120}, nil)
+	store.EXPECT().LinkMovieMetadata(ctx, int64(1), int32(120)).Return(nil)
+
+	err = m.reconcileDiscoveredMovie(ctx, &movie)
+	require.NoError(t, err)
+}
+
+func Test_Manager_reconcileDiscoveredMovie_NoResults(t *testing.T) {
+	ctrl := gomock.NewController(t)
+
+	store := mocks.NewMockStorage(ctrl)
+	tmdbHttpMock := mhttpMock.NewMockHTTPClient(ctrl)
+
+	// Mock search response with no results
+	searchResp := &http.Response{
+		Body: io.NopCloser(strings.NewReader(`{
+			"results": []
+		}`)),
+		StatusCode: http.StatusOK,
+	}
+	tmdbHttpMock.EXPECT().Do(gomock.Any()).Return(searchResp, nil).Times(1)
+
+	tClient, err := tmdb.New("https://api.themoviedb.org", "1234", tmdb.WithHTTPClient(tmdbHttpMock))
+	require.NoError(t, err)
+
+	m := New(nil, nil, nil, store, nil, config.Manager{})
+	m.tmdb = tClient
+
+	movie := storage.Movie{
+		Movie: model.Movie{
+			ID:   1,
+			Path: func() *string { s := "test movie"; return &s }(),
+		},
+	}
+
+	ctx := context.Background()
+
+	err = m.reconcileDiscoveredMovie(ctx, &movie)
+	require.NoError(t, err)
+}
+
+func Test_Manager_reconcileDiscoveredMovie_MultipleResults(t *testing.T) {
+	ctrl := gomock.NewController(t)
+
+	store := mocks.NewMockStorage(ctrl)
+	tmdbHttpMock := mhttpMock.NewMockHTTPClient(ctrl)
+
+	// Mock search response with multiple results
+	searchResp := &http.Response{
+		Body: io.NopCloser(strings.NewReader(`{
+			"results": [{
+				"id": 1234,
+				"title": "test movie 1",
+				"overview": "test overview",
+				"poster_path": "/test.jpg"
+			}, {
+				"id": 5678,
+				"title": "test movie 2",
+				"overview": "test overview 2",
+				"poster_path": "/test2.jpg"
+			}]
+		}`)),
+		StatusCode: http.StatusOK,
+	}
+	tmdbHttpMock.EXPECT().Do(gomock.Any()).Return(searchResp, nil).Times(1)
+
+	tClient, err := tmdb.New("https://api.themoviedb.org", "1234", tmdb.WithHTTPClient(tmdbHttpMock))
+	require.NoError(t, err)
+
+	m := New(nil, nil, nil, store, nil, config.Manager{})
+	m.tmdb = tClient
+
+	movie := storage.Movie{
+		Movie: model.Movie{
+			ID:   1,
+			Path: func() *string { s := "test movie"; return &s }(),
+		},
+	}
+
+	ctx := context.Background()
+
+	store.EXPECT().GetMovieMetadata(ctx, table.MovieMetadata.TmdbID.EQ(sqlite.Int(1234))).Return(&model.MovieMetadata{ID: 120}, nil)
+	store.EXPECT().LinkMovieMetadata(ctx, int64(1), int32(120)).Return(nil)
+
+	err = m.reconcileDiscoveredMovie(ctx, &movie)
+	require.NoError(t, err)
+}
+
+func Test_Manager_reconcileDiscoveredMovie_HasMetadata(t *testing.T) {
+	ctrl := gomock.NewController(t)
+
+	store := mocks.NewMockStorage(ctrl)
+	tmdbHttpMock := mhttpMock.NewMockHTTPClient(ctrl)
+
+	tClient, err := tmdb.New("https://api.themoviedb.org", "1234", tmdb.WithHTTPClient(tmdbHttpMock))
+	require.NoError(t, err)
+
+	m := New(nil, nil, nil, store, nil, config.Manager{})
+	m.tmdb = tClient
+
+	metadataID := int32(120)
+	movie := storage.Movie{
+		Movie: model.Movie{
+			ID:              1,
+			Path:            func() *string { s := "test movie"; return &s }(),
+			MovieMetadataID: &metadataID,
+		},
+	}
+
+	ctx := context.Background()
+
+	err = m.reconcileDiscoveredMovie(ctx, &movie)
+	require.NoError(t, err)
 }
 
 func Test_Manager_reconcileUnreleasedMovie(t *testing.T) {

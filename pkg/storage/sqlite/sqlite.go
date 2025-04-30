@@ -364,14 +364,12 @@ func (s SQLite) GetMovieByPath(ctx context.Context, path string) (*storage.Movie
 				table.Movie.ID.EQ(table.MovieTransition.MovieID))).
 		WHERE(
 			table.Movie.Path.EQ(sqlite.String(path)).
-				AND(table.MovieTransition.MostRecent.EQ(sqlite.Bool(true))),
-		)
+				AND(table.MovieTransition.MostRecent.EQ(sqlite.Bool(true))))
 
 	movie := new(storage.Movie)
 	err := stmt.QueryContext(ctx, s.db, movie)
 	return movie, err
 }
-
 // GetMovieFilesByMovieName gets all movie files given a movie name
 // It assumes the movie name is the prefix of the relative path for a movie file
 func (s SQLite) GetMovieFilesByMovieName(ctx context.Context, name string) ([]*model.MovieFile, error) {
@@ -423,9 +421,16 @@ func (s SQLite) DeleteMovieFile(ctx context.Context, id int64) error {
 	return nil
 }
 
-// ListMovieFiles lists the stored movie files
+// LinkMovieMetadata links a movie with its metadata
+func (s SQLite) LinkMovieMetadata(ctx context.Context, movieID int64, metadataID int32) error {
+	stmt := table.Movie.UPDATE(table.Movie.MovieMetadataID).SET(metadataID).WHERE(table.Movie.ID.EQ(sqlite.Int64(movieID)))
+	_, err := stmt.Exec(s.db)
+	return err
+}
+
+// ListMovieFiles lists all movie files
 func (s SQLite) ListMovieFiles(ctx context.Context) ([]*model.MovieFile, error) {
-	movieFiles := make([]*model.MovieFile, 0)
+	var movieFiles []*model.MovieFile
 	stmt := table.MovieFile.SELECT(table.MovieFile.AllColumns).FROM(table.MovieFile).ORDER_BY(table.MovieFile.ID.ASC())
 	err := stmt.QueryContext(ctx, s.db, &movieFiles)
 	if err != nil {
