@@ -441,12 +441,12 @@ func (m MediaManager) reconcileDiscoveredMovie(ctx context.Context, movie *stora
 	}
 
 	if len(searchResp.Results) == 0 {
-		log.Warn("no results found for movie title", zap.String("title", *movie.Path))
+		log.Warn("no results found for movie", zap.String("title", *movie.Path))
 		return nil
 	}
 
 	if len(searchResp.Results) > 1 {
-		log.Debug("multiple results found for movie title", zap.String("title", *movie.Path), zap.Int("count", len(searchResp.Results)))
+		log.Debug("multiple results found for movie", zap.String("title", *movie.Path), zap.Int("count", len(searchResp.Results)))
 	}
 
 	// Use first result
