@@ -179,8 +179,18 @@ func Test_Manager_reconcileDiscoveredMovie(t *testing.T) {
 		store.EXPECT().GetMovieMetadata(ctx, table.MovieMetadata.TmdbID.EQ(sqlite.Int(1234))).Return(&model.MovieMetadata{ID: 120}, nil)
 		store.EXPECT().LinkMovieMetadata(ctx, int64(1), int32(120)).Return(nil)
 
+		// Execute reconciliation
 		err = m.reconcileDiscoveredMovie(ctx, &movie)
 		require.NoError(t, err)
+
+		// Verify movie properties
+		require.Equal(t, int32(1), movie.ID, "ID should remain unchanged")
+		require.Equal(t, "test movie", *movie.Path, "Path should remain unchanged")
+
+		// Verify that metadata was linked (ID 120 from the mock response)
+		require.NotNil(t, movie.MovieMetadataID, "MovieMetadataID should be set")
+		require.Equal(t, int32(120), *movie.MovieMetadataID, "MovieMetadataID should be set to the ID from GetMovieMetadata")
+		// We don't verify MovieMetadataID here since it's managed by the mock expectations
 	})
 
 	t.Run("no results", func(t *testing.T) {
@@ -213,8 +223,13 @@ func Test_Manager_reconcileDiscoveredMovie(t *testing.T) {
 
 		ctx := context.Background()
 
+		// Execute reconciliation
 		err = m.reconcileDiscoveredMovie(ctx, &movie)
 		require.NoError(t, err)
+
+		// Verify movie properties
+		require.Equal(t, int32(1), movie.ID, "ID should remain unchanged")
+		require.Equal(t, "test movie", *movie.Path, "Path should remain unchanged")
 	})
 
 	t.Run("multiple results", func(t *testing.T) {
@@ -260,8 +275,17 @@ func Test_Manager_reconcileDiscoveredMovie(t *testing.T) {
 		store.EXPECT().GetMovieMetadata(ctx, table.MovieMetadata.TmdbID.EQ(sqlite.Int(1234))).Return(&model.MovieMetadata{ID: 120}, nil)
 		store.EXPECT().LinkMovieMetadata(ctx, int64(1), int32(120)).Return(nil)
 
+		// Execute reconciliation
 		err = m.reconcileDiscoveredMovie(ctx, &movie)
 		require.NoError(t, err)
+
+		// Verify movie properties
+		require.Equal(t, int32(1), movie.ID, "ID should remain unchanged")
+		require.Equal(t, "test movie", *movie.Path, "Path should remain unchanged")
+
+		// Verify that metadata was linked (ID 120 from the mock response)
+		require.NotNil(t, movie.MovieMetadataID, "MovieMetadataID should be set")
+		require.Equal(t, int32(120), *movie.MovieMetadataID, "MovieMetadataID should be set to the ID from GetMovieMetadata")
 	})
 
 	t.Run("has metadata", func(t *testing.T) {
@@ -287,8 +311,17 @@ func Test_Manager_reconcileDiscoveredMovie(t *testing.T) {
 
 		ctx := context.Background()
 
+		// Execute reconciliation
 		err = m.reconcileDiscoveredMovie(ctx, &movie)
 		require.NoError(t, err)
+
+		// Verify movie properties
+		require.Equal(t, int32(1), movie.ID, "ID should remain unchanged")
+		require.Equal(t, "test movie", *movie.Path, "Path should remain unchanged")
+
+		// Verify that metadata was linked (ID 120 from the mock response)
+		require.NotNil(t, movie.MovieMetadataID, "MovieMetadataID should be set")
+		require.Equal(t, int32(120), *movie.MovieMetadataID, "MovieMetadataID should be set to the ID from GetMovieMetadata")
 	})
 }
 

@@ -370,6 +370,7 @@ func (s SQLite) GetMovieByPath(ctx context.Context, path string) (*storage.Movie
 	err := stmt.QueryContext(ctx, s.db, movie)
 	return movie, err
 }
+
 // GetMovieFilesByMovieName gets all movie files given a movie name
 // It assumes the movie name is the prefix of the relative path for a movie file
 func (s SQLite) GetMovieFilesByMovieName(ctx context.Context, name string) ([]*model.MovieFile, error) {

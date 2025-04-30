@@ -465,6 +465,9 @@ func (m MediaManager) reconcileDiscoveredMovie(ctx context.Context, movie *stora
 		return fmt.Errorf("failed to update movie: %w", err)
 	}
 
+	// Update the movie struct with the metadata ID
+	movie.MovieMetadataID = &metadata.ID
+
 	log.Info("updated movie with metadata", zap.Int32("metadata_id", metadata.ID))
 	return nil
 }
