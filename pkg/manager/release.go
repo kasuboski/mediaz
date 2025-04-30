@@ -392,8 +392,19 @@ func determineSeparator(filename string) string {
 }
 
 func titleCase(title string) string {
-	caser := cases.Title(language.English)
-	return strings.TrimSpace(caser.String(title))
+	title = strings.TrimSpace(title)
+	return cases.Title(language.English).String(title)
+}
+
+// pathToSearchTerm takes a movie path and removes the year if present, preserving alternate titles
+func pathToSearchTerm(path string) string {
+	if path == "" {
+		return ""
+	}
+
+	// Match (YYYY) pattern but not if it's inside another parentheses
+	yearRegex := regexp.MustCompile(`\s*\((?:\d{4})\)(?:\s*$|\s+)`)
+	return strings.TrimSpace(yearRegex.ReplaceAllString(path, ""))
 }
 
 func removeFromName(filename string, toRemove ...string) string {

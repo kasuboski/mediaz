@@ -435,18 +435,19 @@ func (m MediaManager) reconcileDiscoveredMovie(ctx context.Context, movie *stora
 		return nil
 	}
 
-	searchResp, err := m.SearchMovie(ctx, *movie.Path)
+	searchTerm := pathToSearchTerm(*movie.Path)
+	searchResp, err := m.SearchMovie(ctx, searchTerm)
 	if err != nil {
 		return fmt.Errorf("failed to search for movie: %w", err)
 	}
 
 	if len(searchResp.Results) == 0 {
-		log.Warn("no results found for movie", zap.String("title", *movie.Path))
+		log.Warn("no results found for movie", zap.String("path", *movie.Path), zap.String("search_term", searchTerm))
 		return nil
 	}
 
 	if len(searchResp.Results) > 1 {
-		log.Debug("multiple results found for movie", zap.String("title", *movie.Path), zap.Int("count", len(searchResp.Results)))
+		log.Debug("multiple results found for movie", zap.String("path", *movie.Path), zap.String("search_term", searchTerm), zap.Int("count", len(searchResp.Results)))
 	}
 
 	// Use first result
