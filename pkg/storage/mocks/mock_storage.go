@@ -238,18 +238,18 @@ func (mr *MockStorageMockRecorder) CreateSeasonMetadata(ctx, seasonMeta any) *go
 }
 
 // CreateSeries mocks base method.
-func (m *MockStorage) CreateSeries(ctx context.Context, Series storage.Series, initialState storage.SeriesState) (int64, error) {
+func (m *MockStorage) CreateSeries(ctx context.Context, series storage.Series, initialState storage.SeriesState) (int64, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateSeries", ctx, Series, initialState)
+	ret := m.ctrl.Call(m, "CreateSeries", ctx, series, initialState)
 	ret0, _ := ret[0].(int64)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // CreateSeries indicates an expected call of CreateSeries.
-func (mr *MockStorageMockRecorder) CreateSeries(ctx, Series, initialState any) *gomock.Call {
+func (mr *MockStorageMockRecorder) CreateSeries(ctx, series, initialState any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateSeries", reflect.TypeOf((*MockStorage)(nil).CreateSeries), ctx, Series, initialState)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateSeries", reflect.TypeOf((*MockStorage)(nil).CreateSeries), ctx, series, initialState)
 }
 
 // CreateSeriesMetadata mocks base method.
@@ -764,6 +764,20 @@ func (mr *MockStorageMockRecorder) Init(ctx any, schemas ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	varargs := append([]any{ctx}, schemas...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Init", reflect.TypeOf((*MockStorage)(nil).Init), varargs...)
+}
+
+// LinkMovieMetadata mocks base method.
+func (m *MockStorage) LinkMovieMetadata(ctx context.Context, movieID int64, metadataID int32) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "LinkMovieMetadata", ctx, movieID, metadataID)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// LinkMovieMetadata indicates an expected call of LinkMovieMetadata.
+func (mr *MockStorageMockRecorder) LinkMovieMetadata(ctx, movieID, metadataID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LinkMovieMetadata", reflect.TypeOf((*MockStorage)(nil).LinkMovieMetadata), ctx, movieID, metadataID)
 }
 
 // ListDownloadClients mocks base method.
@@ -1501,6 +1515,20 @@ func (mr *MockMovieStorageMockRecorder) GetMovieFilesByMovieName(ctx, name any) 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMovieFilesByMovieName", reflect.TypeOf((*MockMovieStorage)(nil).GetMovieFilesByMovieName), ctx, name)
 }
 
+// LinkMovieMetadata mocks base method.
+func (m *MockMovieStorage) LinkMovieMetadata(ctx context.Context, movieID int64, metadataID int32) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "LinkMovieMetadata", ctx, movieID, metadataID)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// LinkMovieMetadata indicates an expected call of LinkMovieMetadata.
+func (mr *MockMovieStorageMockRecorder) LinkMovieMetadata(ctx, movieID, metadataID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LinkMovieMetadata", reflect.TypeOf((*MockMovieStorage)(nil).LinkMovieMetadata), ctx, movieID, metadataID)
+}
+
 // ListMovieFiles mocks base method.
 func (m *MockMovieStorage) ListMovieFiles(ctx context.Context) ([]*model.MovieFile, error) {
 	m.ctrl.T.Helper()
@@ -1807,18 +1835,18 @@ func (mr *MockSeriesStorageMockRecorder) CreateSeason(ctx, season, initialState 
 }
 
 // CreateSeries mocks base method.
-func (m *MockSeriesStorage) CreateSeries(ctx context.Context, Series storage.Series, initialState storage.SeriesState) (int64, error) {
+func (m *MockSeriesStorage) CreateSeries(ctx context.Context, series storage.Series, initialState storage.SeriesState) (int64, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateSeries", ctx, Series, initialState)
+	ret := m.ctrl.Call(m, "CreateSeries", ctx, series, initialState)
 	ret0, _ := ret[0].(int64)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // CreateSeries indicates an expected call of CreateSeries.
-func (mr *MockSeriesStorageMockRecorder) CreateSeries(ctx, Series, initialState any) *gomock.Call {
+func (mr *MockSeriesStorageMockRecorder) CreateSeries(ctx, series, initialState any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateSeries", reflect.TypeOf((*MockSeriesStorage)(nil).CreateSeries), ctx, Series, initialState)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateSeries", reflect.TypeOf((*MockSeriesStorage)(nil).CreateSeries), ctx, series, initialState)
 }
 
 // DeleteEpisode mocks base method.

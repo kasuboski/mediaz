@@ -112,6 +112,9 @@ func (m MediaManager) ReconcileMovies(ctx context.Context) error {
 	wg.Add(1)
 	go m.ReconcileDownloadingMovies(ctx, &wg, snapshot)
 
+	wg.Add(1)
+	go m.ReconcileDiscoveredMovies(ctx, &wg, snapshot)
+
 	wg.Wait()
 	return nil
 }
@@ -396,5 +399,76 @@ func (m MediaManager) updateMovieState(ctx context.Context, movie *storage.Movie
 	}
 
 	log.Info("successfully updated movie state")
+	return nil
+}
+
+func (m MediaManager) ReconcileDiscoveredMovies(ctx context.Context, wg *sync.WaitGroup, snapshot *ReconcileSnapshot) error {
+	defer wg.Done()
+
+	if snapshot == nil {
+		return fmt.Errorf("snapshot is nil")
+	}
+
+	movies, err := m.storage.ListMoviesByState(ctx, storage.MovieStateDiscovered)
+	if err != nil {
+		return fmt.Errorf("couldn't list discovered movies: %w", err)
+	}
+
+	log := logger.FromCtx(ctx)
+
+	for _, movie := range movies {
+		err = m.reconcileDiscoveredMovie(ctx, movie)
+		if err != nil {
+			log.Warn("failed to reconcile movie", zap.Error(err))
+		}
+	}
+
+	return nil
+}
+
+func (m MediaManager) reconcileDiscoveredMovie(ctx context.Context, movie *storage.Movie) error {
+	log := logger.FromCtx(ctx)
+	log = log.With("reconcile loop", "discovered", "movie id", movie.ID)
+
+	if movie.MovieMetadataID != nil {
+		log.Debug("movie already has metadata, skipping reconcile")
+		return nil
+	}
+
+	searchTerm := pathToSearchTerm(*movie.Path)
+	searchResp, err := m.SearchMovie(ctx, searchTerm)
+	if err != nil {
+		return fmt.Errorf("failed to search for movie: %w", err)
+	}
+
+	if len(searchResp.Results) == 0 {
+		log.Warn("no results found for movie", zap.String("path", *movie.Path), zap.String("search_term", searchTerm))
+		return nil
+	}
+
+	if len(searchResp.Results) > 1 {
+		log.Debug("multiple results found for movie", zap.String("path", *movie.Path), zap.String("search_term", searchTerm), zap.Int("count", len(searchResp.Results)))
+	}
+
+	// Use first result
+	result := searchResp.Results[0]
+	if result.ID == nil {
+		return fmt.Errorf("movie result has no ID")
+	}
+
+	metadata, err := m.GetMovieMetadata(ctx, *result.ID)
+	if err != nil {
+		return fmt.Errorf("failed to get movie metadata: %w", err)
+	}
+
+	err = m.storage.LinkMovieMetadata(ctx, int64(movie.ID), metadata.ID)
+	if err != nil {
+		return fmt.Errorf("failed to update movie: %w", err)
+	}
+
+	// Update the movie struct with the metadata ID
+	movie.MovieMetadataID = &metadata.ID
+
+	log.Info("updated movie with metadata", zap.Int32("metadata_id", metadata.ID))
 	return nil
 }

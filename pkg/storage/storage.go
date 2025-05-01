@@ -96,6 +96,7 @@ type MovieStorage interface {
 	CreateMovieFile(ctx context.Context, movieFile model.MovieFile) (int64, error)
 	DeleteMovieFile(ctx context.Context, id int64) error
 	ListMovieFiles(ctx context.Context) ([]*model.MovieFile, error)
+	LinkMovieMetadata(ctx context.Context, movieID int64, metadataID int32) error
 }
 
 type MovieMetadataStorage interface {
