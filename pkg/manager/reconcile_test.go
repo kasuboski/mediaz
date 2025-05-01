@@ -310,7 +310,7 @@ func Test_Manager_reconcileDownloadingMovie(t *testing.T) {
 		require.NoError(t, err)
 
 		downloadID := "123"
-		err = m.updateMovieState(ctx, movie, storage.MovieStateDownloading, &storage.MovieStateMetadata{
+		err = m.updateMovieState(ctx, movie, storage.MovieStateDownloading, &storage.MovieTransitionStateMetadata{
 			DownloadID:       &downloadID,
 			DownloadClientID: &downloadClientModel.ID,
 		})
@@ -361,7 +361,7 @@ func Test_Manager_reconcileDownloadingMovie(t *testing.T) {
 		require.NoError(t, err)
 
 		downloadID := "123"
-		err = m.updateMovieState(ctx, movie, storage.MovieStateDownloading, &storage.MovieStateMetadata{
+		err = m.updateMovieState(ctx, movie, storage.MovieStateDownloading, &storage.MovieTransitionStateMetadata{
 			DownloadID:       &downloadID,
 			DownloadClientID: &downloadClientModel.ID,
 		})
@@ -415,7 +415,7 @@ func Test_Manager_reconcileDownloadingMovie(t *testing.T) {
 		require.NoError(t, err)
 
 		downloadID := "123"
-		err = m.updateMovieState(ctx, movie, storage.MovieStateDownloading, &storage.MovieStateMetadata{
+		err = m.updateMovieState(ctx, movie, storage.MovieStateDownloading, &storage.MovieTransitionStateMetadata{
 			DownloadID:       &downloadID,
 			DownloadClientID: &downloadClientModel.ID,
 		})
@@ -467,7 +467,7 @@ func Test_Manager_reconcileDownloadingMovie(t *testing.T) {
 		require.NoError(t, err)
 
 		downloadID := "123"
-		err = m.updateMovieState(ctx, movie, storage.MovieStateDownloading, &storage.MovieStateMetadata{
+		err = m.updateMovieState(ctx, movie, storage.MovieStateDownloading, &storage.MovieTransitionStateMetadata{
 			DownloadID:       &downloadID,
 			DownloadClientID: &downloadClientModel.ID,
 		})
@@ -524,7 +524,7 @@ func Test_Manager_reconcileDownloadingMovie(t *testing.T) {
 		require.NoError(t, err)
 
 		downloadID := "123"
-		err = m.updateMovieState(ctx, movie, storage.MovieStateDownloading, &storage.MovieStateMetadata{
+		err = m.updateMovieState(ctx, movie, storage.MovieStateDownloading, &storage.MovieTransitionStateMetadata{
 			DownloadID:       &downloadID,
 			DownloadClientID: &downloadClientModel.ID,
 		})
@@ -590,7 +590,7 @@ func Test_Manager_reconcileDownloadingMovie(t *testing.T) {
 		require.NoError(t, err)
 
 		downloadID := "123"
-		err = m.updateMovieState(ctx, movie, storage.MovieStateDownloading, &storage.MovieStateMetadata{
+		err = m.updateMovieState(ctx, movie, storage.MovieStateDownloading, &storage.MovieTransitionStateMetadata{
 			DownloadID:       &downloadID,
 			DownloadClientID: &downloadClientModel.ID,
 		})

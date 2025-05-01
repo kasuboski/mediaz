@@ -11,19 +11,20 @@ import (
 	"github.com/kasuboski/mediaz/pkg/logger"
 	"github.com/kasuboski/mediaz/pkg/prowlarr"
 	"github.com/kasuboski/mediaz/pkg/storage"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
+	"go.uber.org/zap"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 )
 
 // rejectReleaseFunc returns a function that returns true if the given release should be rejected
-func rejectReleaseFunc(ctx context.Context, det *model.MovieMetadata, profile storage.QualityProfile, protocolsAvailable map[string]struct{}) func(*prowlarr.ReleaseResource) bool {
+func rejectReleaseFunc(ctx context.Context, title string, runtime int32, profile storage.QualityProfile, protocolsAvailable map[string]struct{}) func(*prowlarr.ReleaseResource) bool {
 	log := logger.FromCtx(ctx)
 
 	return func(r *prowlarr.ReleaseResource) bool {
+		log.Debug("considering release", zap.String("title", title), zap.Int32("runtime", runtime))
 		if r.Title != nil {
 			releaseTitle := strings.TrimSpace(r.Title.MustGet())
-			if !strings.HasPrefix(releaseTitle, det.Title) {
+			if !strings.HasPrefix(releaseTitle, title) {
 				return true
 			}
 		}
@@ -36,8 +37,10 @@ func rejectReleaseFunc(ctx context.Context, det *model.MovieMetadata, profile st
 		}
 
 		if r.FileName.IsSpecified() {
+			log.Debug("considering release filename", zap.String("filename", r.FileName.MustGet()))
 			_, parsed := parseReleaseFilename(r.FileName.MustGet())
 			if !parsed {
+				log.Debug("release filename not parsed")
 				return true
 			}
 		}
@@ -48,15 +51,16 @@ func rejectReleaseFunc(ctx context.Context, det *model.MovieMetadata, profile st
 		// items are assumed to be sorted quality so the highest media quality available is selected
 		for _, quality := range profile.Qualities {
 
-			metQuality := MeetsQualitySize(quality, uint64(sizeMB), uint64(det.Runtime))
+			log.Debug("considering release quality", zap.Float64("quality", quality.MinSize), zap.Uint64("size", uint64(sizeMB)), zap.Uint64("runtime", uint64(runtime)))
+			metQuality := MeetsQualitySize(quality, uint64(sizeMB), uint64(runtime))
 
 			if metQuality {
-				log.Debugw("accepting release", "release", r.Title, "metQuality", metQuality, "size", r.Size, "runtime", det.Runtime)
+				log.Debugw("accepting release", "release", r.Title, "metQuality", metQuality, "size", r.Size, "runtime", runtime)
 				return false
 			}
 
 			// try again with the next item
-			log.Debugw("rejecting release", "release", r.Title, "metQuality", metQuality, "size", r.Size, "runtime", det.Runtime)
+			log.Debugw("rejecting release", "release", r.Title, "metQuality", metQuality, "size", r.Size, "runtime", runtime)
 		}
 
 		return true

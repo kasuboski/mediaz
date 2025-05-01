@@ -119,7 +119,7 @@ func (i *IndexerStore) searchIndexer(ctx context.Context, indexer int32, categor
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		log.Debug("unexpected response status", zap.String("status", resp.Status), zap.String("body", string(b)))
+		log.Debug("unexpected response status", zap.String("status", resp.Status))
 		return nil, fmt.Errorf("unexpected status: %s", resp.Status)
 	}
 

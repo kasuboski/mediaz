@@ -259,7 +259,7 @@ func (s SQLite) UpdateMovieMovieFileID(ctx context.Context, id int64, fileID int
 }
 
 // UpdateMovieState updates the transition state of a movie. Metadata is optional and can be nil
-func (s SQLite) UpdateMovieState(ctx context.Context, id int64, state storage.MovieState, metadata *storage.MovieStateMetadata) error {
+func (s SQLite) UpdateMovieState(ctx context.Context, id int64, state storage.MovieState, metadata *storage.TransitionStateMetadata) error {
 	movie, err := s.GetMovie(ctx, id)
 	if err != nil {
 		return err

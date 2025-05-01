@@ -57,7 +57,7 @@ const (
 	MovieStateDownloaded  MovieState = "downloaded"
 )
 
-type MovieStateMetadata struct {
+type TransitionStateMetadata struct {
 	DownloadID       *string
 	DownloadClientID *int32
 }
@@ -89,7 +89,7 @@ type MovieStorage interface {
 	DeleteMovie(ctx context.Context, id int64) error
 	ListMovies(ctx context.Context) ([]*Movie, error)
 	ListMoviesByState(ctx context.Context, state MovieState) ([]*Movie, error)
-	UpdateMovieState(ctx context.Context, id int64, state MovieState, metadata *MovieStateMetadata) error
+	UpdateMovieState(ctx context.Context, id int64, state MovieState, metadata *TransitionStateMetadata) error
 	UpdateMovieMovieFileID(ctx context.Context, id int64, fileID int64) error
 
 	GetMovieFilesByMovieName(ctx context.Context, name string) ([]*model.MovieFile, error)
@@ -230,6 +230,7 @@ type SeriesStorage interface {
 	DeleteEpisode(ctx context.Context, id int64) error
 	ListEpisodes(ctx context.Context, where ...sqlite.BoolExpression) ([]*Episode, error)
 	UpdateEpisodeEpisodeFileID(ctx context.Context, id int64, fileID int64) error
+	UpdateEpisodeState(ctx context.Context, id int64, state EpisodeState, metadata *TransitionStateMetadata) error
 
 	GetEpisodeFiles(ctx context.Context, id int64) ([]*model.EpisodeFile, error)
 	CreateEpisodeFile(ctx context.Context, episodeFile model.EpisodeFile) (int64, error)

@@ -1065,7 +1065,7 @@ func (mr *MockStorageMockRecorder) UpdateMovieMovieFileID(ctx, id, fileID any) *
 }
 
 // UpdateMovieState mocks base method.
-func (m *MockStorage) UpdateMovieState(ctx context.Context, id int64, state storage.MovieState, metadata *storage.MovieStateMetadata) error {
+func (m *MockStorage) UpdateMovieState(ctx context.Context, id int64, state storage.MovieState, metadata *storage.MovieTransitionStateMetadata) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UpdateMovieState", ctx, id, state, metadata)
 	ret0, _ := ret[0].(error)
@@ -1561,7 +1561,7 @@ func (mr *MockMovieStorageMockRecorder) UpdateMovieMovieFileID(ctx, id, fileID a
 }
 
 // UpdateMovieState mocks base method.
-func (m *MockMovieStorage) UpdateMovieState(ctx context.Context, id int64, state storage.MovieState, metadata *storage.MovieStateMetadata) error {
+func (m *MockMovieStorage) UpdateMovieState(ctx context.Context, id int64, state storage.MovieState, metadata *storage.MovieTransitionStateMetadata) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UpdateMovieState", ctx, id, state, metadata)
 	ret0, _ := ret[0].(error)

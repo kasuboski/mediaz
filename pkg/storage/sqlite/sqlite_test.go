@@ -116,7 +116,7 @@ func TestMovieStorage(t *testing.T) {
 	actual.Added = nil
 	assert.Equal(t, &wantMovie, actual)
 
-	err = store.UpdateMovieState(ctx, int64(movies[0].ID), storage.MovieStateDownloading, &storage.MovieStateMetadata{
+	err = store.UpdateMovieState(ctx, int64(movies[0].ID), storage.MovieStateDownloading, &storage.MovieTransitionStateMetadata{
 		DownloadID:       ptr("123"),
 		DownloadClientID: ptr(int32(1)),
 	})

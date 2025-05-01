@@ -74,12 +74,6 @@ type SearchMediaResult struct {
 	VoteCount        *int     `json:"vote_count,omitempty"`
 }
 
-var (
-	// TODO: these are specific per indexer it seems.. need to store categories with the indexer
-	MOVIE_CATEGORIES = []int32{2000}
-	TV_CATEGORIES    = []int32{5000}
-)
-
 // SearchMovie querie tmdb for a movie
 func (m MediaManager) SearchMovie(ctx context.Context, query string) (*SearchMediaResponse, error) {
 	log := logger.FromCtx(ctx)
@@ -185,6 +179,14 @@ func (m MediaManager) Run(ctx context.Context) error {
 	defer movieReconcileTicker.Stop()
 	movieReconcileLock := new(sync.Mutex)
 
+	// seriesIndexTicker := time.NewTicker(m.configs.Jobs.SeriesIndex)
+	// defer seriesIndexTicker.Stop()
+	// seriesIndexLock := new(sync.Mutex)
+
+	seriesReconcileTicker := time.NewTicker(m.configs.Jobs.SeriesReconcile)
+	defer seriesReconcileTicker.Stop()
+	seriesReconcileLock := new(sync.Mutex)
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -212,6 +214,30 @@ func (m MediaManager) Run(ctx context.Context) error {
 					log.Errorf("movie reconcile failed", zap.Error(err))
 				}
 			})
+
+		case <-seriesReconcileTicker.C:
+			if !seriesReconcileLock.TryLock() {
+				continue
+			}
+
+			go lock(seriesReconcileLock, func() {
+				err := m.ReconcileSeries(ctx)
+				if err != nil {
+					log.Errorf("series reconcile failed", zap.Error(err))
+				}
+			})
+
+			// case <-seriesIndexTicker.C:
+			// 	if !seriesIndexLock.TryLock() {
+			// 		continue
+			// 	}
+
+			// 	go lock(seriesIndexLock, func() {
+			// 		err := m.IndexSeriesLibrary(ctx)
+			// 		if err != nil {
+			// 			log.Errorf("series library indexing failed", zap.Error(err))
+			// 		}
+			// 	})
 		}
 	}
 }
