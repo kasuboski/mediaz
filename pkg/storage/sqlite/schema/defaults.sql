@@ -35,20 +35,20 @@ INSERT INTO
         media_type
     )
 VALUES
-    (15, 'HDTV-720p', 1999, 0.7, 2.5, 'episode'),
-    (16, 'WEBDL-720p', 1999, 0.6, 2.2, 'episode'),
-    (17, 'WEBRip-720p', 1999, 0.6, 2.2, 'episode'),
-    (18, 'Bluray-720p', 1999, 1.2, 3.5, 'episode'),
-    (19, 'HDTV-1080p', 1999, 1.8, 5.0, 'episode'),
-    (20, 'WEBDL-1080p', 1999, 1.4, 4.0, 'episode'),
-    (21, 'WEBRip-1080p', 1999, 1.4, 4.0, 'episode'),
-    (22, 'Bluray-1080p', 1999, 2.5, 6.0, 'episode'),
-    (23, 'Remux-1080p', 1999, 4.5, 12.0, 'episode'),
-    (24, 'HDTV-2160p', 1999, 6.0, 15.0, 'episode'),
-    (25, 'WEBDL-2160p', 1999, 4.0, 10.0, 'episode'),
-    (26, 'WEBRip-2160p', 1999, 4.0, 10.0, 'episode'),
-    (27, 'Bluray-2160p', 1999, 6.0, 15.0, 'episode'),
-    (28, 'Remux-2160p', 1999, 8.0, 25.0, 'episode');
+    (15, 'HDTV-720p', 995, 10.0, 1000, 'episode'),
+    (16, 'WEBDL-720p', 995, 10.0, 1000, 'episode'),
+    (17, 'WEBRip-720p', 995, 10.0, 1000, 'episode'),
+    (18, 'Bluray-720p', 995, 17.1, 1000, 'episode'),
+    (19, 'HDTV-1080p', 995, 15.0, 1000, 'episode'),
+    (20, 'WEBDL-1080p', 995, 15.0, 1000, 'episode'),
+    (21, 'WEBRip-1080p', 995, 15.0, 1000, 'episode'),
+    (22, 'Bluray-1080p', 995, 50.4, 1000, 'episode'),
+    (23, 'Remux-1080p', 995, 69.1, 1000, 'episode'),
+    (24, 'HDTV-2160p', 995, 25.0, 1000, 'episode'),
+    (25, 'WEBDL-2160p', 995, 25.0, 1000, 'episode'),
+    (26, 'WEBRip-2160p', 995, 25.0, 1000, 'episode'),
+    (27, 'Bluray-2160p', 995, 94.6, 1000, 'episode'),
+    (28, 'Remux-2160p', 995, 187.4, 1000, 'episode');
 
 -- Movie Profiles
 INSERT INTO

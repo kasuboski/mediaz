@@ -117,9 +117,9 @@ func TestMediaManager_GetQualityProfile(t *testing.T) {
 		assert.Equal(t, int32(23), profile.CutoffQualityID)
 		assert.Equal(t, true, profile.UpgradeAllowed)
 		assert.Equal(t, "Remux-1080p", profile.Qualities[0].Name)
-		assert.Equal(t, float64(1999), profile.Qualities[0].PreferredSize)
-		assert.Equal(t, float64(4.5), profile.Qualities[0].MinSize)
-		assert.Equal(t, float64(12.0), profile.Qualities[0].MaxSize)
+		assert.Equal(t, float64(995), profile.Qualities[0].PreferredSize)
+		assert.Equal(t, float64(69.1), profile.Qualities[0].MinSize)
+		assert.Equal(t, float64(1000), profile.Qualities[0].MaxSize)
 		assert.Equal(t, "episode", profile.Qualities[0].MediaType)
 	})
 }
