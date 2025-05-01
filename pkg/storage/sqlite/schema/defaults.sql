@@ -1,4 +1,4 @@
--- Inserting into the quality_definition table
+-- Quality Definitions for Movies
 INSERT INTO
     quality_definition (
         quality_id,
@@ -24,40 +24,81 @@ VALUES
     (13, 'Bluray-2160p', 1999, 102, 2000, 'movie'),
     (14, 'Remux-2160p', 1999, 187.4, 2000, 'movie');
 
+-- Quality Definitions for Episodes
 INSERT INTO
-    "quality_profile" ("name", "cutoff_quality_id", "upgrade_allowed")
+    quality_definition (
+        quality_id,
+        name,
+        preferred_size,
+        min_size,
+        max_size,
+        media_type
+    )
 VALUES
-    ('Standard Definition', 2, TRUE),
-    ('High Definition', 8, TRUE),
-    ('Ultra High Definition', 13, FALSE);
+    (15, 'HDTV-720p', 1999, 0.7, 2.5, 'episode'),
+    (16, 'WEBDL-720p', 1999, 0.6, 2.2, 'episode'),
+    (17, 'WEBRip-720p', 1999, 0.6, 2.2, 'episode'),
+    (18, 'Bluray-720p', 1999, 1.2, 3.5, 'episode'),
+    (19, 'HDTV-1080p', 1999, 1.8, 5.0, 'episode'),
+    (20, 'WEBDL-1080p', 1999, 1.4, 4.0, 'episode'),
+    (21, 'WEBRip-1080p', 1999, 1.4, 4.0, 'episode'),
+    (22, 'Bluray-1080p', 1999, 2.5, 6.0, 'episode'),
+    (23, 'Remux-1080p', 1999, 4.5, 12.0, 'episode'),
+    (24, 'HDTV-2160p', 1999, 6.0, 15.0, 'episode'),
+    (25, 'WEBDL-2160p', 1999, 4.0, 10.0, 'episode'),
+    (26, 'WEBRip-2160p', 1999, 4.0, 10.0, 'episode'),
+    (27, 'Bluray-2160p', 1999, 6.0, 15.0, 'episode'),
+    (28, 'Remux-2160p', 1999, 8.0, 25.0, 'episode');
 
--- Inserting into the quality_profile_item table
+-- Movie Profiles
 INSERT INTO
-    "quality_profile_item" ("profile_id", "quality_id")
+    quality_profile (id, name, cutoff_quality_id, upgrade_allowed)
 VALUES
-    -- Standard Definition includes SDTV
+    (1, 'Standard Definition', 2, TRUE),
+    (2, 'High Definition', 8, TRUE),
+    (3, 'Ultra High Definition', 13, FALSE);
+
+-- Movie Profile Items
+INSERT INTO
+    quality_profile_item (profile_id, quality_id)
+VALUES
     (1, 1),
-    -- Standard Definition includes DVD
     (1, 2),
-    -- High Definition includes HDTV-720p
     (2, 3),
-    -- High Definition includes WEBDL-720p
     (2, 4),
-    -- High Definition includes Bluray-720p
     (2, 5),
-    -- High Definition includes HDTV-1080p
     (2, 6),
-    -- High Definition includes WEBDL-1080p
     (2, 7),
-    -- High Definition includes Bluray-1080p
     (2, 8),
-    -- Ultra High Definition includes Remux-1080p
     (3, 9),
-    -- Ultra High Definition includes HDTV-2160p
     (3, 10),
-    -- Ultra High Definition includes WEBDL-2160p
     (3, 11),
-    -- Ultra High Definition includes Bluray-2160p
     (3, 12),
-    -- Ultra High Definition includes Remux-2160p
     (3, 13);
+
+-- Episode Profiles
+INSERT INTO
+    quality_profile (id, name, cutoff_quality_id, upgrade_allowed)
+VALUES
+    (4, 'Standard Definition', 16, TRUE),
+    (5, 'High Definition', 23, TRUE),
+    (6, 'Ultra High Definition', 27, FALSE);
+
+-- Episode Profile Items
+INSERT INTO
+    quality_profile_item (profile_id, quality_id)
+VALUES
+    (4, 15),
+    (4, 16),
+    (5, 17),
+    (5, 18),
+    (5, 19),
+    (5, 20),
+    (5, 21),
+    (5, 22),
+    (5, 23),
+    (6, 23),
+    (6, 24),
+    (6, 25),
+    (6, 26),
+    (6, 27);

@@ -582,15 +582,19 @@ func (s SQLite) CreateQualityProfile(ctx context.Context, profile model.QualityP
 
 // GetQualityProfile gets a quality profile and all associated quality items given a quality profile id
 func (s SQLite) GetQualityProfile(ctx context.Context, id int64) (storage.QualityProfile, error) {
-	stmt := sqlite.SELECT(
-		table.QualityProfile.AllColumns,
-		table.QualityProfileItem.AllColumns,
-		table.QualityDefinition.AllColumns,
-	).FROM(
-		table.QualityProfile.INNER_JOIN(
-			table.QualityProfileItem, table.QualityProfileItem.ProfileID.EQ(table.QualityProfile.ID)).INNER_JOIN(
-			table.QualityDefinition, table.QualityProfileItem.QualityID.EQ(table.QualityDefinition.ID)),
-	).WHERE(table.QualityProfile.ID.EQ(sqlite.Int(id))).ORDER_BY(table.QualityDefinition.MinSize.DESC())
+	stmt := sqlite.
+		SELECT(
+			table.QualityProfile.AllColumns,
+			table.QualityProfileItem.AllColumns,
+			table.QualityDefinition.AllColumns,
+		).
+		FROM(
+			table.QualityProfile.INNER_JOIN(
+				table.QualityProfileItem, table.QualityProfileItem.ProfileID.EQ(table.QualityProfile.ID)).INNER_JOIN(
+				table.QualityDefinition, table.QualityProfileItem.QualityID.EQ(table.QualityDefinition.ID)),
+		).
+		WHERE(table.QualityProfile.ID.EQ(sqlite.Int(id))).
+		ORDER_BY(table.QualityDefinition.MinSize.DESC())
 
 	var result storage.QualityProfile
 	err := stmt.QueryContext(ctx, s.db, &result)
@@ -598,7 +602,7 @@ func (s SQLite) GetQualityProfile(ctx context.Context, id int64) (storage.Qualit
 }
 
 // ListQualityProfiles lists all quality profiles and their associated quality items
-func (s SQLite) ListQualityProfiles(ctx context.Context) ([]*storage.QualityProfile, error) {
+func (s SQLite) ListQualityProfiles(ctx context.Context, where ...sqlite.BoolExpression) ([]*storage.QualityProfile, error) {
 	stmt := sqlite.
 		SELECT(
 			table.QualityProfile.AllColumns,
@@ -608,8 +612,13 @@ func (s SQLite) ListQualityProfiles(ctx context.Context) ([]*storage.QualityProf
 			table.QualityProfile.INNER_JOIN(
 				table.QualityProfileItem, table.QualityProfileItem.ProfileID.EQ(table.QualityProfile.ID)).INNER_JOIN(
 				table.QualityDefinition, table.QualityProfileItem.QualityID.EQ(table.QualityDefinition.ID)),
-		).
-		ORDER_BY(table.QualityDefinition.MinSize.DESC())
+		)
+
+	for _, w := range where {
+		stmt = stmt.WHERE(w)
+	}
+
+	stmt = stmt.ORDER_BY(table.QualityDefinition.MinSize.DESC())
 
 	result := make([]*storage.QualityProfile, 0)
 	err := stmt.QueryContext(ctx, s.db, &result)

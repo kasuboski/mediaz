@@ -283,7 +283,7 @@ func (m MediaManager) reconcileMissingMovie(ctx context.Context, movie *storage.
 		return err
 	}
 
-	profile, err := m.storage.GetQualityProfile(ctx, int64(movie.QualityProfileID))
+	profile, err := m.GetQualityProfile(ctx, int64(movie.QualityProfileID))
 	if err != nil {
 		log.Warnw("failed to find movie qualityprofile", "quality_id", movie.QualityProfileID)
 		return err
