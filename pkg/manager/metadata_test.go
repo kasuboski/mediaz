@@ -3,7 +3,6 @@ package manager
 import (
 	"context"
 	"errors"
-	"reflect"
 	"testing"
 	"time"
 
@@ -232,8 +231,8 @@ func TestFromSeriesDetails(t *testing.T) {
 				t.Errorf("FromSeriesDetails() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !tt.wantErr && !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("FromSeriesDetails() = %v, want %v", got, tt.want)
+			if !tt.wantErr {
+				assert.Equal(t, tt.want, got)
 			}
 		})
 	}
@@ -288,9 +287,7 @@ func TestFromSeriesSeasons(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := FromSeriesSeasons(tt.input)
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("FromSeriesSeasons() = %v, want %v", got, tt.want)
-			}
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -346,9 +343,138 @@ func TestFromSeriesEpisodes(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := FromSeriesEpisodes(tt.input)
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("FromSeriesEpisodes() = %v, want %v", got, tt.want)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestFromMediaDetails(t *testing.T) {
+	tests := []struct {
+		name string
+		det  tmdb.MediaDetails
+		want model.MovieMetadata
+	}{
+		{
+			name: "all fields present",
+			det: tmdb.MediaDetails{
+				ID:                  123,
+				Title:               ptr("Title"),
+				OriginalTitle:       ptr("Orig"),
+				ImdbID:              ptr("tt100"),
+				Runtime:             ptr(100),
+				Overview:            ptr("Overview"),
+				PosterPath:          ptr("path.jpg"),
+				Genres:              &[]tmdb.Genre{{Name: "G1"}, {Name: "G2"}},
+				Homepage:            ptr("http://"),
+				Popularity:          ptr(float32(1.1)),
+				ProductionCompanies: &[]tmdb.ProductionCompany{{Name: ptr("Studio")}},
+				BelongsToCollection: func() *interface{} {
+					v := interface{}(map[string]interface{}{"id": float64(5), "name": "Coll"})
+					return &v
+				}(),
+				ReleaseDate: ptr("2020-02-03"),
+			},
+			want: model.MovieMetadata{
+				TmdbID:           123,
+				ImdbID:           ptr("tt100"),
+				Images:           "path.jpg",
+				Genres:           ptr("G1,G2"),
+				Title:            "Title",
+				OriginalTitle:    ptr("Orig"),
+				Runtime:          100,
+				Overview:         ptr("Overview"),
+				Website:          ptr("http://"),
+				Popularity:       ptr(float64(1.1)),
+				Studio:           ptr("Studio"),
+				CollectionTmdbID: ptr(int32(5)),
+				CollectionTitle:  ptr("Coll"),
+				ReleaseDate: func() *time.Time {
+					t, _ := time.Parse(tmdb.ReleaseDateFormat, "2020-02-03")
+					return &t
+				}(),
+				Year: func() *int32 {
+					y := int32(2020)
+					return &y
+				}(),
+			},
+		},
+		{
+			name: "missing optional fields",
+			det: tmdb.MediaDetails{
+				ID:       456,
+				Title:    ptr("NoOpt"),
+				Runtime:  ptr(80),
+				Overview: ptr("No optional"),
+			},
+			want: model.MovieMetadata{
+				TmdbID:           456,
+				ImdbID:           nil,
+				Images:           "",
+				Genres:           nil,
+				Title:            "NoOpt",
+				OriginalTitle:    nil,
+				Runtime:          80,
+				Overview:         ptr("No optional"),
+				Website:          nil,
+				Popularity:       nil,
+				Studio:           nil,
+				CollectionTmdbID: nil,
+				CollectionTitle:  nil,
+				ReleaseDate:      nil,
+				Year:             nil,
+			},
+		},
+		{
+			name: "invalid release date",
+			det: tmdb.MediaDetails{
+				ID:          789,
+				Title:       ptr("BadDate"),
+				Runtime:     ptr(60),
+				Overview:    ptr("Bad date"),
+				ReleaseDate: ptr("invalid"),
+			},
+			want: model.MovieMetadata{
+				TmdbID:      789,
+				Title:       "BadDate",
+				Runtime:     60,
+				Overview:    ptr("Bad date"),
+				ReleaseDate: nil,
+				Year:        nil,
+			},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := FromMediaDetails(tc.det)
+			require.Equal(t, tc.want.TmdbID, got.TmdbID)
+			require.Equal(t, tc.want.Images, got.Images)
+			require.Equal(t, tc.want.Title, got.Title)
+			require.Equal(t, tc.want.Runtime, got.Runtime)
+
+			assert.Equal(t, tc.want.ImdbID, got.ImdbID)
+			assert.Equal(t, tc.want.Genres, got.Genres)
+			assert.Equal(t, tc.want.OriginalTitle, got.OriginalTitle)
+			assert.Equal(t, tc.want.Overview, got.Overview)
+			assert.Equal(t, tc.want.Website, got.Website)
+			assert.Equal(t, tc.want.Studio, got.Studio)
+			assert.Equal(t, tc.want.CollectionTmdbID, got.CollectionTmdbID)
+			assert.Equal(t, tc.want.CollectionTitle, got.CollectionTitle)
+
+			if tc.want.Popularity == nil {
+				assert.Nil(t, got.Popularity)
+			} else {
+				require.NotNil(t, got.Popularity)
+				assert.InDelta(t, *tc.want.Popularity, *got.Popularity, 0.001)
 			}
+
+			if tc.want.ReleaseDate == nil {
+				assert.Nil(t, got.ReleaseDate)
+			} else {
+				require.NotNil(t, got.ReleaseDate)
+				assert.True(t, tc.want.ReleaseDate.Equal(*got.ReleaseDate), "Expected ReleaseDate %v, got %v", *tc.want.ReleaseDate, *got.ReleaseDate)
+			}
+
+			assert.Equal(t, tc.want.Year, got.Year)
 		})
 	}
 }
