@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/go-jet/jet/v2/sqlite"
 	"github.com/kasuboski/mediaz/pkg/storage"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
+	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/table"
 )
 
 // MeetsQualitySize checks if the given fileSize (MB) and runtime (min) fall within the QualitySize
@@ -66,6 +68,16 @@ func (m MediaManager) GetQualityDefinition(ctx context.Context, id int64) (model
 
 func (m MediaManager) GetQualityProfile(ctx context.Context, id int64) (storage.QualityProfile, error) {
 	return m.storage.GetQualityProfile(ctx, id)
+}
+
+func (m MediaManager) ListEpisodeQualityProfiles(ctx context.Context, id int64) ([]*storage.QualityProfile, error) {
+	where := table.QualityDefinition.MediaType.EQ(sqlite.String("episode"))
+	return m.storage.ListQualityProfiles(ctx, where)
+}
+
+func (m MediaManager) ListMovieQualityProfiles(ctx context.Context, id int64) ([]*storage.QualityProfile, error) {
+	where := table.QualityDefinition.MediaType.EQ(sqlite.String("movie"))
+	return m.storage.ListQualityProfiles(ctx, where)
 }
 
 func (m MediaManager) ListQualityProfiles(ctx context.Context) ([]*storage.QualityProfile, error) {

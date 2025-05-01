@@ -32,7 +32,7 @@ type IndexerStorage interface {
 type QualityStorage interface {
 	CreateQualityProfile(ctx context.Context, profile model.QualityProfile) (int64, error)
 	GetQualityProfile(ctx context.Context, id int64) (QualityProfile, error)
-	ListQualityProfiles(ctx context.Context) ([]*QualityProfile, error)
+	ListQualityProfiles(ctx context.Context, where ...sqlite.BoolExpression) ([]*QualityProfile, error)
 	DeleteQualityProfile(ctx context.Context, id int64) error //TODO: do we cascade associated items?
 
 	CreateQualityProfileItem(ctx context.Context, item model.QualityProfileItem) (int64, error)

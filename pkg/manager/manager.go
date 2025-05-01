@@ -387,7 +387,7 @@ type AddSeriesRequest struct {
 func (m MediaManager) AddMovieToLibrary(ctx context.Context, request AddMovieRequest) (*storage.Movie, error) {
 	log := logger.FromCtx(ctx)
 
-	profile, err := m.storage.GetQualityProfile(ctx, int64(request.QualityProfileID))
+	profile, err := m.GetQualityProfile(ctx, int64(request.QualityProfileID))
 	if err != nil {
 		log.Debug("failed to get quality profile", zap.Int32("id", request.QualityProfileID), zap.Error(err))
 		return nil, err
@@ -446,7 +446,7 @@ func (m MediaManager) AddMovieToLibrary(ctx context.Context, request AddMovieReq
 func (m MediaManager) AddSeriesToLibrary(ctx context.Context, request AddSeriesRequest) (*storage.Series, error) {
 	log := logger.FromCtx(ctx)
 
-	qualityProfile, err := m.storage.GetQualityProfile(ctx, int64(request.QualityProfileID))
+	qualityProfile, err := m.GetQualityProfile(ctx, int64(request.QualityProfileID))
 	if err != nil {
 		log.Debug("failed to get quality profile", zap.Int32("id", request.QualityProfileID), zap.Error(err))
 		return nil, err
