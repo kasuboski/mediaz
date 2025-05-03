@@ -3,10 +3,14 @@ package manager
 import (
 	"context"
 	"errors"
+	"io"
+	"net/http"
+	"strings"
 	"testing"
 	"testing/fstest"
 	"time"
 
+	"github.com/go-jet/jet/v2/sqlite"
 	"github.com/kasuboski/mediaz/config"
 	"github.com/kasuboski/mediaz/pkg/download"
 	downloadMock "github.com/kasuboski/mediaz/pkg/download/mocks"
@@ -17,8 +21,10 @@ import (
 	"github.com/kasuboski/mediaz/pkg/prowlarr"
 	prowlMock "github.com/kasuboski/mediaz/pkg/prowlarr/mocks"
 	"github.com/kasuboski/mediaz/pkg/storage"
+	"github.com/kasuboski/mediaz/pkg/storage/mocks"
 	mediaSqlite "github.com/kasuboski/mediaz/pkg/storage/sqlite"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
+	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/table"
 	"github.com/kasuboski/mediaz/pkg/tmdb"
 	"github.com/oapi-codegen/nullable"
 	"github.com/stretchr/testify/assert"
@@ -54,10 +60,10 @@ func Test_Manager_reconcileMissingMovie(t *testing.T) {
 	torrentProto := ptr(prowlarr.DownloadProtocolTorrent)
 	usenetProto := ptr(prowlarr.DownloadProtocolUsenet)
 
-	wantRelease := &prowlarr.ReleaseResource{ID: intPtr(123), Title: nullable.NewNullableWithValue("test movie"), Size: sizeGBToBytes(23), Seeders: bigSeeders, Protocol: torrentProto}
-	doNotWantRelease := &prowlarr.ReleaseResource{ID: intPtr(124), Title: nullable.NewNullableWithValue("test movie"), Size: sizeGBToBytes(23), Seeders: smallerSeeders, Protocol: torrentProto}
-	smallMovie := &prowlarr.ReleaseResource{ID: intPtr(125), Title: nullable.NewNullableWithValue("test movie - very small"), Size: sizeGBToBytes(1), Seeders: smallestSeeders, Protocol: torrentProto}
-	nzbMovie := &prowlarr.ReleaseResource{ID: intPtr(1225), Title: nullable.NewNullableWithValue("test movie - nzb"), Size: sizeGBToBytes(23), Seeders: smallestSeeders, Protocol: usenetProto}
+	wantRelease := &prowlarr.ReleaseResource{ID: ptr(int32(123)), Title: nullable.NewNullableWithValue("test movie"), Size: sizeGBToBytes(23), Seeders: bigSeeders, Protocol: torrentProto}
+	doNotWantRelease := &prowlarr.ReleaseResource{ID: ptr(int32(124)), Title: nullable.NewNullableWithValue("test movie"), Size: sizeGBToBytes(23), Seeders: smallerSeeders, Protocol: torrentProto}
+	smallMovie := &prowlarr.ReleaseResource{ID: ptr(int32(125)), Title: nullable.NewNullableWithValue("test movie - very small"), Size: sizeGBToBytes(1), Seeders: smallestSeeders, Protocol: torrentProto}
+	nzbMovie := &prowlarr.ReleaseResource{ID: ptr(int32(1225)), Title: nullable.NewNullableWithValue("test movie - nzb"), Size: sizeGBToBytes(23), Seeders: smallestSeeders, Protocol: usenetProto}
 
 	releases := []*prowlarr.ReleaseResource{doNotWantRelease, wantRelease, smallMovie, nzbMovie}
 	prowlarrMock.EXPECT().GetAPIV1Search(gomock.Any(), gomock.Any()).Return(searchIndexersResponse(t, releases), nil).Times(len(indexers))
@@ -132,6 +138,191 @@ func Test_Manager_reconcileMissingMovie(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, mov.State, storage.MovieStateDownloading)
+}
+
+func Test_Manager_reconcileDiscoveredMovie(t *testing.T) {
+	t.Run("single result", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+
+		store := mocks.NewMockStorage(ctrl)
+		tmdbHttpMock := mhttpMock.NewMockHTTPClient(ctrl)
+
+		// Mock search response
+		searchResp := &http.Response{
+			Body: io.NopCloser(strings.NewReader(`{
+				"results": [{
+					"id": 1234,
+					"title": "test movie",
+					"overview": "test overview",
+					"poster_path": "/test.jpg"
+				}]
+			}`)),
+			StatusCode: http.StatusOK,
+		}
+		tmdbHttpMock.EXPECT().Do(gomock.Any()).Return(searchResp, nil).Times(1)
+
+		tClient, err := tmdb.New("https://api.themoviedb.org", "1234", tmdb.WithHTTPClient(tmdbHttpMock))
+		require.NoError(t, err)
+
+		m := New(nil, nil, nil, store, nil, config.Manager{})
+		m.tmdb = tClient
+
+		movie := storage.Movie{
+			Movie: model.Movie{
+				ID:   1,
+				Path: func() *string { s := "test movie"; return &s }(),
+			},
+		}
+
+		ctx := context.Background()
+
+		store.EXPECT().GetMovieMetadata(ctx, table.MovieMetadata.TmdbID.EQ(sqlite.Int(1234))).Return(&model.MovieMetadata{ID: 120}, nil)
+		store.EXPECT().LinkMovieMetadata(ctx, int64(1), int32(120)).Return(nil)
+
+		// Execute reconciliation
+		err = m.reconcileDiscoveredMovie(ctx, &movie)
+		require.NoError(t, err)
+
+		// Verify movie properties
+		require.Equal(t, int32(1), movie.ID, "ID should remain unchanged")
+		require.Equal(t, "test movie", *movie.Path, "Path should remain unchanged")
+
+		// Verify that metadata was linked (ID 120 from the mock response)
+		require.NotNil(t, movie.MovieMetadataID, "MovieMetadataID should be set")
+		require.Equal(t, int32(120), *movie.MovieMetadataID, "MovieMetadataID should be set to the ID from GetMovieMetadata")
+		// We don't verify MovieMetadataID here since it's managed by the mock expectations
+	})
+
+	t.Run("no results", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+
+		store := mocks.NewMockStorage(ctrl)
+		tmdbHttpMock := mhttpMock.NewMockHTTPClient(ctrl)
+
+		// Mock search response with no results
+		searchResp := &http.Response{
+			Body: io.NopCloser(strings.NewReader(`{
+				"results": []
+			}`)),
+			StatusCode: http.StatusOK,
+		}
+		tmdbHttpMock.EXPECT().Do(gomock.Any()).Return(searchResp, nil).Times(1)
+
+		tClient, err := tmdb.New("https://api.themoviedb.org", "1234", tmdb.WithHTTPClient(tmdbHttpMock))
+		require.NoError(t, err)
+
+		m := New(nil, nil, nil, store, nil, config.Manager{})
+		m.tmdb = tClient
+
+		movie := storage.Movie{
+			Movie: model.Movie{
+				ID:   1,
+				Path: func() *string { s := "test movie"; return &s }(),
+			},
+		}
+
+		ctx := context.Background()
+
+		// Execute reconciliation
+		err = m.reconcileDiscoveredMovie(ctx, &movie)
+		require.NoError(t, err)
+
+		// Verify movie properties
+		require.Equal(t, int32(1), movie.ID, "ID should remain unchanged")
+		require.Equal(t, "test movie", *movie.Path, "Path should remain unchanged")
+	})
+
+	t.Run("multiple results", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+
+		store := mocks.NewMockStorage(ctrl)
+		tmdbHttpMock := mhttpMock.NewMockHTTPClient(ctrl)
+
+		// Mock search response with multiple results
+		searchResp := &http.Response{
+			Body: io.NopCloser(strings.NewReader(`{
+				"results": [{
+					"id": 1234,
+					"title": "test movie 1",
+					"overview": "test overview",
+					"poster_path": "/test.jpg"
+				}, {
+					"id": 5678,
+					"title": "test movie 2",
+					"overview": "test overview 2",
+					"poster_path": "/test2.jpg"
+				}]
+			}`)),
+			StatusCode: http.StatusOK,
+		}
+		tmdbHttpMock.EXPECT().Do(gomock.Any()).Return(searchResp, nil).Times(1)
+
+		tClient, err := tmdb.New("https://api.themoviedb.org", "1234", tmdb.WithHTTPClient(tmdbHttpMock))
+		require.NoError(t, err)
+
+		m := New(nil, nil, nil, store, nil, config.Manager{})
+		m.tmdb = tClient
+
+		movie := storage.Movie{
+			Movie: model.Movie{
+				ID:   1,
+				Path: func() *string { s := "test movie"; return &s }(),
+			},
+		}
+
+		ctx := context.Background()
+
+		store.EXPECT().GetMovieMetadata(ctx, table.MovieMetadata.TmdbID.EQ(sqlite.Int(1234))).Return(&model.MovieMetadata{ID: 120}, nil)
+		store.EXPECT().LinkMovieMetadata(ctx, int64(1), int32(120)).Return(nil)
+
+		// Execute reconciliation
+		err = m.reconcileDiscoveredMovie(ctx, &movie)
+		require.NoError(t, err)
+
+		// Verify movie properties
+		require.Equal(t, int32(1), movie.ID, "ID should remain unchanged")
+		require.Equal(t, "test movie", *movie.Path, "Path should remain unchanged")
+
+		// Verify that metadata was linked (ID 120 from the mock response)
+		require.NotNil(t, movie.MovieMetadataID, "MovieMetadataID should be set")
+		require.Equal(t, int32(120), *movie.MovieMetadataID, "MovieMetadataID should be set to the ID from GetMovieMetadata")
+	})
+
+	t.Run("has metadata", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+
+		store := mocks.NewMockStorage(ctrl)
+		tmdbHttpMock := mhttpMock.NewMockHTTPClient(ctrl)
+
+		tClient, err := tmdb.New("https://api.themoviedb.org", "1234", tmdb.WithHTTPClient(tmdbHttpMock))
+		require.NoError(t, err)
+
+		m := New(nil, nil, nil, store, nil, config.Manager{})
+		m.tmdb = tClient
+
+		metadataID := int32(120)
+		movie := storage.Movie{
+			Movie: model.Movie{
+				ID:              1,
+				Path:            func() *string { s := "test movie"; return &s }(),
+				MovieMetadataID: &metadataID,
+			},
+		}
+
+		ctx := context.Background()
+
+		// Execute reconciliation
+		err = m.reconcileDiscoveredMovie(ctx, &movie)
+		require.NoError(t, err)
+
+		// Verify movie properties
+		require.Equal(t, int32(1), movie.ID, "ID should remain unchanged")
+		require.Equal(t, "test movie", *movie.Path, "Path should remain unchanged")
+
+		// Verify that metadata was linked (ID 120 from the mock response)
+		require.NotNil(t, movie.MovieMetadataID, "MovieMetadataID should be set")
+		require.Equal(t, int32(120), *movie.MovieMetadataID, "MovieMetadataID should be set to the ID from GetMovieMetadata")
+	})
 }
 
 func Test_Manager_reconcileUnreleasedMovie(t *testing.T) {
@@ -310,7 +501,7 @@ func Test_Manager_reconcileDownloadingMovie(t *testing.T) {
 		require.NoError(t, err)
 
 		downloadID := "123"
-		err = m.updateMovieState(ctx, movie, storage.MovieStateDownloading, &storage.MovieTransitionStateMetadata{
+		err = m.updateMovieState(ctx, movie, storage.MovieStateDownloading, &storage.TransitionStateMetadata{
 			DownloadID:       &downloadID,
 			DownloadClientID: &downloadClientModel.ID,
 		})
@@ -361,7 +552,7 @@ func Test_Manager_reconcileDownloadingMovie(t *testing.T) {
 		require.NoError(t, err)
 
 		downloadID := "123"
-		err = m.updateMovieState(ctx, movie, storage.MovieStateDownloading, &storage.MovieTransitionStateMetadata{
+		err = m.updateMovieState(ctx, movie, storage.MovieStateDownloading, &storage.TransitionStateMetadata{
 			DownloadID:       &downloadID,
 			DownloadClientID: &downloadClientModel.ID,
 		})
@@ -415,7 +606,7 @@ func Test_Manager_reconcileDownloadingMovie(t *testing.T) {
 		require.NoError(t, err)
 
 		downloadID := "123"
-		err = m.updateMovieState(ctx, movie, storage.MovieStateDownloading, &storage.MovieTransitionStateMetadata{
+		err = m.updateMovieState(ctx, movie, storage.MovieStateDownloading, &storage.TransitionStateMetadata{
 			DownloadID:       &downloadID,
 			DownloadClientID: &downloadClientModel.ID,
 		})
@@ -460,14 +651,14 @@ func Test_Manager_reconcileDownloadingMovie(t *testing.T) {
 		m := New(nil, nil, nil, store, mockFactory, config.Manager{})
 		require.NotNil(t, m)
 
-		movieID, err := m.storage.CreateMovie(ctx, storage.Movie{Movie: model.Movie{ID: 1, Monitored: 1, QualityProfileID: 1, MovieMetadataID: intPtr(1), Path: ptr("Movie 1")}}, storage.MovieStateMissing)
+		movieID, err := m.storage.CreateMovie(ctx, storage.Movie{Movie: model.Movie{ID: 1, Monitored: 1, QualityProfileID: 1, MovieMetadataID: ptr(int32(1)), Path: ptr("Movie 1")}}, storage.MovieStateMissing)
 		require.NoError(t, err)
 
 		movie, err := m.storage.GetMovie(ctx, movieID)
 		require.NoError(t, err)
 
 		downloadID := "123"
-		err = m.updateMovieState(ctx, movie, storage.MovieStateDownloading, &storage.MovieTransitionStateMetadata{
+		err = m.updateMovieState(ctx, movie, storage.MovieStateDownloading, &storage.TransitionStateMetadata{
 			DownloadID:       &downloadID,
 			DownloadClientID: &downloadClientModel.ID,
 		})
@@ -517,14 +708,14 @@ func Test_Manager_reconcileDownloadingMovie(t *testing.T) {
 		m := New(nil, nil, mockLibrary, store, mockFactory, config.Manager{})
 		require.NotNil(t, m)
 
-		movieID, err := m.storage.CreateMovie(ctx, storage.Movie{Movie: model.Movie{ID: 1, Monitored: 1, QualityProfileID: 1, MovieMetadataID: intPtr(1), Path: ptr("Movie 1")}}, storage.MovieStateMissing)
+		movieID, err := m.storage.CreateMovie(ctx, storage.Movie{Movie: model.Movie{ID: 1, Monitored: 1, QualityProfileID: 1, MovieMetadataID: ptr(int32(1)), Path: ptr("Movie 1")}}, storage.MovieStateMissing)
 		require.NoError(t, err)
 
 		movie, err := m.storage.GetMovie(ctx, movieID)
 		require.NoError(t, err)
 
 		downloadID := "123"
-		err = m.updateMovieState(ctx, movie, storage.MovieStateDownloading, &storage.MovieTransitionStateMetadata{
+		err = m.updateMovieState(ctx, movie, storage.MovieStateDownloading, &storage.TransitionStateMetadata{
 			DownloadID:       &downloadID,
 			DownloadClientID: &downloadClientModel.ID,
 		})
@@ -583,14 +774,14 @@ func Test_Manager_reconcileDownloadingMovie(t *testing.T) {
 		m := New(nil, nil, mockLibrary, store, mockFactory, config.Manager{})
 		require.NotNil(t, m)
 
-		movieID, err := m.storage.CreateMovie(ctx, storage.Movie{Movie: model.Movie{ID: 1, Monitored: 1, QualityProfileID: 1, MovieMetadataID: intPtr(1), Path: ptr("my-movie")}}, storage.MovieStateMissing)
+		movieID, err := m.storage.CreateMovie(ctx, storage.Movie{Movie: model.Movie{ID: 1, Monitored: 1, QualityProfileID: 1, MovieMetadataID: ptr(int32(1)), Path: ptr("my-movie")}}, storage.MovieStateMissing)
 		require.NoError(t, err)
 
 		movie, err := m.storage.GetMovie(ctx, movieID)
 		require.NoError(t, err)
 
 		downloadID := "123"
-		err = m.updateMovieState(ctx, movie, storage.MovieStateDownloading, &storage.MovieTransitionStateMetadata{
+		err = m.updateMovieState(ctx, movie, storage.MovieStateDownloading, &storage.TransitionStateMetadata{
 			DownloadID:       &downloadID,
 			DownloadClientID: &downloadClientModel.ID,
 		})
@@ -623,5 +814,692 @@ func Test_Manager_reconcileDownloadingMovie(t *testing.T) {
 		assert.Equal(t, "my-movie/movie.mp4", *mf.RelativePath)
 		assert.Equal(t, "/downloads/movie.mp4", *mf.OriginalFilePath)
 		assert.Equal(t, int64(1024), mf.Size)
+	})
+}
+
+func TestMediaManager_updateEpisodeState(t *testing.T) {
+	t.Run("update episode state", func(t *testing.T) {
+		ctx := context.Background()
+		store, err := mediaSqlite.New(":memory:")
+		require.NoError(t, err)
+
+		schemas, err := storage.ReadSchemaFiles("../storage/sqlite/schema/schema.sql", "../storage/sqlite/schema/defaults.sql")
+		require.NoError(t, err)
+		require.NotNil(t, store)
+
+		err = store.Init(ctx, schemas...)
+		require.NoError(t, err)
+
+		manager := MediaManager{
+			storage: store,
+		}
+
+		episode := storage.Episode{
+			Episode: model.Episode{
+				SeasonID:          1,
+				EpisodeNumber:     1,
+				EpisodeMetadataID: ptr(int32(1)),
+				Runtime:           ptr(int32(100)),
+			},
+		}
+
+		episodeID, err := manager.storage.CreateEpisode(ctx, episode, storage.EpisodeStateMissing)
+		require.NoError(t, err)
+		assert.Equal(t, int64(1), episodeID)
+
+		episode.ID = int32(episodeID)
+		err = manager.updateEpisodeState(ctx, episode, storage.EpisodeStateDownloading, &storage.TransitionStateMetadata{
+			DownloadID:             ptr("123"),
+			DownloadClientID:       ptr(int32(2)),
+			IsEntireSeasonDownload: ptr(true),
+		})
+		require.NoError(t, err)
+
+		foundEpisode, err := store.GetEpisode(ctx, table.Episode.ID.EQ(sqlite.Int32(episode.ID)))
+		require.NoError(t, err)
+		require.NotNil(t, foundEpisode)
+
+		assert.Equal(t, storage.EpisodeStateDownloading, foundEpisode.State)
+		assert.Equal(t, int32(2), foundEpisode.DownloadClientID)
+		assert.Equal(t, "123", foundEpisode.DownloadID)
+		assert.Equal(t, int32(1), foundEpisode.SeasonID)
+		assert.Equal(t, int32(1), foundEpisode.EpisodeNumber)
+		assert.Equal(t, ptr(int32(100)), foundEpisode.Runtime)
+	})
+}
+
+// func TestMediaManager_reconcileMissingEpisodes(t *testing.T) {
+// 	t.Run("reconcile missing episodes", func(t *testing.T) {
+// 		ctrl := gomock.NewController(t)
+// 		defer ctrl.Finish()
+
+// 		ctx := context.Background()
+
+// 		store, err := mediaSqlite.New(":memory:")
+// 		require.NoError(t, err)
+
+// 		schemas, err := storage.ReadSchemaFiles("../storage/sqlite/schema/schema.sql", "../storage/sqlite/schema/defaults.sql")
+// 		require.NoError(t, err)
+// 		require.NotNil(t, store)
+
+// 		err = store.Init(ctx, schemas...)
+// 		require.NoError(t, err)
+
+// 		releases := []*prowlarr.ReleaseResource{
+// 			{
+// 				ID:    ptr(int32(1)),
+// 				Title: nullable.NewNullableWithValue("test release"),
+// 				Size:  sizeGBToBytes(1), // 1073741824
+// 			},
+// 		}
+
+// 		prowlarrMock := prowlMock.NewMockClientInterface(ctrl)
+// 		prowlarrMock.EXPECT().GetAPIV1Search(gomock.Any(), gomock.Any()).Return(searchIndexersResponse(t, releases), nil).Times(1)
+
+// 		pClient, err := prowlarr.New(":", "1234")
+// 		pClient.ClientInterface = prowlarrMock
+// 		require.NoError(t, err)
+
+// 		manager := MediaManager{
+// 			storage: store,
+// 			indexer: NewIndexerStore(pClient, store),
+// 		}
+
+// 		episode := storage.Episode{
+// 			Episode: model.Episode{
+// 				SeasonID:          1,
+// 				EpisodeNumber:     1,
+// 				EpisodeMetadataID: ptr(int32(1)),
+// 				Runtime:           ptr(int32(100)),
+// 			},
+// 		}
+
+// 		episodeID, err := manager.storage.CreateEpisode(ctx, episode, storage.EpisodeStateMissing)
+// 		require.NoError(t, err)
+// 		assert.Equal(t, int64(1), episodeID)
+
+// 		episodes, err := store.ListEpisodes(ctx, table.Episode.SeasonID.EQ(sqlite.Int32(1)))
+// 		require.NoError(t, err)
+// 		require.Len(t, episodes, 1)
+
+// 		downloadClients := []*model.DownloadClient{
+// 			{
+// 				ID:             2,
+// 				Type:           "torrent",
+// 				Implementation: "transmission",
+// 				Host:           "host",
+// 				Scheme:         "http",
+// 			},
+// 		}
+
+// 		snapshot := newReconcileSnapshot(nil, downloadClients)
+// 		qualityProfile := storage.QualityProfile{
+// 			Name: "test",
+// 			Qualities: []storage.QualityDefinition{
+// 				{
+// 					Name:          "test",
+// 					PreferredSize: 995,
+// 					MinSize:       15,
+// 					MaxSize:       1000,
+// 					MediaType:     "movie",
+// 				},
+// 			},
+// 		}
+
+// 		err = manager.reconcileMissingEpisodes(ctx, int32(1), episodes, snapshot, qualityProfile, releases)
+// 		require.NoError(t, err)
+
+// 		foundEpisode, err := store.GetEpisode(ctx, table.Episode.ID.EQ(sqlite.Int32(episode.ID)))
+// 		require.NoError(t, err)
+// 		require.NotNil(t, foundEpisode)
+
+//			assert.Equal(t, storage.EpisodeStateDownloading, foundEpisode.State)
+//			assert.Equal(t, int32(2), foundEpisode.DownloadClientID)
+//			assert.Equal(t, "123", foundEpisode.DownloadID)
+//			assert.Equal(t, int32(1), foundEpisode.SeasonID)
+//			assert.Equal(t, int32(1), foundEpisode.EpisodeNumber)
+//			assert.Equal(t, ptr(int32(100)), foundEpisode.Runtime)
+//		})
+//	}
+func TestMediaManager_reconcileMissingEpisodes(t *testing.T) {
+	t.Run("reconcile missing episodes", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		ctx := context.Background()
+		store := newStore(t, ctx)
+
+		mockDownloadClient := downloadMock.NewMockDownloadClient(ctrl)
+		mockFactory := downloadMock.NewMockFactory(ctrl)
+
+		downloadClientModel := model.DownloadClient{
+			ID:             2,
+			Implementation: "transmission",
+			Type:           "torrent",
+			Port:           8080,
+			Host:           "transmission",
+			Scheme:         "http",
+		}
+
+		mockFactory.EXPECT().NewDownloadClient(downloadClientModel).Return(mockDownloadClient, nil)
+		mockFactory.EXPECT().NewDownloadClient(downloadClientModel).Return(mockDownloadClient, nil)
+		mockDownloadClient.EXPECT().Add(ctx, gomock.Any()).Return(download.Status{
+			ID:   "123",
+			Name: "test download",
+		}, nil)
+		mockDownloadClient.EXPECT().Add(ctx, gomock.Any()).Return(download.Status{
+			ID:   "124",
+			Name: "test download",
+		}, nil)
+
+		episodeMetadata := model.EpisodeMetadata{
+			TmdbID:  1,
+			Title:   "Test Episode",
+			Number:  1,
+			Runtime: ptr(int32(45)),
+		}
+
+		metadataID1, err := store.CreateEpisodeMetadata(ctx, episodeMetadata)
+		require.NoError(t, err)
+
+		episode1 := storage.Episode{
+			Episode: model.Episode{
+				SeasonID:          1,
+				EpisodeNumber:     1,
+				EpisodeMetadataID: ptr(int32(metadataID1)),
+			},
+		}
+
+		_, err = store.CreateEpisode(ctx, episode1, storage.EpisodeStateMissing)
+		require.NoError(t, err)
+
+		episodeMetadata = model.EpisodeMetadata{
+			TmdbID:  2,
+			Title:   "Test Episode 2",
+			Number:  2,
+			Runtime: ptr(int32(47)),
+		}
+
+		metadataID2, err := store.CreateEpisodeMetadata(ctx, episodeMetadata)
+		require.NoError(t, err)
+
+		episode2 := storage.Episode{
+			Episode: model.Episode{
+				SeasonID:          1,
+				EpisodeNumber:     2,
+				EpisodeMetadataID: ptr(int32(metadataID2)),
+			},
+		}
+
+		_, err = store.CreateEpisode(ctx, episode2, storage.EpisodeStateMissing)
+		require.NoError(t, err)
+
+		releases := []*prowlarr.ReleaseResource{
+			{
+				ID:       ptr(int32(1)),
+				Title:    nullable.NewNullableWithValue("Show S01E01"),
+				Size:     sizeGBToBytes(1),
+				Protocol: ptr(prowlarr.DownloadProtocolTorrent),
+			},
+			{
+				ID:       ptr(int32(2)),
+				Title:    nullable.NewNullableWithValue("Show S01E02"),
+				Size:     sizeGBToBytes(1),
+				Protocol: ptr(prowlarr.DownloadProtocolTorrent),
+			},
+		}
+
+		qualityProfile := storage.QualityProfile{
+			Name: "Default",
+			Qualities: []storage.QualityDefinition{
+				{
+					Name:          "HD",
+					MinSize:       0,
+					MaxSize:       2000,
+					PreferredSize: 1000,
+					MediaType:     "tv",
+				},
+			},
+		}
+
+		episodes, err := store.ListEpisodes(ctx)
+		require.NoError(t, err)
+		require.Len(t, episodes, 2)
+
+		snapshot := newReconcileSnapshot([]Indexer{{ID: 1}}, []*model.DownloadClient{&downloadClientModel})
+
+		m := New(nil, nil, nil, store, mockFactory, config.Manager{})
+
+		err = m.reconcileMissingEpisodes(ctx, 1, episodes, snapshot, qualityProfile, releases)
+		require.NoError(t, err)
+
+		updatedEpisode, err := store.ListEpisodes(ctx)
+		require.NoError(t, err)
+		require.Len(t, updatedEpisode, 2)
+
+		assert.Equal(t, storage.EpisodeStateDownloading, updatedEpisode[0].State)
+		assert.Equal(t, "123", updatedEpisode[0].DownloadID)
+		assert.Equal(t, int32(2), updatedEpisode[0].DownloadClientID)
+
+		assert.Equal(t, storage.EpisodeStateDownloading, updatedEpisode[1].State)
+		assert.Equal(t, "124", updatedEpisode[1].DownloadID)
+		assert.Equal(t, int32(2), updatedEpisode[1].DownloadClientID)
+	})
+
+	t.Run("nil episode", func(t *testing.T) {
+		m := New(nil, nil, nil, nil, nil, config.Manager{})
+		err := m.reconcileMissingEpisodes(context.Background(), 1, []*storage.Episode{nil}, nil, storage.QualityProfile{}, nil)
+		require.NoError(t, err)
+	})
+
+	t.Run("nil snapshot", func(t *testing.T) {
+		m := New(nil, nil, nil, nil, nil, config.Manager{})
+		episode := &storage.Episode{}
+		err := m.reconcileMissingEpisodes(context.Background(), 1, []*storage.Episode{episode}, nil, storage.QualityProfile{}, nil)
+		require.NoError(t, err)
+	})
+
+	t.Run("nil runtime", func(t *testing.T) {
+		ctx := context.Background()
+		store := newStore(t, ctx)
+
+		episodeMetadata := model.EpisodeMetadata{
+			ID:      1,
+			Title:   "Test Episode",
+			Number:  1,
+			Runtime: nil,
+		}
+
+		_, err := store.CreateEpisodeMetadata(ctx, episodeMetadata)
+		require.NoError(t, err)
+
+		episode := storage.Episode{
+			Episode: model.Episode{
+				EpisodeMetadataID: ptr(int32(1)),
+			},
+		}
+
+		m := New(nil, nil, nil, store, nil, config.Manager{})
+		err = m.reconcileMissingEpisodes(ctx, 1, []*storage.Episode{&episode}, &ReconcileSnapshot{}, storage.QualityProfile{}, nil)
+		require.NoError(t, err)
+	})
+
+	t.Run("no matching releases", func(t *testing.T) {
+		ctx := context.Background()
+		store := newStore(t, ctx)
+
+		episodeMetadata := model.EpisodeMetadata{
+			ID:      1,
+			Title:   "Test Episode",
+			Number:  1,
+			Runtime: ptr(int32(45)),
+		}
+
+		_, err := store.CreateEpisodeMetadata(ctx, episodeMetadata)
+		require.NoError(t, err)
+
+		episode := storage.Episode{
+			Episode: model.Episode{
+				EpisodeMetadataID: ptr(int32(1)),
+			},
+		}
+
+		m := New(nil, nil, nil, store, nil, config.Manager{})
+		err = m.reconcileMissingEpisodes(ctx, 1, []*storage.Episode{&episode}, &ReconcileSnapshot{}, storage.QualityProfile{}, nil)
+		require.NoError(t, err)
+	})
+}
+func TestMediaManager_reconcileMissingSeason(t *testing.T) {
+	t.Run("nil season", func(t *testing.T) {
+		m := New(nil, nil, nil, nil, nil, config.Manager{})
+		err := m.reconcileMissingSeason(context.Background(), "Series", nil, nil, storage.QualityProfile{}, nil)
+		require.Error(t, err)
+		assert.Equal(t, "season is nil", err.Error())
+	})
+
+	t.Run("missing season metadata", func(t *testing.T) {
+		ctx := context.Background()
+		store := newStore(t, ctx)
+
+		season := &storage.Season{
+			Season: model.Season{
+				ID:               1,
+				SeriesID:         1,
+				SeasonMetadataID: ptr(int32(999)), // Non-existent metadata ID
+			},
+		}
+
+		m := New(nil, nil, nil, store, nil, config.Manager{})
+		err := m.reconcileMissingSeason(ctx, "Series", season, nil, storage.QualityProfile{}, nil)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "not found in storage")
+	})
+
+	t.Run("no episodes", func(t *testing.T) {
+		ctx := context.Background()
+		store := newStore(t, ctx)
+
+		seasonMetadata := model.SeasonMetadata{
+			ID:     1,
+			Title:  "Test Season",
+			Number: 1,
+		}
+		_, err := store.CreateSeasonMetadata(ctx, seasonMetadata)
+		require.NoError(t, err)
+
+		season := &storage.Season{
+			Season: model.Season{
+				ID:               1,
+				SeriesID:         1,
+				SeasonMetadataID: ptr(int32(1)),
+			},
+		}
+
+		m := New(nil, nil, nil, store, nil, config.Manager{})
+		err = m.reconcileMissingSeason(ctx, "Series", season, nil, storage.QualityProfile{}, nil)
+		require.NoError(t, err)
+	})
+
+	t.Run("successful season pack reconciliation", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		ctx := context.Background()
+		store := newStore(t, ctx)
+
+		mockDownloadClient := downloadMock.NewMockDownloadClient(ctrl)
+		mockFactory := downloadMock.NewMockFactory(ctrl)
+
+		downloadClientModel := model.DownloadClient{
+			ID:             2,
+			Implementation: "transmission",
+			Type:           "torrent",
+			Port:           8080,
+			Host:           "transmission",
+			Scheme:         "http",
+		}
+
+		mockFactory.EXPECT().NewDownloadClient(downloadClientModel).Return(mockDownloadClient, nil)
+		mockDownloadClient.EXPECT().Add(ctx, gomock.Any()).Return(download.Status{
+			ID:   "123",
+			Name: "test download",
+		}, nil)
+
+		seriesMetadataID, err := store.CreateSeriesMetadata(ctx, model.SeriesMetadata{
+			TmdbID:       1,
+			Title:        "Series",
+			EpisodeCount: 10,
+		})
+		require.NoError(t, err)
+
+		seriesID, err := store.CreateSeries(ctx, storage.Series{
+			Series: model.Series{
+				ID:               1,
+				SeriesMetadataID: ptr(int32(seriesMetadataID)),
+			},
+		}, storage.SeriesStateMissing)
+		require.NoError(t, err)
+
+		_, err = store.GetSeries(ctx, table.Series.ID.EQ(sqlite.Int64(seriesID)))
+		require.NoError(t, err)
+
+		seasonID, err := store.CreateSeason(ctx, storage.Season{
+			Season: model.Season{
+				SeriesID:         1,
+				SeasonMetadataID: ptr(int32(1)),
+			},
+		}, storage.SeasonStateMissing)
+		require.NoError(t, err)
+
+		season, err := store.GetSeason(ctx, table.Season.ID.EQ(sqlite.Int64(seasonID)))
+		require.NoError(t, err)
+		assert.Equal(t, int32(1), season.SeriesID)
+		assert.Equal(t, ptr(int32(1)), season.SeasonMetadataID)
+
+		seasonMetadataID, err := store.CreateSeasonMetadata(ctx, model.SeasonMetadata{
+			SeriesID: int32(seriesID),
+			Title:    "Season1",
+			Number:   1,
+		})
+		require.NoError(t, err)
+
+		_, err = store.GetSeasonMetadata(ctx, table.SeasonMetadata.ID.EQ(sqlite.Int64(seasonMetadataID)))
+		require.NoError(t, err)
+
+		episodeMetadataID1, err := store.CreateEpisodeMetadata(ctx, model.EpisodeMetadata{
+			TmdbID:   1,
+			Title:    "Test Episode1",
+			Number:   1,
+			SeasonID: int32(seasonID),
+			Runtime:  ptr(int32(45)),
+		})
+		require.NoError(t, err)
+
+		_, err = store.CreateEpisode(ctx, storage.Episode{
+			Episode: model.Episode{
+				SeasonID:          int32(seasonID),
+				EpisodeNumber:     1,
+				EpisodeMetadataID: ptr(int32(episodeMetadataID1)),
+				Runtime:           ptr(int32(45)),
+			},
+		}, storage.EpisodeStateMissing)
+		require.NoError(t, err)
+
+		episodeMetadataID2, err := store.CreateEpisodeMetadata(ctx, model.EpisodeMetadata{
+			TmdbID:   2,
+			Title:    "Test Episode2",
+			Number:   2,
+			SeasonID: int32(seasonID),
+			Runtime:  ptr(int32(45)),
+		})
+		require.NoError(t, err)
+
+		_, err = store.CreateEpisode(ctx, storage.Episode{
+			Episode: model.Episode{
+				SeasonID:          int32(seasonID),
+				EpisodeNumber:     2,
+				EpisodeMetadataID: ptr(int32(episodeMetadataID2)),
+				Runtime:           ptr(int32(45)),
+			},
+		}, storage.EpisodeStateMissing)
+		require.NoError(t, err)
+
+		releases := []*prowlarr.ReleaseResource{
+			{
+				ID:       ptr(int32(1)),
+				Title:    nullable.NewNullableWithValue("Series S01 COMPLETE"),
+				Size:     sizeGBToBytes(2),
+				Protocol: ptr(prowlarr.DownloadProtocolTorrent),
+			},
+		}
+
+		qualityProfile := storage.QualityProfile{
+			Name: "Default",
+			Qualities: []storage.QualityDefinition{
+				{
+					Name:          "HD",
+					MinSize:       15,
+					MaxSize:       1000,
+					PreferredSize: 995,
+					MediaType:     "tv",
+				},
+			},
+		}
+
+		snapshot := newReconcileSnapshot([]Indexer{{ID: 1}}, []*model.DownloadClient{&downloadClientModel})
+
+		m := New(nil, nil, nil, store, mockFactory, config.Manager{})
+
+		err = m.reconcileMissingSeason(ctx, "Series", season, snapshot, qualityProfile, releases)
+		require.NoError(t, err)
+
+		episodes, err := store.ListEpisodes(ctx)
+		require.NoError(t, err)
+		require.Len(t, episodes, 2)
+
+		assert.Equal(t, storage.EpisodeStateDownloading, episodes[0].State)
+		assert.Equal(t, "123", episodes[0].DownloadID)
+		assert.Equal(t, int32(2), episodes[0].DownloadClientID)
+
+		assert.Equal(t, storage.EpisodeStateDownloading, episodes[1].State)
+		assert.Equal(t, "123", episodes[1].DownloadID)
+		assert.Equal(t, int32(2), episodes[1].DownloadClientID)
+	})
+
+	t.Run("successful individual episode reconciliation", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		ctx := context.Background()
+		store := newStore(t, ctx)
+
+		mockDownloadClient := downloadMock.NewMockDownloadClient(ctrl)
+		mockFactory := downloadMock.NewMockFactory(ctrl)
+
+		downloadClientModel := model.DownloadClient{
+			ID:             2,
+			Implementation: "transmission",
+			Type:           "torrent",
+			Port:           8080,
+			Host:           "transmission",
+			Scheme:         "http",
+		}
+
+		mockFactory.EXPECT().NewDownloadClient(downloadClientModel).Return(mockDownloadClient, nil)
+		mockFactory.EXPECT().NewDownloadClient(downloadClientModel).Return(mockDownloadClient, nil)
+		mockDownloadClient.EXPECT().Add(ctx, gomock.Any()).Return(download.Status{
+			ID:   "123",
+			Name: "test download",
+		}, nil)
+		mockDownloadClient.EXPECT().Add(ctx, gomock.Any()).Return(download.Status{
+			ID:   "124",
+			Name: "test download 2",
+		}, nil)
+
+		seriesMetadataID, err := store.CreateSeriesMetadata(ctx, model.SeriesMetadata{
+			TmdbID:       1,
+			Title:        "Series",
+			EpisodeCount: 10,
+		})
+		require.NoError(t, err)
+
+		seriesID, err := store.CreateSeries(ctx, storage.Series{
+			Series: model.Series{
+				ID:               1,
+				SeriesMetadataID: ptr(int32(seriesMetadataID)),
+			},
+		}, storage.SeriesStateMissing)
+		require.NoError(t, err)
+
+		_, err = store.GetSeries(ctx, table.Series.ID.EQ(sqlite.Int64(seriesID)))
+		require.NoError(t, err)
+
+		seasonID, err := store.CreateSeason(ctx, storage.Season{
+			Season: model.Season{
+				SeriesID:         1,
+				SeasonMetadataID: ptr(int32(1)),
+			},
+		}, storage.SeasonStateMissing)
+		require.NoError(t, err)
+
+		season, err := store.GetSeason(ctx, table.Season.ID.EQ(sqlite.Int64(seasonID)))
+		require.NoError(t, err)
+		assert.Equal(t, int32(1), season.SeriesID)
+		assert.Equal(t, ptr(int32(1)), season.SeasonMetadataID)
+
+		seasonMetadataID, err := store.CreateSeasonMetadata(ctx, model.SeasonMetadata{
+			SeriesID: int32(seriesID),
+			Title:    "Season1",
+			Number:   1,
+		})
+		require.NoError(t, err)
+
+		_, err = store.GetSeasonMetadata(ctx, table.SeasonMetadata.ID.EQ(sqlite.Int64(seasonMetadataID)))
+		require.NoError(t, err)
+
+		episodeMetadataID1, err := store.CreateEpisodeMetadata(ctx, model.EpisodeMetadata{
+			TmdbID:   1,
+			Title:    "Test Episode1",
+			Number:   1,
+			SeasonID: int32(seasonID),
+			Runtime:  ptr(int32(45)),
+		})
+		require.NoError(t, err)
+
+		_, err = store.CreateEpisode(ctx, storage.Episode{
+			Episode: model.Episode{
+				SeasonID:          int32(seasonID),
+				EpisodeNumber:     1,
+				EpisodeMetadataID: ptr(int32(episodeMetadataID1)),
+				Runtime:           ptr(int32(45)),
+			},
+		}, storage.EpisodeStateMissing)
+		require.NoError(t, err)
+
+		episodeMetadataID2, err := store.CreateEpisodeMetadata(ctx, model.EpisodeMetadata{
+			TmdbID:   2,
+			Title:    "Test Episode2",
+			Number:   2,
+			SeasonID: int32(seasonID),
+			Runtime:  ptr(int32(45)),
+		})
+		require.NoError(t, err)
+
+		_, err = store.CreateEpisode(ctx, storage.Episode{
+			Episode: model.Episode{
+				SeasonID:          int32(seasonID),
+				EpisodeNumber:     2,
+				EpisodeMetadataID: ptr(int32(episodeMetadataID2)),
+				Runtime:           ptr(int32(45)),
+			},
+		}, storage.EpisodeStateMissing)
+		require.NoError(t, err)
+
+		releases := []*prowlarr.ReleaseResource{
+			{
+				ID:       ptr(int32(1)),
+				Title:    nullable.NewNullableWithValue("Series S01E01"),
+				Size:     sizeGBToBytes(2),
+				Protocol: ptr(prowlarr.DownloadProtocolTorrent),
+			},
+			{
+				ID:       ptr(int32(2)),
+				Title:    nullable.NewNullableWithValue("Series S01E02"),
+				Size:     sizeGBToBytes(2),
+				Protocol: ptr(prowlarr.DownloadProtocolTorrent),
+			},
+		}
+
+		qualityProfile := storage.QualityProfile{
+			Name: "Default",
+			Qualities: []storage.QualityDefinition{
+				{
+					Name:          "HD",
+					MinSize:       15,
+					MaxSize:       1000,
+					PreferredSize: 995,
+					MediaType:     "tv",
+				},
+			},
+		}
+
+		snapshot := newReconcileSnapshot([]Indexer{{ID: 1}}, []*model.DownloadClient{&downloadClientModel})
+
+		m := New(nil, nil, nil, store, mockFactory, config.Manager{})
+
+		err = m.reconcileMissingSeason(ctx, "Series", season, snapshot, qualityProfile, releases)
+		require.NoError(t, err)
+
+		episodes, err := store.ListEpisodes(ctx)
+		require.NoError(t, err)
+		require.Len(t, episodes, 2)
+
+		assert.Equal(t, storage.EpisodeStateDownloading, episodes[0].State)
+		assert.Equal(t, "123", episodes[0].DownloadID)
+		assert.Equal(t, int32(2), episodes[0].DownloadClientID)
+
+		assert.Equal(t, storage.EpisodeStateDownloading, episodes[1].State)
+		assert.Equal(t, "124", episodes[1].DownloadID)
+		assert.Equal(t, int32(2), episodes[1].DownloadClientID)
 	})
 }

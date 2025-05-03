@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"regexp"
 	"slices"
 	"sync"
 	"time"
@@ -119,6 +118,9 @@ func (m MediaManager) ReconcileMovies(ctx context.Context) error {
 
 	wg.Add(1)
 	go m.ReconcileDownloadingMovies(ctx, &wg, snapshot)
+
+	wg.Add(1)
+	go m.ReconcileDiscoveredMovies(ctx, &wg, snapshot)
 
 	wg.Wait()
 	return nil
@@ -306,7 +308,7 @@ func (m MediaManager) reconcileMissingMovie(ctx context.Context, movie *storage.
 
 	availableProtocols := snapshot.GetProtocols()
 	log.Debugw("releases for consideration", "releases", len(releases))
-	releases = slices.DeleteFunc(releases, rejectReleaseFunc(ctx, det.Title, det.Runtime, profile, availableProtocols))
+	releases = slices.DeleteFunc(releases, rejectMovieReleaseFunc(ctx, det.Title, det.Runtime, profile, availableProtocols))
 	log.Debugw("releases after rejection", "releases", len(releases))
 	if len(releases) == 0 {
 		return nil
@@ -317,28 +319,15 @@ func (m MediaManager) reconcileMissingMovie(ctx context.Context, movie *storage.
 
 	log.Infow("found release", "title", chosenRelease.Title, "proto", *chosenRelease.Protocol)
 
-	downloadRequest := download.AddRequest{
-		Release: chosenRelease,
-	}
-
-	dcs := snapshot.GetDownloadClients()
-	c := clientForProtocol(dcs, *chosenRelease.Protocol)
-	if c == nil {
-		return nil
-	}
-	downloadClient, err := m.factory.NewDownloadClient(*c)
-	if err != nil {
-		return err
-	}
-	status, err := downloadClient.Add(ctx, downloadRequest)
+	clientID, status, err := m.requestReleaseDownload(ctx, snapshot, chosenRelease)
 	if err != nil {
 		log.Debug("failed to add movie download request", zap.Error(err))
-		return err
+		return fmt.Errorf("failed to add movie download request: %w", err)
 	}
 
 	return m.updateMovieState(ctx, movie, storage.MovieStateDownloading, &storage.TransitionStateMetadata{
 		DownloadID:       &status.ID,
-		DownloadClientID: &c.ID,
+		DownloadClientID: &clientID,
 	})
 }
 
@@ -490,8 +479,6 @@ func (m MediaManager) reconcileMissingSeries(ctx context.Context, series *storag
 		return err
 	}
 
-	log.Fatalf("found quality profile", zap.Any("quality profile", qualityProfile))
-
 	seriesMetadata, err := m.storage.GetSeriesMetadata(ctx, table.SeriesMetadata.ID.EQ(sqlite.Int32(*series.SeriesMetadataID)))
 	if err != nil {
 		log.Debugw("failed to find series metadata", "meta_id", *series.SeriesMetadataID)
@@ -521,7 +508,7 @@ func (m MediaManager) reconcileMissingSeries(ctx context.Context, series *storag
 
 	for _, s := range seasons {
 		log.Debug("reconciling season", zap.Any("season", s.ID))
-		err = m.reconcileMissingSeason(ctx, s, snapshot, qualityProfile, releases)
+		err = m.reconcileMissingSeason(ctx, seriesMetadata.Title, s, snapshot, qualityProfile, releases)
 		if err != nil {
 			log.Error("failed to reconcile missing season", zap.Error(err))
 			continue
@@ -532,7 +519,7 @@ func (m MediaManager) reconcileMissingSeries(ctx context.Context, series *storag
 	return nil
 }
 
-func (m MediaManager) reconcileMissingSeason(ctx context.Context, season *storage.Season, snapshot *ReconcileSnapshot, qualityProfile storage.QualityProfile, releases []*prowlarr.ReleaseResource) error {
+func (m MediaManager) reconcileMissingSeason(ctx context.Context, seriesTitle string, season *storage.Season, snapshot *ReconcileSnapshot, qualityProfile storage.QualityProfile, releases []*prowlarr.ReleaseResource) error {
 	log := logger.FromCtx(ctx)
 	log = log.With("reconcile loop", "missing series")
 
@@ -546,24 +533,19 @@ func (m MediaManager) reconcileMissingSeason(ctx context.Context, season *storag
 		return err
 	}
 
-	where := table.Episode.SeasonID.EQ(sqlite.Int32(season.ID)).
-		AND(table.Episode.Monitored.EQ(sqlite.Int(1)))
-
+	where := table.Episode.SeasonID.EQ(sqlite.Int32(season.ID))
 	episodes, err := m.storage.ListEpisodes(ctx, where)
 	if err != nil {
 		log.Error("failed to list missing episodes", zap.Error(err))
 		return fmt.Errorf("couldn't list missing episodes: %w", err)
 	}
-
 	// if we didn't find any episodes we're done
 	if len(episodes) == 0 {
-		log.Debug("no missing episodes found, skipping reconcile")
+		log.Debug("no episodes found, skipping reconcile")
 		return nil
 	}
 
-	log.Debug("found missing episodes", zap.Int("count", len(episodes)))
-
-	// var allMissing = true
+	var allMissing = true
 	var missingEpisodes []*storage.Episode
 	for _, e := range episodes {
 		switch e.State {
@@ -571,142 +553,229 @@ func (m MediaManager) reconcileMissingSeason(ctx context.Context, season *storag
 			missingEpisodes = append(missingEpisodes, e)
 			continue
 		default:
-			// allMissing = false
+			allMissing = false
 		}
 	}
 
-	// we can try to find an entire season pack if nothing has downloaded yet
-	// TOOD: do this sepearately from each episode
-	// if allMissing {
-	// 	matchedReleases := getSeasonPackRelease(metadata.Title, metadata.Number, releases)
-	// 	matchedReleases = slices.DeleteFunc(matchedReleases, rejectReleaseFunc(ctx, episodeMetadata.Title, *episodeMetadata.Runtime, qualityProfile, snapshot.GetProtocols()))
-	// }
+	log.Debug("found missing episodes", zap.Int("count", len(missingEpisodes)))
+
+	if !allMissing {
+		return m.reconcileMissingEpisodes(ctx, metadata.Number, missingEpisodes, snapshot, qualityProfile, releases)
+	}
+
+	runtime := getSeasonRuntime(missingEpisodes, len(episodes))
+	log.Debug("found season pack releases", zap.Int("count", len(releases)))
+	releases = slices.DeleteFunc(releases, RejectSeasonReleaseFunc(ctx, seriesTitle, metadata.Number, runtime, qualityProfile, snapshot.GetProtocols()))
+
+	// if we didn't find any season pack releases, default to individual episodes
+	if len(releases) == 0 {
+		log.Debug("no season pack releases found, defualting to individual episodes")
+		return m.reconcileMissingEpisodes(ctx, metadata.Number, missingEpisodes, snapshot, qualityProfile, releases)
+	}
+
+	chosenRelease := releases[len(releases)-1]
+	log.Infow("found release", "title", chosenRelease.Title, "proto", *chosenRelease.Protocol)
+
+	clientID, status, err := m.requestReleaseDownload(ctx, snapshot, chosenRelease)
+	if err != nil {
+		log.Debug("failed to request episode release download", zap.Error(err))
+		return err
+	}
 
 	for _, e := range missingEpisodes {
-		log.Debug("reconciling episode", zap.Any("episode", e.ID))
-		err = m.reconcileMissingEpisode(ctx, metadata.Number, e, snapshot, qualityProfile, releases)
+		err = m.updateEpisodeState(ctx, *e, storage.EpisodeStateDownloading, &storage.TransitionStateMetadata{
+			DownloadID:             &status.ID,
+			DownloadClientID:       &clientID,
+			IsEntireSeasonDownload: ptr(true),
+		})
 		if err != nil {
-			log.Error("failed to reconcile missing episode", zap.Error(err))
+			log.Error("failed to update episode state in seasons pack", zap.Error(err))
 			continue
 		}
-		log.Debug("successfully reconciled episode", zap.Any("episode", e.ID))
+
+		log.Debug("successfully reconciled episode in seasons pack")
 	}
 
 	return nil
 }
 
-func (m MediaManager) reconcileMissingEpisode(ctx context.Context, seasonNumber int32, episode *storage.Episode, snapshot *ReconcileSnapshot, qualityProfile storage.QualityProfile, releases []*prowlarr.ReleaseResource) error {
+func (m MediaManager) reconcileMissingEpisodes(ctx context.Context, seasonNumber int32, episode []*storage.Episode, snapshot *ReconcileSnapshot, qualityProfile storage.QualityProfile, releases []*prowlarr.ReleaseResource) error {
 	log := logger.FromCtx(ctx)
 
-	if episode == nil {
-		log.Warn("episode is nil, skipping reconcile")
-		return fmt.Errorf("episode is nil")
+	for _, e := range episode {
+		if episode == nil {
+			log.Warn("episode is nil, skipping reconcile")
+			return fmt.Errorf("episode is nil")
+		}
+
+		if snapshot == nil {
+			log.Warn("snapshot is nil, skipping reconcile")
+			return nil
+		}
+
+		episodeMetadata, err := m.storage.GetEpisodeMetadata(ctx, table.EpisodeMetadata.ID.EQ(sqlite.Int32(*e.EpisodeMetadataID)))
+		if err != nil {
+			log.Debugw("failed to find episode metadata", "meta_id", *e.EpisodeMetadataID)
+			return err
+		}
+
+		// should we default or estimate here?
+		if episodeMetadata.Runtime == nil {
+			log.Warn("episode runtime is nil, skipping reconcile")
+			return nil
+		}
+
+		log.Debug("matched releases", zap.Int("count", len(releases)))
+		releases = slices.DeleteFunc(releases, rejectEpisodeReleaseFunc(ctx, episodeMetadata.Title, seasonNumber, episodeMetadata.Number, *episodeMetadata.Runtime, qualityProfile, snapshot.GetProtocols()))
+		log.Debug("releases after rejection", zap.Int("count", len(releases)))
+		if len(releases) == 0 {
+			log.Debug("no releases found for episode, skipping reconcile")
+			return nil
+		}
+
+		slices.SortFunc(releases, sortReleaseFunc())
+		chosenRelease := releases[len(releases)-1]
+
+		log.Infow("found release", "title", chosenRelease.Title, "proto", *chosenRelease.Protocol)
+
+		clientID, status, err := m.requestReleaseDownload(ctx, snapshot, chosenRelease)
+		if err != nil {
+			log.Debug("failed to request episode release download", zap.Error(err))
+			return err
+		}
+
+		err = m.updateEpisodeState(ctx, *e, storage.EpisodeStateDownloading, &storage.TransitionStateMetadata{
+			DownloadID:       &status.ID,
+			DownloadClientID: &clientID,
+		})
+		if err != nil {
+			log.Debug("failed to update episode state", zap.Error(err))
+			return err
+		}
+
+		log.Debug("successfully reconciled episode")
 	}
-
-	if snapshot == nil {
-		log.Warn("snapshot is nil, skipping reconcile")
-		return nil
-	}
-
-	episodeMetadata, err := m.storage.GetEpisodeMetadata(ctx, table.EpisodeMetadata.ID.EQ(sqlite.Int32(*episode.EpisodeMetadataID)))
-	if err != nil {
-		log.Debugw("failed to find episode metadata", "meta_id", *episode.EpisodeMetadataID)
-		return err
-	}
-
-	// should we default or estimate here?
-	if episodeMetadata.Runtime == nil {
-		log.Warn("episode runtime is nil, skipping reconcile")
-		return nil
-	}
-
-	matchedReleases := getEpisodeRelease(episodeMetadata.Title, seasonNumber, episodeMetadata.Number, releases)
-	log.Debug("matched releases", zap.Int("count", len(matchedReleases)))
-	matchedReleases = slices.DeleteFunc(matchedReleases, rejectReleaseFunc(ctx, episodeMetadata.Title, *episodeMetadata.Runtime, qualityProfile, snapshot.GetProtocols()))
-	log.Debug("releases after rejection", zap.Int("count", len(matchedReleases)))
-	if len(matchedReleases) == 0 {
-		log.Debug("no releases found for episode, skipping reconcile")
-		return nil
-	}
-
-	slices.SortFunc(matchedReleases, sortReleaseFunc())
-	chosenRelease := matchedReleases[len(matchedReleases)-1]
-
-	log.Infow("found release", "title", chosenRelease.Title, "proto", *chosenRelease.Protocol)
-
-	// downloadRequest := download.AddRequest{
-	// 	Release: chosenRelease,
-	// }
-	// dcs := snapshot.GetDownloadClients()
-	// c := clientForProtocol(dcs, *chosenRelease.Protocol)
-	// if c == nil {
-	// 	return nil
-	// }
-	// downloadClient, err := m.factory.NewDownloadClient(*c)
-	// if err != nil {
-	// 	return err
-	// }
-
-	// status, err := downloadClient.Add(ctx, downloadRequest)
-	// if err != nil {
-	// 	log.Debug("failed to add series download request", zap.Error(err))
-	// 	return err
-	// }
-
-	// return m.updateEpisodeState(ctx, *episode, storage.EpisodeStateDownloading, &storage.TransitionStateMetadata{
-	// 	DownloadID:       &status.ID,
-	// 	DownloadClientID: &c.ID,
-	// })
 
 	return nil
 }
 
 func (m MediaManager) updateEpisodeState(ctx context.Context, episode storage.Episode, state storage.EpisodeState, metadata *storage.TransitionStateMetadata) error {
-	log := logger.FromCtx(ctx).With("movie id", episode.ID, "from state", episode.State, "to state", state)
+	log := logger.FromCtx(ctx).With("episode id", episode.ID, "from state", episode.State, "to state", state)
 	err := m.storage.UpdateEpisodeState(ctx, int64(episode.ID), state, metadata)
 	if err != nil {
-		log.Warn("failed to update movie state", zap.Error(err))
+		log.Error("failed to update episode state", zap.Error(err))
 		return err
 	}
 
-	log.Info("successfully updated movie state")
+	log.Info("successfully updated episode state")
 	return nil
 }
 
-var (
-	seasonPackRegex = regexp.MustCompile(`(?i)\bS(?P<season>\d{1,2})\b.*?\b(complete|full|season\s*\d{1,2})\b`)
-	episodeRegex    = regexp.MustCompile(`(?i)\b(S(\d{1,2})E(\d{1,2})|(\d{1,2})x(\d{1,2}))\b`)
-)
+func (m MediaManager) ReconcileDiscoveredMovies(ctx context.Context, wg *sync.WaitGroup, snapshot *ReconcileSnapshot) error {
+	defer wg.Done()
 
-// getSeasonPack returns the release resource for a season pack, otherwise returns nil
-func getSeasonPackRelease(title string, seasonNumber int32, releases []*prowlarr.ReleaseResource) []*prowlarr.ReleaseResource {
-	var matches []*prowlarr.ReleaseResource
-	for _, r := range releases {
-		title, err := r.Title.Get()
+	if snapshot == nil {
+		return fmt.Errorf("snapshot is nil")
+	}
+
+	movies, err := m.storage.ListMoviesByState(ctx, storage.MovieStateDiscovered)
+	if err != nil {
+		return fmt.Errorf("couldn't list discovered movies: %w", err)
+	}
+
+	log := logger.FromCtx(ctx)
+
+	for _, movie := range movies {
+		err = m.reconcileDiscoveredMovie(ctx, movie)
 		if err != nil {
-			continue
-		}
-
-		if seasonPackRegex.MatchString(title) {
-			matches = append(matches, r)
+			log.Warn("failed to reconcile movie", zap.Error(err))
 		}
 	}
 
-	return matches
+	return nil
 }
 
-func getEpisodeRelease(title string, seasonNumber int32, episodeNumber int32, releases []*prowlarr.ReleaseResource) []*prowlarr.ReleaseResource {
-	matches := make([]*prowlarr.ReleaseResource, 0)
-	for _, r := range releases {
-		title, err := r.Title.Get()
-		if err != nil {
-			continue
-		}
+func (m MediaManager) reconcileDiscoveredMovie(ctx context.Context, movie *storage.Movie) error {
+	log := logger.FromCtx(ctx)
+	log = log.With("reconcile loop", "discovered", "movie id", movie.ID)
 
-		if episodeRegex.MatchString(title) {
-			matches = append(matches, r)
+	if movie.MovieMetadataID != nil {
+		log.Debug("movie already has metadata, skipping reconcile")
+		return nil
+	}
+
+	searchTerm := pathToSearchTerm(*movie.Path)
+	searchResp, err := m.SearchMovie(ctx, searchTerm)
+	if err != nil {
+		return fmt.Errorf("failed to search for movie: %w", err)
+	}
+
+	if len(searchResp.Results) == 0 {
+		log.Warn("no results found for movie", zap.String("path", *movie.Path), zap.String("search_term", searchTerm))
+		return nil
+	}
+
+	if len(searchResp.Results) > 1 {
+		log.Debug("multiple results found for movie", zap.String("path", *movie.Path), zap.String("search_term", searchTerm), zap.Int("count", len(searchResp.Results)))
+	}
+
+	// Use first result
+	result := searchResp.Results[0]
+	if result.ID == nil {
+		return fmt.Errorf("movie result has no ID")
+	}
+
+	metadata, err := m.GetMovieMetadata(ctx, *result.ID)
+	if err != nil {
+		return fmt.Errorf("failed to get movie metadata: %w", err)
+	}
+
+	err = m.storage.LinkMovieMetadata(ctx, int64(movie.ID), metadata.ID)
+	if err != nil {
+		return fmt.Errorf("failed to update movie: %w", err)
+	}
+
+	// Update the movie struct with the metadata ID
+	movie.MovieMetadataID = &metadata.ID
+
+	log.Info("updated movie with metadata", zap.Int32("metadata_id", metadata.ID))
+	return nil
+}
+
+func (m MediaManager) requestReleaseDownload(ctx context.Context, snapshot *ReconcileSnapshot, release *prowlarr.ReleaseResource) (int32, download.Status, error) {
+	dcs := snapshot.GetDownloadClients()
+	c := clientForProtocol(dcs, *release.Protocol)
+	if c == nil {
+		return 0, download.Status{}, fmt.Errorf("no download client found for protocol: %s", *release.Protocol)
+	}
+
+	id := c.ID
+
+	downloadClient, err := m.factory.NewDownloadClient(*c)
+	if err != nil {
+		return id, download.Status{}, fmt.Errorf("failed to create download client: %w", err)
+	}
+
+	status, err := downloadClient.Add(ctx, download.AddRequest{Release: release})
+	return id, status, err
+}
+
+func getSeasonRuntime(episodes []*storage.Episode, totalSeasonEpisodes int) int32 {
+	var runtime int32
+	var consideredRuntimeCount int
+	for _, e := range episodes {
+		if e.Runtime != nil {
+			runtime = runtime + *e.Runtime
+			consideredRuntimeCount++
 		}
 	}
 
-	return matches
+	// if we're missing some of the runtimes, we can try to estimate the remaining runtime based on the average of the other episodes
+	// this could be pretty inaccurate in cases where we are missing more than a few runtimes, but it's better than nothing
+	if consideredRuntimeCount > 0 && consideredRuntimeCount < totalSeasonEpisodes {
+		averageRuntime := runtime / int32(consideredRuntimeCount)
+		runtime += averageRuntime * int32(totalSeasonEpisodes-consideredRuntimeCount)
+	}
+
+	return runtime
 }

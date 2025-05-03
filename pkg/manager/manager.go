@@ -164,8 +164,49 @@ func (m MediaManager) ListShowsInLibrary(ctx context.Context) ([]string, error) 
 	return m.library.FindEpisodes(ctx)
 }
 
-func (m MediaManager) ListMoviesInLibrary(ctx context.Context) ([]library.MovieFile, error) {
-	return m.library.FindMovies(ctx)
+// LibraryMovie is used for API responses, combining file and metadata info
+type LibraryMovie struct {
+	Path       string `json:"path"`
+	TMDBID     int32  `json:"tmdbID"`
+	Title      string `json:"title"`
+	PosterPath string `json:"poster_path"`
+	Year       int32  `json:"year,omitempty"`
+	State      string `json:"state"`
+}
+
+// ListMoviesInLibrary returns library movies enriched with metadata
+func (m MediaManager) ListMoviesInLibrary(ctx context.Context) ([]LibraryMovie, error) {
+	// fetch by state
+	discovered, err := m.storage.ListMoviesByState(ctx, storage.MovieStateDiscovered)
+	if err != nil {
+		return nil, err
+	}
+	downloaded, err := m.storage.ListMoviesByState(ctx, storage.MovieStateDownloaded)
+	if err != nil {
+		return nil, err
+	}
+	all := append(discovered, downloaded...)
+	var movies []LibraryMovie
+	for _, mp := range all {
+		mrec := *mp
+		lm := LibraryMovie{State: string(mrec.State)}
+		if mrec.Path != nil {
+			lm.Path = *mrec.Path
+		}
+		if mrec.MovieMetadataID != nil {
+			meta, err := m.GetMovieMetadataByID(ctx, *mrec.MovieMetadataID)
+			if err == nil && meta != nil {
+				lm.TMDBID = meta.TmdbID
+				lm.Title = meta.Title
+				lm.PosterPath = meta.Images
+				if meta.Year != nil {
+					lm.Year = *meta.Year
+				}
+			}
+		}
+		movies = append(movies, lm)
+	}
+	return movies, nil
 }
 
 func (m MediaManager) Run(ctx context.Context) error {
@@ -372,7 +413,7 @@ type AddSeriesRequest struct {
 func (m MediaManager) AddMovieToLibrary(ctx context.Context, request AddMovieRequest) (*storage.Movie, error) {
 	log := logger.FromCtx(ctx)
 
-	profile, err := m.storage.GetQualityProfile(ctx, int64(request.QualityProfileID))
+	profile, err := m.GetQualityProfile(ctx, int64(request.QualityProfileID))
 	if err != nil {
 		log.Debug("failed to get quality profile", zap.Int32("id", request.QualityProfileID), zap.Error(err))
 		return nil, err
@@ -431,7 +472,7 @@ func (m MediaManager) AddMovieToLibrary(ctx context.Context, request AddMovieReq
 func (m MediaManager) AddSeriesToLibrary(ctx context.Context, request AddSeriesRequest) (*storage.Series, error) {
 	log := logger.FromCtx(ctx)
 
-	qualityProfile, err := m.storage.GetQualityProfile(ctx, int64(request.QualityProfileID))
+	qualityProfile, err := m.GetQualityProfile(ctx, int64(request.QualityProfileID))
 	if err != nil {
 		log.Debug("failed to get quality profile", zap.Int32("id", request.QualityProfileID), zap.Error(err))
 		return nil, err
@@ -617,4 +658,10 @@ func isReleased(now time.Time, releaseDate *time.Time) bool {
 
 func ptr[A any](thing A) *A {
 	return &thing
+}
+
+// GetMovieMetadataByID retrieves movie metadata by its primary key
+func (m MediaManager) GetMovieMetadataByID(ctx context.Context, metadataID int32) (*model.MovieMetadata, error) {
+	// fetch metadata record
+	return m.storage.GetMovieMetadata(ctx, table.MovieMetadata.ID.EQ(sqlite.Int(int64(metadataID))))
 }

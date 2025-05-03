@@ -20,7 +20,6 @@ import (
 type MockConfigUnmarshaler struct {
 	ctrl     *gomock.Controller
 	recorder *MockConfigUnmarshalerMockRecorder
-	isgomock struct{}
 }
 
 // MockConfigUnmarshalerMockRecorder is the mock recorder for MockConfigUnmarshaler.

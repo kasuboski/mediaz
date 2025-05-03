@@ -142,9 +142,7 @@ func (s Server) ListMovies() http.HandlerFunc {
 			return
 		}
 
-		resp := GenericResponse{
-			Response: movies,
-		}
+		resp := GenericResponse{Response: movies}
 
 		writeResponse(w, http.StatusOK, resp)
 	}

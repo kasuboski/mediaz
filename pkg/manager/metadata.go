@@ -3,39 +3,16 @@ package manager
 import (
 	"context"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/go-jet/jet/v2/sqlite"
 	"github.com/kasuboski/mediaz/pkg/library"
-	"github.com/kasuboski/mediaz/pkg/logger"
 	"github.com/kasuboski/mediaz/pkg/storage"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/table"
 	"github.com/kasuboski/mediaz/pkg/tmdb"
 )
-
-// IndexMovies finds metadata for each movie in the library
-func (m MediaManager) IndexMovies(ctx context.Context) error {
-	log := logger.FromCtx(ctx)
-	movies, err := m.ListMoviesInLibrary(ctx)
-	if err != nil {
-		return err
-	}
-
-	for _, mov := range movies {
-		resp, err := m.SearchMovie(ctx, mov.Name)
-		if err != nil {
-			return err
-		}
-		if len(resp.Results) == 0 {
-			log.Warn("no movie metadata", "name", mov.Name)
-			continue
-		}
-		res := resp.Results[0]
-		log.Debugw("metadata", "id", res.ID, "title", res.Title)
-	}
-	return nil
-}
 
 func (m MediaManager) GetMovieMetadata(ctx context.Context, tmdbID int) (*model.MovieMetadata, error) {
 	res, err := m.storage.GetMovieMetadata(ctx, table.MovieMetadata.TmdbID.EQ(sqlite.Int(int64(tmdbID))))
@@ -136,15 +113,67 @@ func FromMediaDetails(det tmdb.MediaDetails) model.MovieMetadata {
 	model := model.MovieMetadata{
 		TmdbID:        int32(det.ID),
 		ImdbID:        det.ImdbID,
+		Images:        "",
 		Title:         *det.Title,
 		OriginalTitle: det.OriginalTitle,
 		Runtime:       int32(*det.Runtime),
 		Overview:      det.Overview,
 	}
+	if det.PosterPath != nil {
+		model.Images = *det.PosterPath
+	}
 
-	releaseDate, err := parseTMDBDate(*det.ReleaseDate)
-	if err == nil {
-		model.ReleaseDate = releaseDate
+	// Map genres
+	if det.Genres != nil {
+		names := []string{}
+		for _, g := range *det.Genres {
+			names = append(names, g.Name)
+		}
+		gs := strings.Join(names, ",")
+		model.Genres = &gs
+	}
+
+	// Map homepage
+	if det.Homepage != nil {
+		model.Website = det.Homepage
+	}
+
+	// Map popularity
+	if det.Popularity != nil {
+		p := float64(*det.Popularity)
+		model.Popularity = &p
+	}
+
+	// Map first production company as studio
+	if det.ProductionCompanies != nil && len(*det.ProductionCompanies) > 0 {
+		studio := (*det.ProductionCompanies)[0].Name
+		model.Studio = studio
+	}
+
+	// Parse belongs_to_collection into CollectionTmdbID and CollectionTitle
+	if det.BelongsToCollection != nil {
+		if collMap, ok := (*det.BelongsToCollection).(map[string]interface{}); ok {
+			if rawID, ok := collMap["id"].(float64); ok {
+				id := int32(rawID)
+				model.CollectionTmdbID = &id
+			}
+			if name, ok := collMap["name"].(string); ok {
+				model.CollectionTitle = &name
+			}
+		}
+	}
+
+	if det.ReleaseDate != nil {
+		releaseDate, err := parseTMDBDate(*det.ReleaseDate)
+		if err == nil {
+			model.ReleaseDate = releaseDate
+		}
+
+		// Set Year from release date
+		if model.ReleaseDate != nil {
+			y := int32(model.ReleaseDate.Year())
+			model.Year = &y
+		}
 	}
 
 	return model

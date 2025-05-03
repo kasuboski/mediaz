@@ -32,7 +32,7 @@ type IndexerStorage interface {
 type QualityStorage interface {
 	CreateQualityProfile(ctx context.Context, profile model.QualityProfile) (int64, error)
 	GetQualityProfile(ctx context.Context, id int64) (QualityProfile, error)
-	ListQualityProfiles(ctx context.Context) ([]*QualityProfile, error)
+	ListQualityProfiles(ctx context.Context, where ...sqlite.BoolExpression) ([]*QualityProfile, error)
 	DeleteQualityProfile(ctx context.Context, id int64) error //TODO: do we cascade associated items?
 
 	CreateQualityProfileItem(ctx context.Context, item model.QualityProfileItem) (int64, error)
@@ -58,8 +58,9 @@ const (
 )
 
 type TransitionStateMetadata struct {
-	DownloadID       *string
-	DownloadClientID *int32
+	DownloadID             *string
+	DownloadClientID       *int32
+	IsEntireSeasonDownload *bool // applicable only to episodes
 }
 
 type Movie struct {
@@ -96,6 +97,7 @@ type MovieStorage interface {
 	CreateMovieFile(ctx context.Context, movieFile model.MovieFile) (int64, error)
 	DeleteMovieFile(ctx context.Context, id int64) error
 	ListMovieFiles(ctx context.Context) ([]*model.MovieFile, error)
+	LinkMovieMetadata(ctx context.Context, movieID int64, metadataID int32) error
 }
 
 type MovieMetadataStorage interface {
@@ -162,9 +164,7 @@ const (
 
 type Series struct {
 	model.Series
-	State            SeriesState `alias:"series_transition.to_state" json:"state"`
-	DownloadID       string      `alias:"series_transition.download_id" json:"-"`
-	DownloadClientID int32       `alias:"series_transition.download_client_id" json:"-"`
+	State SeriesState `alias:"series_transition.to_state" json:"state"`
 }
 
 type SeriesTransition model.SeriesTransition
@@ -180,9 +180,7 @@ func (s Series) Machine() *machine.StateMachine[SeriesState] {
 
 type Season struct {
 	model.Season
-	State            SeasonState `alias:"season_transition.to_state" json:"state"`
-	DownloadID       string      `json:"-"`
-	DownloadClientID int32       `json:"-"`
+	State SeasonState `alias:"season_transition.to_state" json:"state"`
 }
 
 type SeasonTransition model.SeasonTransition
@@ -198,9 +196,10 @@ func (s Season) Machine() *machine.StateMachine[SeasonState] {
 
 type Episode struct {
 	model.Episode
-	State            EpisodeState `alias:"episode_transition.to_state" json:"state"`
-	DownloadID       string       `json:"-"`
-	DownloadClientID int32        `json:"-"`
+	State                  EpisodeState `alias:"episode_transition.to_state" json:"state"`
+	DownloadID             string       `alias:"episode_transition.download_id" json:"-"`
+	DownloadClientID       int32        `alias:"episode_transition.download_client_id" json:"-"`
+	IsEntireSeasonDownload bool         `alias:"episode_transition.is_entire_season_download" json:"-"`
 }
 
 type EpisodeTransition model.EpisodeTransition

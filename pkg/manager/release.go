@@ -16,12 +16,16 @@ import (
 	"golang.org/x/text/language"
 )
 
-// rejectReleaseFunc returns a function that returns true if the given release should be rejected
-func rejectReleaseFunc(ctx context.Context, title string, runtime int32, profile storage.QualityProfile, protocolsAvailable map[string]struct{}) func(*prowlarr.ReleaseResource) bool {
-	log := logger.FromCtx(ctx)
+var (
+	episodeRegex = regexp.MustCompile(`(?i)\b(S(\d{1,2})E(\d{1,2})|(\d{1,2})x(\d{1,2}))\b`)
+)
 
+func rejectMovieReleaseFunc(ctx context.Context, title string, runtime int32, profile storage.QualityProfile, protocolsAvailable map[string]struct{}) func(*prowlarr.ReleaseResource) bool {
 	return func(r *prowlarr.ReleaseResource) bool {
-		log.Debug("considering release", zap.String("title", title), zap.Int32("runtime", runtime))
+		if r == nil {
+			return true
+		}
+
 		if r.Title != nil {
 			releaseTitle := strings.TrimSpace(r.Title.MustGet())
 			if !strings.HasPrefix(releaseTitle, title) {
@@ -29,9 +33,86 @@ func rejectReleaseFunc(ctx context.Context, title string, runtime int32, profile
 			}
 		}
 
+		return rejectReleaseFunc(ctx, runtime, profile, protocolsAvailable)(r)
+	}
+}
+
+func RejectSeasonReleaseFunc(ctx context.Context, seriesTitle string, seasonNumber, runtime int32, profile storage.QualityProfile, protocolsAvailable map[string]struct{}) func(*prowlarr.ReleaseResource) bool {
+	return func(r *prowlarr.ReleaseResource) bool {
+		if rejectSeasonReleaseFunc(ctx, seriesTitle, seasonNumber, r) {
+			return true
+		}
+		return rejectReleaseFunc(ctx, runtime, profile, protocolsAvailable)(r)
+	}
+}
+
+var (
+	seasonPackRegex = regexp.MustCompile(`(?i)(season\s*(pack|complete)|s\d{2}.*(?:complete|season|pack))`)
+	seasonPattern   = regexp.MustCompile(`(?i)s(\d{2})`)
+)
+
+func rejectSeasonReleaseFunc(_ context.Context, seriesTitle string, seasonNumber int32, r *prowlarr.ReleaseResource) bool {
+	foundTitle, err := r.Title.Get()
+	if err != nil {
+		return true
+	}
+
+	if !seasonPackRegex.MatchString(foundTitle) {
+		return true
+	}
+
+	normalizedSeriesTitle := strings.ToLower(seriesTitle)
+	normalizedReleaseTitle := strings.ToLower(foundTitle)
+
+	if !strings.Contains(normalizedReleaseTitle, normalizedSeriesTitle) {
+		return true
+	}
+
+	matches := seasonPattern.FindStringSubmatch(normalizedReleaseTitle)
+	if len(matches) < 2 {
+		return true
+	}
+
+	releaseSeasonNumber := matches[1]
+	if releaseSeasonNumber != string(seasonNumber) {
+		return true
+	}
+
+	return false
+}
+
+func rejectEpisodeReleaseFunc(ctx context.Context, episodeTitle string, seasonNumber, episodeNumber, runtime int32, profile storage.QualityProfile, protocolsAvailable map[string]struct{}) func(*prowlarr.ReleaseResource) bool {
+	return func(r *prowlarr.ReleaseResource) bool {
+		if r == nil {
+			return true
+		}
+
+		title, err := r.Title.Get()
+		if err != nil {
+			return true
+		}
+
+		if !episodeRegex.MatchString(title) {
+			return true
+		}
+
+		return rejectReleaseFunc(ctx, runtime, profile, protocolsAvailable)(r)
+	}
+}
+
+// rejectReleaseFunc returns a function that returns true if the given release should be rejected
+func rejectReleaseFunc(ctx context.Context, runtime int32, profile storage.QualityProfile, protocolsAvailable map[string]struct{}) func(*prowlarr.ReleaseResource) bool {
+	log := logger.FromCtx(ctx)
+
+	return func(r *prowlarr.ReleaseResource) bool {
+		if r == nil {
+			return true
+		}
+
 		if r.Protocol != nil {
 			// reject if we don't have a download client for it
 			if _, has := protocolsAvailable[string(*r.Protocol)]; !has {
+				log.Debug("release protocol not available", zap.String("protocol", string(*r.Protocol)))
 				return true
 			}
 		}
@@ -51,9 +132,7 @@ func rejectReleaseFunc(ctx context.Context, title string, runtime int32, profile
 		// items are assumed to be sorted quality so the highest media quality available is selected
 		for _, quality := range profile.Qualities {
 
-			log.Debug("considering release quality", zap.Float64("quality", quality.MinSize), zap.Uint64("size", uint64(sizeMB)), zap.Uint64("runtime", uint64(runtime)))
 			metQuality := MeetsQualitySize(quality, uint64(sizeMB), uint64(runtime))
-
 			if metQuality {
 				log.Debugw("accepting release", "release", r.Title, "metQuality", metQuality, "size", r.Size, "runtime", runtime)
 				return false
@@ -396,8 +475,19 @@ func determineSeparator(filename string) string {
 }
 
 func titleCase(title string) string {
-	caser := cases.Title(language.English)
-	return strings.TrimSpace(caser.String(title))
+	title = strings.TrimSpace(title)
+	return cases.Title(language.English).String(title)
+}
+
+// pathToSearchTerm takes a movie path and removes the year if present, preserving alternate titles
+func pathToSearchTerm(path string) string {
+	if path == "" {
+		return ""
+	}
+
+	// Match (YYYY) pattern but not if it's inside another parentheses
+	yearRegex := regexp.MustCompile(`\s*\((?:\d{4})\)(?:\s*$|\s+)`)
+	return strings.TrimSpace(yearRegex.ReplaceAllString(path, ""))
 }
 
 func removeFromName(filename string, toRemove ...string) string {

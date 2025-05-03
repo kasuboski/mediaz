@@ -364,8 +364,7 @@ func (s SQLite) GetMovieByPath(ctx context.Context, path string) (*storage.Movie
 				table.Movie.ID.EQ(table.MovieTransition.MovieID))).
 		WHERE(
 			table.Movie.Path.EQ(sqlite.String(path)).
-				AND(table.MovieTransition.MostRecent.EQ(sqlite.Bool(true))),
-		)
+				AND(table.MovieTransition.MostRecent.EQ(sqlite.Bool(true))))
 
 	movie := new(storage.Movie)
 	err := stmt.QueryContext(ctx, s.db, movie)
@@ -423,9 +422,16 @@ func (s SQLite) DeleteMovieFile(ctx context.Context, id int64) error {
 	return nil
 }
 
-// ListMovieFiles lists the stored movie files
+// LinkMovieMetadata links a movie with its metadata
+func (s SQLite) LinkMovieMetadata(ctx context.Context, movieID int64, metadataID int32) error {
+	stmt := table.Movie.UPDATE(table.Movie.MovieMetadataID).SET(metadataID).WHERE(table.Movie.ID.EQ(sqlite.Int64(movieID)))
+	_, err := stmt.Exec(s.db)
+	return err
+}
+
+// ListMovieFiles lists all movie files
 func (s SQLite) ListMovieFiles(ctx context.Context) ([]*model.MovieFile, error) {
-	movieFiles := make([]*model.MovieFile, 0)
+	var movieFiles []*model.MovieFile
 	stmt := table.MovieFile.SELECT(table.MovieFile.AllColumns).FROM(table.MovieFile).ORDER_BY(table.MovieFile.ID.ASC())
 	err := stmt.QueryContext(ctx, s.db, &movieFiles)
 	if err != nil {
@@ -582,15 +588,19 @@ func (s SQLite) CreateQualityProfile(ctx context.Context, profile model.QualityP
 
 // GetQualityProfile gets a quality profile and all associated quality items given a quality profile id
 func (s SQLite) GetQualityProfile(ctx context.Context, id int64) (storage.QualityProfile, error) {
-	stmt := sqlite.SELECT(
-		table.QualityProfile.AllColumns,
-		table.QualityProfileItem.AllColumns,
-		table.QualityDefinition.AllColumns,
-	).FROM(
-		table.QualityProfile.INNER_JOIN(
-			table.QualityProfileItem, table.QualityProfileItem.ProfileID.EQ(table.QualityProfile.ID)).INNER_JOIN(
-			table.QualityDefinition, table.QualityProfileItem.QualityID.EQ(table.QualityDefinition.ID)),
-	).WHERE(table.QualityProfile.ID.EQ(sqlite.Int(id))).ORDER_BY(table.QualityDefinition.MinSize.DESC())
+	stmt := sqlite.
+		SELECT(
+			table.QualityProfile.AllColumns,
+			table.QualityProfileItem.AllColumns,
+			table.QualityDefinition.AllColumns,
+		).
+		FROM(
+			table.QualityProfile.INNER_JOIN(
+				table.QualityProfileItem, table.QualityProfileItem.ProfileID.EQ(table.QualityProfile.ID)).INNER_JOIN(
+				table.QualityDefinition, table.QualityProfileItem.QualityID.EQ(table.QualityDefinition.ID)),
+		).
+		WHERE(table.QualityProfile.ID.EQ(sqlite.Int(id))).
+		ORDER_BY(table.QualityDefinition.MinSize.DESC())
 
 	var result storage.QualityProfile
 	err := stmt.QueryContext(ctx, s.db, &result)
@@ -598,7 +608,7 @@ func (s SQLite) GetQualityProfile(ctx context.Context, id int64) (storage.Qualit
 }
 
 // ListQualityProfiles lists all quality profiles and their associated quality items
-func (s SQLite) ListQualityProfiles(ctx context.Context) ([]*storage.QualityProfile, error) {
+func (s SQLite) ListQualityProfiles(ctx context.Context, where ...sqlite.BoolExpression) ([]*storage.QualityProfile, error) {
 	stmt := sqlite.
 		SELECT(
 			table.QualityProfile.AllColumns,
@@ -608,8 +618,13 @@ func (s SQLite) ListQualityProfiles(ctx context.Context) ([]*storage.QualityProf
 			table.QualityProfile.INNER_JOIN(
 				table.QualityProfileItem, table.QualityProfileItem.ProfileID.EQ(table.QualityProfile.ID)).INNER_JOIN(
 				table.QualityDefinition, table.QualityProfileItem.QualityID.EQ(table.QualityDefinition.ID)),
-		).
-		ORDER_BY(table.QualityDefinition.MinSize.DESC())
+		)
+
+	for _, w := range where {
+		stmt = stmt.WHERE(w)
+	}
+
+	stmt = stmt.ORDER_BY(table.QualityDefinition.MinSize.DESC())
 
 	result := make([]*storage.QualityProfile, 0)
 	err := stmt.QueryContext(ctx, s.db, &result)

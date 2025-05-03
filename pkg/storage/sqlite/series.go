@@ -510,9 +510,14 @@ func (s SQLite) UpdateEpisodeState(ctx context.Context, id int64, state storage.
 	}
 
 	if metadata != nil {
-		if metadata.DownloadClientID != nil && metadata.DownloadID != nil {
+		if metadata.DownloadClientID != nil {
 			transition.DownloadClientID = metadata.DownloadClientID
+		}
+		if metadata.DownloadID != nil {
 			transition.DownloadID = metadata.DownloadID
+		}
+		if metadata.IsEntireSeasonDownload != nil {
+			transition.IsEntireSeasonDownload = metadata.IsEntireSeasonDownload
 		}
 	}
 

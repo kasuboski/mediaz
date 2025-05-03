@@ -1,11 +1,15 @@
 package manager
 
 import (
+	"context"
 	"encoding/json"
 	"os"
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/kasuboski/mediaz/pkg/prowlarr"
+	"github.com/oapi-codegen/nullable"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -198,6 +202,47 @@ func TestRemoveFromName(t *testing.T) {
 	}
 }
 
+func TestPathToSearchTerm(t *testing.T) {
+	tests := []struct {
+		name string
+		path string
+		want string
+	}{
+		{
+			name: "movie with year",
+			path: "Zoolander (2001)",
+			want: "Zoolander",
+		},
+		{
+			name: "movie without year",
+			path: "Zoolander",
+			want: "Zoolander",
+		},
+		{
+			name: "movie with alternate title",
+			path: "Zoolander (Blue Steel)",
+			want: "Zoolander (Blue Steel)",
+		},
+		{
+			name: "movie with year and alternate title",
+			path: "Zoolander (Blue Steel) (2001)",
+			want: "Zoolander (Blue Steel)",
+		},
+		{
+			name: "empty string",
+			path: "",
+			want: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := pathToSearchTerm(tt.path)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
 func TestFindMatchingWords(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -246,6 +291,40 @@ func TestFindMatchingWords(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert.Equal(t, tt.expected, findMatchingWords(tt.source, tt.words))
+		})
+	}
+}
+
+func TestRejectSeasonReleaseFunc(t *testing.T) {
+	tests := []struct {
+		name         string
+		seriesTitle  string
+		seasonNumber int32
+		release      *prowlarr.ReleaseResource
+		want         bool
+	}{
+		{
+			name:         "nil release",
+			seriesTitle:  "test series",
+			seasonNumber: 1,
+			release:      nil,
+			want:         true,
+		},
+		{
+			name:         "valid season pack S01",
+			seriesTitle:  "ShowName",
+			seasonNumber: 3,
+			release: &prowlarr.ReleaseResource{
+				Title: nullable.NewNullableWithValue("ShowName.S03.1080p.WEB-DL.HEVC.x265"),
+			},
+			want: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := rejectSeasonReleaseFunc(context.Background(), tt.seriesTitle, tt.seasonNumber, tt.release)
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }
