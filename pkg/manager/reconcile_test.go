@@ -1473,3 +1473,194 @@ func Test_getSeasonRuntime(t *testing.T) {
 		})
 	}
 }
+func TestMediaManager_ReconcileMissingSeries(t *testing.T) {
+	t.Run("nil snapshot", func(t *testing.T) {
+		m := New(nil, nil, nil, nil, nil, config.Manager{})
+		err := m.ReconcileMissingSeries(context.Background(), nil)
+		require.NoError(t, err)
+	})
+
+	t.Run("no missing series", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		ctx := context.Background()
+		store := mocks.NewMockStorage(ctrl)
+
+		where := table.SeriesTransition.ToState.EQ(sqlite.String(string(storage.SeriesStateMissing))).
+			AND(table.SeriesTransition.MostRecent.EQ(sqlite.Bool(true))).
+			AND(table.Series.Monitored.EQ(sqlite.Int(1)))
+
+		store.EXPECT().ListSeries(ctx, where).Return(nil, storage.ErrNotFound)
+
+		m := New(nil, nil, nil, store, nil, config.Manager{})
+		err := m.ReconcileMissingSeries(ctx, &ReconcileSnapshot{})
+		require.NoError(t, err)
+	})
+
+	t.Run("error listing series", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		ctx := context.Background()
+		store := mocks.NewMockStorage(ctrl)
+
+		where := table.SeriesTransition.ToState.EQ(sqlite.String(string(storage.SeriesStateMissing))).
+			AND(table.SeriesTransition.MostRecent.EQ(sqlite.Bool(true))).
+			AND(table.Series.Monitored.EQ(sqlite.Int(1)))
+
+		expectedErr := errors.New("database error")
+		store.EXPECT().ListSeries(ctx, where).Return(nil, expectedErr)
+
+		m := New(nil, nil, nil, store, nil, config.Manager{})
+		err := m.ReconcileMissingSeries(ctx, &ReconcileSnapshot{})
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "couldn't list missing series")
+	})
+
+	t.Run("successful reconciliation", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		ctx := context.Background()
+		store := newStore(t, ctx)
+
+		mockDownloadClient := downloadMock.NewMockDownloadClient(ctrl)
+		mockFactory := downloadMock.NewMockFactory(ctrl)
+
+		downloadClientModel := model.DownloadClient{
+			ID:             2,
+			Implementation: "transmission",
+			Type:           "torrent",
+			Port:           8080,
+			Host:           "transmission",
+			Scheme:         "http",
+		}
+
+		mockFactory.EXPECT().NewDownloadClient(downloadClientModel).Return(mockDownloadClient, nil)
+		mockDownloadClient.EXPECT().Add(ctx, gomock.Any()).Return(download.Status{
+			ID:   "123",
+			Name: "test download",
+		}, nil)
+
+		seriesMetadataID, err := store.CreateSeriesMetadata(ctx, model.SeriesMetadata{
+			TmdbID:       1,
+			Title:        "Series",
+			EpisodeCount: 10,
+		})
+		require.NoError(t, err)
+
+		seriesID, err := store.CreateSeries(ctx, storage.Series{
+			Series: model.Series{
+				ID:               1,
+				SeriesMetadataID: ptr(int32(seriesMetadataID)),
+				Monitored:        1,
+			},
+		}, storage.SeriesStateMissing)
+		require.NoError(t, err)
+
+		_, err = store.GetSeries(ctx, table.Series.ID.EQ(sqlite.Int64(seriesID)))
+		require.NoError(t, err)
+
+		seasonID, err := store.CreateSeason(ctx, storage.Season{
+			Season: model.Season{
+				SeriesID:         1,
+				SeasonMetadataID: ptr(int32(1)),
+				Monitored:        1,
+			},
+		}, storage.SeasonStateMissing)
+		require.NoError(t, err)
+
+		season, err := store.GetSeason(ctx, table.Season.ID.EQ(sqlite.Int64(seasonID)))
+		require.NoError(t, err)
+		assert.Equal(t, int32(1), season.SeriesID)
+		assert.Equal(t, ptr(int32(1)), season.SeasonMetadataID)
+
+		_, err = store.CreateSeasonMetadata(ctx, model.SeasonMetadata{
+			SeriesID: int32(seriesID),
+			Title:    "Season 1",
+			Number:   1,
+		})
+		require.NoError(t, err)
+
+		episodeMetadataID1, err := store.CreateEpisodeMetadata(ctx, model.EpisodeMetadata{
+			TmdbID:   1,
+			Title:    "Hello",
+			Number:   1,
+			SeasonID: int32(seasonID),
+			Runtime:  ptr(int32(45)),
+		})
+		require.NoError(t, err)
+
+		_, err = store.CreateEpisode(ctx, storage.Episode{
+			Episode: model.Episode{
+				SeasonID:          int32(seasonID),
+				EpisodeNumber:     1,
+				EpisodeMetadataID: ptr(int32(episodeMetadataID1)),
+				Runtime:           ptr(int32(45)),
+				Monitored:         1,
+			},
+		}, storage.EpisodeStateMissing)
+		require.NoError(t, err)
+
+		episodeMetadataID2, err := store.CreateEpisodeMetadata(ctx, model.EpisodeMetadata{
+			TmdbID:   2,
+			Title:    "There",
+			Number:   2,
+			SeasonID: int32(seasonID),
+			Runtime:  ptr(int32(45)),
+		})
+		require.NoError(t, err)
+
+		_, err = store.CreateEpisode(ctx, storage.Episode{
+			Episode: model.Episode{
+				SeasonID:          int32(seasonID),
+				EpisodeNumber:     2,
+				EpisodeMetadataID: ptr(int32(episodeMetadataID2)),
+				Runtime:           ptr(int32(45)),
+			},
+		}, storage.EpisodeStateMissing)
+		require.NoError(t, err)
+
+		snapshot := newReconcileSnapshot([]Indexer{{ID: 1}}, []*model.DownloadClient{&downloadClientModel})
+
+		releases := []*prowlarr.ReleaseResource{
+			{
+				ID:       ptr(int32(1)),
+				Title:    nullable.NewNullableWithValue("Series.S01E01.1080p.WEB-DL.AAC2.0.x264-GROUP"),
+				Size:     sizeGBToBytes(2),
+				Protocol: ptr(prowlarr.DownloadProtocolTorrent),
+			},
+			{
+				ID:       ptr(int32(2)),
+				Title:    nullable.NewNullableWithValue("Series.S01E02.1080p.WEB-DL.AAC2.0.x264-GROUP"),
+				Size:     sizeGBToBytes(2),
+				Protocol: ptr(prowlarr.DownloadProtocolTorrent),
+			},
+		}
+
+		prowlarrMock := prowlMock.NewMockClientInterface(ctrl)
+		prowlarrMock.EXPECT().GetAPIV1Search(gomock.Any(), gomock.Any()).Return(searchIndexersResponse(t, releases), nil).Times(1)
+
+		pClient, err := prowlarr.New(":", "1234")
+		require.NoError(t, err)
+		pClient.ClientInterface = prowlarrMock
+
+		m := New(nil, pClient, nil, store, mockFactory, config.Manager{})
+
+		err = m.ReconcileMissingSeries(ctx, snapshot)
+		require.NoError(t, err)
+
+		episodes, err := store.ListEpisodes(ctx)
+		require.NoError(t, err)
+		require.Len(t, episodes, 2)
+
+		assert.Equal(t, storage.EpisodeStateDownloading, episodes[0].State)
+		assert.Equal(t, "123", episodes[0].DownloadID)
+		assert.Equal(t, int32(2), episodes[0].DownloadClientID)
+
+		assert.Equal(t, storage.EpisodeStateDownloading, episodes[1].State)
+		assert.Equal(t, "123", episodes[1].DownloadID)
+		assert.Equal(t, int32(2), episodes[1].DownloadClientID)
+	})
+}

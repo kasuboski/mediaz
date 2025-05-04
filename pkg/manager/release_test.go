@@ -367,6 +367,7 @@ func TestRejectSeasonReleaseFunc(t *testing.T) {
 			release: &prowlarr.ReleaseResource{
 				Title: nullable.NewNullableWithValue("yoyo.S10.1080p.WEB-DL.AAC2.0.x264-Group"),
 			},
+			want: true,
 		},
 		{
 			name:         "unrelated release",
@@ -375,6 +376,7 @@ func TestRejectSeasonReleaseFunc(t *testing.T) {
 			release: &prowlarr.ReleaseResource{
 				Title: nullable.NewNullableWithValue("asdfadfadsfad"),
 			},
+			want: true,
 		},
 	}
 
