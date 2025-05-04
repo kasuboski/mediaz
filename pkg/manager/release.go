@@ -17,7 +17,10 @@ import (
 )
 
 var (
-	episodeRegex = regexp.MustCompile(`(?i)\b(S(\d{1,2})E(\d{1,2})|(\d{1,2})x(\d{1,2}))\b`)
+	seasonPackPattern    = regexp.MustCompile(`(?i)(?:S(?:eason)?[\s._-]?\d{1,2}|[\s._]Complete[\s._])`)
+	episodePattern       = regexp.MustCompile(`(?i)\b(S\d{1,2}E\d{2,})|\b(\d{1,2}x\d{2,})`)
+	episodeNumberPattern = regexp.MustCompile(`(?i)S?(\d{1,2})(?:E|x)(\d{1,2})`)
+	seasonNumberPattern  = regexp.MustCompile(`(?i)(?:S(?:eason)?[\s._-]?(\d{1,2}))`)
 )
 
 func RejectMovieReleaseFunc(ctx context.Context, title string, runtime int32, profile storage.QualityProfile, protocolsAvailable map[string]struct{}) func(*prowlarr.ReleaseResource) bool {
@@ -45,13 +48,6 @@ func RejectSeasonReleaseFunc(ctx context.Context, seriesTitle string, seasonNumb
 		return rejectReleaseFunc(ctx, runtime, profile, protocolsAvailable)(r)
 	}
 }
-
-var (
-	seasonPackPattern    = regexp.MustCompile(`(?i)(?:S(?:eason)?[\s._-]?\d{1,2}|[\s._]Complete[\s._])`)
-	episodePattern       = regexp.MustCompile(`(?i)\b(S\d{1,2}E\d{2,})|\b(\d{1,2}x\d{2,})`)
-	episodeNumberPattern = regexp.MustCompile(`(?i)S?(\d{1,2})(?:E|x)(\d{1,2})`)
-	seasonNumberPattern  = regexp.MustCompile(`(?i)(?:S(?:eason)?[\s._-]?(\d{1,2}))`)
-)
 
 func rejectSeasonReleaseFunc(_ context.Context, seriesTitle string, seasonNumber int32, r *prowlarr.ReleaseResource) bool {
 	if r == nil {
