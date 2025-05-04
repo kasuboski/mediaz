@@ -11,7 +11,6 @@ import (
 	"github.com/kasuboski/mediaz/pkg/logger"
 	"github.com/kasuboski/mediaz/pkg/prowlarr"
 	"github.com/kasuboski/mediaz/pkg/storage"
-	"go.uber.org/zap"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 )
@@ -143,16 +142,13 @@ func rejectReleaseFunc(ctx context.Context, runtime int32, profile storage.Quali
 		if r.Protocol != nil {
 			// reject if we don't have a download client for it
 			if _, has := protocolsAvailable[string(*r.Protocol)]; !has {
-				log.Debug("release protocol not available", zap.String("protocol", string(*r.Protocol)))
 				return true
 			}
 		}
 
 		if r.FileName.IsSpecified() {
-			log.Debug("considering release filename", zap.String("filename", r.FileName.MustGet()))
 			_, parsed := parseReleaseFilename(r.FileName.MustGet())
 			if !parsed {
-				log.Debug("release filename not parsed")
 				return true
 			}
 		}
