@@ -1538,8 +1538,13 @@ func TestMediaManager_ReconcileMissingSeries(t *testing.T) {
 		}
 
 		mockFactory.EXPECT().NewDownloadClient(downloadClientModel).Return(mockDownloadClient, nil)
+		mockFactory.EXPECT().NewDownloadClient(downloadClientModel).Return(mockDownloadClient, nil)
 		mockDownloadClient.EXPECT().Add(ctx, gomock.Any()).Return(download.Status{
 			ID:   "123",
+			Name: "test download",
+		}, nil)
+		mockDownloadClient.EXPECT().Add(ctx, gomock.Any()).Return(download.Status{
+			ID:   "124",
 			Name: "test download",
 		}, nil)
 
@@ -1555,6 +1560,7 @@ func TestMediaManager_ReconcileMissingSeries(t *testing.T) {
 				ID:               1,
 				SeriesMetadataID: ptr(int32(seriesMetadataID)),
 				Monitored:        1,
+				QualityProfileID: 4,
 			},
 		}, storage.SeriesStateMissing)
 		require.NoError(t, err)
@@ -1660,7 +1666,7 @@ func TestMediaManager_ReconcileMissingSeries(t *testing.T) {
 		assert.Equal(t, int32(2), episodes[0].DownloadClientID)
 
 		assert.Equal(t, storage.EpisodeStateDownloading, episodes[1].State)
-		assert.Equal(t, "123", episodes[1].DownloadID)
+		assert.Equal(t, "124", episodes[1].DownloadID)
 		assert.Equal(t, int32(2), episodes[1].DownloadClientID)
 	})
 }
