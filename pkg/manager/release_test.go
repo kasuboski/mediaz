@@ -311,7 +311,7 @@ func TestRejectSeasonReleaseFunc(t *testing.T) {
 			want:         true,
 		},
 		{
-			name:         "valid season pack S01",
+			name:         "valid season pack",
 			seriesTitle:  "ShowName",
 			seasonNumber: 3,
 			release: &prowlarr.ReleaseResource{
@@ -319,11 +319,180 @@ func TestRejectSeasonReleaseFunc(t *testing.T) {
 			},
 			want: false,
 		},
+		{
+			name:         "invalid season pack",
+			seriesTitle:  "ShowName",
+			seasonNumber: 3,
+			release: &prowlarr.ReleaseResource{
+				Title: nullable.NewNullableWithValue("Show.Name.S03E01.1080p.WEB-DL"),
+			},
+			want: true,
+		},
+		{
+			name:         "valid season pack with 'season' in name",
+			seriesTitle:  "ShowName",
+			seasonNumber: 3,
+			release: &prowlarr.ReleaseResource{
+				Title: nullable.NewNullableWithValue("ShowName.season.3.1080p.WEB-DL.HEVC.x265"),
+			},
+		},
+		{
+			name:         "valid release with group",
+			seriesTitle:  "ShowName",
+			seasonNumber: 7,
+			release: &prowlarr.ReleaseResource{
+				Title: nullable.NewNullableWithValue("ShowName.S07.1080p.WEB-DL.AAC2.0.x264-Group"),
+			},
+			want: false,
+		},
+		{
+			name:         "double digit sesaon number",
+			seriesTitle:  "ShowName",
+			seasonNumber: 10,
+			release: &prowlarr.ReleaseResource{
+				Title: nullable.NewNullableWithValue("ShowName.S10.1080p.WEB-DL.AAC2.0.x264-Group"),
+			},
+		},
+		{
+			name:         "underscores",
+			seriesTitle:  "ShowName",
+			seasonNumber: 3,
+			release: &prowlarr.ReleaseResource{
+				Title: nullable.NewNullableWithValue("ShowName_Season_03_Complete_720p.HDTV"),
+			},
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := rejectSeasonReleaseFunc(context.Background(), tt.seriesTitle, tt.seasonNumber, tt.release)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestRejectEpisodeReleaseFunc(t *testing.T) {
+	tests := []struct {
+		name          string
+		episodeTitle  string
+		seasonNumber  int32
+		episodeNumber int32
+		release       *prowlarr.ReleaseResource
+		want          bool
+	}{
+		{
+			name:          "nil release",
+			episodeTitle:  "ShowName",
+			seasonNumber:  1,
+			episodeNumber: 1,
+			release:       nil,
+			want:          true,
+		},
+		{
+			name:          "standard episode format",
+			episodeTitle:  "ShowName",
+			seasonNumber:  1,
+			episodeNumber: 2,
+			release: &prowlarr.ReleaseResource{
+				Title: nullable.NewNullableWithValue("ShowName.S01E02.1080p.WEB-DL.AAC2.0.x264-GROUP"),
+			},
+			want: false,
+		},
+		{
+			name:          "alternate episode format",
+			episodeTitle:  "ShowName",
+			seasonNumber:  1,
+			episodeNumber: 2,
+			release: &prowlarr.ReleaseResource{
+				Title: nullable.NewNullableWithValue("ShowName.1x02.1080p.WEB-DL.AAC2.0.x264-GROUP"),
+			},
+			want: false,
+		},
+		{
+			name:          "wrong season",
+			episodeTitle:  "ShowName",
+			seasonNumber:  1,
+			episodeNumber: 2,
+			release: &prowlarr.ReleaseResource{
+				Title: nullable.NewNullableWithValue("ShowName.S02E02.1080p.WEB-DL.AAC2.0.x264-GROUP"),
+			},
+			want: true,
+		},
+		{
+			name:          "wrong episode",
+			episodeTitle:  "ShowName",
+			seasonNumber:  1,
+			episodeNumber: 2,
+			release: &prowlarr.ReleaseResource{
+				Title: nullable.NewNullableWithValue("ShowName.S01E03.1080p.WEB-DL.AAC2.0.x264-GROUP"),
+			},
+			want: true,
+		},
+		{
+			name:          "double digit season and episode",
+			episodeTitle:  "ShowName",
+			seasonNumber:  10,
+			episodeNumber: 12,
+			release: &prowlarr.ReleaseResource{
+				Title: nullable.NewNullableWithValue("ShowName.S10E12.1080p.WEB-DL.AAC2.0.x264-GROUP"),
+			},
+			want: false,
+		},
+		{
+			name:          "leading zeros",
+			episodeTitle:  "ShowName",
+			seasonNumber:  1,
+			episodeNumber: 2,
+			release: &prowlarr.ReleaseResource{
+				Title: nullable.NewNullableWithValue("ShowName.S01E02.1080p.WEB-DL.AAC2.0.x264-GROUP"),
+			},
+			want: false,
+		},
+		{
+			name:          "no season episode info",
+			episodeTitle:  "ShowName",
+			seasonNumber:  1,
+			episodeNumber: 2,
+			release: &prowlarr.ReleaseResource{
+				Title: nullable.NewNullableWithValue("ShowName.1080p.WEB-DL.AAC2.0.x264-GROUP"),
+			},
+			want: true,
+		},
+		{
+			name:          "wrong show name",
+			episodeTitle:  "ShowName",
+			seasonNumber:  1,
+			episodeNumber: 2,
+			release: &prowlarr.ReleaseResource{
+				Title: nullable.NewNullableWithValue("DifferentShow.S01E02.1080p.WEB-DL.AAC2.0.x264-GROUP"),
+			},
+			want: true,
+		},
+		{
+			name:          "case insensitive match",
+			episodeTitle:  "ShowName",
+			seasonNumber:  1,
+			episodeNumber: 2,
+			release: &prowlarr.ReleaseResource{
+				Title: nullable.NewNullableWithValue("showname.s01e02.1080p.WEB-DL.AAC2.0.x264-GROUP"),
+			},
+			want: false,
+		},
+		{
+			name:          "underscore separator",
+			episodeTitle:  "ShowName",
+			seasonNumber:  1,
+			episodeNumber: 2,
+			release: &prowlarr.ReleaseResource{
+				Title: nullable.NewNullableWithValue("ShowName_S01E02_1080p_WEB-DL_AAC2.0_x264-GROUP"),
+			},
+			want: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := rejectEpisodeReleaseFunc(context.Background(), tt.episodeTitle, tt.seasonNumber, tt.episodeNumber, tt.release)
 			assert.Equal(t, tt.want, got)
 		})
 	}

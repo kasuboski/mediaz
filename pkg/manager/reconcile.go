@@ -308,7 +308,7 @@ func (m MediaManager) reconcileMissingMovie(ctx context.Context, movie *storage.
 
 	availableProtocols := snapshot.GetProtocols()
 	log.Debugw("releases for consideration", "releases", len(releases))
-	releases = slices.DeleteFunc(releases, rejectMovieReleaseFunc(ctx, det.Title, det.Runtime, profile, availableProtocols))
+	releases = slices.DeleteFunc(releases, RejectMovieReleaseFunc(ctx, det.Title, det.Runtime, profile, availableProtocols))
 	log.Debugw("releases after rejection", "releases", len(releases))
 	if len(releases) == 0 {
 		return nil
@@ -560,17 +560,19 @@ func (m MediaManager) reconcileMissingSeason(ctx context.Context, seriesTitle st
 	log.Debug("found missing episodes", zap.Int("count", len(missingEpisodes)))
 
 	if !allMissing {
-		return m.reconcileMissingEpisodes(ctx, metadata.Number, missingEpisodes, snapshot, qualityProfile, releases)
+		return m.reconcileMissingEpisodes(ctx, seriesTitle, metadata.Number, missingEpisodes, snapshot, qualityProfile, releases)
 	}
 
 	runtime := getSeasonRuntime(missingEpisodes, len(episodes))
 	log.Debug("found season pack releases", zap.Int("count", len(releases)))
+
+	preservedReleases := slices.Clone(releases)
 	releases = slices.DeleteFunc(releases, RejectSeasonReleaseFunc(ctx, seriesTitle, metadata.Number, runtime, qualityProfile, snapshot.GetProtocols()))
 
 	// if we didn't find any season pack releases, default to individual episodes
 	if len(releases) == 0 {
 		log.Debug("no season pack releases found, defualting to individual episodes")
-		return m.reconcileMissingEpisodes(ctx, metadata.Number, missingEpisodes, snapshot, qualityProfile, releases)
+		return m.reconcileMissingEpisodes(ctx, seriesTitle, metadata.Number, missingEpisodes, snapshot, qualityProfile, preservedReleases)
 	}
 
 	chosenRelease := releases[len(releases)-1]
@@ -599,7 +601,7 @@ func (m MediaManager) reconcileMissingSeason(ctx context.Context, seriesTitle st
 	return nil
 }
 
-func (m MediaManager) reconcileMissingEpisodes(ctx context.Context, seasonNumber int32, episode []*storage.Episode, snapshot *ReconcileSnapshot, qualityProfile storage.QualityProfile, releases []*prowlarr.ReleaseResource) error {
+func (m MediaManager) reconcileMissingEpisodes(ctx context.Context, seriesTitle string, seasonNumber int32, episode []*storage.Episode, snapshot *ReconcileSnapshot, qualityProfile storage.QualityProfile, releases []*prowlarr.ReleaseResource) error {
 	log := logger.FromCtx(ctx)
 
 	for _, e := range episode {
@@ -619,22 +621,26 @@ func (m MediaManager) reconcileMissingEpisodes(ctx context.Context, seasonNumber
 			return err
 		}
 
-		// should we default or estimate here?
 		if episodeMetadata.Runtime == nil {
 			log.Warn("episode runtime is nil, skipping reconcile")
 			return nil
 		}
 
-		log.Debug("matched releases", zap.Int("count", len(releases)))
-		releases = slices.DeleteFunc(releases, rejectEpisodeReleaseFunc(ctx, episodeMetadata.Title, seasonNumber, episodeMetadata.Number, *episodeMetadata.Runtime, qualityProfile, snapshot.GetProtocols()))
-		log.Debug("releases after rejection", zap.Int("count", len(releases)))
-		if len(releases) == 0 {
-			log.Debug("no releases found for episode, skipping reconcile")
-			return nil
+		slices.SortFunc(releases, sortReleaseFunc())
+
+		var chosenRelease *prowlarr.ReleaseResource
+		for _, r := range releases {
+			if RejectEpisodeReleaseFunc(ctx, seriesTitle, seasonNumber, episodeMetadata.Number, *episodeMetadata.Runtime, qualityProfile, snapshot.GetProtocols())(r) {
+				continue
+			}
+
+			chosenRelease = r
 		}
 
-		slices.SortFunc(releases, sortReleaseFunc())
-		chosenRelease := releases[len(releases)-1]
+		if chosenRelease == nil {
+			log.Debug("no valid releases found for episode, skipping reconcile")
+			continue
+		}
 
 		log.Infow("found release", "title", chosenRelease.Title, "proto", *chosenRelease.Protocol)
 

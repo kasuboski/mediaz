@@ -493,7 +493,7 @@ func TestMovieRejectRelease(t *testing.T) {
 			}},
 		}
 		protocols := map[string]struct{}{"usenet": {}, "torrent": {}}
-		rejectFunc := rejectMovieReleaseFunc(ctx, det.Title, det.Runtime, profile, protocols)
+		rejectFunc := RejectMovieReleaseFunc(ctx, det.Title, det.Runtime, profile, protocols)
 
 		releases := getReleasesFromFile(t, "./testing/brother-releases.json")
 		for _, r := range releases {
@@ -514,7 +514,7 @@ func TestMovieRejectRelease(t *testing.T) {
 			}},
 		}
 		protocolsAvailable := map[string]struct{}{"torrent": {}, "ftp": {}}
-		rejectFunc := rejectMovieReleaseFunc(ctx, det.Title, det.Runtime, profile, protocolsAvailable)
+		rejectFunc := RejectMovieReleaseFunc(ctx, det.Title, det.Runtime, profile, protocolsAvailable)
 
 		// Test case where the release protocol is not available
 		r2 := &prowlarr.ReleaseResource{Protocol: ptr(prowlarr.DownloadProtocolUsenet), Size: ptr(int64(500))}

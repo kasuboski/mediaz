@@ -20,7 +20,7 @@ var (
 	episodeRegex = regexp.MustCompile(`(?i)\b(S(\d{1,2})E(\d{1,2})|(\d{1,2})x(\d{1,2}))\b`)
 )
 
-func rejectMovieReleaseFunc(ctx context.Context, title string, runtime int32, profile storage.QualityProfile, protocolsAvailable map[string]struct{}) func(*prowlarr.ReleaseResource) bool {
+func RejectMovieReleaseFunc(ctx context.Context, title string, runtime int32, profile storage.QualityProfile, protocolsAvailable map[string]struct{}) func(*prowlarr.ReleaseResource) bool {
 	return func(r *prowlarr.ReleaseResource) bool {
 		if r == nil {
 			return true
@@ -47,17 +47,28 @@ func RejectSeasonReleaseFunc(ctx context.Context, seriesTitle string, seasonNumb
 }
 
 var (
-	seasonPackRegex = regexp.MustCompile(`(?i)(season\s*(pack|complete)|s\d{2}.*(?:complete|season|pack))`)
-	seasonPattern   = regexp.MustCompile(`(?i)s(\d{2})`)
+	seasonPackPattern    = regexp.MustCompile(`(?i)(?:S(?:eason)?[\s._-]?\d{1,2}|[\s._]Complete[\s._])`)
+	episodePattern       = regexp.MustCompile(`(?i)\b(S\d{1,2}E\d{2,})|\b(\d{1,2}x\d{2,})`)
+	episodeNumberPattern = regexp.MustCompile(`(?i)S?(\d{1,2})(?:E|x)(\d{1,2})`)
+	seasonNumberPattern  = regexp.MustCompile(`(?i)(?:S(?:eason)?[\s._-]?(\d{1,2}))`)
 )
 
 func rejectSeasonReleaseFunc(_ context.Context, seriesTitle string, seasonNumber int32, r *prowlarr.ReleaseResource) bool {
+	if r == nil {
+		return true
+	}
+
 	foundTitle, err := r.Title.Get()
 	if err != nil {
 		return true
 	}
 
-	if !seasonPackRegex.MatchString(foundTitle) {
+	if !seasonPackPattern.MatchString(foundTitle) {
+		return true
+	}
+
+	// we dont want individual episodes here
+	if episodePattern.MatchString(foundTitle) {
 		return true
 	}
 
@@ -68,36 +79,60 @@ func rejectSeasonReleaseFunc(_ context.Context, seriesTitle string, seasonNumber
 		return true
 	}
 
-	matches := seasonPattern.FindStringSubmatch(normalizedReleaseTitle)
-	if len(matches) < 2 {
-		return true
+	matches := seasonNumberPattern.FindStringSubmatch(normalizedReleaseTitle)
+	for _, m := range matches {
+		if strings.Contains(m, fmt.Sprintf("%d", seasonNumber)) {
+			return false
+		}
 	}
 
-	releaseSeasonNumber := matches[1]
-	if releaseSeasonNumber != string(seasonNumber) {
-		return true
-	}
-
-	return false
+	return true
 }
 
-func rejectEpisodeReleaseFunc(ctx context.Context, episodeTitle string, seasonNumber, episodeNumber, runtime int32, profile storage.QualityProfile, protocolsAvailable map[string]struct{}) func(*prowlarr.ReleaseResource) bool {
+func RejectEpisodeReleaseFunc(ctx context.Context, seriesTitle string, seasonNumber, episodeNumber, runtime int32, profile storage.QualityProfile, protocolsAvailable map[string]struct{}) func(*prowlarr.ReleaseResource) bool {
 	return func(r *prowlarr.ReleaseResource) bool {
-		if r == nil {
-			return true
-		}
-
-		title, err := r.Title.Get()
-		if err != nil {
-			return true
-		}
-
-		if !episodeRegex.MatchString(title) {
+		if rejectEpisodeReleaseFunc(ctx, seriesTitle, seasonNumber, episodeNumber, r) {
 			return true
 		}
 
 		return rejectReleaseFunc(ctx, runtime, profile, protocolsAvailable)(r)
 	}
+}
+
+func rejectEpisodeReleaseFunc(_ context.Context, seriesTitle string, seasonNumber, episodeNumber int32, r *prowlarr.ReleaseResource) bool {
+	if r == nil {
+		return true
+	}
+
+	foundTitle, err := r.Title.Get()
+	if err != nil {
+		return true
+	}
+
+	normalizedSeriesTitle := strings.ToLower(seriesTitle)
+	normalizedReleaseTitle := strings.ToLower(foundTitle)
+
+	if !strings.Contains(normalizedReleaseTitle, normalizedSeriesTitle) {
+		return true
+	}
+
+	matches := episodeNumberPattern.FindStringSubmatch(normalizedReleaseTitle)
+	if len(matches) != 3 {
+		return true
+	}
+
+	season, err := strconv.ParseInt(matches[1], 10, 32)
+	if err != nil {
+		return true
+	}
+
+	episode, err := strconv.ParseInt(matches[2], 10, 32)
+	if err != nil {
+		return true
+	}
+
+	match := !(int32(season) == seasonNumber && int32(episode) == episodeNumber)
+	return match
 }
 
 // rejectReleaseFunc returns a function that returns true if the given release should be rejected

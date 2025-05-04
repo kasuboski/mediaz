@@ -868,99 +868,6 @@ func TestMediaManager_updateEpisodeState(t *testing.T) {
 	})
 }
 
-// func TestMediaManager_reconcileMissingEpisodes(t *testing.T) {
-// 	t.Run("reconcile missing episodes", func(t *testing.T) {
-// 		ctrl := gomock.NewController(t)
-// 		defer ctrl.Finish()
-
-// 		ctx := context.Background()
-
-// 		store, err := mediaSqlite.New(":memory:")
-// 		require.NoError(t, err)
-
-// 		schemas, err := storage.ReadSchemaFiles("../storage/sqlite/schema/schema.sql", "../storage/sqlite/schema/defaults.sql")
-// 		require.NoError(t, err)
-// 		require.NotNil(t, store)
-
-// 		err = store.Init(ctx, schemas...)
-// 		require.NoError(t, err)
-
-// 		releases := []*prowlarr.ReleaseResource{
-// 			{
-// 				ID:    ptr(int32(1)),
-// 				Title: nullable.NewNullableWithValue("test release"),
-// 				Size:  sizeGBToBytes(1), // 1073741824
-// 			},
-// 		}
-
-// 		prowlarrMock := prowlMock.NewMockClientInterface(ctrl)
-// 		prowlarrMock.EXPECT().GetAPIV1Search(gomock.Any(), gomock.Any()).Return(searchIndexersResponse(t, releases), nil).Times(1)
-
-// 		pClient, err := prowlarr.New(":", "1234")
-// 		pClient.ClientInterface = prowlarrMock
-// 		require.NoError(t, err)
-
-// 		manager := MediaManager{
-// 			storage: store,
-// 			indexer: NewIndexerStore(pClient, store),
-// 		}
-
-// 		episode := storage.Episode{
-// 			Episode: model.Episode{
-// 				SeasonID:          1,
-// 				EpisodeNumber:     1,
-// 				EpisodeMetadataID: ptr(int32(1)),
-// 				Runtime:           ptr(int32(100)),
-// 			},
-// 		}
-
-// 		episodeID, err := manager.storage.CreateEpisode(ctx, episode, storage.EpisodeStateMissing)
-// 		require.NoError(t, err)
-// 		assert.Equal(t, int64(1), episodeID)
-
-// 		episodes, err := store.ListEpisodes(ctx, table.Episode.SeasonID.EQ(sqlite.Int32(1)))
-// 		require.NoError(t, err)
-// 		require.Len(t, episodes, 1)
-
-// 		downloadClients := []*model.DownloadClient{
-// 			{
-// 				ID:             2,
-// 				Type:           "torrent",
-// 				Implementation: "transmission",
-// 				Host:           "host",
-// 				Scheme:         "http",
-// 			},
-// 		}
-
-// 		snapshot := newReconcileSnapshot(nil, downloadClients)
-// 		qualityProfile := storage.QualityProfile{
-// 			Name: "test",
-// 			Qualities: []storage.QualityDefinition{
-// 				{
-// 					Name:          "test",
-// 					PreferredSize: 995,
-// 					MinSize:       15,
-// 					MaxSize:       1000,
-// 					MediaType:     "movie",
-// 				},
-// 			},
-// 		}
-
-// 		err = manager.reconcileMissingEpisodes(ctx, int32(1), episodes, snapshot, qualityProfile, releases)
-// 		require.NoError(t, err)
-
-// 		foundEpisode, err := store.GetEpisode(ctx, table.Episode.ID.EQ(sqlite.Int32(episode.ID)))
-// 		require.NoError(t, err)
-// 		require.NotNil(t, foundEpisode)
-
-//			assert.Equal(t, storage.EpisodeStateDownloading, foundEpisode.State)
-//			assert.Equal(t, int32(2), foundEpisode.DownloadClientID)
-//			assert.Equal(t, "123", foundEpisode.DownloadID)
-//			assert.Equal(t, int32(1), foundEpisode.SeasonID)
-//			assert.Equal(t, int32(1), foundEpisode.EpisodeNumber)
-//			assert.Equal(t, ptr(int32(100)), foundEpisode.Runtime)
-//		})
-//	}
 func TestMediaManager_reconcileMissingEpisodes(t *testing.T) {
 	t.Run("reconcile missing episodes", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
@@ -1007,6 +914,7 @@ func TestMediaManager_reconcileMissingEpisodes(t *testing.T) {
 				SeasonID:          1,
 				EpisodeNumber:     1,
 				EpisodeMetadataID: ptr(int32(metadataID1)),
+				Runtime:           ptr(int32(45)),
 			},
 		}
 
@@ -1028,6 +936,7 @@ func TestMediaManager_reconcileMissingEpisodes(t *testing.T) {
 				SeasonID:          1,
 				EpisodeNumber:     2,
 				EpisodeMetadataID: ptr(int32(metadataID2)),
+				Runtime:           ptr(int32(45)),
 			},
 		}
 
@@ -1037,14 +946,14 @@ func TestMediaManager_reconcileMissingEpisodes(t *testing.T) {
 		releases := []*prowlarr.ReleaseResource{
 			{
 				ID:       ptr(int32(1)),
-				Title:    nullable.NewNullableWithValue("Show S01E01"),
-				Size:     sizeGBToBytes(1),
+				Title:    nullable.NewNullableWithValue("Series.S01E01.1080p.WEB-DL.AAC2.0.x264-GROUP"),
+				Size:     sizeGBToBytes(2),
 				Protocol: ptr(prowlarr.DownloadProtocolTorrent),
 			},
 			{
 				ID:       ptr(int32(2)),
-				Title:    nullable.NewNullableWithValue("Show S01E02"),
-				Size:     sizeGBToBytes(1),
+				Title:    nullable.NewNullableWithValue("Series.S01E02.1080p.WEB-DL.AAC2.0.x264-GROUP"),
+				Size:     sizeGBToBytes(2),
 				Protocol: ptr(prowlarr.DownloadProtocolTorrent),
 			},
 		}
@@ -1070,7 +979,7 @@ func TestMediaManager_reconcileMissingEpisodes(t *testing.T) {
 
 		m := New(nil, nil, nil, store, mockFactory, config.Manager{})
 
-		err = m.reconcileMissingEpisodes(ctx, 1, episodes, snapshot, qualityProfile, releases)
+		err = m.reconcileMissingEpisodes(ctx, "Series", 1, episodes, snapshot, qualityProfile, releases)
 		require.NoError(t, err)
 
 		updatedEpisode, err := store.ListEpisodes(ctx)
@@ -1088,14 +997,14 @@ func TestMediaManager_reconcileMissingEpisodes(t *testing.T) {
 
 	t.Run("nil episode", func(t *testing.T) {
 		m := New(nil, nil, nil, nil, nil, config.Manager{})
-		err := m.reconcileMissingEpisodes(context.Background(), 1, []*storage.Episode{nil}, nil, storage.QualityProfile{}, nil)
+		err := m.reconcileMissingEpisodes(context.Background(), "Series", 1, []*storage.Episode{nil}, nil, storage.QualityProfile{}, nil)
 		require.NoError(t, err)
 	})
 
 	t.Run("nil snapshot", func(t *testing.T) {
 		m := New(nil, nil, nil, nil, nil, config.Manager{})
 		episode := &storage.Episode{}
-		err := m.reconcileMissingEpisodes(context.Background(), 1, []*storage.Episode{episode}, nil, storage.QualityProfile{}, nil)
+		err := m.reconcileMissingEpisodes(context.Background(), "Series", 1, []*storage.Episode{episode}, nil, storage.QualityProfile{}, nil)
 		require.NoError(t, err)
 	})
 
@@ -1120,7 +1029,7 @@ func TestMediaManager_reconcileMissingEpisodes(t *testing.T) {
 		}
 
 		m := New(nil, nil, nil, store, nil, config.Manager{})
-		err = m.reconcileMissingEpisodes(ctx, 1, []*storage.Episode{&episode}, &ReconcileSnapshot{}, storage.QualityProfile{}, nil)
+		err = m.reconcileMissingEpisodes(ctx, "Series", 1, []*storage.Episode{&episode}, &ReconcileSnapshot{}, storage.QualityProfile{}, nil)
 		require.NoError(t, err)
 	})
 
@@ -1145,7 +1054,7 @@ func TestMediaManager_reconcileMissingEpisodes(t *testing.T) {
 		}
 
 		m := New(nil, nil, nil, store, nil, config.Manager{})
-		err = m.reconcileMissingEpisodes(ctx, 1, []*storage.Episode{&episode}, &ReconcileSnapshot{}, storage.QualityProfile{}, nil)
+		err = m.reconcileMissingEpisodes(ctx, "Series", 1, []*storage.Episode{&episode}, &ReconcileSnapshot{}, storage.QualityProfile{}, nil)
 		require.NoError(t, err)
 	})
 }
@@ -1258,7 +1167,7 @@ func TestMediaManager_reconcileMissingSeason(t *testing.T) {
 
 		seasonMetadataID, err := store.CreateSeasonMetadata(ctx, model.SeasonMetadata{
 			SeriesID: int32(seriesID),
-			Title:    "Season1",
+			Title:    "Season 1",
 			Number:   1,
 		})
 		require.NoError(t, err)
@@ -1268,7 +1177,7 @@ func TestMediaManager_reconcileMissingSeason(t *testing.T) {
 
 		episodeMetadataID1, err := store.CreateEpisodeMetadata(ctx, model.EpisodeMetadata{
 			TmdbID:   1,
-			Title:    "Test Episode1",
+			Title:    "Hello",
 			Number:   1,
 			SeasonID: int32(seasonID),
 			Runtime:  ptr(int32(45)),
@@ -1287,7 +1196,7 @@ func TestMediaManager_reconcileMissingSeason(t *testing.T) {
 
 		episodeMetadataID2, err := store.CreateEpisodeMetadata(ctx, model.EpisodeMetadata{
 			TmdbID:   2,
-			Title:    "Test Episode2",
+			Title:    "There",
 			Number:   2,
 			SeasonID: int32(seasonID),
 			Runtime:  ptr(int32(45)),
@@ -1307,7 +1216,7 @@ func TestMediaManager_reconcileMissingSeason(t *testing.T) {
 		releases := []*prowlarr.ReleaseResource{
 			{
 				ID:       ptr(int32(1)),
-				Title:    nullable.NewNullableWithValue("Series S01 COMPLETE"),
+				Title:    nullable.NewNullableWithValue("series.S01.1080p.WEB-DL.HEVC.x265"),
 				Size:     sizeGBToBytes(2),
 				Protocol: ptr(prowlarr.DownloadProtocolTorrent),
 			},
@@ -1409,7 +1318,7 @@ func TestMediaManager_reconcileMissingSeason(t *testing.T) {
 
 		seasonMetadataID, err := store.CreateSeasonMetadata(ctx, model.SeasonMetadata{
 			SeriesID: int32(seriesID),
-			Title:    "Season1",
+			Title:    "Season 1",
 			Number:   1,
 		})
 		require.NoError(t, err)
@@ -1419,7 +1328,7 @@ func TestMediaManager_reconcileMissingSeason(t *testing.T) {
 
 		episodeMetadataID1, err := store.CreateEpisodeMetadata(ctx, model.EpisodeMetadata{
 			TmdbID:   1,
-			Title:    "Test Episode1",
+			Title:    "Test",
 			Number:   1,
 			SeasonID: int32(seasonID),
 			Runtime:  ptr(int32(45)),
@@ -1438,7 +1347,7 @@ func TestMediaManager_reconcileMissingSeason(t *testing.T) {
 
 		episodeMetadataID2, err := store.CreateEpisodeMetadata(ctx, model.EpisodeMetadata{
 			TmdbID:   2,
-			Title:    "Test Episode2",
+			Title:    "Testing",
 			Number:   2,
 			SeasonID: int32(seasonID),
 			Runtime:  ptr(int32(45)),
@@ -1458,13 +1367,13 @@ func TestMediaManager_reconcileMissingSeason(t *testing.T) {
 		releases := []*prowlarr.ReleaseResource{
 			{
 				ID:       ptr(int32(1)),
-				Title:    nullable.NewNullableWithValue("Series S01E01"),
+				Title:    nullable.NewNullableWithValue("Series.S01E01.1080p.WEB-DL.AAC2.0.x264-GROUP"),
 				Size:     sizeGBToBytes(2),
 				Protocol: ptr(prowlarr.DownloadProtocolTorrent),
 			},
 			{
 				ID:       ptr(int32(2)),
-				Title:    nullable.NewNullableWithValue("Series S01E02"),
+				Title:    nullable.NewNullableWithValue("Series.S01E02.1080p.WEB-DL.AAC2.0.x264-GROUP"),
 				Size:     sizeGBToBytes(2),
 				Protocol: ptr(prowlarr.DownloadProtocolTorrent),
 			},
