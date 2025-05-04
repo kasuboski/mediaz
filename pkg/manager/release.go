@@ -42,14 +42,14 @@ func RejectMovieReleaseFunc(ctx context.Context, title string, runtime int32, pr
 
 func RejectSeasonReleaseFunc(ctx context.Context, seriesTitle string, seasonNumber, runtime int32, profile storage.QualityProfile, protocolsAvailable map[string]struct{}) func(*prowlarr.ReleaseResource) bool {
 	return func(r *prowlarr.ReleaseResource) bool {
-		if rejectSeasonReleaseFunc(ctx, seriesTitle, seasonNumber, r) {
+		if rejectSeasonReleaseFunc(seriesTitle, seasonNumber, r) {
 			return true
 		}
 		return rejectReleaseFunc(ctx, runtime, profile, protocolsAvailable)(r)
 	}
 }
 
-func rejectSeasonReleaseFunc(_ context.Context, seriesTitle string, seasonNumber int32, r *prowlarr.ReleaseResource) bool {
+func rejectSeasonReleaseFunc(seriesTitle string, seasonNumber int32, r *prowlarr.ReleaseResource) bool {
 	if r == nil {
 		return true
 	}
@@ -87,7 +87,7 @@ func rejectSeasonReleaseFunc(_ context.Context, seriesTitle string, seasonNumber
 
 func RejectEpisodeReleaseFunc(ctx context.Context, seriesTitle string, seasonNumber, episodeNumber, runtime int32, profile storage.QualityProfile, protocolsAvailable map[string]struct{}) func(*prowlarr.ReleaseResource) bool {
 	return func(r *prowlarr.ReleaseResource) bool {
-		if rejectEpisodeReleaseFunc(ctx, seriesTitle, seasonNumber, episodeNumber, r) {
+		if rejectEpisodeReleaseFunc(seriesTitle, seasonNumber, episodeNumber, r) {
 			return true
 		}
 
@@ -95,7 +95,7 @@ func RejectEpisodeReleaseFunc(ctx context.Context, seriesTitle string, seasonNum
 	}
 }
 
-func rejectEpisodeReleaseFunc(_ context.Context, seriesTitle string, seasonNumber, episodeNumber int32, r *prowlarr.ReleaseResource) bool {
+func rejectEpisodeReleaseFunc(seriesTitle string, seasonNumber, episodeNumber int32, r *prowlarr.ReleaseResource) bool {
 	if r == nil {
 		return true
 	}

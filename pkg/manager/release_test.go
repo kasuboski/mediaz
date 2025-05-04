@@ -1,7 +1,6 @@
 package manager
 
 import (
-	"context"
 	"encoding/json"
 	"os"
 	"reflect"
@@ -365,7 +364,7 @@ func TestRejectSeasonReleaseFunc(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := rejectSeasonReleaseFunc(context.Background(), tt.seriesTitle, tt.seasonNumber, tt.release)
+			got := rejectSeasonReleaseFunc(tt.seriesTitle, tt.seasonNumber, tt.release)
 			assert.Equal(t, tt.want, got)
 		})
 	}
@@ -492,7 +491,7 @@ func TestRejectEpisodeReleaseFunc(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := rejectEpisodeReleaseFunc(context.Background(), tt.episodeTitle, tt.seasonNumber, tt.episodeNumber, tt.release)
+			got := rejectEpisodeReleaseFunc(tt.episodeTitle, tt.seasonNumber, tt.episodeNumber, tt.release)
 			assert.Equal(t, tt.want, got)
 		})
 	}
