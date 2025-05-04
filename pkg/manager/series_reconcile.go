@@ -299,3 +299,23 @@ func (m MediaManager) updateEpisodeState(ctx context.Context, episode storage.Ep
 	log.Info("successfully updated episode state")
 	return nil
 }
+
+func getSeasonRuntime(episodes []*storage.Episode, totalSeasonEpisodes int) int32 {
+	var runtime int32
+	var consideredRuntimeCount int
+	for _, e := range episodes {
+		if e.Runtime != nil {
+			runtime = runtime + *e.Runtime
+			consideredRuntimeCount++
+		}
+	}
+
+	// if we're missing some of the runtimes, we can try to estimate the remaining runtime based on the average of the other episodes
+	// this could be pretty inaccurate in cases where we are missing more than a few runtimes, but it's better than nothing
+	if consideredRuntimeCount > 0 && consideredRuntimeCount < totalSeasonEpisodes {
+		averageRuntime := runtime / int32(consideredRuntimeCount)
+		runtime += averageRuntime * int32(totalSeasonEpisodes-consideredRuntimeCount)
+	}
+
+	return runtime
+}
