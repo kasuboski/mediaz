@@ -360,6 +360,22 @@ func TestRejectSeasonReleaseFunc(t *testing.T) {
 				Title: nullable.NewNullableWithValue("ShowName_Season_03_Complete_720p.HDTV"),
 			},
 		},
+		{
+			name:         "unrelated show",
+			seriesTitle:  "ShowName",
+			seasonNumber: 3,
+			release: &prowlarr.ReleaseResource{
+				Title: nullable.NewNullableWithValue("yoyo.S10.1080p.WEB-DL.AAC2.0.x264-Group"),
+			},
+		},
+		{
+			name:         "unrelated release",
+			seriesTitle:  "ShowName",
+			seasonNumber: 3,
+			release: &prowlarr.ReleaseResource{
+				Title: nullable.NewNullableWithValue("asdfadfadsfad"),
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -486,6 +502,26 @@ func TestRejectEpisodeReleaseFunc(t *testing.T) {
 				Title: nullable.NewNullableWithValue("ShowName_S01E02_1080p_WEB-DL_AAC2.0_x264-GROUP"),
 			},
 			want: false,
+		},
+		{
+			name:          "show name does not match",
+			episodeTitle:  "ShowName",
+			seasonNumber:  1,
+			episodeNumber: 2,
+			release: &prowlarr.ReleaseResource{
+				Title: nullable.NewNullableWithValue("yo.s01e02.1080p.WEB-DL.AAC2.0.x264-GROUP"),
+			},
+			want: true,
+		},
+		{
+			name:          "not related release",
+			episodeTitle:  "ShowName",
+			seasonNumber:  1,
+			episodeNumber: 2,
+			release: &prowlarr.ReleaseResource{
+				Title: nullable.NewNullableWithValue("asdfadsfadsfads"),
+			},
+			want: true,
 		},
 	}
 
