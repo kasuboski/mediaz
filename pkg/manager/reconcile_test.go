@@ -1412,3 +1412,64 @@ func TestMediaManager_reconcileMissingSeason(t *testing.T) {
 		assert.Equal(t, int32(2), episodes[1].DownloadClientID)
 	})
 }
+func Test_getSeasonRuntime(t *testing.T) {
+	tests := []struct {
+		name                string
+		episodes            []*storage.Episode
+		totalSeasonEpisodes int
+		want                int32
+	}{
+		{
+			name: "all episodes have runtime",
+			episodes: []*storage.Episode{
+				{Episode: model.Episode{Runtime: ptr(int32(30))}},
+				{Episode: model.Episode{Runtime: ptr(int32(30))}},
+				{Episode: model.Episode{Runtime: ptr(int32(30))}},
+			},
+			totalSeasonEpisodes: 3,
+			want:                90,
+		},
+		{
+			name: "some episodes missing runtime",
+			episodes: []*storage.Episode{
+				{Episode: model.Episode{Runtime: ptr(int32(30))}},
+				{Episode: model.Episode{Runtime: nil}},
+				{Episode: model.Episode{Runtime: ptr(int32(30))}},
+			},
+			totalSeasonEpisodes: 3,
+			want:                90, // Average of 30 mins applied to missing episode
+		},
+		{
+			name: "all episodes missing runtime",
+			episodes: []*storage.Episode{
+				{Episode: model.Episode{Runtime: nil}},
+				{Episode: model.Episode{Runtime: nil}},
+				{Episode: model.Episode{Runtime: nil}},
+			},
+			totalSeasonEpisodes: 3,
+			want:                0,
+		},
+		{
+			name:                "empty episode list",
+			episodes:            []*storage.Episode{},
+			totalSeasonEpisodes: 0,
+			want:                0,
+		},
+		{
+			name: "more total episodes than provided",
+			episodes: []*storage.Episode{
+				{Episode: model.Episode{Runtime: ptr(int32(30))}},
+				{Episode: model.Episode{Runtime: ptr(int32(30))}},
+			},
+			totalSeasonEpisodes: 4,
+			want:                120, // (30+30) + (30*2) for missing episodes
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := getSeasonRuntime(tt.episodes, tt.totalSeasonEpisodes)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
