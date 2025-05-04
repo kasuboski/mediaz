@@ -491,6 +491,8 @@ func (m MediaManager) reconcileMissingSeries(ctx context.Context, series *storag
 		return err
 	}
 
+	slices.SortFunc(releases, sortReleaseFunc())
+
 	where := table.Season.SeriesID.EQ(sqlite.Int32(series.ID)).
 		AND(table.Season.Monitored.EQ(sqlite.Int(1))).
 		AND(table.SeasonTransition.ToState.EQ(sqlite.String(string(storage.SeasonStateMissing))))
@@ -566,19 +568,24 @@ func (m MediaManager) reconcileMissingSeason(ctx context.Context, seriesTitle st
 	runtime := getSeasonRuntime(missingEpisodes, len(episodes))
 	log.Debug("found season pack releases", zap.Int("count", len(releases)))
 
-	preservedReleases := slices.Clone(releases)
-	releases = slices.DeleteFunc(releases, RejectSeasonReleaseFunc(ctx, seriesTitle, metadata.Number, runtime, qualityProfile, snapshot.GetProtocols()))
+	var chosenSeasonPackRelease *prowlarr.ReleaseResource
+	for _, r := range releases {
+		if RejectSeasonReleaseFunc(ctx, seriesTitle, metadata.Number, runtime, qualityProfile, snapshot.GetProtocols())(r) {
+			continue
+		}
 
-	// if we didn't find any season pack releases, default to individual episodes
-	if len(releases) == 0 {
-		log.Debug("no season pack releases found, defualting to individual episodes")
-		return m.reconcileMissingEpisodes(ctx, seriesTitle, metadata.Number, missingEpisodes, snapshot, qualityProfile, preservedReleases)
+		chosenSeasonPackRelease = r
+		break
 	}
 
-	chosenRelease := releases[len(releases)-1]
-	log.Infow("found release", "title", chosenRelease.Title, "proto", *chosenRelease.Protocol)
+	if chosenSeasonPackRelease == nil {
+		log.Debug("no season pack releases found, defaulting to individual episodes")
+		return m.reconcileMissingEpisodes(ctx, seriesTitle, metadata.Number, missingEpisodes, snapshot, qualityProfile, releases)
+	}
 
-	clientID, status, err := m.requestReleaseDownload(ctx, snapshot, chosenRelease)
+	log.Infow("found season pack release", "title", chosenSeasonPackRelease.Title, "proto", *chosenSeasonPackRelease.Protocol)
+
+	clientID, status, err := m.requestReleaseDownload(ctx, snapshot, chosenSeasonPackRelease)
 	if err != nil {
 		log.Debug("failed to request episode release download", zap.Error(err))
 		return err
@@ -625,8 +632,6 @@ func (m MediaManager) reconcileMissingEpisodes(ctx context.Context, seriesTitle 
 			log.Warn("episode runtime is nil, skipping reconcile")
 			return nil
 		}
-
-		slices.SortFunc(releases, sortReleaseFunc())
 
 		var chosenRelease *prowlarr.ReleaseResource
 		for _, r := range releases {
