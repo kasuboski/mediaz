@@ -60,10 +60,10 @@ func Test_Manager_reconcileMissingMovie(t *testing.T) {
 	torrentProto := ptr(prowlarr.DownloadProtocolTorrent)
 	usenetProto := ptr(prowlarr.DownloadProtocolUsenet)
 
-	wantRelease := &prowlarr.ReleaseResource{ID: intPtr(123), Title: nullable.NewNullableWithValue("test movie"), Size: sizeGBToBytes(23), Seeders: bigSeeders, Protocol: torrentProto}
-	doNotWantRelease := &prowlarr.ReleaseResource{ID: intPtr(124), Title: nullable.NewNullableWithValue("test movie"), Size: sizeGBToBytes(23), Seeders: smallerSeeders, Protocol: torrentProto}
-	smallMovie := &prowlarr.ReleaseResource{ID: intPtr(125), Title: nullable.NewNullableWithValue("test movie - very small"), Size: sizeGBToBytes(1), Seeders: smallestSeeders, Protocol: torrentProto}
-	nzbMovie := &prowlarr.ReleaseResource{ID: intPtr(1225), Title: nullable.NewNullableWithValue("test movie - nzb"), Size: sizeGBToBytes(23), Seeders: smallestSeeders, Protocol: usenetProto}
+	wantRelease := &prowlarr.ReleaseResource{ID: ptr(int32(123)), Title: nullable.NewNullableWithValue("test movie"), Size: sizeGBToBytes(23), Seeders: bigSeeders, Protocol: torrentProto}
+	doNotWantRelease := &prowlarr.ReleaseResource{ID: ptr(int32(124)), Title: nullable.NewNullableWithValue("test movie"), Size: sizeGBToBytes(23), Seeders: smallerSeeders, Protocol: torrentProto}
+	smallMovie := &prowlarr.ReleaseResource{ID: ptr(int32(125)), Title: nullable.NewNullableWithValue("test movie - very small"), Size: sizeGBToBytes(1), Seeders: smallestSeeders, Protocol: torrentProto}
+	nzbMovie := &prowlarr.ReleaseResource{ID: ptr(int32(1225)), Title: nullable.NewNullableWithValue("test movie - nzb"), Size: sizeGBToBytes(23), Seeders: smallestSeeders, Protocol: usenetProto}
 
 	releases := []*prowlarr.ReleaseResource{doNotWantRelease, wantRelease, smallMovie, nzbMovie}
 	prowlarrMock.EXPECT().GetAPIV1Search(gomock.Any(), gomock.Any()).Return(searchIndexersResponse(t, releases), nil).Times(len(indexers))
@@ -501,7 +501,7 @@ func Test_Manager_reconcileDownloadingMovie(t *testing.T) {
 		require.NoError(t, err)
 
 		downloadID := "123"
-		err = m.updateMovieState(ctx, movie, storage.MovieStateDownloading, &storage.MovieStateMetadata{
+		err = m.updateMovieState(ctx, movie, storage.MovieStateDownloading, &storage.TransitionStateMetadata{
 			DownloadID:       &downloadID,
 			DownloadClientID: &downloadClientModel.ID,
 		})
@@ -552,7 +552,7 @@ func Test_Manager_reconcileDownloadingMovie(t *testing.T) {
 		require.NoError(t, err)
 
 		downloadID := "123"
-		err = m.updateMovieState(ctx, movie, storage.MovieStateDownloading, &storage.MovieStateMetadata{
+		err = m.updateMovieState(ctx, movie, storage.MovieStateDownloading, &storage.TransitionStateMetadata{
 			DownloadID:       &downloadID,
 			DownloadClientID: &downloadClientModel.ID,
 		})
@@ -606,7 +606,7 @@ func Test_Manager_reconcileDownloadingMovie(t *testing.T) {
 		require.NoError(t, err)
 
 		downloadID := "123"
-		err = m.updateMovieState(ctx, movie, storage.MovieStateDownloading, &storage.MovieStateMetadata{
+		err = m.updateMovieState(ctx, movie, storage.MovieStateDownloading, &storage.TransitionStateMetadata{
 			DownloadID:       &downloadID,
 			DownloadClientID: &downloadClientModel.ID,
 		})
@@ -651,14 +651,14 @@ func Test_Manager_reconcileDownloadingMovie(t *testing.T) {
 		m := New(nil, nil, nil, store, mockFactory, config.Manager{})
 		require.NotNil(t, m)
 
-		movieID, err := m.storage.CreateMovie(ctx, storage.Movie{Movie: model.Movie{ID: 1, Monitored: 1, QualityProfileID: 1, MovieMetadataID: intPtr(1), Path: ptr("Movie 1")}}, storage.MovieStateMissing)
+		movieID, err := m.storage.CreateMovie(ctx, storage.Movie{Movie: model.Movie{ID: 1, Monitored: 1, QualityProfileID: 1, MovieMetadataID: ptr(int32(1)), Path: ptr("Movie 1")}}, storage.MovieStateMissing)
 		require.NoError(t, err)
 
 		movie, err := m.storage.GetMovie(ctx, movieID)
 		require.NoError(t, err)
 
 		downloadID := "123"
-		err = m.updateMovieState(ctx, movie, storage.MovieStateDownloading, &storage.MovieStateMetadata{
+		err = m.updateMovieState(ctx, movie, storage.MovieStateDownloading, &storage.TransitionStateMetadata{
 			DownloadID:       &downloadID,
 			DownloadClientID: &downloadClientModel.ID,
 		})
@@ -708,14 +708,14 @@ func Test_Manager_reconcileDownloadingMovie(t *testing.T) {
 		m := New(nil, nil, mockLibrary, store, mockFactory, config.Manager{})
 		require.NotNil(t, m)
 
-		movieID, err := m.storage.CreateMovie(ctx, storage.Movie{Movie: model.Movie{ID: 1, Monitored: 1, QualityProfileID: 1, MovieMetadataID: intPtr(1), Path: ptr("Movie 1")}}, storage.MovieStateMissing)
+		movieID, err := m.storage.CreateMovie(ctx, storage.Movie{Movie: model.Movie{ID: 1, Monitored: 1, QualityProfileID: 1, MovieMetadataID: ptr(int32(1)), Path: ptr("Movie 1")}}, storage.MovieStateMissing)
 		require.NoError(t, err)
 
 		movie, err := m.storage.GetMovie(ctx, movieID)
 		require.NoError(t, err)
 
 		downloadID := "123"
-		err = m.updateMovieState(ctx, movie, storage.MovieStateDownloading, &storage.MovieStateMetadata{
+		err = m.updateMovieState(ctx, movie, storage.MovieStateDownloading, &storage.TransitionStateMetadata{
 			DownloadID:       &downloadID,
 			DownloadClientID: &downloadClientModel.ID,
 		})
@@ -774,14 +774,14 @@ func Test_Manager_reconcileDownloadingMovie(t *testing.T) {
 		m := New(nil, nil, mockLibrary, store, mockFactory, config.Manager{})
 		require.NotNil(t, m)
 
-		movieID, err := m.storage.CreateMovie(ctx, storage.Movie{Movie: model.Movie{ID: 1, Monitored: 1, QualityProfileID: 1, MovieMetadataID: intPtr(1), Path: ptr("my-movie")}}, storage.MovieStateMissing)
+		movieID, err := m.storage.CreateMovie(ctx, storage.Movie{Movie: model.Movie{ID: 1, Monitored: 1, QualityProfileID: 1, MovieMetadataID: ptr(int32(1)), Path: ptr("my-movie")}}, storage.MovieStateMissing)
 		require.NoError(t, err)
 
 		movie, err := m.storage.GetMovie(ctx, movieID)
 		require.NoError(t, err)
 
 		downloadID := "123"
-		err = m.updateMovieState(ctx, movie, storage.MovieStateDownloading, &storage.MovieStateMetadata{
+		err = m.updateMovieState(ctx, movie, storage.MovieStateDownloading, &storage.TransitionStateMetadata{
 			DownloadID:       &downloadID,
 			DownloadClientID: &downloadClientModel.ID,
 		})

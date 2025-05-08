@@ -57,9 +57,10 @@ const (
 	MovieStateDownloaded  MovieState = "downloaded"
 )
 
-type MovieStateMetadata struct {
-	DownloadID       *string
-	DownloadClientID *int32
+type TransitionStateMetadata struct {
+	DownloadID             *string
+	DownloadClientID       *int32
+	IsEntireSeasonDownload *bool // applicable only to episodes
 }
 
 type Movie struct {
@@ -89,7 +90,7 @@ type MovieStorage interface {
 	DeleteMovie(ctx context.Context, id int64) error
 	ListMovies(ctx context.Context) ([]*Movie, error)
 	ListMoviesByState(ctx context.Context, state MovieState) ([]*Movie, error)
-	UpdateMovieState(ctx context.Context, id int64, state MovieState, metadata *MovieStateMetadata) error
+	UpdateMovieState(ctx context.Context, id int64, state MovieState, metadata *TransitionStateMetadata) error
 	UpdateMovieMovieFileID(ctx context.Context, id int64, fileID int64) error
 
 	GetMovieFilesByMovieName(ctx context.Context, name string) ([]*model.MovieFile, error)
@@ -163,9 +164,7 @@ const (
 
 type Series struct {
 	model.Series
-	State            SeriesState `alias:"series_transition.to_state" json:"state"`
-	DownloadID       string      `alias:"series_transition.download_id" json:"-"`
-	DownloadClientID int32       `alias:"series_transition.download_client_id" json:"-"`
+	State SeriesState `alias:"series_transition.to_state" json:"state"`
 }
 
 type SeriesTransition model.SeriesTransition
@@ -181,9 +180,7 @@ func (s Series) Machine() *machine.StateMachine[SeriesState] {
 
 type Season struct {
 	model.Season
-	State            SeasonState `alias:"season_transition.to_state" json:"state"`
-	DownloadID       string      `json:"-"`
-	DownloadClientID int32       `json:"-"`
+	State SeasonState `alias:"season_transition.to_state" json:"state"`
 }
 
 type SeasonTransition model.SeasonTransition
@@ -199,9 +196,10 @@ func (s Season) Machine() *machine.StateMachine[SeasonState] {
 
 type Episode struct {
 	model.Episode
-	State            EpisodeState `alias:"episode_transition.to_state" json:"state"`
-	DownloadID       string       `json:"-"`
-	DownloadClientID int32        `json:"-"`
+	State                  EpisodeState `alias:"episode_transition.to_state" json:"state"`
+	DownloadID             string       `alias:"episode_transition.download_id" json:"-"`
+	DownloadClientID       int32        `alias:"episode_transition.download_client_id" json:"-"`
+	IsEntireSeasonDownload bool         `alias:"episode_transition.is_entire_season_download" json:"-"`
 }
 
 type EpisodeTransition model.EpisodeTransition
@@ -231,6 +229,7 @@ type SeriesStorage interface {
 	DeleteEpisode(ctx context.Context, id int64) error
 	ListEpisodes(ctx context.Context, where ...sqlite.BoolExpression) ([]*Episode, error)
 	UpdateEpisodeEpisodeFileID(ctx context.Context, id int64, fileID int64) error
+	UpdateEpisodeState(ctx context.Context, id int64, state EpisodeState, metadata *TransitionStateMetadata) error
 
 	GetEpisodeFiles(ctx context.Context, id int64) ([]*model.EpisodeFile, error)
 	CreateEpisodeFile(ctx context.Context, episodeFile model.EpisodeFile) (int64, error)

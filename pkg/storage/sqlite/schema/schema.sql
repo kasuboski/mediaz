@@ -210,6 +210,7 @@ CREATE TABLE IF NOT EXISTS "episode_transition" (
     "sort_key" INTEGER NOT NULL,
     "download_client_id" INTEGER REFERENCES "download_client"("id"),
     "download_id" TEXT,
+    "is_entire_season_download" BOOLEAN,
     "created_at" DATETIME DEFAULT CURRENT_TIMESTAMP,
     "updated_at" DATETIME DEFAULT CURRENT_TIMESTAMP
 );

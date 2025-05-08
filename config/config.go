@@ -52,8 +52,10 @@ type Manager struct {
 }
 
 type Jobs struct {
-	MovieReconcile time.Duration `json:"movieReconcile" yaml:"movieReconcile" mapstructure:"movieReconcile"`
-	MovieIndex     time.Duration `json:"movieIndex" yaml:"movieIndex" mapstructure:"movieIndex"`
+	MovieReconcile  time.Duration `json:"movieReconcile" yaml:"movieReconcile" mapstructure:"movieReconcile"`
+	MovieIndex      time.Duration `json:"movieIndex" yaml:"movieIndex" mapstructure:"movieIndex"`
+	SeriesReconcile time.Duration `json:"seriesReconcile" yaml:"seriesReconcile" mapstructure:"seriesReconcile"`
+	SeriesIndex     time.Duration `json:"seriesIndex" yaml:"seriesIndex" mapstructure:"seriesIndex"`
 }
 
 type ConfigUnmarshaler interface {

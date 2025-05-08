@@ -12,14 +12,15 @@ import (
 )
 
 type EpisodeTransition struct {
-	ID               int32 `sql:"primary_key"`
-	EpisodeID        int32
-	ToState          string
-	FromState        *string
-	MostRecent       bool
-	SortKey          int32
-	DownloadClientID *int32
-	DownloadID       *string
-	CreatedAt        *time.Time
-	UpdatedAt        *time.Time
+	ID                     int32 `sql:"primary_key"`
+	EpisodeID              int32
+	ToState                string
+	FromState              *string
+	MostRecent             bool
+	SortKey                int32
+	DownloadClientID       *int32
+	DownloadID             *string
+	IsEntireSeasonDownload *bool
+	CreatedAt              *time.Time
+	UpdatedAt              *time.Time
 }

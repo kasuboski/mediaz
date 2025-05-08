@@ -17,16 +17,17 @@ type episodeTransitionTable struct {
 	sqlite.Table
 
 	// Columns
-	ID               sqlite.ColumnInteger
-	EpisodeID        sqlite.ColumnInteger
-	ToState          sqlite.ColumnString
-	FromState        sqlite.ColumnString
-	MostRecent       sqlite.ColumnBool
-	SortKey          sqlite.ColumnInteger
-	DownloadClientID sqlite.ColumnInteger
-	DownloadID       sqlite.ColumnString
-	CreatedAt        sqlite.ColumnTimestamp
-	UpdatedAt        sqlite.ColumnTimestamp
+	ID                     sqlite.ColumnInteger
+	EpisodeID              sqlite.ColumnInteger
+	ToState                sqlite.ColumnString
+	FromState              sqlite.ColumnString
+	MostRecent             sqlite.ColumnBool
+	SortKey                sqlite.ColumnInteger
+	DownloadClientID       sqlite.ColumnInteger
+	DownloadID             sqlite.ColumnString
+	IsEntireSeasonDownload sqlite.ColumnBool
+	CreatedAt              sqlite.ColumnTimestamp
+	UpdatedAt              sqlite.ColumnTimestamp
 
 	AllColumns     sqlite.ColumnList
 	MutableColumns sqlite.ColumnList
@@ -67,34 +68,36 @@ func newEpisodeTransitionTable(schemaName, tableName, alias string) *EpisodeTran
 
 func newEpisodeTransitionTableImpl(schemaName, tableName, alias string) episodeTransitionTable {
 	var (
-		IDColumn               = sqlite.IntegerColumn("id")
-		EpisodeIDColumn        = sqlite.IntegerColumn("episode_id")
-		ToStateColumn          = sqlite.StringColumn("to_state")
-		FromStateColumn        = sqlite.StringColumn("from_state")
-		MostRecentColumn       = sqlite.BoolColumn("most_recent")
-		SortKeyColumn          = sqlite.IntegerColumn("sort_key")
-		DownloadClientIDColumn = sqlite.IntegerColumn("download_client_id")
-		DownloadIDColumn       = sqlite.StringColumn("download_id")
-		CreatedAtColumn        = sqlite.TimestampColumn("created_at")
-		UpdatedAtColumn        = sqlite.TimestampColumn("updated_at")
-		allColumns             = sqlite.ColumnList{IDColumn, EpisodeIDColumn, ToStateColumn, FromStateColumn, MostRecentColumn, SortKeyColumn, DownloadClientIDColumn, DownloadIDColumn, CreatedAtColumn, UpdatedAtColumn}
-		mutableColumns         = sqlite.ColumnList{EpisodeIDColumn, ToStateColumn, FromStateColumn, MostRecentColumn, SortKeyColumn, DownloadClientIDColumn, DownloadIDColumn, CreatedAtColumn, UpdatedAtColumn}
+		IDColumn                     = sqlite.IntegerColumn("id")
+		EpisodeIDColumn              = sqlite.IntegerColumn("episode_id")
+		ToStateColumn                = sqlite.StringColumn("to_state")
+		FromStateColumn              = sqlite.StringColumn("from_state")
+		MostRecentColumn             = sqlite.BoolColumn("most_recent")
+		SortKeyColumn                = sqlite.IntegerColumn("sort_key")
+		DownloadClientIDColumn       = sqlite.IntegerColumn("download_client_id")
+		DownloadIDColumn             = sqlite.StringColumn("download_id")
+		IsEntireSeasonDownloadColumn = sqlite.BoolColumn("is_entire_season_download")
+		CreatedAtColumn              = sqlite.TimestampColumn("created_at")
+		UpdatedAtColumn              = sqlite.TimestampColumn("updated_at")
+		allColumns                   = sqlite.ColumnList{IDColumn, EpisodeIDColumn, ToStateColumn, FromStateColumn, MostRecentColumn, SortKeyColumn, DownloadClientIDColumn, DownloadIDColumn, IsEntireSeasonDownloadColumn, CreatedAtColumn, UpdatedAtColumn}
+		mutableColumns               = sqlite.ColumnList{EpisodeIDColumn, ToStateColumn, FromStateColumn, MostRecentColumn, SortKeyColumn, DownloadClientIDColumn, DownloadIDColumn, IsEntireSeasonDownloadColumn, CreatedAtColumn, UpdatedAtColumn}
 	)
 
 	return episodeTransitionTable{
 		Table: sqlite.NewTable(schemaName, tableName, alias, allColumns...),
 
 		//Columns
-		ID:               IDColumn,
-		EpisodeID:        EpisodeIDColumn,
-		ToState:          ToStateColumn,
-		FromState:        FromStateColumn,
-		MostRecent:       MostRecentColumn,
-		SortKey:          SortKeyColumn,
-		DownloadClientID: DownloadClientIDColumn,
-		DownloadID:       DownloadIDColumn,
-		CreatedAt:        CreatedAtColumn,
-		UpdatedAt:        UpdatedAtColumn,
+		ID:                     IDColumn,
+		EpisodeID:              EpisodeIDColumn,
+		ToState:                ToStateColumn,
+		FromState:              FromStateColumn,
+		MostRecent:             MostRecentColumn,
+		SortKey:                SortKeyColumn,
+		DownloadClientID:       DownloadClientIDColumn,
+		DownloadID:             DownloadIDColumn,
+		IsEntireSeasonDownload: IsEntireSeasonDownloadColumn,
+		CreatedAt:              CreatedAtColumn,
+		UpdatedAt:              UpdatedAtColumn,
 
 		AllColumns:     allColumns,
 		MutableColumns: mutableColumns,

@@ -11,21 +11,132 @@ import (
 	"github.com/kasuboski/mediaz/pkg/logger"
 	"github.com/kasuboski/mediaz/pkg/prowlarr"
 	"github.com/kasuboski/mediaz/pkg/storage"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 )
 
+var (
+	seasonPackPattern    = regexp.MustCompile(`(?i)(?:S(?:eason)?[\s._-]?\d{1,2}|[\s._]Complete[\s._])`)
+	episodePattern       = regexp.MustCompile(`(?i)\b(S\d{1,2}E\d{2,})|\b(\d{1,2}x\d{2,})`)
+	episodeNumberPattern = regexp.MustCompile(`(?i)S?(\d{1,2})(?:E|x)(\d{1,2})`)
+	seasonNumberPattern  = regexp.MustCompile(`(?i)(?:S(?:eason)?[\s._-]?(\d{1,2}))`)
+)
+
+func RejectMovieReleaseFunc(ctx context.Context, title string, runtime int32, profile storage.QualityProfile, protocolsAvailable map[string]struct{}) func(*prowlarr.ReleaseResource) bool {
+	return func(r *prowlarr.ReleaseResource) bool {
+		if r == nil {
+			return true
+		}
+
+		if r.Title != nil {
+			releaseTitle := strings.TrimSpace(r.Title.MustGet())
+			if !strings.HasPrefix(releaseTitle, title) {
+				return true
+			}
+		}
+
+		return rejectReleaseFunc(ctx, runtime, profile, protocolsAvailable)(r)
+	}
+}
+
+func RejectSeasonReleaseFunc(ctx context.Context, seriesTitle string, seasonNumber, runtime int32, profile storage.QualityProfile, protocolsAvailable map[string]struct{}) func(*prowlarr.ReleaseResource) bool {
+	return func(r *prowlarr.ReleaseResource) bool {
+		if rejectSeasonReleaseFunc(seriesTitle, seasonNumber, r) {
+			return true
+		}
+		return rejectReleaseFunc(ctx, runtime, profile, protocolsAvailable)(r)
+	}
+}
+
+func rejectSeasonReleaseFunc(seriesTitle string, seasonNumber int32, r *prowlarr.ReleaseResource) bool {
+	if r == nil {
+		return true
+	}
+
+	foundTitle, err := r.Title.Get()
+	if err != nil {
+		return true
+	}
+
+	if !seasonPackPattern.MatchString(foundTitle) {
+		return true
+	}
+
+	// we dont want individual episodes here
+	if episodePattern.MatchString(foundTitle) {
+		return true
+	}
+
+	normalizedSeriesTitle := strings.ToLower(seriesTitle)
+	normalizedReleaseTitle := strings.ToLower(foundTitle)
+
+	if !strings.Contains(normalizedReleaseTitle, normalizedSeriesTitle) {
+		return true
+	}
+
+	matches := seasonNumberPattern.FindStringSubmatch(normalizedReleaseTitle)
+	for _, m := range matches {
+		if strings.Contains(m, fmt.Sprintf("%d", seasonNumber)) {
+			return false
+		}
+	}
+
+	return true
+}
+
+func RejectEpisodeReleaseFunc(ctx context.Context, seriesTitle string, seasonNumber, episodeNumber, runtime int32, profile storage.QualityProfile, protocolsAvailable map[string]struct{}) func(*prowlarr.ReleaseResource) bool {
+	return func(r *prowlarr.ReleaseResource) bool {
+		if rejectEpisodeReleaseFunc(seriesTitle, seasonNumber, episodeNumber, r) {
+			return true
+		}
+
+		return rejectReleaseFunc(ctx, runtime, profile, protocolsAvailable)(r)
+	}
+}
+
+func rejectEpisodeReleaseFunc(seriesTitle string, seasonNumber, episodeNumber int32, r *prowlarr.ReleaseResource) bool {
+	if r == nil {
+		return true
+	}
+
+	foundTitle, err := r.Title.Get()
+	if err != nil {
+		return true
+	}
+
+	normalizedSeriesTitle := strings.ToLower(seriesTitle)
+	normalizedReleaseTitle := strings.ToLower(foundTitle)
+
+	if !strings.Contains(normalizedReleaseTitle, normalizedSeriesTitle) {
+		return true
+	}
+
+	matches := episodeNumberPattern.FindStringSubmatch(normalizedReleaseTitle)
+	if len(matches) != 3 {
+		return true
+	}
+
+	season, err := strconv.ParseInt(matches[1], 10, 32)
+	if err != nil {
+		return true
+	}
+
+	episode, err := strconv.ParseInt(matches[2], 10, 32)
+	if err != nil {
+		return true
+	}
+
+	match := !(int32(season) == seasonNumber && int32(episode) == episodeNumber)
+	return match
+}
+
 // rejectReleaseFunc returns a function that returns true if the given release should be rejected
-func rejectReleaseFunc(ctx context.Context, det *model.MovieMetadata, profile storage.QualityProfile, protocolsAvailable map[string]struct{}) func(*prowlarr.ReleaseResource) bool {
+func rejectReleaseFunc(ctx context.Context, runtime int32, profile storage.QualityProfile, protocolsAvailable map[string]struct{}) func(*prowlarr.ReleaseResource) bool {
 	log := logger.FromCtx(ctx)
 
 	return func(r *prowlarr.ReleaseResource) bool {
-		if r.Title != nil {
-			releaseTitle := strings.TrimSpace(r.Title.MustGet())
-			if !strings.HasPrefix(releaseTitle, det.Title) {
-				return true
-			}
+		if r == nil {
+			return true
 		}
 
 		if r.Protocol != nil {
@@ -48,15 +159,14 @@ func rejectReleaseFunc(ctx context.Context, det *model.MovieMetadata, profile st
 		// items are assumed to be sorted quality so the highest media quality available is selected
 		for _, quality := range profile.Qualities {
 
-			metQuality := MeetsQualitySize(quality, uint64(sizeMB), uint64(det.Runtime))
-
+			metQuality := MeetsQualitySize(quality, uint64(sizeMB), uint64(runtime))
 			if metQuality {
-				log.Debugw("accepting release", "release", r.Title, "metQuality", metQuality, "size", r.Size, "runtime", det.Runtime)
+				log.Debugw("accepting release", "release", r.Title, "metQuality", metQuality, "size", r.Size, "runtime", runtime)
 				return false
 			}
 
 			// try again with the next item
-			log.Debugw("rejecting release", "release", r.Title, "metQuality", metQuality, "size", r.Size, "runtime", det.Runtime)
+			log.Debugw("rejecting release", "release", r.Title, "metQuality", metQuality, "size", r.Size, "runtime", runtime)
 		}
 
 		return true

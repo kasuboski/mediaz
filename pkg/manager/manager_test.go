@@ -466,8 +466,10 @@ func TestRun(t *testing.T) {
 	mockFactory := downloadMock.NewMockFactory(ctrl)
 	m := New(nil, pClient, lib, store, mockFactory, config.Manager{
 		Jobs: config.Jobs{
-			MovieReconcile: time.Minute * 1,
-			MovieIndex:     time.Minute * 1,
+			MovieReconcile:  time.Minute * 1,
+			MovieIndex:      time.Minute * 1,
+			SeriesReconcile: time.Minute * 1,
+			SeriesIndex:     time.Minute * 1,
 		},
 	})
 	require.NotNil(t, m)
@@ -477,7 +479,7 @@ func TestRun(t *testing.T) {
 
 }
 
-func TestRejectRelease(t *testing.T) {
+func TestMovieRejectRelease(t *testing.T) {
 	t.Run("prefix match only", func(t *testing.T) {
 		ctx := context.Background()
 		det := &model.MovieMetadata{Title: "Brothers", Runtime: 60}
@@ -490,7 +492,9 @@ func TestRejectRelease(t *testing.T) {
 				PreferredSize: 1999,
 			}},
 		}
-		rejectFunc := rejectReleaseFunc(ctx, det, profile, map[string]struct{}{"usenet": {}, "torrent": {}})
+		protocols := map[string]struct{}{"usenet": {}, "torrent": {}}
+		rejectFunc := RejectMovieReleaseFunc(ctx, det.Title, det.Runtime, profile, protocols)
+
 		releases := getReleasesFromFile(t, "./testing/brother-releases.json")
 		for _, r := range releases {
 			got := rejectFunc(r)
@@ -510,7 +514,7 @@ func TestRejectRelease(t *testing.T) {
 			}},
 		}
 		protocolsAvailable := map[string]struct{}{"torrent": {}, "ftp": {}}
-		rejectFunc := rejectReleaseFunc(ctx, det, profile, protocolsAvailable)
+		rejectFunc := RejectMovieReleaseFunc(ctx, det.Title, det.Runtime, profile, protocolsAvailable)
 
 		// Test case where the release protocol is not available
 		r2 := &prowlarr.ReleaseResource{Protocol: ptr(prowlarr.DownloadProtocolUsenet), Size: ptr(int64(500))}

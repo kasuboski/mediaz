@@ -7,6 +7,7 @@ import (
 
 	"github.com/go-jet/jet/v2/qrm"
 	"github.com/go-jet/jet/v2/sqlite"
+	"github.com/kasuboski/mediaz/pkg/logger"
 	"github.com/kasuboski/mediaz/pkg/storage"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/table"
@@ -150,13 +151,13 @@ func (s SQLite) ListSeries(ctx context.Context, where ...sqlite.BoolExpression) 
 		stmt = stmt.WHERE(w)
 	}
 
-	var Series []*storage.Series
-	err := stmt.QueryContext(ctx, s.db, &Series)
+	var series []*storage.Series
+	err := stmt.QueryContext(ctx, s.db, &series)
 	if err != nil {
-		return nil, fmt.Errorf("failed to list Series: %w", err)
+		return nil, fmt.Errorf("failed to list series: %w", err)
 	}
 
-	return Series, nil
+	return series, nil
 }
 
 // CreateSeason stores a season in the database
@@ -272,22 +273,25 @@ func (s SQLite) DeleteSeason(ctx context.Context, id int64) error {
 
 // ListSeasons lists all seasons for a Series
 func (s SQLite) ListSeasons(ctx context.Context, where ...sqlite.BoolExpression) ([]*storage.Season, error) {
-
-	stmt := sqlite.
+	log := logger.FromCtx(ctx)
+	stmt := table.Series.
 		SELECT(
 			table.Season.AllColumns,
-			table.SeasonTransition.ToState,
+			table.SeasonTransition.AllColumns,
 		).
-		FROM(table.Season.
-			LEFT_JOIN(table.SeasonTransition,
-				table.Season.ID.EQ(table.SeasonTransition.SeasonID).
-					AND(table.SeasonTransition.MostRecent.IS_TRUE()),
-			),
+		FROM(
+			table.Season.
+				INNER_JOIN(
+					table.SeasonTransition,
+					table.Season.ID.EQ(table.SeasonTransition.SeasonID).
+						AND(table.SeasonTransition.MostRecent.EQ(sqlite.Bool(true)))),
 		)
 
 	for _, w := range where {
 		stmt = stmt.WHERE(w)
 	}
+
+	log.Debug(stmt.DebugSql())
 
 	var seasons []*storage.Season
 	err := stmt.QueryContext(ctx, s.db, &seasons)
@@ -411,18 +415,17 @@ func (s SQLite) DeleteEpisode(ctx context.Context, id int64) error {
 
 // ListEpisodes lists all episodes for a season
 func (s SQLite) ListEpisodes(ctx context.Context, where ...sqlite.BoolExpression) ([]*storage.Episode, error) {
-	stmt := sqlite.
+	stmt := table.Episode.
 		SELECT(
 			table.Episode.AllColumns,
-			table.EpisodeTransition.ToState,
-			table.EpisodeTransition.DownloadID,
-			table.EpisodeTransition.DownloadClientID,
+			table.EpisodeTransition.AllColumns,
 		).
-		FROM(table.Episode.
-			LEFT_JOIN(table.EpisodeTransition,
-				table.Episode.ID.EQ(table.EpisodeTransition.EpisodeID).
-					AND(table.EpisodeTransition.MostRecent.IS_TRUE()),
-			),
+		FROM(
+			table.Episode.
+				INNER_JOIN(
+					table.EpisodeTransition,
+					table.Episode.ID.EQ(table.EpisodeTransition.EpisodeID).
+						AND(table.EpisodeTransition.MostRecent.EQ(sqlite.Bool(true)))),
 		)
 
 	for _, w := range where {
@@ -463,6 +466,74 @@ func (s SQLite) GetEpisodeByEpisodeFileID(ctx context.Context, fileID int64) (*s
 	}
 
 	return &episode, nil
+}
+
+// UpdateEpisodeState updates the transition state of an episode
+// Metadata is optional and can be nil
+func (s SQLite) UpdateEpisodeState(ctx context.Context, id int64, state storage.EpisodeState, metadata *storage.TransitionStateMetadata) error {
+	episode, err := s.GetEpisode(ctx, table.Episode.ID.EQ(sqlite.Int64(id)))
+	if err != nil {
+		return err
+	}
+
+	err = episode.Machine().ToState(state)
+	if err != nil {
+		return err
+	}
+
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+
+	previousTransitionStmt := table.EpisodeTransition.
+		UPDATE().
+		SET(
+			table.EpisodeTransition.MostRecent.SET(sqlite.Bool(false))).
+		WHERE(
+			table.EpisodeTransition.EpisodeID.EQ(sqlite.Int(id)).
+				AND(table.EpisodeTransition.MostRecent.EQ(sqlite.Bool(true)))).
+		RETURNING(table.EpisodeTransition.AllColumns)
+
+	var previousTransition storage.EpisodeTransition
+	err = previousTransitionStmt.QueryContext(ctx, tx, &previousTransition)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	transition := storage.EpisodeTransition{
+		EpisodeID:  int32(id),
+		ToState:    string(state),
+		MostRecent: true,
+		SortKey:    previousTransition.SortKey + 1,
+	}
+
+	if metadata != nil {
+		if metadata.DownloadClientID != nil {
+			transition.DownloadClientID = metadata.DownloadClientID
+		}
+		if metadata.DownloadID != nil {
+			transition.DownloadID = metadata.DownloadID
+		}
+		if metadata.IsEntireSeasonDownload != nil {
+			transition.IsEntireSeasonDownload = metadata.IsEntireSeasonDownload
+		}
+	}
+
+	newTransitionStmt := table.EpisodeTransition.
+		INSERT(table.EpisodeTransition.AllColumns.
+			Except(table.EpisodeTransition.ID, table.EpisodeTransition.CreatedAt, table.EpisodeTransition.UpdatedAt)).
+		MODEL(transition).
+		RETURNING(table.EpisodeTransition.AllColumns)
+
+	_, err = newTransitionStmt.ExecContext(ctx, tx)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	return tx.Commit()
 }
 
 // UpdateEpisodeEpisodeFileID updates the episode file id for an episode

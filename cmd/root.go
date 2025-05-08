@@ -33,6 +33,10 @@ func init() {
 	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
 
+const (
+	defaultJobTicker = time.Minute * 10
+)
+
 // initConfig sets viper configurations and default values
 func initConfig() {
 	if cfgFile != "" {
@@ -47,7 +51,7 @@ func initConfig() {
 	viper.SetDefault("tmdb.host", "api.themoviedb.org")
 	viper.SetDefault("tmdb.apiKey", "")
 
-	viper.SetDefault("prowlarr.scheme", "http")
+	viper.SetDefault("prowlarr.scheme", "")
 	viper.SetDefault("prowlarr.host", "")
 	viper.SetDefault("prowlarr.apiKey", "")
 
@@ -60,6 +64,8 @@ func initConfig() {
 	viper.SetDefault("storage.schemas", []string{"./pkg/storage/sqlite/schema/schema.sql"})
 	viper.SetDefault("storage.tableValueSchemas", []string{"./pkg/storage/sqlite/schema/defaults.sql"})
 
-	viper.SetDefault("manager.jobs.movieIndex", time.Minute*10)
-	viper.SetDefault("manager.jobs.movieReconcile", time.Minute*10)
+	viper.SetDefault("manager.jobs.movieIndex", defaultJobTicker)
+	viper.SetDefault("manager.jobs.movieReconcile", defaultJobTicker)
+	viper.SetDefault("manager.jobs.seriesIndex", defaultJobTicker)
+	viper.SetDefault("manager.jobs.seriesReconcile", defaultJobTicker)
 }

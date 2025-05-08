@@ -106,7 +106,7 @@ func (i *IndexerStore) searchIndexer(ctx context.Context, indexer int32, categor
 		IndexerIds: &[]int32{indexer},
 		Query:      &query,
 		Categories: &categories,
-		Limit:      intPtr(100),
+		Limit:      ptr(int32(100)),
 	})
 	if err != nil {
 		return nil, err
@@ -119,18 +119,13 @@ func (i *IndexerStore) searchIndexer(ctx context.Context, indexer int32, categor
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		log.Debug("unexpected response status", zap.String("status", resp.Status), zap.String("body", string(b)))
+		log.Debug("unexpected response status", zap.String("status", resp.Status))
 		return nil, fmt.Errorf("unexpected status: %s", resp.Status)
 	}
 
 	var releases []*prowlarr.ReleaseResource
 	err = json.Unmarshal(b, &releases)
 	return releases, err
-}
-
-func intPtr(in int) *int32 {
-	ret := int32(in)
-	return &ret
 }
 
 func FromProwlarrIndexer(prowlarr prowlarr.IndexerResource) (*Indexer, error) {

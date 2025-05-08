@@ -1069,6 +1069,20 @@ func (mr *MockStorageMockRecorder) UpdateEpisodeEpisodeFileID(ctx, id, fileID an
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateEpisodeEpisodeFileID", reflect.TypeOf((*MockStorage)(nil).UpdateEpisodeEpisodeFileID), ctx, id, fileID)
 }
 
+// UpdateEpisodeState mocks base method.
+func (m *MockStorage) UpdateEpisodeState(ctx context.Context, id int64, state storage.EpisodeState, metadata *storage.TransitionStateMetadata) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateEpisodeState", ctx, id, state, metadata)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateEpisodeState indicates an expected call of UpdateEpisodeState.
+func (mr *MockStorageMockRecorder) UpdateEpisodeState(ctx, id, state, metadata any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateEpisodeState", reflect.TypeOf((*MockStorage)(nil).UpdateEpisodeState), ctx, id, state, metadata)
+}
+
 // UpdateMovieMovieFileID mocks base method.
 func (m *MockStorage) UpdateMovieMovieFileID(ctx context.Context, id, fileID int64) error {
 	m.ctrl.T.Helper()
@@ -1084,7 +1098,7 @@ func (mr *MockStorageMockRecorder) UpdateMovieMovieFileID(ctx, id, fileID any) *
 }
 
 // UpdateMovieState mocks base method.
-func (m *MockStorage) UpdateMovieState(ctx context.Context, id int64, state storage.MovieState, metadata *storage.MovieStateMetadata) error {
+func (m *MockStorage) UpdateMovieState(ctx context.Context, id int64, state storage.MovieState, metadata *storage.TransitionStateMetadata) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UpdateMovieState", ctx, id, state, metadata)
 	ret0, _ := ret[0].(error)
@@ -1599,7 +1613,7 @@ func (mr *MockMovieStorageMockRecorder) UpdateMovieMovieFileID(ctx, id, fileID a
 }
 
 // UpdateMovieState mocks base method.
-func (m *MockMovieStorage) UpdateMovieState(ctx context.Context, id int64, state storage.MovieState, metadata *storage.MovieStateMetadata) error {
+func (m *MockMovieStorage) UpdateMovieState(ctx context.Context, id int64, state storage.MovieState, metadata *storage.TransitionStateMetadata) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UpdateMovieState", ctx, id, state, metadata)
 	ret0, _ := ret[0].(error)
@@ -2077,6 +2091,20 @@ func (m *MockSeriesStorage) UpdateEpisodeEpisodeFileID(ctx context.Context, id, 
 func (mr *MockSeriesStorageMockRecorder) UpdateEpisodeEpisodeFileID(ctx, id, fileID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateEpisodeEpisodeFileID", reflect.TypeOf((*MockSeriesStorage)(nil).UpdateEpisodeEpisodeFileID), ctx, id, fileID)
+}
+
+// UpdateEpisodeState mocks base method.
+func (m *MockSeriesStorage) UpdateEpisodeState(ctx context.Context, id int64, state storage.EpisodeState, metadata *storage.TransitionStateMetadata) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateEpisodeState", ctx, id, state, metadata)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateEpisodeState indicates an expected call of UpdateEpisodeState.
+func (mr *MockSeriesStorageMockRecorder) UpdateEpisodeState(ctx, id, state, metadata any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateEpisodeState", reflect.TypeOf((*MockSeriesStorage)(nil).UpdateEpisodeState), ctx, id, state, metadata)
 }
 
 // MockSeriesMetadataStorage is a mock of SeriesMetadataStorage interface.
