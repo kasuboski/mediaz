@@ -93,7 +93,7 @@ func (m MediaManager) reconcileMissingSeries(ctx context.Context, series *storag
 
 	qualityProfile, err := m.storage.GetQualityProfile(ctx, int64(series.QualityProfileID))
 	if err != nil {
-		log.Warnw("failed to find movie qualityprofile", "quality_id", series.QualityProfileID)
+		log.Warnw("failed to find series qualityprofile", "quality_id", series.QualityProfileID)
 		return err
 	}
 
@@ -184,7 +184,7 @@ func (m MediaManager) reconcileMissingSeason(ctx context.Context, seriesTitle st
 	}
 
 	runtime := getSeasonRuntime(missingEpisodes, len(episodes))
-	log.Debug("found season pack releases", zap.Int("count", len(releases)))
+	log.Debug("considering releases for season pack", zap.Int("count", len(releases)))
 
 	var chosenSeasonPackRelease *prowlarr.ReleaseResource
 	for _, r := range releases {
