@@ -180,7 +180,9 @@ func (s Series) Machine() *machine.StateMachine[SeriesState] {
 
 type Season struct {
 	model.Season
-	State SeasonState `alias:"season_transition.to_state" json:"state"`
+	DownloadID       string      `alias:"season_transition.download_id" json:"-"`
+	DownloadClientID int32       `alias:"season_transition.download_client_id" json:"-"`
+	State            SeasonState `alias:"season_transition.to_state" json:"state"`
 }
 
 type SeasonTransition model.SeasonTransition
