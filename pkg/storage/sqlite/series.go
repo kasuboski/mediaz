@@ -884,3 +884,71 @@ func (s SQLite) GetEpisodeMetadata(ctx context.Context, where sqlite.BoolExpress
 
 	return &episodeMetadata, nil
 }
+
+// UpdateSeasonState updates the transition state of an episode
+// Metadata is optional and can be nil
+func (s SQLite) UpdateSeasonState(ctx context.Context, id int64, state storage.SeasonState, metadata *storage.TransitionStateMetadata) error {
+	season, err := s.GetSeason(ctx, table.Season.ID.EQ(sqlite.Int64(id)))
+	if err != nil {
+		return err
+	}
+
+	err = season.Machine().ToState(state)
+	if err != nil {
+		return err
+	}
+
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+
+	previousTransitionStmt := table.SeasonTransition.
+		UPDATE().
+		SET(
+			table.SeasonTransition.MostRecent.SET(sqlite.Bool(false))).
+		WHERE(
+			table.SeasonTransition.SeasonID.EQ(sqlite.Int(id)).
+				AND(table.SeasonTransition.MostRecent.EQ(sqlite.Bool(true)))).
+		RETURNING(table.SeasonTransition.AllColumns)
+
+	var previousTransition storage.SeasonTransition
+	err = previousTransitionStmt.QueryContext(ctx, tx, &previousTransition)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	transition := storage.SeasonTransition{
+		SeasonID:   int32(id),
+		ToState:    string(state),
+		MostRecent: true,
+		SortKey:    previousTransition.SortKey + 1,
+	}
+
+	if metadata != nil {
+		if metadata.DownloadClientID != nil {
+			transition.DownloadClientID = metadata.DownloadClientID
+		}
+		if metadata.DownloadID != nil {
+			transition.DownloadID = metadata.DownloadID
+		}
+		if metadata.IsEntireSeasonDownload != nil {
+			transition.IsEntireSeasonDownload = metadata.IsEntireSeasonDownload
+		}
+	}
+
+	newTransitionStmt := table.SeasonTransition.
+		INSERT(table.SeasonTransition.AllColumns.
+			Except(table.SeasonTransition.ID, table.SeasonTransition.CreatedAt, table.SeasonTransition.UpdatedAt)).
+		MODEL(transition).
+		RETURNING(table.SeasonTransition.AllColumns)
+
+	_, err = newTransitionStmt.ExecContext(ctx, tx)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	return tx.Commit()
+}

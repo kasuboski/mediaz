@@ -444,3 +444,44 @@ func TestUpdateEpisodeState(t *testing.T) {
 	err = store.UpdateEpisodeState(ctx, 999999, storage.EpisodeStateMissing, nil)
 	assert.ErrorIs(t, err, storage.ErrNotFound)
 }
+
+func TestSQLite_UpdateSeasonState(t *testing.T) {
+	t.Run("update season state", func(t *testing.T) {
+		ctx := context.Background()
+		store := initSqlite(t, ctx)
+		require.NotNil(t, store)
+
+		season := storage.Season{
+			Season: model.Season{
+				ID:               1,
+				SeriesID:         1,
+				SeasonMetadataID: ptr(int32(1)),
+				Monitored:        1,
+			},
+		}
+
+		seasonID, err := store.CreateSeason(ctx, season, storage.SeasonStateMissing)
+		require.NoError(t, err)
+		assert.Equal(t, int64(1), seasonID)
+
+		season.ID = int32(seasonID)
+		err = store.UpdateSeasonState(ctx, seasonID, storage.SeasonStateDownloading, &storage.TransitionStateMetadata{
+			DownloadID:             ptr("123"),
+			DownloadClientID:       ptr(int32(2)),
+			IsEntireSeasonDownload: ptr(true),
+		})
+		require.NoError(t, err)
+
+		foundSeason, err := store.GetSeason(ctx, table.Season.ID.EQ(sqlite.Int64(seasonID)))
+		require.NoError(t, err)
+		require.NotNil(t, foundSeason)
+
+		assert.Equal(t, storage.SeasonStateDownloading, foundSeason.State)
+		assert.Equal(t, "123", foundSeason.DownloadID)
+		assert.Equal(t, int32(1), foundSeason.SeriesID)
+		assert.Equal(t, ptr(int32(1)), foundSeason.SeasonMetadataID)
+
+		err = store.UpdateSeasonState(ctx, 999999, storage.SeasonStateMissing, nil)
+		assert.ErrorIs(t, err, storage.ErrNotFound)
+	})
+}

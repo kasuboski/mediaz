@@ -17,14 +17,17 @@ type seasonTransitionTable struct {
 	sqlite.Table
 
 	// Columns
-	ID         sqlite.ColumnInteger
-	SeasonID   sqlite.ColumnInteger
-	ToState    sqlite.ColumnString
-	FromState  sqlite.ColumnString
-	MostRecent sqlite.ColumnBool
-	SortKey    sqlite.ColumnInteger
-	CreatedAt  sqlite.ColumnTimestamp
-	UpdatedAt  sqlite.ColumnTimestamp
+	ID                     sqlite.ColumnInteger
+	SeasonID               sqlite.ColumnInteger
+	ToState                sqlite.ColumnString
+	FromState              sqlite.ColumnString
+	MostRecent             sqlite.ColumnBool
+	SortKey                sqlite.ColumnInteger
+	DownloadClientID       sqlite.ColumnInteger
+	DownloadID             sqlite.ColumnString
+	IsEntireSeasonDownload sqlite.ColumnBool
+	CreatedAt              sqlite.ColumnTimestamp
+	UpdatedAt              sqlite.ColumnTimestamp
 
 	AllColumns     sqlite.ColumnList
 	MutableColumns sqlite.ColumnList
@@ -65,30 +68,36 @@ func newSeasonTransitionTable(schemaName, tableName, alias string) *SeasonTransi
 
 func newSeasonTransitionTableImpl(schemaName, tableName, alias string) seasonTransitionTable {
 	var (
-		IDColumn         = sqlite.IntegerColumn("id")
-		SeasonIDColumn   = sqlite.IntegerColumn("season_id")
-		ToStateColumn    = sqlite.StringColumn("to_state")
-		FromStateColumn  = sqlite.StringColumn("from_state")
-		MostRecentColumn = sqlite.BoolColumn("most_recent")
-		SortKeyColumn    = sqlite.IntegerColumn("sort_key")
-		CreatedAtColumn  = sqlite.TimestampColumn("created_at")
-		UpdatedAtColumn  = sqlite.TimestampColumn("updated_at")
-		allColumns       = sqlite.ColumnList{IDColumn, SeasonIDColumn, ToStateColumn, FromStateColumn, MostRecentColumn, SortKeyColumn, CreatedAtColumn, UpdatedAtColumn}
-		mutableColumns   = sqlite.ColumnList{SeasonIDColumn, ToStateColumn, FromStateColumn, MostRecentColumn, SortKeyColumn, CreatedAtColumn, UpdatedAtColumn}
+		IDColumn                     = sqlite.IntegerColumn("id")
+		SeasonIDColumn               = sqlite.IntegerColumn("season_id")
+		ToStateColumn                = sqlite.StringColumn("to_state")
+		FromStateColumn              = sqlite.StringColumn("from_state")
+		MostRecentColumn             = sqlite.BoolColumn("most_recent")
+		SortKeyColumn                = sqlite.IntegerColumn("sort_key")
+		DownloadClientIDColumn       = sqlite.IntegerColumn("download_client_id")
+		DownloadIDColumn             = sqlite.StringColumn("download_id")
+		IsEntireSeasonDownloadColumn = sqlite.BoolColumn("is_entire_season_download")
+		CreatedAtColumn              = sqlite.TimestampColumn("created_at")
+		UpdatedAtColumn              = sqlite.TimestampColumn("updated_at")
+		allColumns                   = sqlite.ColumnList{IDColumn, SeasonIDColumn, ToStateColumn, FromStateColumn, MostRecentColumn, SortKeyColumn, DownloadClientIDColumn, DownloadIDColumn, IsEntireSeasonDownloadColumn, CreatedAtColumn, UpdatedAtColumn}
+		mutableColumns               = sqlite.ColumnList{SeasonIDColumn, ToStateColumn, FromStateColumn, MostRecentColumn, SortKeyColumn, DownloadClientIDColumn, DownloadIDColumn, IsEntireSeasonDownloadColumn, CreatedAtColumn, UpdatedAtColumn}
 	)
 
 	return seasonTransitionTable{
 		Table: sqlite.NewTable(schemaName, tableName, alias, allColumns...),
 
 		//Columns
-		ID:         IDColumn,
-		SeasonID:   SeasonIDColumn,
-		ToState:    ToStateColumn,
-		FromState:  FromStateColumn,
-		MostRecent: MostRecentColumn,
-		SortKey:    SortKeyColumn,
-		CreatedAt:  CreatedAtColumn,
-		UpdatedAt:  UpdatedAtColumn,
+		ID:                     IDColumn,
+		SeasonID:               SeasonIDColumn,
+		ToState:                ToStateColumn,
+		FromState:              FromStateColumn,
+		MostRecent:             MostRecentColumn,
+		SortKey:                SortKeyColumn,
+		DownloadClientID:       DownloadClientIDColumn,
+		DownloadID:             DownloadIDColumn,
+		IsEntireSeasonDownload: IsEntireSeasonDownloadColumn,
+		CreatedAt:              CreatedAtColumn,
+		UpdatedAt:              UpdatedAtColumn,
 
 		AllColumns:     allColumns,
 		MutableColumns: mutableColumns,
