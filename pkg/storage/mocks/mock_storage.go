@@ -1111,6 +1111,20 @@ func (mr *MockStorageMockRecorder) UpdateMovieState(ctx, id, state, metadata any
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateMovieState", reflect.TypeOf((*MockStorage)(nil).UpdateMovieState), ctx, id, state, metadata)
 }
 
+// UpdateSeasonState mocks base method.
+func (m *MockStorage) UpdateSeasonState(ctx context.Context, id int64, season storage.SeasonState, metadata *storage.TransitionStateMetadata) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateSeasonState", ctx, id, season, metadata)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateSeasonState indicates an expected call of UpdateSeasonState.
+func (mr *MockStorageMockRecorder) UpdateSeasonState(ctx, id, season, metadata any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateSeasonState", reflect.TypeOf((*MockStorage)(nil).UpdateSeasonState), ctx, id, season, metadata)
+}
+
 // MockIndexerStorage is a mock of IndexerStorage interface.
 type MockIndexerStorage struct {
 	ctrl     *gomock.Controller
@@ -2105,6 +2119,20 @@ func (m *MockSeriesStorage) UpdateEpisodeState(ctx context.Context, id int64, st
 func (mr *MockSeriesStorageMockRecorder) UpdateEpisodeState(ctx, id, state, metadata any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateEpisodeState", reflect.TypeOf((*MockSeriesStorage)(nil).UpdateEpisodeState), ctx, id, state, metadata)
+}
+
+// UpdateSeasonState mocks base method.
+func (m *MockSeriesStorage) UpdateSeasonState(ctx context.Context, id int64, season storage.SeasonState, metadata *storage.TransitionStateMetadata) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateSeasonState", ctx, id, season, metadata)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateSeasonState indicates an expected call of UpdateSeasonState.
+func (mr *MockSeriesStorageMockRecorder) UpdateSeasonState(ctx, id, season, metadata any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateSeasonState", reflect.TypeOf((*MockSeriesStorage)(nil).UpdateSeasonState), ctx, id, season, metadata)
 }
 
 // MockSeriesMetadataStorage is a mock of SeriesMetadataStorage interface.

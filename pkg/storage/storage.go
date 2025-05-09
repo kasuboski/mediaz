@@ -222,6 +222,7 @@ type SeriesStorage interface {
 	CreateSeason(ctx context.Context, season Season, initialState SeasonState) (int64, error)
 	DeleteSeason(ctx context.Context, id int64) error
 	ListSeasons(ctx context.Context, where ...sqlite.BoolExpression) ([]*Season, error)
+	UpdateSeasonState(ctx context.Context, id int64, season SeasonState, metadata *TransitionStateMetadata) error
 
 	GetEpisode(ctx context.Context, where sqlite.BoolExpression) (*Episode, error)
 	GetEpisodeByEpisodeFileID(ctx context.Context, fileID int64) (*Episode, error)
