@@ -180,7 +180,9 @@ func (s Series) Machine() *machine.StateMachine[SeriesState] {
 
 type Season struct {
 	model.Season
-	State SeasonState `alias:"season_transition.to_state" json:"state"`
+	DownloadID       string      `alias:"season_transition.download_id" json:"-"`
+	DownloadClientID int32       `alias:"season_transition.download_client_id" json:"-"`
+	State            SeasonState `alias:"season_transition.to_state" json:"state"`
 }
 
 type SeasonTransition model.SeasonTransition
@@ -222,6 +224,7 @@ type SeriesStorage interface {
 	CreateSeason(ctx context.Context, season Season, initialState SeasonState) (int64, error)
 	DeleteSeason(ctx context.Context, id int64) error
 	ListSeasons(ctx context.Context, where ...sqlite.BoolExpression) ([]*Season, error)
+	UpdateSeasonState(ctx context.Context, id int64, season SeasonState, metadata *TransitionStateMetadata) error
 
 	GetEpisode(ctx context.Context, where sqlite.BoolExpression) (*Episode, error)
 	GetEpisodeByEpisodeFileID(ctx context.Context, fileID int64) (*Episode, error)

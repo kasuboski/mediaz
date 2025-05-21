@@ -637,7 +637,13 @@ func nullableDefault[T any](n nullable.Nullable[T]) T {
 }
 
 func isReleased(now time.Time, releaseDate *time.Time) bool {
-	return releaseDate != nil && now.After(*releaseDate)
+	if releaseDate == nil {
+		return false
+	}
+	if releaseDate.IsZero() {
+		return false
+	}
+	return now.After(*releaseDate)
 }
 
 func ptr[A any](thing A) *A {
