@@ -61,18 +61,18 @@ func TestServer_GetMovieDetailByTMDBID(t *testing.T) {
 			ID:               1,
 			TmdbID:           12345,
 			Title:            "Test Movie",
-			OriginalTitle:    stringPtr("Original Test Movie"),
-			Overview:         stringPtr("A test movie overview"),
+			OriginalTitle:    ptr("Original Test Movie"),
+			Overview:         ptr("A test movie overview"),
 			Images:           "/test-poster.jpg",
 			Runtime:          120,
-			Year:             int32Ptr(2023),
-			ReleaseDate:      timePtr(time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC)),
-			Genres:           stringPtr("Action,Adventure"),
-			Studio:           stringPtr("Test Studio"),
-			Website:          stringPtr("https://testmovie.com"),
-			Popularity:       float64Ptr(85.5),
-			CollectionTmdbID: int32Ptr(5000),
-			CollectionTitle:  stringPtr("Test Collection"),
+			Year:             ptr(int32(2023)),
+			ReleaseDate:      ptr(time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC)),
+			Genres:           ptr("Action,Adventure"),
+			Studio:           ptr("Test Studio"),
+			Website:          ptr("https://testmovie.com"),
+			Popularity:       ptr(85.5),
+			CollectionTmdbID: ptr(int32(5000)),
+			CollectionTitle:  ptr("Test Collection"),
 		}
 
 		store.EXPECT().GetMovieMetadata(gomock.Any(), gomock.Any()).Return(expectedMetadata, nil)
@@ -81,10 +81,10 @@ func TestServer_GetMovieDetailByTMDBID(t *testing.T) {
 		expectedMovie := &storage.Movie{
 			Movie: model.Movie{
 				ID:                1,
-				MovieMetadataID:   int32Ptr(1),
+				MovieMetadataID:   ptr(int32(1)),
 				QualityProfileID:  1,
 				Monitored:         1,
-				Path:              stringPtr("/movies/Test Movie (2023)"),
+				Path:              ptr("/movies/Test Movie (2023)"),
 			},
 			State: storage.MovieStateDownloaded,
 		}
@@ -230,19 +230,7 @@ func TestServer_GetMovieDetailByTMDBID(t *testing.T) {
 	})
 }
 
-// Helper functions for creating pointers
-func stringPtr(s string) *string {
-	return &s
-}
-
-func int32Ptr(i int32) *int32 {
-	return &i
-}
-
-func float64Ptr(f float64) *float64 {
-	return &f
-}
-
-func timePtr(t time.Time) *time.Time {
-	return &t
+// Helper function for creating pointers
+func ptr[T any](v T) *T {
+	return &v
 }
