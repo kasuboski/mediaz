@@ -535,7 +535,7 @@ func TestRejectEpisodeReleaseFunc(t *testing.T) {
 	}
 }
 
-func equalValuesPrettyPrint(t testing.TB, expected, actual interface{}) bool {
+func equalValuesPrettyPrint(t testing.TB, expected, actual any) bool {
 	return assert.EqualValues(t, expected, actual, "exp=%v, got=%v", reflect.Indirect(reflect.ValueOf(expected)), reflect.Indirect(reflect.ValueOf(actual)))
 }
 

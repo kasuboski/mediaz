@@ -368,8 +368,8 @@ func TestFromMediaDetails(t *testing.T) {
 				Homepage:            ptr("http://"),
 				Popularity:          ptr(float32(1.1)),
 				ProductionCompanies: &[]tmdb.ProductionCompany{{Name: ptr("Studio")}},
-				BelongsToCollection: func() *interface{} {
-					v := interface{}(map[string]interface{}{"id": float64(5), "name": "Coll"})
+				BelongsToCollection: func() *any {
+					v := any(map[string]any{"id": float64(5), "name": "Coll"})
 					return &v
 				}(),
 				ReleaseDate: ptr("2020-02-03"),

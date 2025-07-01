@@ -1,5 +1,7 @@
 package machine
 
+import "slices"
+
 import "errors"
 
 type State interface {
@@ -50,10 +52,8 @@ func (m *StateMachine[S]) ToState(s S) error {
 			continue
 		}
 
-		for _, transitionToState := range transition.to {
-			if transitionToState == s {
-				return nil
-			}
+		if slices.Contains(transition.to, s) {
+			return nil
 		}
 	}
 

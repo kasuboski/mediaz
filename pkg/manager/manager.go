@@ -77,36 +77,36 @@ type SearchMediaResult struct {
 // MovieDetailResult provides detailed information for a single movie
 type MovieDetailResult struct {
 	// Core identifiers and basic info
-	TMDBID           int32   `json:"tmdbID"`
-	ImdbID           *string `json:"imdbID,omitempty"`
-	Title            string  `json:"title"`
-	OriginalTitle    *string `json:"originalTitle,omitempty"`
-	Overview         *string `json:"overview,omitempty"`
-	
+	TMDBID        int32   `json:"tmdbID"`
+	ImdbID        *string `json:"imdbID,omitempty"`
+	Title         string  `json:"title"`
+	OriginalTitle *string `json:"originalTitle,omitempty"`
+	Overview      *string `json:"overview,omitempty"`
+
 	// Media assets
-	PosterPath       string  `json:"posterPath,omitempty"`
-	BackdropPath     *string `json:"backdropPath,omitempty"`
-	
+	PosterPath   string  `json:"posterPath,omitempty"`
+	BackdropPath *string `json:"backdropPath,omitempty"`
+
 	// Release and timing info
-	ReleaseDate      *string `json:"releaseDate,omitempty"`
-	Year             *int32  `json:"year,omitempty"`
-	Runtime          *int32  `json:"runtime,omitempty"`
-	
+	ReleaseDate *string `json:"releaseDate,omitempty"`
+	Year        *int32  `json:"year,omitempty"`
+	Runtime     *int32  `json:"runtime,omitempty"`
+
 	// Content classification and ratings
-	Adult            *bool    `json:"adult,omitempty"`
-	VoteAverage      *float32 `json:"voteAverage,omitempty"`
-	VoteCount        *int     `json:"voteCount,omitempty"`
-	Popularity       *float64 `json:"popularity,omitempty"`
-	
+	Adult       *bool    `json:"adult,omitempty"`
+	VoteAverage *float32 `json:"voteAverage,omitempty"`
+	VoteCount   *int     `json:"voteCount,omitempty"`
+	Popularity  *float64 `json:"popularity,omitempty"`
+
 	// Genre and production info
-	Genres           *string `json:"genres,omitempty"`
-	Studio           *string `json:"studio,omitempty"`
-	Website          *string `json:"website,omitempty"`
-	
+	Genres  *string `json:"genres,omitempty"`
+	Studio  *string `json:"studio,omitempty"`
+	Website *string `json:"website,omitempty"`
+
 	// Collection info
 	CollectionTmdbID *int32  `json:"collectionTmdbID,omitempty"`
 	CollectionTitle  *string `json:"collectionTitle,omitempty"`
-	
+
 	// Library status
 	LibraryStatus    string  `json:"libraryStatus"` // Available, Missing, Requested, etc.
 	Path             *string `json:"path,omitempty"`
@@ -117,33 +117,33 @@ type MovieDetailResult struct {
 // TVDetailResult provides detailed information for a single TV show
 type TVDetailResult struct {
 	// Core identifiers and basic info
-	TMDBID           int32   `json:"tmdbID"`
-	Title            string  `json:"title"`
-	OriginalTitle    *string `json:"originalTitle,omitempty"`
-	Overview         *string `json:"overview,omitempty"`
-	
+	TMDBID        int32   `json:"tmdbID"`
+	Title         string  `json:"title"`
+	OriginalTitle *string `json:"originalTitle,omitempty"`
+	Overview      *string `json:"overview,omitempty"`
+
 	// Media assets
-	PosterPath       string  `json:"posterPath,omitempty"`
-	BackdropPath     *string `json:"backdropPath,omitempty"`
-	
+	PosterPath   string  `json:"posterPath,omitempty"`
+	BackdropPath *string `json:"backdropPath,omitempty"`
+
 	// TV-specific timing info
-	FirstAirDate     *string `json:"firstAirDate,omitempty"`
-	LastAirDate      *string `json:"lastAirDate,omitempty"`
-	
+	FirstAirDate *string `json:"firstAirDate,omitempty"`
+	LastAirDate  *string `json:"lastAirDate,omitempty"`
+
 	// TV-specific metadata
-	Networks         []string `json:"networks,omitempty"`
-	SeasonCount      int32   `json:"seasonCount"`
-	EpisodeCount     int32   `json:"episodeCount"`
-	
+	Networks     []string `json:"networks,omitempty"`
+	SeasonCount  int32    `json:"seasonCount"`
+	EpisodeCount int32    `json:"episodeCount"`
+
 	// Content classification and ratings
-	Adult            *bool    `json:"adult,omitempty"`
-	VoteAverage      *float32 `json:"voteAverage,omitempty"`
-	VoteCount        *int     `json:"voteCount,omitempty"`
-	Popularity       *float64 `json:"popularity,omitempty"`
-	
+	Adult       *bool    `json:"adult,omitempty"`
+	VoteAverage *float32 `json:"voteAverage,omitempty"`
+	VoteCount   *int     `json:"voteCount,omitempty"`
+	Popularity  *float64 `json:"popularity,omitempty"`
+
 	// Genre and production info
-	Genres           []string `json:"genres,omitempty"`
-	
+	Genres []string `json:"genres,omitempty"`
+
 	// Library status
 	LibraryStatus    string  `json:"libraryStatus"` // Available, Missing, Requested, etc.
 	Path             *string `json:"path,omitempty"`
@@ -179,7 +179,7 @@ func (m MediaManager) SearchMovie(ctx context.Context, query string) (*SearchMed
 // GetMovieDetailByTMDBID retrieves detailed information for a single movie by TMDB ID
 func (m MediaManager) GetMovieDetailByTMDBID(ctx context.Context, tmdbID int) (*MovieDetailResult, error) {
 	log := logger.FromCtx(ctx)
-	
+
 	// Get movie metadata from TMDB (creates if not exists)
 	metadata, err := m.GetMovieMetadata(ctx, tmdbID)
 	if err != nil {
@@ -232,7 +232,7 @@ func (m MediaManager) GetMovieDetailByTMDBID(ctx context.Context, tmdbID int) (*
 // GetTVDetailByTMDBID retrieves detailed information for a single TV show by TMDB ID
 func (m MediaManager) GetTVDetailByTMDBID(ctx context.Context, tmdbID int) (*TVDetailResult, error) {
 	log := logger.FromCtx(ctx)
-	
+
 	// Get data from various sources
 	metadata, seriesDetailsResponse, err := m.getTVMetadataAndDetails(ctx, tmdbID)
 	if err != nil {
@@ -248,7 +248,7 @@ func (m MediaManager) GetTVDetailByTMDBID(ctx context.Context, tmdbID int) (*TVD
 
 	// Transform data into result
 	result := m.buildTVDetailResult(metadata, seriesDetailsResponse, series)
-	
+
 	return result, nil
 }
 

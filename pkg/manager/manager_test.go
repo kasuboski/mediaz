@@ -597,21 +597,21 @@ func TestGetMovieDetailByTMDBID(t *testing.T) {
 		releaseDate := time.Date(2023, 1, 15, 0, 0, 0, 0, time.UTC)
 		year := int32(2023)
 		metadata := &model.MovieMetadata{
-			ID:             1,
-			TmdbID:         123,
-			Title:          "Test Movie",
-			OriginalTitle:  ptr("Original Test Movie"),
-			Overview:       ptr("Test movie overview"),
-			Images:         "poster.jpg",
-			Runtime:        120,
-			Genres:         ptr("Action, Drama"),
-			Studio:         ptr("Test Studio"),
-			Website:        ptr("https://test.com"),
+			ID:               1,
+			TmdbID:           123,
+			Title:            "Test Movie",
+			OriginalTitle:    ptr("Original Test Movie"),
+			Overview:         ptr("Test movie overview"),
+			Images:           "poster.jpg",
+			Runtime:          120,
+			Genres:           ptr("Action, Drama"),
+			Studio:           ptr("Test Studio"),
+			Website:          ptr("https://test.com"),
 			CollectionTmdbID: ptr(int32(456)),
-			CollectionTitle: ptr("Test Collection"),
-			Popularity:     ptr(8.5),
-			Year:           &year,
-			ReleaseDate:    &releaseDate,
+			CollectionTitle:  ptr("Test Collection"),
+			Popularity:       ptr(8.5),
+			Year:             &year,
+			ReleaseDate:      &releaseDate,
 		}
 
 		store.EXPECT().GetMovieMetadata(ctx, gomock.Any()).Return(metadata, nil)
@@ -647,10 +647,10 @@ func TestGetMovieDetailByTMDBID(t *testing.T) {
 		m := New(nil, nil, nil, store, nil, config.Manager{})
 
 		metadata := &model.MovieMetadata{
-			ID:     1,
-			TmdbID: 123,
-			Title:  "Test Movie",
-			Images: "poster.jpg",
+			ID:      1,
+			TmdbID:  123,
+			Title:   "Test Movie",
+			Images:  "poster.jpg",
 			Runtime: 120,
 		}
 
@@ -715,10 +715,10 @@ func TestGetMovieDetailByTMDBID(t *testing.T) {
 		m := New(nil, nil, nil, store, nil, config.Manager{})
 
 		metadata := &model.MovieMetadata{
-			ID:     1,
-			TmdbID: 123,
-			Title:  "Test Movie",
-			Images: "poster.jpg",
+			ID:      1,
+			TmdbID:  123,
+			Title:   "Test Movie",
+			Images:  "poster.jpg",
 			Runtime: 120,
 		}
 
@@ -764,10 +764,10 @@ func TestGetMovieDetailByTMDBID(t *testing.T) {
 		m := New(nil, nil, nil, store, nil, config.Manager{})
 
 		metadata := &model.MovieMetadata{
-			ID:     1,
-			TmdbID: 123,
-			Title:  "Test Movie",
-			Images: "poster.jpg",
+			ID:      1,
+			TmdbID:  123,
+			Title:   "Test Movie",
+			Images:  "poster.jpg",
 			Runtime: 120,
 		}
 

@@ -152,7 +152,7 @@ func FromMediaDetails(det tmdb.MediaDetails) model.MovieMetadata {
 
 	// Parse belongs_to_collection into CollectionTmdbID and CollectionTitle
 	if det.BelongsToCollection != nil {
-		if collMap, ok := (*det.BelongsToCollection).(map[string]interface{}); ok {
+		if collMap, ok := (*det.BelongsToCollection).(map[string]any); ok {
 			if rawID, ok := collMap["id"].(float64); ok {
 				id := int32(rawID)
 				model.CollectionTmdbID = &id

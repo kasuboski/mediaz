@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/kasuboski/mediaz/pkg/io"
@@ -198,13 +199,7 @@ func matchEpisode(name string) bool {
 
 func isVideoFile(name string) bool {
 	ext := filepath.Ext(name)
-	for _, e := range videoExtensions {
-		if strings.ToLower(ext) == e {
-			return true
-		}
-	}
-
-	return false
+	return slices.Contains(videoExtensions, strings.ToLower(ext))
 }
 
 // MovieNameFromFilepath builds a sanitized name from the path to a movie file

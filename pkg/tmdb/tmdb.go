@@ -189,7 +189,7 @@ type MediaDetails struct {
 	OriginalTitle       *string              `json:"original_title,omitempty"`
 	Overview            *string              `json:"overview,omitempty"`
 	Popularity          *float32             `json:"popularity,omitempty"`
-	BelongsToCollection *interface{}         `json:"belongs_to_collection,omitempty"`
+	BelongsToCollection *any                 `json:"belongs_to_collection,omitempty"`
 	BackdropPath        *string              `json:"backdrop_path,omitempty"`
 	ImdbID              *string              `json:"imdb_id,omitempty"`
 	ReleaseDate         *string              `json:"release_date,omitempty"`

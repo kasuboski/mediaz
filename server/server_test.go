@@ -54,7 +54,7 @@ func TestServer_GetMovieDetailByTMDBID(t *testing.T) {
 
 		// Mock storage
 		store := storeMocks.NewMockStorage(ctrl)
-		
+
 		// Mock TMDB client
 		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
 
@@ -82,11 +82,11 @@ func TestServer_GetMovieDetailByTMDBID(t *testing.T) {
 		// Setup expectations for GetMovieByMetadataID call
 		expectedMovie := &storage.Movie{
 			Movie: model.Movie{
-				ID:                1,
-				MovieMetadataID:   ptr(int32(1)),
-				QualityProfileID:  1,
-				Monitored:         1,
-				Path:              ptr("/movies/Test Movie (2023)"),
+				ID:               1,
+				MovieMetadataID:  ptr(int32(1)),
+				QualityProfileID: 1,
+				Monitored:        1,
+				Path:             ptr("/movies/Test Movie (2023)"),
 			},
 			State: storage.MovieStateDownloaded,
 		}
@@ -117,7 +117,7 @@ func TestServer_GetMovieDetailByTMDBID(t *testing.T) {
 		err = json.Unmarshal(rr.Body.Bytes(), &response)
 		require.NoError(t, err)
 
-		movieDetail, ok := response.Response.(map[string]interface{})
+		movieDetail, ok := response.Response.(map[string]any)
 		require.True(t, ok, "Response should be a map")
 
 		assert.Equal(t, float64(12345), movieDetail["tmdbID"])
@@ -173,7 +173,7 @@ func TestServer_GetMovieDetailByTMDBID(t *testing.T) {
 		err = json.Unmarshal(rr.Body.Bytes(), &response)
 		require.NoError(t, err)
 
-		movieDetail, ok := response.Response.(map[string]interface{})
+		movieDetail, ok := response.Response.(map[string]any)
 		require.True(t, ok, "Response should be a map")
 
 		assert.Equal(t, "Not In Library", movieDetail["libraryStatus"])
@@ -239,7 +239,7 @@ func TestServer_GetTVDetailByTMDBID(t *testing.T) {
 
 		// Mock storage
 		store := storeMocks.NewMockStorage(ctrl)
-		
+
 		// Mock TMDB client
 		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
 
@@ -310,7 +310,7 @@ func TestServer_GetTVDetailByTMDBID(t *testing.T) {
 		err = json.Unmarshal(rr.Body.Bytes(), &response)
 		require.NoError(t, err)
 
-		tvDetail, ok := response.Response.(map[string]interface{})
+		tvDetail, ok := response.Response.(map[string]any)
 		require.True(t, ok, "Response should be a map")
 
 		assert.Equal(t, float64(12345), tvDetail["tmdbID"])
@@ -322,17 +322,17 @@ func TestServer_GetTVDetailByTMDBID(t *testing.T) {
 		assert.Equal(t, "2023-12-31", tvDetail["lastAirDate"])
 		assert.Equal(t, float64(3), tvDetail["seasonCount"])
 		assert.Equal(t, float64(30), tvDetail["episodeCount"])
-		
+
 		// Check networks array
-		networks, ok := tvDetail["networks"].([]interface{})
+		networks, ok := tvDetail["networks"].([]any)
 		require.True(t, ok)
-		assert.Equal(t, []interface{}{"HBO", "Netflix"}, networks)
-		
+		assert.Equal(t, []any{"HBO", "Netflix"}, networks)
+
 		// Check genres array
-		genres, ok := tvDetail["genres"].([]interface{})
+		genres, ok := tvDetail["genres"].([]any)
 		require.True(t, ok)
-		assert.Equal(t, []interface{}{"Drama", "Thriller"}, genres)
-		
+		assert.Equal(t, []any{"Drama", "Thriller"}, genres)
+
 		assert.Equal(t, "discovered", tvDetail["libraryStatus"])
 		assert.Equal(t, "/tv/Test TV Show (2023)", tvDetail["path"])
 		assert.Equal(t, true, tvDetail["monitored"])
@@ -386,7 +386,7 @@ func TestServer_GetTVDetailByTMDBID(t *testing.T) {
 		err = json.Unmarshal(rr.Body.Bytes(), &response)
 		require.NoError(t, err)
 
-		tvDetail, ok := response.Response.(map[string]interface{})
+		tvDetail, ok := response.Response.(map[string]any)
 		require.True(t, ok, "Response should be a map")
 
 		assert.Equal(t, "Not In Library", tvDetail["libraryStatus"])
