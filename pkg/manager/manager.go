@@ -74,6 +74,46 @@ type SearchMediaResult struct {
 	VoteCount        *int     `json:"vote_count,omitempty"`
 }
 
+// MovieDetailResult provides detailed information for a single movie
+type MovieDetailResult struct {
+	// Core identifiers and basic info
+	TMDBID           int32   `json:"tmdbID"`
+	ImdbID           *string `json:"imdbID,omitempty"`
+	Title            string  `json:"title"`
+	OriginalTitle    *string `json:"originalTitle,omitempty"`
+	Overview         *string `json:"overview,omitempty"`
+	
+	// Media assets
+	PosterPath       string  `json:"posterPath,omitempty"`
+	BackdropPath     *string `json:"backdropPath,omitempty"`
+	
+	// Release and timing info
+	ReleaseDate      *string `json:"releaseDate,omitempty"`
+	Year             *int32  `json:"year,omitempty"`
+	Runtime          *int32  `json:"runtime,omitempty"`
+	
+	// Content classification and ratings
+	Adult            *bool    `json:"adult,omitempty"`
+	VoteAverage      *float32 `json:"voteAverage,omitempty"`
+	VoteCount        *int     `json:"voteCount,omitempty"`
+	Popularity       *float64 `json:"popularity,omitempty"`
+	
+	// Genre and production info
+	Genres           *string `json:"genres,omitempty"`
+	Studio           *string `json:"studio,omitempty"`
+	Website          *string `json:"website,omitempty"`
+	
+	// Collection info
+	CollectionTmdbID *int32  `json:"collectionTmdbID,omitempty"`
+	CollectionTitle  *string `json:"collectionTitle,omitempty"`
+	
+	// Library status
+	LibraryStatus    string  `json:"libraryStatus"` // Available, Missing, Requested, etc.
+	Path             *string `json:"path,omitempty"`
+	QualityProfileID *int32  `json:"qualityProfileID,omitempty"`
+	Monitored        *bool   `json:"monitored,omitempty"`
+}
+
 // SearchMovie querie tmdb for a movie
 func (m MediaManager) SearchMovie(ctx context.Context, query string) (*SearchMediaResponse, error) {
 	log := logger.FromCtx(ctx)
@@ -94,6 +134,59 @@ func (m MediaManager) SearchMovie(ctx context.Context, query string) (*SearchMed
 	if err != nil {
 		log.Debug("error parsing movie query result", zap.Error(err))
 		return nil, err
+	}
+
+	return result, nil
+}
+
+// GetMovieDetailByTMDBID retrieves detailed information for a single movie by TMDB ID
+func (m MediaManager) GetMovieDetailByTMDBID(ctx context.Context, tmdbID int) (*MovieDetailResult, error) {
+	log := logger.FromCtx(ctx)
+	
+	// Get movie metadata from TMDB (creates if not exists)
+	metadata, err := m.GetMovieMetadata(ctx, tmdbID)
+	if err != nil {
+		log.Error("failed to get movie metadata", zap.Error(err), zap.Int("tmdbID", tmdbID))
+		return nil, err
+	}
+
+	// Create the detailed result from metadata
+	result := &MovieDetailResult{
+		TMDBID:           metadata.TmdbID,
+		ImdbID:           metadata.ImdbID,
+		Title:            metadata.Title,
+		OriginalTitle:    metadata.OriginalTitle,
+		Overview:         metadata.Overview,
+		PosterPath:       metadata.Images,
+		Runtime:          &metadata.Runtime,
+		Genres:           metadata.Genres,
+		Studio:           metadata.Studio,
+		Website:          metadata.Website,
+		CollectionTmdbID: metadata.CollectionTmdbID,
+		CollectionTitle:  metadata.CollectionTitle,
+		Popularity:       metadata.Popularity,
+		Year:             metadata.Year,
+		LibraryStatus:    "Not In Library", // Default status
+	}
+
+	// Format release date as string if available
+	if metadata.ReleaseDate != nil {
+		releaseDateStr := metadata.ReleaseDate.Format("2006-01-02")
+		result.ReleaseDate = &releaseDateStr
+	}
+
+	// Try to get library information (movie record)
+	movie, err := m.storage.GetMovieByMetadataID(ctx, int(metadata.ID))
+	if err == nil && movie != nil {
+		// Movie exists in library - add library status information
+		result.LibraryStatus = string(movie.State)
+		result.Path = movie.Path
+		result.QualityProfileID = &movie.QualityProfileID
+		monitored := movie.Monitored == 1
+		result.Monitored = &monitored
+	} else if !errors.Is(err, storage.ErrNotFound) {
+		// Log non-NotFound errors but don't fail the request
+		log.Debug("error checking movie library status", zap.Error(err), zap.Int32("metadataID", metadata.ID))
 	}
 
 	return result, nil

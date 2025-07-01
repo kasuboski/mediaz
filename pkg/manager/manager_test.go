@@ -586,6 +586,207 @@ func newStore(t *testing.T, ctx context.Context) storage.Storage {
 	return store
 }
 
+func TestGetMovieDetailByTMDBID(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("success - movie not in library", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		store := mocks.NewMockStorage(ctrl)
+		m := New(nil, nil, nil, store, nil, config.Manager{})
+
+		releaseDate := time.Date(2023, 1, 15, 0, 0, 0, 0, time.UTC)
+		year := int32(2023)
+		metadata := &model.MovieMetadata{
+			ID:             1,
+			TmdbID:         123,
+			Title:          "Test Movie",
+			OriginalTitle:  ptr("Original Test Movie"),
+			Overview:       ptr("Test movie overview"),
+			Images:         "poster.jpg",
+			Runtime:        120,
+			Genres:         ptr("Action, Drama"),
+			Studio:         ptr("Test Studio"),
+			Website:        ptr("https://test.com"),
+			CollectionTmdbID: ptr(int32(456)),
+			CollectionTitle: ptr("Test Collection"),
+			Popularity:     ptr(8.5),
+			Year:           &year,
+			ReleaseDate:    &releaseDate,
+		}
+
+		store.EXPECT().GetMovieMetadata(ctx, gomock.Any()).Return(metadata, nil)
+		store.EXPECT().GetMovieByMetadataID(ctx, 1).Return(nil, storage.ErrNotFound)
+
+		result, err := m.GetMovieDetailByTMDBID(ctx, 123)
+		require.NoError(t, err)
+		require.NotNil(t, result)
+
+		assert.Equal(t, int32(123), result.TMDBID)
+		assert.Equal(t, ptr("Original Test Movie"), result.OriginalTitle)
+		assert.Equal(t, "Test Movie", result.Title)
+		assert.Equal(t, ptr("Test movie overview"), result.Overview)
+		assert.Equal(t, "poster.jpg", result.PosterPath)
+		assert.Equal(t, ptr(int32(120)), result.Runtime)
+		assert.Equal(t, ptr("Action, Drama"), result.Genres)
+		assert.Equal(t, ptr("Test Studio"), result.Studio)
+		assert.Equal(t, ptr("https://test.com"), result.Website)
+		assert.Equal(t, ptr(int32(456)), result.CollectionTmdbID)
+		assert.Equal(t, ptr("Test Collection"), result.CollectionTitle)
+		assert.Equal(t, ptr(8.5), result.Popularity)
+		assert.Equal(t, &year, result.Year)
+		assert.Equal(t, ptr("2023-01-15"), result.ReleaseDate)
+		assert.Equal(t, "Not In Library", result.LibraryStatus)
+		assert.Nil(t, result.Path)
+		assert.Nil(t, result.QualityProfileID)
+		assert.Nil(t, result.Monitored)
+	})
+
+	t.Run("success - movie in library", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		store := mocks.NewMockStorage(ctrl)
+		m := New(nil, nil, nil, store, nil, config.Manager{})
+
+		metadata := &model.MovieMetadata{
+			ID:     1,
+			TmdbID: 123,
+			Title:  "Test Movie",
+			Images: "poster.jpg",
+			Runtime: 120,
+		}
+
+		path := "/movies/test-movie"
+		qualityProfileID := int32(2)
+		movie := &storage.Movie{
+			Movie: model.Movie{
+				ID:               1,
+				MovieMetadataID:  ptr(int32(1)),
+				Path:             &path,
+				QualityProfileID: qualityProfileID,
+				Monitored:        1,
+			},
+			State: storage.MovieStateDownloaded,
+		}
+
+		store.EXPECT().GetMovieMetadata(ctx, gomock.Any()).Return(metadata, nil)
+		store.EXPECT().GetMovieByMetadataID(ctx, 1).Return(movie, nil)
+
+		result, err := m.GetMovieDetailByTMDBID(ctx, 123)
+		require.NoError(t, err)
+		require.NotNil(t, result)
+
+		assert.Equal(t, int32(123), result.TMDBID)
+		assert.Equal(t, "Test Movie", result.Title)
+		assert.Equal(t, string(storage.MovieStateDownloaded), result.LibraryStatus)
+		assert.Equal(t, &path, result.Path)
+		assert.Equal(t, &qualityProfileID, result.QualityProfileID)
+		monitored := true
+		assert.Equal(t, &monitored, result.Monitored)
+	})
+
+	t.Run("success - movie with nil release date", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		store := mocks.NewMockStorage(ctrl)
+		m := New(nil, nil, nil, store, nil, config.Manager{})
+
+		metadata := &model.MovieMetadata{
+			ID:          1,
+			TmdbID:      123,
+			Title:       "Test Movie",
+			Images:      "poster.jpg",
+			Runtime:     120,
+			ReleaseDate: nil,
+		}
+
+		store.EXPECT().GetMovieMetadata(ctx, gomock.Any()).Return(metadata, nil)
+		store.EXPECT().GetMovieByMetadataID(ctx, 1).Return(nil, storage.ErrNotFound)
+
+		result, err := m.GetMovieDetailByTMDBID(ctx, 123)
+		require.NoError(t, err)
+		require.NotNil(t, result)
+
+		assert.Equal(t, int32(123), result.TMDBID)
+		assert.Nil(t, result.ReleaseDate)
+		assert.Equal(t, "Not In Library", result.LibraryStatus)
+	})
+
+	t.Run("success - movie with unmonitored status", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		store := mocks.NewMockStorage(ctrl)
+		m := New(nil, nil, nil, store, nil, config.Manager{})
+
+		metadata := &model.MovieMetadata{
+			ID:     1,
+			TmdbID: 123,
+			Title:  "Test Movie",
+			Images: "poster.jpg",
+			Runtime: 120,
+		}
+
+		movie := &storage.Movie{
+			Movie: model.Movie{
+				ID:               1,
+				MovieMetadataID:  ptr(int32(1)),
+				QualityProfileID: 1,
+				Monitored:        0, // Unmonitored
+			},
+			State: storage.MovieStateMissing,
+		}
+
+		store.EXPECT().GetMovieMetadata(ctx, gomock.Any()).Return(metadata, nil)
+		store.EXPECT().GetMovieByMetadataID(ctx, 1).Return(movie, nil)
+
+		result, err := m.GetMovieDetailByTMDBID(ctx, 123)
+		require.NoError(t, err)
+		require.NotNil(t, result)
+
+		monitored := false
+		assert.Equal(t, &monitored, result.Monitored)
+		assert.Equal(t, string(storage.MovieStateMissing), result.LibraryStatus)
+	})
+
+	t.Run("error - GetMovieMetadata fails", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		store := mocks.NewMockStorage(ctrl)
+		m := New(nil, nil, nil, store, nil, config.Manager{})
+
+		expectedErr := errors.New("metadata fetch error")
+		store.EXPECT().GetMovieMetadata(ctx, gomock.Any()).Return(nil, expectedErr)
+
+		result, err := m.GetMovieDetailByTMDBID(ctx, 123)
+		assert.Error(t, err)
+		assert.Equal(t, expectedErr, err)
+		assert.Nil(t, result)
+	})
+
+	t.Run("success - storage error non-NotFound is logged but not returned", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		store := mocks.NewMockStorage(ctrl)
+		m := New(nil, nil, nil, store, nil, config.Manager{})
+
+		metadata := &model.MovieMetadata{
+			ID:     1,
+			TmdbID: 123,
+			Title:  "Test Movie",
+			Images: "poster.jpg",
+			Runtime: 120,
+		}
+
+		dbErr := errors.New("database connection error")
+		store.EXPECT().GetMovieMetadata(ctx, gomock.Any()).Return(metadata, nil)
+		store.EXPECT().GetMovieByMetadataID(ctx, 1).Return(nil, dbErr)
+
+		result, err := m.GetMovieDetailByTMDBID(ctx, 123)
+		require.NoError(t, err)
+		require.NotNil(t, result)
+
+		assert.Equal(t, int32(123), result.TMDBID)
+		assert.Equal(t, "Not In Library", result.LibraryStatus)
+		assert.Nil(t, result.Path)
+		assert.Nil(t, result.QualityProfileID)
+		assert.Nil(t, result.Monitored)
+	})
+}
+
 func TestMediaManager_AddSeriesToLibrary(t *testing.T) {
 	t.Run("error getting quality profile", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
