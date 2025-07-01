@@ -114,6 +114,43 @@ type MovieDetailResult struct {
 	Monitored        *bool   `json:"monitored,omitempty"`
 }
 
+// TVDetailResult provides detailed information for a single TV show
+type TVDetailResult struct {
+	// Core identifiers and basic info
+	TMDBID           int32   `json:"tmdbID"`
+	Title            string  `json:"title"`
+	OriginalTitle    *string `json:"originalTitle,omitempty"`
+	Overview         *string `json:"overview,omitempty"`
+	
+	// Media assets
+	PosterPath       string  `json:"posterPath,omitempty"`
+	BackdropPath     *string `json:"backdropPath,omitempty"`
+	
+	// TV-specific timing info
+	FirstAirDate     *string `json:"firstAirDate,omitempty"`
+	LastAirDate      *string `json:"lastAirDate,omitempty"`
+	
+	// TV-specific metadata
+	Networks         []string `json:"networks,omitempty"`
+	SeasonCount      int32   `json:"seasonCount"`
+	EpisodeCount     int32   `json:"episodeCount"`
+	
+	// Content classification and ratings
+	Adult            *bool    `json:"adult,omitempty"`
+	VoteAverage      *float32 `json:"voteAverage,omitempty"`
+	VoteCount        *int     `json:"voteCount,omitempty"`
+	Popularity       *float64 `json:"popularity,omitempty"`
+	
+	// Genre and production info
+	Genres           []string `json:"genres,omitempty"`
+	
+	// Library status
+	LibraryStatus    string  `json:"libraryStatus"` // Available, Missing, Requested, etc.
+	Path             *string `json:"path,omitempty"`
+	QualityProfileID *int32  `json:"qualityProfileID,omitempty"`
+	Monitored        *bool   `json:"monitored,omitempty"`
+}
+
 // SearchMovie querie tmdb for a movie
 func (m MediaManager) SearchMovie(ctx context.Context, query string) (*SearchMediaResponse, error) {
 	log := logger.FromCtx(ctx)
@@ -190,6 +227,124 @@ func (m MediaManager) GetMovieDetailByTMDBID(ctx context.Context, tmdbID int) (*
 	}
 
 	return result, nil
+}
+
+// GetTVDetailByTMDBID retrieves detailed information for a single TV show by TMDB ID
+func (m MediaManager) GetTVDetailByTMDBID(ctx context.Context, tmdbID int) (*TVDetailResult, error) {
+	log := logger.FromCtx(ctx)
+	
+	// Get data from various sources
+	metadata, seriesDetailsResponse, err := m.getTVMetadataAndDetails(ctx, tmdbID)
+	if err != nil {
+		log.Error("failed to get TV metadata and details", zap.Error(err), zap.Int("tmdbID", tmdbID))
+		return nil, err
+	}
+
+	// Get library information
+	series, err := m.storage.GetSeries(ctx, table.Series.SeriesMetadataID.EQ(sqlite.Int32(metadata.ID)))
+	if err != nil && !errors.Is(err, storage.ErrNotFound) {
+		log.Debug("error checking series library status", zap.Error(err), zap.Int32("metadataID", metadata.ID))
+	}
+
+	// Transform data into result
+	result := m.buildTVDetailResult(metadata, seriesDetailsResponse, series)
+	
+	return result, nil
+}
+
+// getTVMetadataAndDetails retrieves both series metadata and full TMDB details
+func (m MediaManager) getTVMetadataAndDetails(ctx context.Context, tmdbID int) (*model.SeriesMetadata, *tmdb.SeriesDetailsResponse, error) {
+	// Get series metadata (creates if not exists)
+	metadata, err := m.GetSeriesMetadata(ctx, tmdbID)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Get the full series details response from TMDB to access networks and status
+	res, err := m.tmdb.TvSeriesDetails(ctx, int32(tmdbID), nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer res.Body.Close()
+
+	b, err := io.ReadAll(res.Body)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	var seriesDetailsResponse tmdb.SeriesDetailsResponse
+	err = json.Unmarshal(b, &seriesDetailsResponse)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return metadata, &seriesDetailsResponse, nil
+}
+
+// buildTVDetailResult transforms metadata and TMDB details into TVDetailResult
+func (m MediaManager) buildTVDetailResult(metadata *model.SeriesMetadata, details *tmdb.SeriesDetailsResponse, series *storage.Series) *TVDetailResult {
+	result := &TVDetailResult{
+		TMDBID:        metadata.TmdbID,
+		Title:         metadata.Title,
+		Overview:      metadata.Overview,
+		PosterPath:    details.PosterPath,
+		SeasonCount:   metadata.SeasonCount,
+		EpisodeCount:  metadata.EpisodeCount,
+		LibraryStatus: "Not In Library", // Default status
+	}
+
+	// Set backdrop path only if not empty
+	if details.BackdropPath != "" {
+		result.BackdropPath = &details.BackdropPath
+	}
+
+	// Format dates
+	if metadata.FirstAirDate != nil {
+		firstAirDateStr := metadata.FirstAirDate.Format("2006-01-02")
+		result.FirstAirDate = &firstAirDateStr
+	}
+	if metadata.LastAirDate != nil {
+		lastAirDateStr := metadata.LastAirDate.Format("2006-01-02")
+		result.LastAirDate = &lastAirDateStr
+	}
+
+	// Extract network names
+	if len(details.Networks) > 0 {
+		var networks []string
+		for _, network := range details.Networks {
+			networks = append(networks, network.Name)
+		}
+		result.Networks = networks
+	}
+
+	// Extract genre names
+	if len(details.Genres) > 0 {
+		var genres []string
+		for _, genre := range details.Genres {
+			genres = append(genres, genre.Name)
+		}
+		result.Genres = genres
+	}
+
+	// Set additional fields from TMDB response
+	if details.Adult {
+		result.Adult = &details.Adult
+	}
+	if details.Popularity > 0 {
+		pop := float64(details.Popularity)
+		result.Popularity = &pop
+	}
+
+	// Set library status information if series exists
+	if series != nil {
+		result.LibraryStatus = string(series.State)
+		result.Path = series.Path
+		result.QualityProfileID = &series.QualityProfileID
+		monitored := series.Monitored == 1
+		result.Monitored = &monitored
+	}
+
+	return result
 }
 
 // SearchMovie query tmdb for tv shows
