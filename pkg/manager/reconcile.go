@@ -48,7 +48,7 @@ func (r *ReconcileSnapshot) GetDownloadClient(id int32) *model.DownloadClient {
 
 func newReconcileSnapshot(indexers []Indexer, downloadClients []*model.DownloadClient) *ReconcileSnapshot {
 	ids := make([]int32, 0)
-	for i := 0; i < len(indexers); i++ {
+	for i := range indexers {
 		ids = append(ids, indexers[i].ID)
 	}
 
