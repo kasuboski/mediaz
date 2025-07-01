@@ -230,6 +230,9 @@ func FromSeriesEpisodes(episode tmdb.Episode) model.EpisodeMetadata {
 }
 
 func parseTMDBDate(date string) (*time.Time, error) {
+	if date == "" {
+		return nil, nil
+	}
 	t, err := time.Parse(tmdb.ReleaseDateFormat, date)
 	if err != nil {
 		return nil, err

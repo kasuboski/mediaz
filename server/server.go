@@ -74,6 +74,8 @@ func (s Server) Serve(port int) error {
 
 	v1.HandleFunc("/movie/{tmdbID}", s.GetMovieDetailByTMDBID()).Methods(http.MethodGet)
 
+	v1.HandleFunc("/tv/{tmdbID}", s.GetTVDetailByTMDBID()).Methods(http.MethodGet)
+
 	v1.HandleFunc("/library/tv", s.ListTVShows()).Methods(http.MethodGet)
 	v1.HandleFunc("/library/tv", s.AddSeriesToLibrary()).Methods(http.MethodPost)
 
@@ -171,6 +173,31 @@ func (s Server) GetMovieDetailByTMDBID() http.HandlerFunc {
 		}
 
 		resp := GenericResponse{Response: movieDetail}
+		writeResponse(w, http.StatusOK, resp)
+	}
+}
+
+// GetTVDetailByTMDBID retrieves detailed information for a single TV show by TMDB ID
+func (s Server) GetTVDetailByTMDBID() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log := logger.FromCtx(r.Context())
+		vars := mux.Vars(r)
+		tmdbIDVar := vars["tmdbID"]
+
+		tmdbID, err := strconv.Atoi(tmdbIDVar)
+		if err != nil {
+			http.Error(w, "Invalid TMDB ID format", http.StatusBadRequest)
+			return
+		}
+
+		tvDetail, err := s.manager.GetTVDetailByTMDBID(r.Context(), tmdbID)
+		if err != nil {
+			log.Error("failed to get TV detail", zap.Error(err), zap.Int("tmdbID", tmdbID))
+			writeErrorResponse(w, http.StatusInternalServerError, err)
+			return
+		}
+
+		resp := GenericResponse{Response: tvDetail}
 		writeResponse(w, http.StatusOK, resp)
 	}
 }
