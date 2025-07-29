@@ -244,12 +244,16 @@ func (m MediaManager) refreshSeriesEpisodes(ctx context.Context, series *storage
 
 	existingSeasonNumbers := make(map[int32]int64)
 	for _, season := range existingSeasons {
-		if season.SeasonMetadataID != nil {
-			seasonMetadata, err := m.storage.GetSeasonMetadata(ctx, table.SeasonMetadata.ID.EQ(sqlite.Int32(*season.SeasonMetadataID)))
-			if err == nil {
-				existingSeasonNumbers[seasonMetadata.Number] = int64(season.ID)
-			}
+		if season.SeasonMetadataID == nil {
+			continue
 		}
+
+		seasonMetadata, err := m.storage.GetSeasonMetadata(ctx, table.SeasonMetadata.ID.EQ(sqlite.Int32(*season.SeasonMetadataID)))
+		if err != nil {
+			continue
+		}
+
+		existingSeasonNumbers[seasonMetadata.Number] = int64(season.ID)
 	}
 
 	seasonMetadataWhere := table.SeasonMetadata.SeriesID.EQ(sqlite.Int64(int64(seriesMetadata.ID)))
@@ -303,7 +307,6 @@ func (m MediaManager) refreshSeriesEpisodes(ctx context.Context, series *storage
 			continue
 		}
 
-		newEpisodesCreated := 0
 		for _, episodeMeta := range episodeMetadataList {
 			if !existingEpisodeNumbers[episodeMeta.Number] {
 				episode := storage.Episode{
@@ -329,20 +332,12 @@ func (m MediaManager) refreshSeriesEpisodes(ctx context.Context, series *storage
 					continue
 				}
 
-				newEpisodesCreated++
 				log.Debug("created new episode for continuing series",
 					zap.Any("series", series.ID),
 					zap.Int32("season_number", seasonMeta.Number),
 					zap.Int32("episode_number", episodeMeta.Number),
 					zap.String("state", string(episodeState)))
 			}
-		}
-
-		if newEpisodesCreated > 0 {
-			log.Info("discovered and added new episodes for continuing series",
-				zap.Any("series", series.ID),
-				zap.Int32("season_number", seasonMeta.Number),
-				zap.Int("new_episodes", newEpisodesCreated))
 		}
 	}
 
@@ -618,7 +613,7 @@ func (m MediaManager) updateEpisodeState(ctx context.Context, episode storage.Ep
 		season, err := m.storage.GetSeason(ctx, table.Season.ID.EQ(sqlite.Int32(episode.SeasonID)))
 		if err != nil {
 			log.Warn("failed to get season for series state update", zap.Error(err))
-			return nil // Don't fail the episode update
+			return nil
 		}
 
 		if err := m.evaluateAndUpdateSeriesState(ctx, season.SeriesID); err != nil {
