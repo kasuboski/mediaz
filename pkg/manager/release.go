@@ -512,9 +512,33 @@ func pathToSearchTerm(path string) string {
 		return ""
 	}
 
-	// Match (YYYY) pattern but not if it's inside another parentheses
-	yearRegex := regexp.MustCompile(`\s*\((?:\d{4})\)(?:\s*$|\s+)`)
-	return strings.TrimSpace(yearRegex.ReplaceAllString(path, ""))
+	// Replace dots with spaces (for movie.name.format)
+	cleaned := strings.ReplaceAll(path, ".", " ")
+
+	// Remove release group indicators (e.g., -EVO[EtHD])
+	releaseRegex := regexp.MustCompile(`-[A-Z0-9]+\[[^\]]+\]`)
+	cleaned = releaseRegex.ReplaceAllString(cleaned, "")
+
+	// Remove years in various formats: (YYYY), {YYYY}, [YYYY], or trailing YYYY
+	yearRegex := regexp.MustCompile(`\s*[\(\[\{]?(19|20)\d{2}[\)\]\}]?(?:\s|$)`)
+	cleaned = yearRegex.ReplaceAllString(cleaned, " ")
+
+	// Remove common quality indicators
+	qualityRegex := regexp.MustCompile(`(?i)\b(720p|1080p|4k|2160p|x264|h264|hevc|web-dl|bluray|dvdrip|cam|ts|tc)\b`)
+	cleaned = qualityRegex.ReplaceAllString(cleaned, "")
+
+	// Remove codec and audio info
+	codecRegex := regexp.MustCompile(`(?i)\b(h264|ac3|aac|dts|dd5\.1)\b`)
+	cleaned = codecRegex.ReplaceAllString(cleaned, "")
+
+	// Remove empty brackets and parentheses
+	emptyBracketsRegex := regexp.MustCompile(`\s*[\[\(\{][\]\)\}]\s*`)
+	cleaned = emptyBracketsRegex.ReplaceAllString(cleaned, " ")
+
+	// Clean up multiple spaces
+	cleaned = regexp.MustCompile(`\s+`).ReplaceAllString(cleaned, " ")
+
+	return strings.TrimSpace(cleaned)
 }
 
 func removeFromName(filename string, toRemove ...string) string {
