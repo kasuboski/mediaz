@@ -144,6 +144,7 @@ const (
 	SeriesStateUnreleased  SeriesState = "unreleased"
 	SeriesStateContinuing  SeriesState = "continuing"
 	SeriesStateDownloading SeriesState = "downloading"
+	SeriesStateCompleted   SeriesState = "completed"
 	SeriesStateEnded       SeriesState = "ended"
 
 	SeasonStateNew         SeasonState = ""
@@ -152,6 +153,7 @@ const (
 	SeasonStateUnreleased  SeasonState = "unreleased"
 	SeasonStateContinuing  SeasonState = "continuing"
 	SeasonStateDownloading SeasonState = "downloading"
+	SeasonStateCompleted   SeasonState = "completed"
 	SeasonStateEnded       SeasonState = "ended"
 
 	EpisodeStateNew         EpisodeState = ""
@@ -174,7 +176,9 @@ func (s Series) Machine() *machine.StateMachine[SeriesState] {
 		machine.From(SeriesStateNew).To(SeriesStateUnreleased, SeriesStateMissing, SeriesStateDiscovered),
 		machine.From(SeriesStateMissing).To(SeriesStateDiscovered, SeriesStateDownloading),
 		machine.From(SeriesStateUnreleased).To(SeriesStateDiscovered, SeriesStateMissing),
-		machine.From(SeriesStateDownloading).To(SeriesStateContinuing, SeriesStateEnded),
+		machine.From(SeriesStateDownloading).To(SeriesStateContinuing, SeriesStateCompleted, SeriesStateEnded),
+		machine.From(SeriesStateContinuing).To(SeriesStateCompleted, SeriesStateEnded),
+		machine.From(SeriesStateCompleted).To(SeriesStateContinuing, SeriesStateEnded),
 	)
 }
 
@@ -192,7 +196,9 @@ func (s Season) Machine() *machine.StateMachine[SeasonState] {
 		machine.From(SeasonStateNew).To(SeasonStateUnreleased, SeasonStateMissing, SeasonStateDiscovered),
 		machine.From(SeasonStateMissing).To(SeasonStateDiscovered, SeasonStateDownloading),
 		machine.From(SeasonStateUnreleased).To(SeasonStateDiscovered, SeasonStateMissing),
-		machine.From(SeasonStateDownloading).To(SeasonStateContinuing, SeasonStateEnded),
+		machine.From(SeasonStateDownloading).To(SeasonStateContinuing, SeasonStateCompleted, SeasonStateEnded),
+		machine.From(SeasonStateContinuing).To(SeasonStateCompleted, SeasonStateEnded),
+		machine.From(SeasonStateCompleted).To(SeasonStateContinuing, SeasonStateEnded),
 	)
 }
 
@@ -209,8 +215,9 @@ type EpisodeTransition model.EpisodeTransition
 func (e Episode) Machine() *machine.StateMachine[EpisodeState] {
 	return machine.New(e.State,
 		machine.From(EpisodeStateNew).To(EpisodeStateUnreleased, EpisodeStateMissing, EpisodeStateDiscovered),
-		machine.From(EpisodeStateNew).To(EpisodeStateUnreleased, EpisodeStateMissing, EpisodeStateDiscovered),
 		machine.From(EpisodeStateMissing).To(EpisodeStateDiscovered, EpisodeStateDownloading),
+		machine.From(EpisodeStateUnreleased).To(EpisodeStateDiscovered, EpisodeStateMissing),
+		machine.From(EpisodeStateDownloading).To(EpisodeStateDownloaded),
 	)
 }
 
@@ -219,6 +226,7 @@ type SeriesStorage interface {
 	CreateSeries(ctx context.Context, series Series, initialState SeriesState) (int64, error)
 	DeleteSeries(ctx context.Context, id int64) error
 	ListSeries(ctx context.Context, where ...sqlite.BoolExpression) ([]*Series, error)
+	UpdateSeriesState(ctx context.Context, id int64, state SeriesState, metadata *TransitionStateMetadata) error
 
 	GetSeason(ctx context.Context, where sqlite.BoolExpression) (*Season, error)
 	CreateSeason(ctx context.Context, season Season, initialState SeasonState) (int64, error)

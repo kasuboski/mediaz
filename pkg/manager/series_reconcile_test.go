@@ -3,6 +3,7 @@ package manager
 import (
 	"context"
 	"errors"
+	"fmt"
 	"slices"
 	"testing"
 	"time"
@@ -18,6 +19,8 @@ import (
 	mediaSqlite "github.com/kasuboski/mediaz/pkg/storage/sqlite"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/table"
+	"github.com/kasuboski/mediaz/pkg/tmdb"
+	tmdbMocks "github.com/kasuboski/mediaz/pkg/tmdb/mocks"
 	"github.com/oapi-codegen/nullable"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -1072,4 +1075,331 @@ func TestMediaManager_ReconcileMissingSeries(t *testing.T) {
 		assert.Equal(t, "124", episodes[1].DownloadID)
 		assert.Equal(t, int32(2), episodes[1].DownloadClientID)
 	})
+}
+
+func TestMediaManager_ReconcileContinuingSeries(t *testing.T) {
+	t.Run("nil snapshot", func(t *testing.T) {
+		m := New(nil, nil, nil, nil, nil, config.Manager{})
+		err := m.ReconcileContinuingSeries(context.Background(), nil)
+		require.NoError(t, err)
+	})
+
+	t.Run("no continuing series", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		ctx := context.Background()
+		store := mocks.NewMockStorage(ctrl)
+
+		where := table.SeriesTransition.ToState.IN(
+			sqlite.String(string(storage.SeriesStateContinuing)),
+			sqlite.String(string(storage.SeriesStateDownloading)),
+		).AND(table.SeriesTransition.MostRecent.EQ(sqlite.Bool(true))).
+			AND(table.Series.Monitored.EQ(sqlite.Int(1)))
+
+		store.EXPECT().ListSeries(ctx, where).Return(nil, storage.ErrNotFound)
+
+		m := New(nil, nil, nil, store, nil, config.Manager{})
+		err := m.ReconcileContinuingSeries(ctx, &ReconcileSnapshot{})
+		require.NoError(t, err)
+	})
+
+	t.Run("error listing series", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		ctx := context.Background()
+		store := mocks.NewMockStorage(ctrl)
+
+		where := table.SeriesTransition.ToState.IN(
+			sqlite.String(string(storage.SeriesStateContinuing)),
+			sqlite.String(string(storage.SeriesStateDownloading)),
+		).AND(table.SeriesTransition.MostRecent.EQ(sqlite.Bool(true))).
+			AND(table.Series.Monitored.EQ(sqlite.Int(1)))
+
+		expectedErr := errors.New("database error")
+		store.EXPECT().ListSeries(ctx, where).Return(nil, expectedErr)
+
+		m := New(nil, nil, nil, store, nil, config.Manager{})
+		err := m.ReconcileContinuingSeries(ctx, &ReconcileSnapshot{})
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "couldn't list continuing series")
+	})
+
+	t.Run("successful reconciliation with missing episodes", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		ctx := context.Background()
+		store := newStore(t, ctx)
+
+		// Add TMDB mock for the refresh functionality
+		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
+		tmdbMock.EXPECT().GetSeriesDetails(ctx, 1).Return(&tmdb.SeriesDetails{
+			ID:   1,
+			Name: "Continuing Series",
+		}, nil).AnyTimes()
+
+		mockDownloadClient := downloadMock.NewMockDownloadClient(ctrl)
+		mockFactory := downloadMock.NewMockFactory(ctrl)
+
+		downloadClientModel := model.DownloadClient{
+			ID:             1,
+			Implementation: "transmission",
+			Type:           "torrent",
+			Port:           8080,
+			Host:           "transmission",
+			Scheme:         "http",
+		}
+
+		snapshot := newReconcileSnapshot([]Indexer{{ID: 1}}, []*model.DownloadClient{&downloadClientModel})
+
+		mockFactory.EXPECT().NewDownloadClient(gomock.Any()).Return(mockDownloadClient, nil).AnyTimes()
+		mockDownloadClient.EXPECT().Add(ctx, gomock.Any()).Return(download.Status{
+			ID:   "download-123",
+			Name: "test download continuing",
+		}, nil).AnyTimes()
+
+		seriesMetadataID, err := store.CreateSeriesMetadata(ctx, model.SeriesMetadata{
+			TmdbID:       1,
+			Title:        "Continuing Series",
+			EpisodeCount: 10,
+		})
+		require.NoError(t, err)
+
+		seriesID, err := store.CreateSeries(ctx, storage.Series{
+			Series: model.Series{
+				SeriesMetadataID: ptr(int32(seriesMetadataID)),
+				Monitored:        1,
+				QualityProfileID: 4, // Episode profile from defaults.sql
+			},
+		}, storage.SeriesStateMissing)
+		require.NoError(t, err)
+
+		// Transition to downloading state
+		err = store.UpdateSeriesState(ctx, seriesID, storage.SeriesStateDownloading, nil)
+		require.NoError(t, err)
+
+		seasonMetadataID, err := store.CreateSeasonMetadata(ctx, model.SeasonMetadata{
+			SeriesID: int32(seriesID),
+			Title:    "Season 1",
+			Number:   1,
+		})
+		require.NoError(t, err)
+
+		seasonID, err := store.CreateSeason(ctx, storage.Season{
+			Season: model.Season{
+				SeriesID:         int32(seriesID),
+				SeasonMetadataID: ptr(int32(seasonMetadataID)),
+				Monitored:        1,
+			},
+		}, storage.SeasonStateMissing)
+		require.NoError(t, err)
+
+		// Transition to downloading state
+		err = store.UpdateSeasonState(ctx, seasonID, storage.SeasonStateDownloading, nil)
+		require.NoError(t, err)
+
+		episodeMetadataID, err := store.CreateEpisodeMetadata(ctx, model.EpisodeMetadata{
+			TmdbID:   1,
+			Title:    "New Episode",
+			Number:   3,
+			SeasonID: int32(seasonID),
+			Runtime:  ptr(int32(45)),
+			AirDate:  ptr(snapshot.time.Add(time.Hour * -2)),
+		})
+		require.NoError(t, err)
+
+		_, err = store.CreateEpisode(ctx, storage.Episode{
+			Episode: model.Episode{
+				SeasonID:          int32(seasonID),
+				EpisodeNumber:     3,
+				EpisodeMetadataID: ptr(int32(episodeMetadataID)),
+				Runtime:           ptr(int32(45)),
+				Monitored:         1,
+			},
+		}, storage.EpisodeStateMissing)
+		require.NoError(t, err)
+
+		releases := []*prowlarr.ReleaseResource{
+			{
+				ID:       ptr(int32(1)),
+				Title:    nullable.NewNullableWithValue("Continuing.Series.S01E03.1080p.WEB-DL.AAC2.0.x264-GROUP"),
+				Size:     sizeGBToBytes(2),
+				Protocol: ptr(prowlarr.DownloadProtocolTorrent),
+			},
+		}
+
+		prowlarrMock := prowlMock.NewMockClientInterface(ctrl)
+		prowlarrMock.EXPECT().GetAPIV1Search(gomock.Any(), gomock.Any()).Return(searchIndexersResponse(t, releases), nil).AnyTimes()
+
+		pClient, err := prowlarr.New(":", "1234")
+		require.NoError(t, err)
+		pClient.ClientInterface = prowlarrMock
+
+		m := New(tmdbMock, pClient, nil, store, mockFactory, config.Manager{})
+
+		// Just test that the function runs without error
+		err = m.ReconcileContinuingSeries(ctx, snapshot)
+		require.NoError(t, err)
+	})
+
+	t.Run("continuing series with no missing episodes", func(t *testing.T) {
+		ctx := context.Background()
+		store := newStore(t, ctx)
+
+		snapshot := newReconcileSnapshot([]Indexer{{ID: 1}}, []*model.DownloadClient{})
+
+		m := New(nil, nil, nil, store, nil, config.Manager{})
+
+		err := m.ReconcileContinuingSeries(ctx, snapshot)
+		require.NoError(t, err)
+	})
+
+	t.Run("discover new episodes for continuing series", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		ctx := context.Background()
+		store := newStore(t, ctx)
+
+		// Set up series and season data
+		seriesMetadataID, err := store.CreateSeriesMetadata(ctx, model.SeriesMetadata{
+			TmdbID:       100,
+			Title:        "Weekly Series",
+			EpisodeCount: 5,
+		})
+		require.NoError(t, err)
+
+		seriesID, err := store.CreateSeries(ctx, storage.Series{
+			Series: model.Series{
+				SeriesMetadataID: ptr(int32(seriesMetadataID)),
+				Monitored:        1,
+				QualityProfileID: 4, // Episode profile from defaults.sql
+			},
+		}, storage.SeriesStateMissing)
+		require.NoError(t, err)
+
+		// Transition to downloading state
+		err = store.UpdateSeriesState(ctx, seriesID, storage.SeriesStateDownloading, nil)
+		require.NoError(t, err)
+
+		// Transition to continuing state
+		err = store.UpdateSeriesState(ctx, seriesID, storage.SeriesStateContinuing, nil)
+		require.NoError(t, err)
+
+		seasonMetadataID, err := store.CreateSeasonMetadata(ctx, model.SeasonMetadata{
+			SeriesID: int32(seriesMetadataID), // Should reference the series metadata ID, not storage series ID
+			Title:    "Season 1",
+			Number:   1,
+			TmdbID:   1001, // Match the TMDB ID from our mock
+		})
+		require.NoError(t, err)
+
+		seasonID, err := store.CreateSeason(ctx, storage.Season{
+			Season: model.Season{
+				SeriesID:         int32(seriesID),
+				SeasonMetadataID: ptr(int32(seasonMetadataID)),
+				Monitored:        1,
+			},
+		}, storage.SeasonStateMissing)
+		require.NoError(t, err)
+
+		// Transition to downloading state
+		err = store.UpdateSeasonState(ctx, seasonID, storage.SeasonStateDownloading, nil)
+		require.NoError(t, err)
+
+		// Transition to continuing state
+		err = store.UpdateSeasonState(ctx, seasonID, storage.SeasonStateContinuing, nil)
+		require.NoError(t, err)
+
+		// Create existing episode metadata (episodes 1-2 exist, episode 3 will be discovered)
+		for i := 1; i <= 2; i++ {
+			// Episodes 1-2 aired in the past
+			pastDate := time.Now().Add(-time.Hour * 24 * time.Duration(i))
+			airDate := &pastDate
+
+			episodeMetadataID, err := store.CreateEpisodeMetadata(ctx, model.EpisodeMetadata{
+				TmdbID:   int32(1001000 + i), // Match the TMDB IDs from our mock (1001001, 1001002)
+				Title:    fmt.Sprintf("Episode %d", i),
+				Number:   int32(i),
+				SeasonID: int32(seasonMetadataID), // This should be the season metadata ID
+				Runtime:  ptr(int32(45)),
+				AirDate:  airDate,
+			})
+			require.NoError(t, err)
+
+			// Create episode records for episodes 1-2
+			episodeID, err := store.CreateEpisode(ctx, storage.Episode{
+				Episode: model.Episode{
+					SeasonID:          int32(seasonID),
+					EpisodeNumber:     int32(i),
+					EpisodeMetadataID: ptr(int32(episodeMetadataID)),
+					Monitored:         1,
+					Runtime:           ptr(int32(45)),
+				},
+			}, storage.EpisodeStateMissing)
+			require.NoError(t, err)
+
+			// Transition episodes 1-2 to downloaded state via downloading to avoid them being searched for
+			err = store.UpdateEpisodeState(ctx, episodeID, storage.EpisodeStateDownloading, nil)
+			require.NoError(t, err)
+			err = store.UpdateEpisodeState(ctx, episodeID, storage.EpisodeStateDownloaded, nil)
+			require.NoError(t, err)
+		}
+
+		snapshot := newReconcileSnapshot([]Indexer{{ID: 1}}, []*model.DownloadClient{})
+
+		// Set up TMDB mock for metadata refresh
+		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
+		tmdbMock.EXPECT().GetSeriesDetails(ctx, 100).Return(&tmdb.SeriesDetails{
+			ID: 100, // Match the series TMDB ID
+			Seasons: []tmdb.Season{
+				{
+					ID:           1001, // Set explicit TMDB ID for season
+					SeasonNumber: 1,
+					Episodes: []tmdb.Episode{
+						{ID: 1001001, EpisodeNumber: 1},
+						{ID: 1001002, EpisodeNumber: 2},
+						{ID: 1001003, EpisodeNumber: 3}, // This new episode should be discovered
+					},
+				},
+			},
+		}, nil).AnyTimes()
+
+		// Set up prowlarr mock for any searches that might happen
+		prowlarrMock := prowlMock.NewMockClientInterface(ctrl)
+		prowlarrMock.EXPECT().GetAPIV1Search(gomock.Any(), gomock.Any()).Return(searchIndexersResponse(t, []*prowlarr.ReleaseResource{}), nil).AnyTimes()
+
+		pClient, err := prowlarr.New(":", "1234")
+		require.NoError(t, err)
+		pClient.ClientInterface = prowlarrMock
+
+		m := New(tmdbMock, pClient, nil, store, nil, config.Manager{})
+
+		// Before reconciliation, we should only have 2 episode records
+		episodesBefore, err := store.ListEpisodes(ctx, table.Episode.SeasonID.EQ(sqlite.Int64(seasonID)))
+		require.NoError(t, err)
+		assert.Len(t, episodesBefore, 2, "Should have 2 existing episodes before reconciliation")
+
+		err = m.ReconcileContinuingSeries(ctx, snapshot)
+		require.NoError(t, err)
+
+		// After reconciliation, we should have 3 episode records (episode 3 should be discovered and created)
+		episodesAfter, err := store.ListEpisodes(ctx, table.Episode.SeasonID.EQ(sqlite.Int64(seasonID)))
+		require.NoError(t, err)
+		assert.Len(t, episodesAfter, 3, "Should have 3 episodes after reconciliation (episode 3 should be discovered)")
+
+		// Check that episode 3 was created with correct state
+		var episode3 *storage.Episode
+		for _, ep := range episodesAfter {
+			if ep.EpisodeNumber == 3 {
+				episode3 = ep
+				break
+			}
+		}
+		require.NotNil(t, episode3, "Episode 3 should have been created")
+		assert.Equal(t, storage.EpisodeStateUnreleased, episode3.State, "Episode 3 should be in unreleased state")
+	})
+
 }

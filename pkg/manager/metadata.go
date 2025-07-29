@@ -61,6 +61,13 @@ func (m MediaManager) GetSeriesMetadata(ctx context.Context, tmdbID int) (*model
 	return m.loadSeriesMetadata(ctx, tmdbID)
 }
 
+// RefreshSeriesMetadataFromTMDB always fetches fresh series metadata from TMDB, regardless of whether cached data exists.
+// This is useful for discovering new episodes and seasons for continuing series.
+func (m MediaManager) RefreshSeriesMetadataFromTMDB(ctx context.Context, tmdbID int) (*model.SeriesMetadata, error) {
+	// Always fetch fresh data from TMDB, regardless of whether we have cached data
+	return m.loadSeriesMetadata(ctx, tmdbID)
+}
+
 func (m MediaManager) loadSeriesMetadata(ctx context.Context, tmdbID int) (*model.SeriesMetadata, error) {
 	details, err := m.tmdb.GetSeriesDetails(ctx, tmdbID)
 	if err != nil {
@@ -81,14 +88,38 @@ func (m MediaManager) loadSeriesMetadata(ctx context.Context, tmdbID int) (*mode
 		season := FromSeriesSeasons(s)
 		season.SeriesID = int32(seriesMetadataID)
 
-		seasonMetadataID, err := m.storage.CreateSeasonMetadata(ctx, season)
-		if err != nil {
+		// Try to get existing season metadata
+		existingSeason, err := m.storage.GetSeasonMetadata(ctx, table.SeasonMetadata.TmdbID.EQ(sqlite.Int(int64(season.TmdbID))))
+		if err != nil && !errors.Is(err, storage.ErrNotFound) {
 			return nil, err
+		}
+
+		var seasonMetadataID int64
+		if existingSeason != nil {
+			seasonMetadataID = int64(existingSeason.ID)
+		}
+		if existingSeason == nil {
+			seasonMetadataID, err = m.storage.CreateSeasonMetadata(ctx, season)
+			if err != nil {
+				return nil, err
+			}
 		}
 
 		for _, episode := range s.Episodes {
 			episodeMetadata := FromSeriesEpisodes(episode)
 			episodeMetadata.SeasonID = int32(seasonMetadataID)
+
+			// Check if episode already exists
+			_, err := m.storage.GetEpisodeMetadata(ctx, table.EpisodeMetadata.TmdbID.EQ(sqlite.Int(int64(episodeMetadata.TmdbID))))
+			if err != nil && !errors.Is(err, storage.ErrNotFound) {
+				return nil, err
+			}
+
+			// Create episode if it doesn't exist
+			if !errors.Is(err, storage.ErrNotFound) {
+				continue
+			}
+
 			_, err = m.storage.CreateEpisodeMetadata(ctx, episodeMetadata)
 			if err != nil {
 				return nil, err
