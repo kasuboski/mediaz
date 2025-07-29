@@ -1403,3 +1403,217 @@ func TestMediaManager_ReconcileContinuingSeries(t *testing.T) {
 	})
 
 }
+
+func TestDetermineSeasonState(t *testing.T) {
+	tests := []struct {
+		name     string
+		episodes []*storage.Episode
+		expected storage.SeasonState
+	}{
+		{
+			name:     "empty episodes",
+			episodes: []*storage.Episode{},
+			expected: storage.SeasonStateMissing,
+		},
+		{
+			name: "all episodes downloaded",
+			episodes: []*storage.Episode{
+				{Episode: model.Episode{ID: 1}, State: storage.EpisodeStateDownloaded},
+				{Episode: model.Episode{ID: 2}, State: storage.EpisodeStateDownloaded},
+				{Episode: model.Episode{ID: 3}, State: storage.EpisodeStateDownloaded},
+			},
+			expected: storage.SeasonStateCompleted,
+		},
+		{
+			name: "some episodes downloading",
+			episodes: []*storage.Episode{
+				{Episode: model.Episode{ID: 1}, State: storage.EpisodeStateDownloaded},
+				{Episode: model.Episode{ID: 2}, State: storage.EpisodeStateDownloading},
+				{Episode: model.Episode{ID: 3}, State: storage.EpisodeStateMissing},
+			},
+			expected: storage.SeasonStateDownloading,
+		},
+		{
+			name: "one episode downloading others downloaded",
+			episodes: []*storage.Episode{
+				{Episode: model.Episode{ID: 1}, State: storage.EpisodeStateDownloaded},
+				{Episode: model.Episode{ID: 2}, State: storage.EpisodeStateDownloaded},
+				{Episode: model.Episode{ID: 3}, State: storage.EpisodeStateDownloading},
+			},
+			expected: storage.SeasonStateDownloading,
+		},
+		{
+			name: "continuing - downloaded and unreleased",
+			episodes: []*storage.Episode{
+				{Episode: model.Episode{ID: 1}, State: storage.EpisodeStateDownloaded},
+				{Episode: model.Episode{ID: 2}, State: storage.EpisodeStateDownloaded},
+				{Episode: model.Episode{ID: 3}, State: storage.EpisodeStateUnreleased},
+				{Episode: model.Episode{ID: 4}, State: storage.EpisodeStateUnreleased},
+			},
+			expected: storage.SeasonStateContinuing,
+		},
+		{
+			name: "continuing - missing and unreleased",
+			episodes: []*storage.Episode{
+				{Episode: model.Episode{ID: 1}, State: storage.EpisodeStateMissing},
+				{Episode: model.Episode{ID: 2}, State: storage.EpisodeStateMissing},
+				{Episode: model.Episode{ID: 3}, State: storage.EpisodeStateUnreleased},
+				{Episode: model.Episode{ID: 4}, State: storage.EpisodeStateUnreleased},
+			},
+			expected: storage.SeasonStateContinuing,
+		},
+		{
+			name: "continuing - mix of downloaded, missing and unreleased",
+			episodes: []*storage.Episode{
+				{Episode: model.Episode{ID: 1}, State: storage.EpisodeStateDownloaded},
+				{Episode: model.Episode{ID: 2}, State: storage.EpisodeStateMissing},
+				{Episode: model.Episode{ID: 3}, State: storage.EpisodeStateUnreleased},
+			},
+			expected: storage.SeasonStateContinuing,
+		},
+		{
+			name: "missing - all aired episodes missing, no unreleased",
+			episodes: []*storage.Episode{
+				{Episode: model.Episode{ID: 1}, State: storage.EpisodeStateMissing},
+				{Episode: model.Episode{ID: 2}, State: storage.EpisodeStateMissing},
+				{Episode: model.Episode{ID: 3}, State: storage.EpisodeStateMissing},
+			},
+			expected: storage.SeasonStateMissing,
+		},
+		{
+			name: "missing - mix of downloaded and missing, no unreleased",
+			episodes: []*storage.Episode{
+				{Episode: model.Episode{ID: 1}, State: storage.EpisodeStateDownloaded},
+				{Episode: model.Episode{ID: 2}, State: storage.EpisodeStateMissing},
+				{Episode: model.Episode{ID: 3}, State: storage.EpisodeStateMissing},
+			},
+			expected: storage.SeasonStateMissing,
+		},
+		{
+			name: "unreleased - all episodes unreleased",
+			episodes: []*storage.Episode{
+				{Episode: model.Episode{ID: 1}, State: storage.EpisodeStateUnreleased},
+				{Episode: model.Episode{ID: 2}, State: storage.EpisodeStateUnreleased},
+				{Episode: model.Episode{ID: 3}, State: storage.EpisodeStateUnreleased},
+			},
+			expected: storage.SeasonStateUnreleased,
+		},
+		{
+			name: "downloading takes priority over continuing",
+			episodes: []*storage.Episode{
+				{Episode: model.Episode{ID: 1}, State: storage.EpisodeStateDownloaded},
+				{Episode: model.Episode{ID: 2}, State: storage.EpisodeStateDownloading},
+				{Episode: model.Episode{ID: 3}, State: storage.EpisodeStateUnreleased},
+			},
+			expected: storage.SeasonStateDownloading,
+		},
+		{
+			name: "downloading takes priority over all other states",
+			episodes: []*storage.Episode{
+				{Episode: model.Episode{ID: 1}, State: storage.EpisodeStateDownloaded},
+				{Episode: model.Episode{ID: 2}, State: storage.EpisodeStateDownloading},
+				{Episode: model.Episode{ID: 3}, State: storage.EpisodeStateMissing},
+				{Episode: model.Episode{ID: 4}, State: storage.EpisodeStateUnreleased},
+			},
+			expected: storage.SeasonStateDownloading,
+		},
+		{
+			name: "single downloaded episode",
+			episodes: []*storage.Episode{
+				{Episode: model.Episode{ID: 1}, State: storage.EpisodeStateDownloaded},
+			},
+			expected: storage.SeasonStateCompleted,
+		},
+		{
+			name: "single missing episode",
+			episodes: []*storage.Episode{
+				{Episode: model.Episode{ID: 1}, State: storage.EpisodeStateMissing},
+			},
+			expected: storage.SeasonStateMissing,
+		},
+		{
+			name: "single unreleased episode",
+			episodes: []*storage.Episode{
+				{Episode: model.Episode{ID: 1}, State: storage.EpisodeStateUnreleased},
+			},
+			expected: storage.SeasonStateUnreleased,
+		},
+		{
+			name: "single downloading episode",
+			episodes: []*storage.Episode{
+				{Episode: model.Episode{ID: 1}, State: storage.EpisodeStateDownloading},
+			},
+			expected: storage.SeasonStateDownloading,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, result := determineSeasonState(tt.episodes)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestDetermineSeasonStateWithCounts(t *testing.T) {
+	tests := []struct {
+		name           string
+		episodes       []*storage.Episode
+		expectedState  storage.SeasonState
+		expectedCounts map[string]int
+	}{
+		{
+			name:          "empty episodes",
+			episodes:      []*storage.Episode{},
+			expectedState: storage.SeasonStateMissing,
+			expectedCounts: map[string]int{
+				"downloaded":  0,
+				"downloading": 0,
+				"missing":     0,
+				"unreleased":  0,
+			},
+		},
+		{
+			name: "mix of all states",
+			episodes: []*storage.Episode{
+				{Episode: model.Episode{ID: 1}, State: storage.EpisodeStateDownloaded},
+				{Episode: model.Episode{ID: 2}, State: storage.EpisodeStateDownloaded},
+				{Episode: model.Episode{ID: 3}, State: storage.EpisodeStateDownloading},
+				{Episode: model.Episode{ID: 4}, State: storage.EpisodeStateMissing},
+				{Episode: model.Episode{ID: 5}, State: storage.EpisodeStateMissing},
+				{Episode: model.Episode{ID: 6}, State: storage.EpisodeStateUnreleased},
+			},
+			expectedState: storage.SeasonStateDownloading,
+			expectedCounts: map[string]int{
+				"downloaded":  2,
+				"downloading": 1,
+				"missing":     2,
+				"unreleased":  1,
+			},
+		},
+		{
+			name: "continuing season counts",
+			episodes: []*storage.Episode{
+				{Episode: model.Episode{ID: 1}, State: storage.EpisodeStateDownloaded},
+				{Episode: model.Episode{ID: 2}, State: storage.EpisodeStateMissing},
+				{Episode: model.Episode{ID: 3}, State: storage.EpisodeStateUnreleased},
+				{Episode: model.Episode{ID: 4}, State: storage.EpisodeStateUnreleased},
+			},
+			expectedState: storage.SeasonStateContinuing,
+			expectedCounts: map[string]int{
+				"downloaded":  1,
+				"downloading": 0,
+				"missing":     1,
+				"unreleased":  2,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			counts, state := determineSeasonState(tt.episodes)
+			assert.Equal(t, tt.expectedState, state)
+			assert.Equal(t, tt.expectedCounts, counts)
+		})
+	}
+}

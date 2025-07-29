@@ -669,14 +669,53 @@ func getSeasonRuntime(episodes []*storage.Episode, totalSeasonEpisodes int) int3
 		}
 	}
 
-	// if we're missing some of the runtimes, we can try to estimate the remaining runtime based on the average of the other episodes
-	// this could be pretty inaccurate in cases where we are missing more than a few runtimes, but it's better than nothing
+	// try to estimate the remaining runtime based on the average of the other episodes
 	if consideredRuntimeCount > 0 && consideredRuntimeCount < totalSeasonEpisodes {
 		averageRuntime := runtime / int32(consideredRuntimeCount)
 		runtime += averageRuntime * int32(totalSeasonEpisodes-consideredRuntimeCount)
 	}
 
 	return runtime
+}
+
+func determineSeasonState(episodes []*storage.Episode) (map[string]int, storage.SeasonState) {
+	var downloaded, downloading, missing, unreleased int
+	for _, episode := range episodes {
+		switch episode.State {
+		case storage.EpisodeStateDownloaded:
+			downloaded++
+		case storage.EpisodeStateDownloading:
+			downloading++
+		case storage.EpisodeStateMissing:
+			missing++
+		case storage.EpisodeStateUnreleased:
+			unreleased++
+		}
+	}
+
+	counts := map[string]int{
+		"downloaded":  downloaded,
+		"downloading": downloading,
+		"missing":     missing,
+		"unreleased":  unreleased,
+	}
+
+	switch {
+	case len(episodes) == 0:
+		return counts, storage.SeasonStateMissing
+	case downloaded == len(episodes):
+		return counts, storage.SeasonStateCompleted
+	case downloading > 0:
+		return counts, storage.SeasonStateDownloading
+	case (downloaded > 0 || missing > 0) && unreleased > 0:
+		return counts, storage.SeasonStateContinuing
+	case missing > 0 && unreleased == 0:
+		return counts, storage.SeasonStateMissing
+	case unreleased > 0 && downloaded == 0 && missing == 0:
+		return counts, storage.SeasonStateUnreleased
+	default:
+		return counts, storage.SeasonStateMissing
+	}
 }
 
 // updateSeriesState updates the series state and handles cascading updates
@@ -716,41 +755,14 @@ func (m MediaManager) evaluateAndUpdateSeasonState(ctx context.Context, seasonID
 		return nil
 	}
 
-	// Count episodes by state
-	var downloaded, downloading, missing, unreleased int
-	for _, episode := range episodes {
-		switch episode.State {
-		case storage.EpisodeStateDownloaded:
-			downloaded++
-		case storage.EpisodeStateDownloading:
-			downloading++
-		case storage.EpisodeStateMissing:
-			missing++
-		case storage.EpisodeStateUnreleased:
-			unreleased++
-		}
-	}
-
-	var newSeasonState storage.SeasonState
-	switch {
-	case downloaded == len(episodes):
-		newSeasonState = storage.SeasonStateCompleted
-	case downloading > 0:
-		newSeasonState = storage.SeasonStateDownloading
-	case missing > 0 && unreleased == 0:
-		newSeasonState = storage.SeasonStateMissing
-	case unreleased > 0:
-		newSeasonState = storage.SeasonStateUnreleased
-	default:
-		newSeasonState = storage.SeasonStateContinuing
-	}
+	counts, newSeasonState := determineSeasonState(episodes)
 
 	log.Debug("evaluating season state",
 		zap.Int("total_episodes", len(episodes)),
-		zap.Int("downloaded", downloaded),
-		zap.Int("downloading", downloading),
-		zap.Int("missing", missing),
-		zap.Int("unreleased", unreleased),
+		zap.Int("downloaded", counts["downloaded"]),
+		zap.Int("downloading", counts["downloading"]),
+		zap.Int("missing", counts["missing"]),
+		zap.Int("unreleased", counts["unreleased"]),
 		zap.String("current_state", string(currentSeason.State)),
 		zap.String("new_state", string(newSeasonState)))
 
