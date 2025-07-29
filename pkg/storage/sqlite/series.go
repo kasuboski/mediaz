@@ -952,3 +952,62 @@ func (s SQLite) UpdateSeasonState(ctx context.Context, id int64, state storage.S
 
 	return tx.Commit()
 }
+
+// UpdateSeriesState updates the transition state of a series
+// Metadata is optional and can be nil
+func (s SQLite) UpdateSeriesState(ctx context.Context, id int64, state storage.SeriesState, metadata *storage.TransitionStateMetadata) error {
+	series, err := s.GetSeries(ctx, table.Series.ID.EQ(sqlite.Int64(id)))
+	if err != nil {
+		return err
+	}
+
+	err = series.Machine().ToState(state)
+	if err != nil {
+		return err
+	}
+
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+
+	previousTransitionStmt := table.SeriesTransition.
+		UPDATE().
+		SET(
+			table.SeriesTransition.MostRecent.SET(sqlite.Bool(false))).
+		WHERE(
+			table.SeriesTransition.SeriesID.EQ(sqlite.Int(id)).
+				AND(table.SeriesTransition.MostRecent.EQ(sqlite.Bool(true)))).
+		RETURNING(table.SeriesTransition.AllColumns)
+
+	var previousTransition storage.SeriesTransition
+	err = previousTransitionStmt.QueryContext(ctx, tx, &previousTransition)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	transition := storage.SeriesTransition{
+		SeriesID:   int32(id),
+		ToState:    string(state),
+		MostRecent: true,
+		SortKey:    previousTransition.SortKey + 1,
+	}
+
+	// Note: SeriesTransition doesn't currently support DownloadClientID and DownloadID
+	// These can be added to the schema if needed in the future
+
+	newTransitionStmt := table.SeriesTransition.
+		INSERT(table.SeriesTransition.AllColumns.
+			Except(table.SeriesTransition.ID, table.SeriesTransition.CreatedAt, table.SeriesTransition.UpdatedAt)).
+		MODEL(transition).
+		RETURNING(table.SeriesTransition.AllColumns)
+
+	_, err = newTransitionStmt.ExecContext(ctx, tx)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	return tx.Commit()
+}
