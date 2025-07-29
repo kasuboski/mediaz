@@ -232,6 +232,37 @@ func TestPathToSearchTerm(t *testing.T) {
 			path: "",
 			want: "",
 		},
+		// Failing test cases from the issue
+		{
+			name: "year in curly braces",
+			path: "Apocalypse Now {1979}",
+			want: "Apocalypse Now",
+		},
+		{
+			name: "dotted filename with year and quality tags",
+			path: "Columbus.2017.1080p.WEB-DL.H264.AC3-EVO[EtHD]",
+			want: "Columbus",
+		},
+		{
+			name: "year at end without parentheses",
+			path: "Der Untergang - Downfall 2004",
+			want: "Der Untergang - Downfall",
+		},
+		{
+			name: "year in parentheses with quality",
+			path: "Hugo (2011) 720p",
+			want: "Hugo",
+		},
+		{
+			name: "year in parentheses with quality in brackets",
+			path: "Hunt for the Wilderpeople (2016) [1080p]",
+			want: "Hunt for the Wilderpeople",
+		},
+		{
+			name: "year in square brackets",
+			path: "Guardians of the Galaxy [2014] 1080p",
+			want: "Guardians of the Galaxy",
+		},
 	}
 
 	for _, tt := range tests {
