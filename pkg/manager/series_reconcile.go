@@ -287,7 +287,6 @@ func (m MediaManager) refreshSeriesEpisodes(ctx context.Context, series *storage
 				zap.Int32("season_number", seasonMeta.Number))
 		}
 
-		// Get existing episodes for this season
 		episodeWhere := table.Episode.SeasonID.EQ(sqlite.Int64(seasonID))
 		existingEpisodes, err := m.storage.ListEpisodes(ctx, episodeWhere)
 		if err != nil {
@@ -424,7 +423,6 @@ func (m MediaManager) reconcileMissingSeason(ctx context.Context, seriesTitle st
 		log.Error("failed to list missing episodes", zap.Error(err))
 		return fmt.Errorf("couldn't list missing episodes: %w", err)
 	}
-	// if we didn't find any episodes we're done
 	if len(episodes) == 0 {
 		log.Debug("no episodes found, skipping reconcile")
 		return nil
@@ -589,7 +587,6 @@ func (m MediaManager) reconcileMissingEpisode(ctx context.Context, seriesTitle s
 func (m MediaManager) updateEpisodeState(ctx context.Context, episode storage.Episode, state storage.EpisodeState, metadata *storage.TransitionStateMetadata) error {
 	log := logger.FromCtx(ctx).With("episode id", episode.ID, "from state", episode.State, "to state", state)
 
-	// Skip if already in the target state
 	if episode.State == state {
 		log.Debug("episode already in target state, skipping update")
 		return nil
@@ -627,14 +624,12 @@ func (m MediaManager) updateEpisodeState(ctx context.Context, episode storage.Ep
 func (m MediaManager) updateSeasonState(ctx context.Context, id int64, state storage.SeasonState, metadata *storage.TransitionStateMetadata) error {
 	log := logger.FromCtx(ctx).With("season id", id, "to state", state)
 
-	// Get current season to check state
 	season, err := m.storage.GetSeason(ctx, table.Season.ID.EQ(sqlite.Int64(id)))
 	if err != nil {
 		log.Error("failed to get season for state check", zap.Error(err))
 		return err
 	}
 
-	// Skip if already in the target state
 	if season.State == state {
 		log.Debug("season already in target state, skipping update")
 		return nil
@@ -669,7 +664,6 @@ func getSeasonRuntime(episodes []*storage.Episode, totalSeasonEpisodes int) int3
 		}
 	}
 
-	// try to estimate the remaining runtime based on the average of the other episodes
 	if consideredRuntimeCount > 0 && consideredRuntimeCount < totalSeasonEpisodes {
 		averageRuntime := runtime / int32(consideredRuntimeCount)
 		runtime += averageRuntime * int32(totalSeasonEpisodes-consideredRuntimeCount)
@@ -735,14 +729,12 @@ func (m MediaManager) updateSeriesState(ctx context.Context, id int64, state sto
 func (m MediaManager) evaluateAndUpdateSeasonState(ctx context.Context, seasonID int32) error {
 	log := logger.FromCtx(ctx).With("season_id", seasonID)
 
-	// Get current season to check state
 	currentSeason, err := m.storage.GetSeason(ctx, table.Season.ID.EQ(sqlite.Int32(seasonID)))
 	if err != nil {
 		log.Error("failed to get season for state evaluation", zap.Error(err))
 		return err
 	}
 
-	// Get all episodes for this season
 	where := table.Episode.SeasonID.EQ(sqlite.Int32(seasonID))
 	episodes, err := m.storage.ListEpisodes(ctx, where)
 	if err != nil {
@@ -766,7 +758,6 @@ func (m MediaManager) evaluateAndUpdateSeasonState(ctx context.Context, seasonID
 		zap.String("current_state", string(currentSeason.State)),
 		zap.String("new_state", string(newSeasonState)))
 
-	// Only update if the state is actually changing
 	if currentSeason.State == newSeasonState {
 		log.Debug("season already in target state, no update needed")
 		return nil
@@ -779,14 +770,12 @@ func (m MediaManager) evaluateAndUpdateSeasonState(ctx context.Context, seasonID
 func (m MediaManager) evaluateAndUpdateSeriesState(ctx context.Context, seriesID int32) error {
 	log := logger.FromCtx(ctx).With("series_id", seriesID)
 
-	// Get current series to check state
 	series, err := m.storage.GetSeries(ctx, table.Series.ID.EQ(sqlite.Int32(seriesID)))
 	if err != nil {
 		log.Error("failed to get series for state evaluation", zap.Error(err))
 		return err
 	}
 
-	// Get all seasons for this series
 	where := table.Season.SeriesID.EQ(sqlite.Int32(seriesID))
 	seasons, err := m.storage.ListSeasons(ctx, where)
 	if err != nil {
@@ -799,7 +788,6 @@ func (m MediaManager) evaluateAndUpdateSeriesState(ctx context.Context, seriesID
 		return nil
 	}
 
-	// Count seasons by state
 	var completed, downloading, missing, unreleased int
 	for _, season := range seasons {
 		switch season.State {
@@ -814,7 +802,6 @@ func (m MediaManager) evaluateAndUpdateSeriesState(ctx context.Context, seriesID
 		}
 	}
 
-	// Determine series state based on season states
 	var newSeriesState storage.SeriesState
 	switch {
 	case completed == len(seasons):
@@ -838,7 +825,6 @@ func (m MediaManager) evaluateAndUpdateSeriesState(ctx context.Context, seriesID
 		zap.String("current_state", string(series.State)),
 		zap.String("new_state", string(newSeriesState)))
 
-	// Only update if the state is actually changing
 	if series.State == newSeriesState {
 		log.Debug("series already in target state, no update needed")
 		return nil
@@ -851,7 +837,6 @@ func (m MediaManager) evaluateAndUpdateSeriesState(ctx context.Context, seriesID
 func (m MediaManager) ReconcileCompletedSeries(ctx context.Context) error {
 	log := logger.FromCtx(ctx)
 
-	// Get all series that are currently in downloading or continuing state
 	where := table.SeriesTransition.ToState.IN(
 		sqlite.String(string(storage.SeriesStateDownloading)),
 		sqlite.String(string(storage.SeriesStateContinuing)),
@@ -884,7 +869,6 @@ func (m MediaManager) ReconcileCompletedSeries(ctx context.Context) error {
 func (m MediaManager) ReconcileCompletedSeasons(ctx context.Context) error {
 	log := logger.FromCtx(ctx)
 
-	// Get all seasons that are currently in downloading or continuing state
 	where := table.SeasonTransition.ToState.IN(
 		sqlite.String(string(storage.SeasonStateDownloading)),
 		sqlite.String(string(storage.SeasonStateContinuing)),
