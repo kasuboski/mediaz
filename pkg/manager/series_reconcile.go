@@ -515,11 +515,12 @@ func (m MediaManager) reconcileMissingEpisodes(ctx context.Context, seriesTitle 
 			continue
 		}
 	}
-	if allUpdated {
-		return m.updateSeasonState(ctx, int64(seasonID), storage.SeasonStateDownloading, nil)
+
+	if !allUpdated {
+		return nil
 	}
 
-	return nil
+	return m.updateSeasonState(ctx, int64(seasonID), storage.SeasonStateDownloading, nil)
 }
 
 func (m MediaManager) reconcileMissingEpisode(ctx context.Context, seriesTitle string, seasonNumber int32, episode *storage.Episode, snapshot *ReconcileSnapshot, qualityProfile storage.QualityProfile, releases []*prowlarr.ReleaseResource) (bool, error) {
@@ -602,24 +603,22 @@ func (m MediaManager) updateEpisodeState(ctx context.Context, episode storage.Ep
 
 	log.Info("successfully updated episode state")
 
-	// Only trigger cascading state updates for certain state transitions that affect season/series
-	if state == storage.EpisodeStateDownloaded || state == storage.EpisodeStateDownloading {
-		if err := m.evaluateAndUpdateSeasonState(ctx, episode.SeasonID); err != nil {
-			log.Warn("failed to update season state after episode state change", zap.Error(err))
-			// Don't return error as the episode update was successful
-		}
+	if state != storage.EpisodeStateDownloaded && state != storage.EpisodeStateDownloading {
+		return nil
+	}
 
-		// Get season to find series ID for series state update
-		season, err := m.storage.GetSeason(ctx, table.Season.ID.EQ(sqlite.Int32(episode.SeasonID)))
-		if err != nil {
-			log.Warn("failed to get season for series state update", zap.Error(err))
-			return nil
-		}
+	if err := m.evaluateAndUpdateSeasonState(ctx, episode.SeasonID); err != nil {
+		log.Warn("failed to update season state after episode state change", zap.Error(err))
+	}
 
-		if err := m.evaluateAndUpdateSeriesState(ctx, season.SeriesID); err != nil {
-			log.Warn("failed to update series state after episode state change", zap.Error(err))
-			// Don't return error as the episode update was successful
-		}
+	season, err := m.storage.GetSeason(ctx, table.Season.ID.EQ(sqlite.Int32(episode.SeasonID)))
+	if err != nil {
+		log.Warn("failed to get season for series state update", zap.Error(err))
+		return nil
+	}
+
+	if err := m.evaluateAndUpdateSeriesState(ctx, season.SeriesID); err != nil {
+		log.Warn("failed to update series state after episode state change", zap.Error(err))
 	}
 
 	return nil
@@ -649,12 +648,12 @@ func (m MediaManager) updateSeasonState(ctx context.Context, id int64, state sto
 
 	log.Info("successfully updated season state")
 
-	// Only trigger series state update for certain state transitions
-	if state == storage.SeasonStateCompleted || state == storage.SeasonStateDownloading {
-		if err := m.evaluateAndUpdateSeriesState(ctx, season.SeriesID); err != nil {
-			log.Warn("failed to update series state after season state change", zap.Error(err))
-			// Don't return error as the season update was successful
-		}
+	if state != storage.SeasonStateCompleted && state != storage.SeasonStateDownloading {
+		return nil
+	}
+
+	if err := m.evaluateAndUpdateSeriesState(ctx, season.SeriesID); err != nil {
+		log.Warn("failed to update series state after season state change", zap.Error(err))
 	}
 
 	return nil
@@ -732,23 +731,17 @@ func (m MediaManager) evaluateAndUpdateSeasonState(ctx context.Context, seasonID
 		}
 	}
 
-	// Determine season state based on episode states
 	var newSeasonState storage.SeasonState
 	switch {
 	case downloaded == len(episodes):
-		// All episodes are downloaded
 		newSeasonState = storage.SeasonStateCompleted
 	case downloading > 0:
-		// Some episodes are downloading
 		newSeasonState = storage.SeasonStateDownloading
 	case missing > 0 && unreleased == 0:
-		// Some episodes are missing but none are unreleased
 		newSeasonState = storage.SeasonStateMissing
 	case unreleased > 0:
-		// Some episodes are unreleased
 		newSeasonState = storage.SeasonStateUnreleased
 	default:
-		// Default case - continuing
 		newSeasonState = storage.SeasonStateContinuing
 	}
 
@@ -827,16 +820,12 @@ func (m MediaManager) evaluateAndUpdateSeriesState(ctx context.Context, seriesID
 		}
 		newSeriesState = storage.SeriesStateCompleted
 	case downloading > 0:
-		// Some seasons are downloading
 		newSeriesState = storage.SeriesStateDownloading
 	case missing > 0 && unreleased == 0:
-		// Some seasons are missing but none are unreleased
 		newSeriesState = storage.SeriesStateMissing
 	case unreleased > 0:
-		// Some seasons are unreleased
 		newSeriesState = storage.SeriesStateUnreleased
 	default:
-		// Default case - continuing
 		newSeriesState = storage.SeriesStateContinuing
 	}
 
