@@ -35,19 +35,16 @@ func (m MediaManager) ReconcileSeries(ctx context.Context) error {
 
 	snapshot := newReconcileSnapshot(indexers, dcs)
 
-	// Reconcile missing series (download new content)
 	err = m.ReconcileMissingSeries(ctx, snapshot)
 	if err != nil {
 		log.Error("failed to reconcile missing series", zap.Error(err))
 	}
 
-	// Reconcile continuing series (check for new episodes/seasons)
 	err = m.ReconcileContinuingSeries(ctx, snapshot)
 	if err != nil {
 		log.Error("failed to reconcile continuing series", zap.Error(err))
 	}
 
-	// Reconcile completed content (update states based on current status)
 	err = m.ReconcileCompletedSeasons(ctx)
 	if err != nil {
 		log.Error("failed to reconcile completed seasons", zap.Error(err))
@@ -161,11 +158,9 @@ func (m MediaManager) reconcileContinuingSeries(ctx context.Context, series *sto
 		return err
 	}
 
-	// First, refresh episode metadata for continuing series to discover any new episodes
 	err = m.refreshSeriesEpisodes(ctx, series, seriesMetadata, snapshot)
 	if err != nil {
 		log.Warn("failed to refresh series episodes, continuing with existing episodes", zap.Error(err))
-		// Don't return error - continue with existing episodes
 	}
 
 	releases, err := m.SearchIndexers(ctx, snapshot.GetIndexerIDs(), TV_CATEGORIES, seriesMetadata.Title)
@@ -176,7 +171,6 @@ func (m MediaManager) reconcileContinuingSeries(ctx context.Context, series *sto
 
 	slices.SortFunc(releases, sortReleaseFunc())
 
-	// For continuing series, we look for missing episodes in any season, not just missing seasons
 	where := table.Season.SeriesID.EQ(sqlite.Int32(series.ID)).
 		AND(table.Season.Monitored.EQ(sqlite.Int(1)))
 
@@ -192,7 +186,6 @@ func (m MediaManager) reconcileContinuingSeries(ctx context.Context, series *sto
 	}
 
 	for _, season := range seasons {
-		// Check for missing episodes in this season
 		episodeWhere := table.Episode.SeasonID.EQ(sqlite.Int32(season.ID)).
 			AND(table.EpisodeTransition.ToState.EQ(sqlite.String(string(storage.EpisodeStateMissing))))
 
@@ -212,14 +205,12 @@ func (m MediaManager) reconcileContinuingSeries(ctx context.Context, series *sto
 			zap.Any("season", season.ID),
 			zap.Int("count", len(missingEpisodes)))
 
-		// Get season metadata
 		seasonMetadata, err := m.storage.GetSeasonMetadata(ctx, table.SeasonMetadata.ID.EQ(sqlite.Int32(*season.SeasonMetadataID)))
 		if err != nil {
 			log.Debugw("failed to find season metadata", "meta_id", *season.SeasonMetadataID)
 			continue
 		}
 
-		// Use the existing reconcileMissingEpisodes function to handle the missing episodes
 		err = m.reconcileMissingEpisodes(ctx, seriesMetadata.Title, season.ID, seasonMetadata.Number, missingEpisodes, snapshot, qualityProfile, releases)
 		if err != nil {
 			log.Error("failed to reconcile missing episodes in continuing series", zap.Error(err))
@@ -238,14 +229,12 @@ func (m MediaManager) reconcileContinuingSeries(ctx context.Context, series *sto
 func (m MediaManager) refreshSeriesEpisodes(ctx context.Context, series *storage.Series, seriesMetadata *model.SeriesMetadata, snapshot *ReconcileSnapshot) error {
 	log := logger.FromCtx(ctx)
 
-	// Get fresh series details from TMDB to discover any new episodes that have been released
 	_, err := m.RefreshSeriesMetadataFromTMDB(ctx, int(seriesMetadata.TmdbID))
 	if err != nil {
 		log.Debug("failed to refresh series metadata from TMDB", zap.Error(err))
 		return err
 	}
 
-	// Get existing seasons for this series
 	where := table.Season.SeriesID.EQ(sqlite.Int32(series.ID))
 	existingSeasons, err := m.storage.ListSeasons(ctx, where)
 	if err != nil {
@@ -253,7 +242,6 @@ func (m MediaManager) refreshSeriesEpisodes(ctx context.Context, series *storage
 		return err
 	}
 
-	// Create a map of existing season numbers for quick lookup
 	existingSeasonNumbers := make(map[int32]int64)
 	for _, season := range existingSeasons {
 		if season.SeasonMetadataID != nil {
@@ -264,7 +252,6 @@ func (m MediaManager) refreshSeriesEpisodes(ctx context.Context, series *storage
 		}
 	}
 
-	// Get all season metadata for this series (including any new ones from TMDB refresh)
 	seasonMetadataWhere := table.SeasonMetadata.SeriesID.EQ(sqlite.Int64(int64(seriesMetadata.ID)))
 	allSeasonMetadata, err := m.storage.ListSeasonMetadata(ctx, seasonMetadataWhere)
 	if err != nil {
@@ -272,14 +259,11 @@ func (m MediaManager) refreshSeriesEpisodes(ctx context.Context, series *storage
 		return err
 	}
 
-	// Process each season metadata record
 	for _, seasonMeta := range allSeasonMetadata {
 		var seasonID int64
 		var exists bool
 
-		// Check if we have a season record for this season number
 		if seasonID, exists = existingSeasonNumbers[seasonMeta.Number]; !exists {
-			// Create new season if it doesn't exist
 			season := storage.Season{
 				Season: model.Season{
 					SeriesID:         int32(series.ID),
@@ -307,13 +291,11 @@ func (m MediaManager) refreshSeriesEpisodes(ctx context.Context, series *storage
 			continue
 		}
 
-		// Create a map of existing episode numbers for quick lookup
 		existingEpisodeNumbers := make(map[int32]bool)
 		for _, episode := range existingEpisodes {
 			existingEpisodeNumbers[episode.EpisodeNumber] = true
 		}
 
-		// Get episode metadata for this season
 		episodeMetadataWhere := table.EpisodeMetadata.SeasonID.EQ(sqlite.Int64(seasonID))
 		episodeMetadataList, err := m.storage.ListEpisodeMetadata(ctx, episodeMetadataWhere)
 		if err != nil {
@@ -321,11 +303,9 @@ func (m MediaManager) refreshSeriesEpisodes(ctx context.Context, series *storage
 			continue
 		}
 
-		// Create episode records for any new episodes
 		newEpisodesCreated := 0
 		for _, episodeMeta := range episodeMetadataList {
 			if !existingEpisodeNumbers[episodeMeta.Number] {
-				// This is a new episode, create it
 				episode := storage.Episode{
 					Episode: model.Episode{
 						EpisodeMetadataID: ptr(episodeMeta.ID),
@@ -336,7 +316,6 @@ func (m MediaManager) refreshSeriesEpisodes(ctx context.Context, series *storage
 					},
 				}
 
-				// Determine episode state based on air date
 				episodeState := storage.EpisodeStateMissing
 				if !isReleased(snapshot.time, episodeMeta.AirDate) {
 					episodeState = storage.EpisodeStateUnreleased
@@ -847,12 +826,11 @@ func (m MediaManager) evaluateAndUpdateSeriesState(ctx context.Context, seriesID
 	var newSeriesState storage.SeriesState
 	switch {
 	case completed == len(seasons):
-		// All seasons are completed
 		if seriesMetadata != nil && seriesMetadata.Status == "Ended" {
 			newSeriesState = storage.SeriesStateEnded
-		} else {
-			newSeriesState = storage.SeriesStateCompleted
+			break
 		}
+		newSeriesState = storage.SeriesStateCompleted
 	case downloading > 0:
 		// Some seasons are downloading
 		newSeriesState = storage.SeriesStateDownloading

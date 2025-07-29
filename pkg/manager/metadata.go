@@ -42,7 +42,6 @@ func (m MediaManager) loadMovieMetadata(ctx context.Context, tmdbID int) (*model
 	if err != nil {
 		return nil, err
 	}
-	// sigh cast int id
 	metadata.ID = int32(id)
 	return &metadata, nil
 }
@@ -57,14 +56,12 @@ func (m MediaManager) GetSeriesMetadata(ctx context.Context, tmdbID int) (*model
 		return nil, err
 	}
 
-	// load the metadata from tmdb if we dont have it
 	return m.loadSeriesMetadata(ctx, tmdbID)
 }
 
 // RefreshSeriesMetadataFromTMDB always fetches fresh series metadata from TMDB, regardless of whether cached data exists.
 // This is useful for discovering new episodes and seasons for continuing series.
 func (m MediaManager) RefreshSeriesMetadataFromTMDB(ctx context.Context, tmdbID int) (*model.SeriesMetadata, error) {
-	// Always fetch fresh data from TMDB, regardless of whether we have cached data
 	return m.loadSeriesMetadata(ctx, tmdbID)
 }
 
@@ -88,17 +85,16 @@ func (m MediaManager) loadSeriesMetadata(ctx context.Context, tmdbID int) (*mode
 		season := FromSeriesSeasons(s)
 		season.SeriesID = int32(seriesMetadataID)
 
-		// Try to get existing season metadata
 		existingSeason, err := m.storage.GetSeasonMetadata(ctx, table.SeasonMetadata.TmdbID.EQ(sqlite.Int(int64(season.TmdbID))))
 		if err != nil && !errors.Is(err, storage.ErrNotFound) {
 			return nil, err
 		}
 
-		var seasonMetadataID int64
+		seasonMetadataID := int64(0)
 		if existingSeason != nil {
 			seasonMetadataID = int64(existingSeason.ID)
 		}
-		if existingSeason == nil {
+		if seasonMetadataID == 0 {
 			seasonMetadataID, err = m.storage.CreateSeasonMetadata(ctx, season)
 			if err != nil {
 				return nil, err
@@ -109,15 +105,12 @@ func (m MediaManager) loadSeriesMetadata(ctx context.Context, tmdbID int) (*mode
 			episodeMetadata := FromSeriesEpisodes(episode)
 			episodeMetadata.SeasonID = int32(seasonMetadataID)
 
-			// Check if episode already exists
 			_, err := m.storage.GetEpisodeMetadata(ctx, table.EpisodeMetadata.TmdbID.EQ(sqlite.Int(int64(episodeMetadata.TmdbID))))
-			if err != nil && !errors.Is(err, storage.ErrNotFound) {
-				return nil, err
-			}
-
-			// Create episode if it doesn't exist
-			if !errors.Is(err, storage.ErrNotFound) {
+			if err == nil {
 				continue
+			}
+			if !errors.Is(err, storage.ErrNotFound) {
+				return nil, err
 			}
 
 			_, err = m.storage.CreateEpisodeMetadata(ctx, episodeMetadata)
@@ -154,7 +147,6 @@ func FromMediaDetails(det tmdb.MediaDetails) model.MovieMetadata {
 		model.Images = *det.PosterPath
 	}
 
-	// Map genres
 	if det.Genres != nil {
 		names := []string{}
 		for _, g := range *det.Genres {
@@ -164,24 +156,20 @@ func FromMediaDetails(det tmdb.MediaDetails) model.MovieMetadata {
 		model.Genres = &gs
 	}
 
-	// Map homepage
 	if det.Homepage != nil {
 		model.Website = det.Homepage
 	}
 
-	// Map popularity
 	if det.Popularity != nil {
 		p := float64(*det.Popularity)
 		model.Popularity = &p
 	}
 
-	// Map first production company as studio
 	if det.ProductionCompanies != nil && len(*det.ProductionCompanies) > 0 {
 		studio := (*det.ProductionCompanies)[0].Name
 		model.Studio = studio
 	}
 
-	// Parse belongs_to_collection into CollectionTmdbID and CollectionTitle
 	if det.BelongsToCollection != nil {
 		if collMap, ok := (*det.BelongsToCollection).(map[string]any); ok {
 			if rawID, ok := collMap["id"].(float64); ok {
@@ -200,7 +188,6 @@ func FromMediaDetails(det tmdb.MediaDetails) model.MovieMetadata {
 			model.ReleaseDate = releaseDate
 		}
 
-		// Set Year from release date
 		if model.ReleaseDate != nil {
 			y := int32(model.ReleaseDate.Year())
 			model.Year = &y
