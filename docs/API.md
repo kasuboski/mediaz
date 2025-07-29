@@ -18,17 +18,22 @@ Base path: `/api/v1`
 
 #### GET /library/movies
 - Status: 200 OK
-- Response: `{ response: [ MovieFile ] }`
+- Response: `{ "response": [ LibraryMovie ] }`
 
 #### POST /library/movies
-- Request (JSON): `{ tmdbID: int, qualityProfileID: int }`
+- Request (JSON): `{ "tmdbID": int, "qualityProfileID": int }`
 - Status: 200 OK
-- Response: `{ response: Movie }`
+- Response: `{ "response": Movie }`
+
+#### GET /movie/{tmdbID}
+- Path Parameter: `tmdbID` (integer)
+- Status: 200 OK
+- Response: `{ "response": MovieDetailResult }`
 
 #### GET /discover/movie
 - Query: `query=string`
 - Status: 200 OK
-- Response: `{ response: SearchMediaResponse }`
+- Response: `{ "response": SearchMediaResponse }`
 
 ---
 
@@ -36,18 +41,23 @@ Base path: `/api/v1`
 
 #### GET /library/tv
 - Status: 200 OK
-- Response: `{ response: [ string ] }`  
+- Response: `{ "response": [ string ] }`  
 (list of episode paths)
 
 #### POST /library/tv
-- Request (JSON): `{ tmdbID: int, qualityProfileID: int }`
+- Request (JSON): `{ "tmdbID": int, "qualityProfileID": int }`
 - Status: 200 OK
-- Response: `{ response: Series }`
+- Response: `{ "response": Series }`
+
+#### GET /tv/{tmdbID}
+- Path Parameter: `tmdbID` (integer)
+- Status: 200 OK
+- Response: `{ "response": TVDetailResult }`
 
 #### GET /discover/tv
 - Query: `query=string`
 - Status: 200 OK
-- Response: `{ response: SearchMediaResponse }`
+- Response: `{ "response": SearchMediaResponse }`
 
 ---
 
@@ -55,17 +65,17 @@ Base path: `/api/v1`
 
 #### GET /indexers
 - Status: 200 OK
-- Response: `{ response: [ Indexer ] }`
+- Response: `{ "response": [ Indexer ] }`
 
 #### POST /indexers
 - Request (JSON): `Indexer { id?: int, name: string, priority: int, uri: string, apiKey?: string }`
 - Status: 201 Created
-- Response: `{ response: Indexer }`
+- Response: `{ "response": Indexer }`
 
 #### DELETE /indexers
-- Request (JSON): `{ id: int }`
+- Request (JSON): `{ "id": int }`
 - Status: 200 OK
-- Response: `{ response: { id: int } }`
+- Response: `{ "response": { "id": int } }`
 
 ---
 
@@ -73,20 +83,22 @@ Base path: `/api/v1`
 
 #### GET /download/clients
 - Status: 200 OK
-- Response: `{ response: [ DownloadClient ] }`
+- Response: `{ "response": [ DownloadClient ] }`
 
 #### GET /download/clients/{id}
+- Path Parameter: `id` (integer)
 - Status: 200 OK
-- Response: `{ response: DownloadClient }`
+- Response: `{ "response": DownloadClient }`
 
 #### POST /download/clients
-- Request (JSON): `DownloadClient { type: string, implementation: string, scheme: string, host: string, port: int, apiKey?: string }`
+- Request (JSON): `DownloadClient { id?: int, type: string, implementation: string, scheme: string, host: string, port: int, apiKey?: string }`
 - Status: 201 Created
-- Response: `{ response: DownloadClient }`
+- Response: `{ "response": DownloadClient }`
 
 #### DELETE /download/clients/{id}
+- Path Parameter: `id` (integer)
 - Status: 200 OK
-- Response: `{ response: { id: int } }`
+- Response: `{ "response": id }`
 
 ---
 
@@ -94,21 +106,22 @@ Base path: `/api/v1`
 
 #### GET /quality/definitions
 - Status: 200 OK
-- Response: `{ response: [ QualityDefinition ] }`
+- Response: `{ "response": [ QualityDefinition ] }`
 
 #### GET /quality/definitions/{id}
+- Path Parameter: `id` (integer)
 - Status: 200 OK
-- Response: `{ response: QualityDefinition }`
+- Response: `{ "response": QualityDefinition }`
 
 #### POST /quality/definitions
-- Request (JSON): `QualityDefinition { name: string, media_type: string, preferredSize: float, minSize: float, maxSize: float }`
+- Request (JSON): `QualityDefinition { id?: int, name: string, media_type: string, preferredSize: float, minSize: float, maxSize: float }`
 - Status: 201 Created
-- Response: `{ response: QualityDefinition }`
+- Response: `{ "response": QualityDefinition }`
 
 #### DELETE /quality/definitions
-- Request (JSON): `{ id: int }`
+- Request (JSON): `{ "id": int }`
 - Status: 200 OK
-- Response: `{ response: { id: int } }`
+- Response: `{ "response": { "id": int } }`
 
 ---
 
@@ -116,38 +129,94 @@ Base path: `/api/v1`
 
 #### GET /quality/profiles
 - Status: 200 OK
-- Response: `{ response: [ QualityProfile ] }`
+- Response: `{ "response": [ QualityProfile ] }`
 
 #### GET /quality/profiles/{id}
+- Path Parameter: `id` (integer)
 - Status: 200 OK
-- Response: `{ response: QualityProfile }`
+- Response: `{ "response": QualityProfile }`
 
 ---
 
 ## Schemas
 
-### MovieFile
-- `name`: string
+### LibraryMovie
 - `path`: string
-- `absolutePath`: string
-- `size`: int
+- `tmdbID`: int
+- `title`: string
+- `poster_path`: string
+- `year?`: int
+- `state`: string
 
 ### Movie
 - `ID`: int
 - `path?`: string
 - `monitored`: int
 - `qualityProfileID`: int
-- `added?`: datetime
-- `tags?`: string
 - `movieFileID?`: int
 - `movieMetadataID?`: int
 - `state`: string
 
 ### Series
-- same fields as Movie with `Series` semantics
+- `ID`: int
+- `path?`: string
+- `monitored`: int
+- `qualityProfileID`: int
+- `tmdbID`: int
+- `seriesMetadataID?`: int
+- `state`: string
+
+### MovieDetailResult
+- `tmdbID`: int
+- `imdbID?`: string
+- `title`: string
+- `originalTitle?`: string
+- `overview?`: string
+- `posterPath`: string
+- `backdropPath?`: string
+- `releaseDate?`: string
+- `year?`: int
+- `runtime?`: int
+- `adult?`: bool
+- `voteAverage?`: float
+- `voteCount?`: int
+- `popularity?`: float
+- `genres?`: string
+- `studio?`: string
+- `website?`: string
+- `collectionTmdbID?`: int
+- `collectionTitle?`: string
+- `libraryStatus`: string
+- `path?`: string
+- `qualityProfileID?`: int
+- `monitored?`: bool
+
+### TVDetailResult
+- `tmdbID`: int
+- `title`: string
+- `originalTitle?`: string
+- `overview?`: string
+- `posterPath`: string
+- `backdropPath?`: string
+- `firstAirDate?`: string
+- `lastAirDate?`: string
+- `networks?`: [string]
+- `seasonCount`: int
+- `episodeCount`: int
+- `adult?`: bool
+- `voteAverage?`: float
+- `voteCount?`: int
+- `popularity?`: float
+- `genres?`: [string]
+- `libraryStatus`: string
+- `path?`: string
+- `qualityProfileID?`: int
+- `monitored?`: bool
 
 ### SearchMediaResponse
-- `page?`, `total_pages?`, `total_results?`: int
+- `page?`: int
+- `total_pages?`: int
+- `total_results?`: int
 - `results`: [ `SearchMediaResult` ]
 
 ### SearchMediaResult
@@ -170,9 +239,9 @@ Base path: `/api/v1`
 - `id`: int
 - `name`: string
 - `priority`: int
-- `uri`: string
+- `uri?`: string
 - `apiKey?`: string
-- `status?`: string
+- `status?`: object
 - `categories?`: array
 
 ### DownloadClient
@@ -185,8 +254,9 @@ Base path: `/api/v1`
 - `apiKey?`: string
 
 ### QualityDefinition
+- `id`: int
 - `name`: string
-- `type`: string
+- `media_type`: string
 - `preferredSize`: float
 - `minSize`: float
 - `maxSize`: float
