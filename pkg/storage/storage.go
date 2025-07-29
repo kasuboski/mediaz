@@ -214,7 +214,6 @@ type EpisodeTransition model.EpisodeTransition
 
 func (e Episode) Machine() *machine.StateMachine[EpisodeState] {
 	return machine.New(e.State,
-		machine.From(EpisodeStateNew).To(EpisodeStateUnreleased, EpisodeStateMissing, EpisodeStateDiscovered),
 		machine.From(EpisodeStateMissing).To(EpisodeStateDiscovered, EpisodeStateDownloading),
 		machine.From(EpisodeStateUnreleased).To(EpisodeStateDiscovered, EpisodeStateMissing),
 		machine.From(EpisodeStateDownloading).To(EpisodeStateDownloaded),
