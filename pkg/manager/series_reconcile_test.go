@@ -1289,7 +1289,7 @@ func TestMediaManager_ReconcileContinuingSeries(t *testing.T) {
 		require.NoError(t, err)
 
 		seasonMetadataID, err := store.CreateSeasonMetadata(ctx, model.SeasonMetadata{
-			SeriesID: int32(seriesMetadataID), // Should reference the series metadata ID, not storage series ID
+			SeriesID: seriesMetadataID, // Correctly referencing the series metadata ID
 			Title:    "Season 1",
 			Number:   1,
 			TmdbID:   1001, // Match the TMDB ID from our mock
