@@ -300,7 +300,7 @@ func (m MediaManager) refreshSeriesEpisodes(ctx context.Context, series *storage
 			existingEpisodeNumbers[episode.EpisodeNumber] = true
 		}
 
-		episodeMetadataWhere := table.EpisodeMetadata.SeasonID.EQ(sqlite.Int64(seasonMeta.ID))
+		episodeMetadataWhere := table.EpisodeMetadata.SeasonID.EQ(sqlite.Int64(seasonID))
 		episodeMetadataList, err := m.storage.ListEpisodeMetadata(ctx, episodeMetadataWhere)
 		if err != nil {
 			log.Error("failed to list episode metadata", zap.Error(err))
