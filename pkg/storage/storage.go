@@ -145,7 +145,6 @@ const (
 	SeriesStateContinuing  SeriesState = "continuing"
 	SeriesStateDownloading SeriesState = "downloading"
 	SeriesStateCompleted   SeriesState = "completed"
-	SeriesStateEnded       SeriesState = "ended"
 
 	SeasonStateNew         SeasonState = ""
 	SeasonStateMissing     SeasonState = "missing"
@@ -154,7 +153,6 @@ const (
 	SeasonStateContinuing  SeasonState = "continuing"
 	SeasonStateDownloading SeasonState = "downloading"
 	SeasonStateCompleted   SeasonState = "completed"
-	SeasonStateEnded       SeasonState = "ended"
 
 	EpisodeStateNew         EpisodeState = ""
 	EpisodeStateMissing     EpisodeState = "missing"
@@ -176,9 +174,9 @@ func (s Series) Machine() *machine.StateMachine[SeriesState] {
 		machine.From(SeriesStateNew).To(SeriesStateUnreleased, SeriesStateMissing, SeriesStateDiscovered),
 		machine.From(SeriesStateMissing).To(SeriesStateDiscovered, SeriesStateDownloading),
 		machine.From(SeriesStateUnreleased).To(SeriesStateDiscovered, SeriesStateMissing),
-		machine.From(SeriesStateDownloading).To(SeriesStateContinuing, SeriesStateCompleted, SeriesStateEnded),
-		machine.From(SeriesStateContinuing).To(SeriesStateCompleted, SeriesStateEnded),
-		machine.From(SeriesStateCompleted).To(SeriesStateContinuing, SeriesStateEnded),
+		machine.From(SeriesStateDownloading).To(SeriesStateContinuing, SeriesStateCompleted),
+		machine.From(SeriesStateContinuing).To(SeriesStateCompleted),
+		machine.From(SeriesStateCompleted).To(SeriesStateContinuing),
 	)
 }
 
@@ -196,9 +194,9 @@ func (s Season) Machine() *machine.StateMachine[SeasonState] {
 		machine.From(SeasonStateNew).To(SeasonStateUnreleased, SeasonStateMissing, SeasonStateDiscovered),
 		machine.From(SeasonStateMissing).To(SeasonStateDiscovered, SeasonStateDownloading),
 		machine.From(SeasonStateUnreleased).To(SeasonStateDiscovered, SeasonStateMissing),
-		machine.From(SeasonStateDownloading).To(SeasonStateContinuing, SeasonStateCompleted, SeasonStateEnded),
-		machine.From(SeasonStateContinuing).To(SeasonStateCompleted, SeasonStateEnded),
-		machine.From(SeasonStateCompleted).To(SeasonStateContinuing, SeasonStateEnded),
+		machine.From(SeasonStateDownloading).To(SeasonStateContinuing, SeasonStateCompleted),
+		machine.From(SeasonStateContinuing).To(SeasonStateCompleted),
+		machine.From(SeasonStateCompleted).To(SeasonStateContinuing),
 	)
 }
 

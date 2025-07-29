@@ -814,22 +814,10 @@ func (m MediaManager) evaluateAndUpdateSeriesState(ctx context.Context, seriesID
 		}
 	}
 
-	var seriesMetadata *model.SeriesMetadata
-	if series.SeriesMetadataID != nil {
-		seriesMetadata, err = m.storage.GetSeriesMetadata(ctx, table.SeriesMetadata.ID.EQ(sqlite.Int32(*series.SeriesMetadataID)))
-		if err != nil {
-			log.Warn("failed to get series metadata for state evaluation", zap.Error(err))
-		}
-	}
-
 	// Determine series state based on season states
 	var newSeriesState storage.SeriesState
 	switch {
 	case completed == len(seasons):
-		if seriesMetadata != nil && seriesMetadata.Status == "Ended" {
-			newSeriesState = storage.SeriesStateEnded
-			break
-		}
 		newSeriesState = storage.SeriesStateCompleted
 	case downloading > 0:
 		newSeriesState = storage.SeriesStateDownloading

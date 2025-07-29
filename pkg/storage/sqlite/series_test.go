@@ -609,13 +609,13 @@ func TestSQLite_UpdateSeriesState(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, storage.SeriesStateContinuing, foundSeries.State)
 
-		// Test transition from continuing to ended (valid)
-		err = store.UpdateSeriesState(ctx, seriesID, storage.SeriesStateEnded, nil)
+		// Test transition from continuing to completed (valid)
+		err = store.UpdateSeriesState(ctx, seriesID, storage.SeriesStateCompleted, nil)
 		require.NoError(t, err)
 
 		foundSeries, err = store.GetSeries(ctx, table.Series.ID.EQ(sqlite.Int64(seriesID)))
 		require.NoError(t, err)
-		assert.Equal(t, storage.SeriesStateEnded, foundSeries.State)
+		assert.Equal(t, storage.SeriesStateCompleted, foundSeries.State)
 	})
 
 	t.Run("test transitions from new state", func(t *testing.T) {
