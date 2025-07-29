@@ -46,6 +46,8 @@
 
             # https://github.com/sqlite/sqlite
             sqlite
+
+            nodejs
           ];
 
           shellHook = ''

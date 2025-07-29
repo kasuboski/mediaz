@@ -29,6 +29,8 @@ go.work.sum
 .vscode
 local.yaml
 
+.DS_Store
+
 # db files
 *.sqlite
 .aider*
