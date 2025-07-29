@@ -35,6 +35,64 @@ export interface MediaItem {
 }
 
 /**
+ * MovieDetailResult interface matching the API schema
+ */
+export interface MovieDetailResult {
+  tmdbID: number;
+  imdbID?: string;
+  title: string;
+  originalTitle?: string;
+  overview?: string;
+  posterPath: string;
+  backdropPath?: string;
+  releaseDate?: string;
+  year?: number;
+  runtime?: number;
+  adult?: boolean;
+  voteAverage?: number;
+  voteCount?: number;
+  popularity?: number;
+  genres?: string;
+  studio?: string;
+  website?: string;
+  collectionTmdbID?: number;
+  collectionTitle?: string;
+  libraryStatus: string;
+  path?: string;
+  qualityProfileID?: number;
+  monitored?: boolean;
+}
+
+/**
+ * Transformed movie detail data for the MovieDetail component
+ */
+export interface MovieDetail {
+  tmdbID: number;
+  imdbID?: string;
+  title: string;
+  originalTitle?: string;
+  overview?: string;
+  posterPath: string;
+  backdropPath?: string;
+  releaseDate?: string;
+  year?: number;
+  runtime?: number;
+  adult?: boolean;
+  voteAverage?: number;
+  voteCount?: number;
+  popularity?: number;
+  genres: string[];
+  studio?: string;
+  website?: string;
+  collectionTmdbID?: number;
+  collectionTitle?: string;
+  libraryStatus: boolean;
+  path?: string;
+  qualityProfileID?: number;
+  monitored: boolean;
+}
+
+/**
  * Generic API error class
  */
 export class ApiError extends Error {
@@ -83,6 +141,18 @@ function transformLibraryMovieToMediaItem(movie: LibraryMovie): MediaItem {
 }
 
 /**
+ * Transform MovieDetailResult from API to MovieDetail format expected by component
+ */
+function transformMovieDetailResult(result: MovieDetailResult): MovieDetail {
+  return {
+    ...result,
+    genres: result.genres ? result.genres.split(',').map(g => g.trim()) : [],
+    libraryStatus: result.libraryStatus === 'InLibrary',
+    monitored: result.monitored ?? false,
+  };
+}
+
+/**
  * Movies API endpoints
  */
 export const moviesApi = {
@@ -92,5 +162,13 @@ export const moviesApi = {
   async getLibraryMovies(): Promise<MediaItem[]> {
     const movies = await apiRequest<LibraryMovie[]>('/library/movies');
     return movies.map(transformLibraryMovieToMediaItem);
+  },
+
+  /**
+   * Get detailed information for a specific movie by TMDB ID
+   */
+  async getMovieDetail(tmdbID: number): Promise<MovieDetail> {
+    const result = await apiRequest<MovieDetailResult>(`/movie/${tmdbID}`);
+    return transformMovieDetailResult(result);
   },
 };

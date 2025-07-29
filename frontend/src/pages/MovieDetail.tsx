@@ -1,84 +1,18 @@
-import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { Calendar, Clock, Star, Globe, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { RequestModal } from "@/components/media/RequestModal";
-
-// Mock movie detail data
-const mockMovieDetails = {
-  550: {
-    tmdbID: 550,
-    title: "Fight Club",
-    overview: "A ticking-time-bomb insomniac and a slippery soap salesman channel primal male aggression into a shocking new form of therapy. Their concept catches on, with underground \"fight clubs\" forming in every town, until an eccentric gets in the way and ignites an out-of-control spiral toward oblivion.",
-    posterPath: "/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg",
-    backdropPath: "/hZkgoQYus5vegHoetLkCJzb17zJ.jpg",
-    releaseDate: "1999-10-15",
-    year: 1999,
-    runtime: 139,
-    genres: ["Drama", "Thriller"],
-    studio: "20th Century Fox",
-    website: "",
-    imdbID: "tt0137523",
-    libraryStatus: false,
-    path: "",
-    qualityProfileID: null,
-    monitored: false,
-  },
-  13: {
-    tmdbID: 13,
-    title: "Forrest Gump",
-    overview: "A man with a low IQ has accomplished great things in his life and been present during significant historic events—in each case, far exceeding what anyone imagined he could do. But despite all he has achieved, his one true love eludes him.",
-    posterPath: "/arw2vcBveWOVZr6pxd9XTd1TdQa.jpg",
-    backdropPath: "/saHP97rTPS5eLmrLQEcANmKrsFl.jpg",
-    releaseDate: "1994-06-23",
-    year: 1994,
-    runtime: 142,
-    genres: ["Comedy", "Drama", "Romance"],
-    studio: "Paramount Pictures",
-    website: "",
-    imdbID: "tt0109830",
-    libraryStatus: false,
-    path: "",
-    qualityProfileID: null,
-    monitored: false,
-  },
-  155: {
-    tmdbID: 155,
-    title: "The Dark Knight",
-    overview: "Batman raises the stakes in his war on crime. With the help of Lt. Jim Gordon and District Attorney Harvey Dent, Batman sets out to dismantle the remaining criminal organizations that plague the streets. The partnership proves to be effective, but they soon find themselves prey to a reign of chaos unleashed by a rising criminal mastermind known to the terrified citizens of Gotham as the Joker.",
-    posterPath: "/qJ2tW6WMUDux911r6m7haRef0WH.jpg",
-    backdropPath: "/dqK9Hag1054tghRQSqLSfrkvQnA.jpg",
-    releaseDate: "2008-07-16",
-    year: 2008,
-    runtime: 152,
-    genres: ["Drama", "Action", "Crime", "Thriller"],
-    studio: "Warner Bros. Pictures",
-    website: "",
-    imdbID: "tt0468569",
-    libraryStatus: false,
-    path: "",
-    qualityProfileID: null,
-    monitored: false,
-  },
-};
+import { useMovieDetail } from "@/lib/queries";
+import { useState } from "react";
 
 export default function MovieDetail() {
   const { id } = useParams<{ id: string }>();
-  const [movie, setMovie] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(true);
   const [showRequestModal, setShowRequestModal] = useState(false);
-
-  useEffect(() => {
-    // Simulate API call
-    setTimeout(() => {
-      const movieId = parseInt(id || '0');
-      const movieDetail = mockMovieDetails[movieId as keyof typeof mockMovieDetails];
-      setMovie(movieDetail || null);
-      setIsLoading(false);
-    }, 800);
-  }, [id]);
+  
+  const tmdbID = parseInt(id || '0');
+  const { data: movie, isLoading, error } = useMovieDetail(tmdbID);
 
   if (isLoading) {
     return (
@@ -88,10 +22,17 @@ export default function MovieDetail() {
     );
   }
 
-  if (!movie) {
+  if (error || !movie) {
     return (
       <div className="flex justify-center items-center min-h-screen">
-        <p className="text-muted-foreground">Movie not found</p>
+        <div className="text-center">
+          <p className="text-muted-foreground mb-2">Movie not found</p>
+          {error && (
+            <p className="text-sm text-red-500">
+              {error instanceof Error ? error.message : 'An error occurred while loading the movie'}
+            </p>
+          )}
+        </div>
       </div>
     );
   }
@@ -140,7 +81,7 @@ export default function MovieDetail() {
                   )}
                 </div>
                 <div className="flex items-center gap-2 mb-4">
-                  {movie.genres?.map((genre: string) => (
+                  {movie.genres.map((genre) => (
                     <Badge key={genre} variant="secondary" className="bg-white/20 text-white border-white/30">
                       {genre}
                     </Badge>
@@ -205,14 +146,18 @@ export default function MovieDetail() {
               <div className="bg-card border border-border rounded-lg p-4">
                 <h3 className="font-semibold mb-3">Details</h3>
                 <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Release Date</span>
-                    <span>{new Date(movie.releaseDate).toLocaleDateString()}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Runtime</span>
-                    <span>{movie.runtime} minutes</span>
-                  </div>
+                  {movie.releaseDate && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Release Date</span>
+                      <span>{new Date(movie.releaseDate).toLocaleDateString()}</span>
+                    </div>
+                  )}
+                  {movie.runtime && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Runtime</span>
+                      <span>{movie.runtime} minutes</span>
+                    </div>
+                  )}
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">TMDB ID</span>
                     <span>{movie.tmdbID}</span>
