@@ -20,6 +20,14 @@ var (
 	episodePattern       = regexp.MustCompile(`(?i)\b(S\d{1,2}E\d{2,})|\b(\d{1,2}x\d{2,})`)
 	episodeNumberPattern = regexp.MustCompile(`(?i)S?(\d{1,2})(?:E|x)(\d{1,2})`)
 	seasonNumberPattern  = regexp.MustCompile(`(?i)(?:S(?:eason)?[\s._-]?(\d{1,2}))`)
+
+	// pathToSearchTerm regex patterns
+	releaseGroupRegex   = regexp.MustCompile(`-[A-Z0-9]+\[[^\]]+\]`)
+	yearRegex           = regexp.MustCompile(`\s*[\(\[\{]?(19|20)\d{2}[\)\]\}]?(?:\s|$)`)
+	qualityRegex        = regexp.MustCompile(`(?i)\b(720p|1080p|4k|2160p|x264|h264|hevc|web-dl|bluray|dvdrip|cam|ts|tc)\b`)
+	codecRegex          = regexp.MustCompile(`(?i)\b(h264|ac3|aac|dts|dd5\.1)\b`)
+	emptyBracketsRegex  = regexp.MustCompile(`\s*[\[\(\{][\]\)\}]\s*`)
+	multipleSpacesRegex = regexp.MustCompile(`\s+`)
 )
 
 func RejectMovieReleaseFunc(ctx context.Context, title string, runtime int32, profile storage.QualityProfile, protocolsAvailable map[string]struct{}) func(*prowlarr.ReleaseResource) bool {
@@ -516,27 +524,22 @@ func pathToSearchTerm(path string) string {
 	cleaned := strings.ReplaceAll(path, ".", " ")
 
 	// Remove release group indicators (e.g., -EVO[EtHD])
-	releaseRegex := regexp.MustCompile(`-[A-Z0-9]+\[[^\]]+\]`)
-	cleaned = releaseRegex.ReplaceAllString(cleaned, "")
+	cleaned = releaseGroupRegex.ReplaceAllString(cleaned, "")
 
 	// Remove years in various formats: (YYYY), {YYYY}, [YYYY], or trailing YYYY
-	yearRegex := regexp.MustCompile(`\s*[\(\[\{]?(19|20)\d{2}[\)\]\}]?(?:\s|$)`)
 	cleaned = yearRegex.ReplaceAllString(cleaned, " ")
 
 	// Remove common quality indicators
-	qualityRegex := regexp.MustCompile(`(?i)\b(720p|1080p|4k|2160p|x264|h264|hevc|web-dl|bluray|dvdrip|cam|ts|tc)\b`)
 	cleaned = qualityRegex.ReplaceAllString(cleaned, "")
 
 	// Remove codec and audio info
-	codecRegex := regexp.MustCompile(`(?i)\b(h264|ac3|aac|dts|dd5\.1)\b`)
 	cleaned = codecRegex.ReplaceAllString(cleaned, "")
 
 	// Remove empty brackets and parentheses
-	emptyBracketsRegex := regexp.MustCompile(`\s*[\[\(\{][\]\)\}]\s*`)
 	cleaned = emptyBracketsRegex.ReplaceAllString(cleaned, " ")
 
 	// Clean up multiple spaces
-	cleaned = regexp.MustCompile(`\s+`).ReplaceAllString(cleaned, " ")
+	cleaned = multipleSpacesRegex.ReplaceAllString(cleaned, " ")
 
 	return strings.TrimSpace(cleaned)
 }
