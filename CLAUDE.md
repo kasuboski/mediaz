@@ -24,7 +24,16 @@ go generate ./...           # Alternative method
 ```bash
 go test ./...               # Run all tests
 go test -v ./pkg/manager/   # Run specific package tests with verbose output
+go test -race ./...         # Run tests with race detection
+go test -cover ./...        # Run tests with coverage
 ```
+
+### Development Workflow
+1. Make requested changes
+2. Run `go fmt ./...` to format the code
+3. Run `go test ./...` to run tests
+4. Fix any errors
+5. Repeat
 
 ### Database
 ```bash
@@ -53,7 +62,7 @@ go test -v ./pkg/manager/   # Run specific package tests with verbose output
 
 **External Integrations**:
 - `pkg/tmdb/` - TMDB API client (generated from schema)
-- `pkg/prowlarr/` - Prowlarr API client (generated from schema) 
+- `pkg/prowlarr/` - Prowlarr API client (generated from schema)
 - `pkg/download/` - Download clients (SABnzbd, Transmission)
 
 ### Configuration Management
@@ -84,3 +93,44 @@ Run `make generate` to regenerate all external schemas and code.
 **Interface-based Design**: All external clients use interfaces (see `generate.go` files for mock generation)
 **Context Propagation**: All operations use context.Context for cancellation and logging
 **Structured Logging**: Uses Zap logger with context-aware logging via `pkg/logger`
+
+### Testing Strategy
+
+The project uses `gomock` library to avoid external dependencies during testing.
+
+**Storage Testing**: Prefer using an in-memory SQLite database over mocks. Use mocks only if the scenario would be hard to recreate in an in-memory SQLite database.
+
+**External Components**: Components that interact with the outside world have generated mocks with `gomock`. These mocks are in a `mocks` folder next to the component.
+
+**Mock Setup Example**:
+```go
+ctrl := gomock.NewController(t)
+store := mocks.NewMockStorage(ctrl)
+m := New(nil, nil, nil, store, nil, config.Manager{})
+store.EXPECT().ListMoviesByState(ctx, storage.MovieStateDiscovered).Return([]*storage.Movie{}, nil)
+store.EXPECT().ListMoviesByState(ctx, storage.MovieStateDownloaded).Return([]*storage.Movie{}, nil)
+// use components that you are testing
+```
+
+### CLI Commands Available
+
+**Core Operations**:
+- `mediaz serve` - Start the media server
+- `mediaz discover` - Find new media content
+
+**Movie Management**:
+- `mediaz index movies` - Refresh movie metadata
+- `mediaz list movies` - Show indexed collection
+- `mediaz search movie <title>` - Find TMDB entries
+
+**TV Management**:
+- `mediaz list tv <path>` - List TV episodes in library
+- `mediaz search tv <title>` - Find TV shows in TMDB
+
+**Indexer Management**:
+- `mediaz list indexer` - List configured indexers
+- `mediaz search indexer <query>` - Search indexers for content
+
+**System Management**:
+- `mediaz generate schema` - Create DB schema
+- `mediaz --config <path>` - Specify config file
