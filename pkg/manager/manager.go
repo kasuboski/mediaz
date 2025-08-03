@@ -408,8 +408,28 @@ func (m MediaManager) ListIndexers(ctx context.Context) ([]Indexer, error) {
 	return m.indexer.ListIndexers(ctx)
 }
 
-func (m MediaManager) ListShowsInLibrary(ctx context.Context) ([]string, error) {
-	return m.library.FindEpisodes(ctx)
+func (m MediaManager) ListShowsInLibrary(ctx context.Context) ([]LibraryShow, error) {
+	series, err := m.storage.ListSeries(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var shows []LibraryShow
+	for _, sp := range series {
+		srec := *sp
+		ls := LibraryShow{State: string(srec.State)}
+		if srec.Path != nil {
+			ls.Path = *srec.Path
+		}
+		if srec.SeriesMetadataID != nil {
+			meta, err := m.storage.GetSeriesMetadata(ctx, table.SeriesMetadata.ID.EQ(sqlite.Int(int64(*srec.SeriesMetadataID))))
+			if err == nil && meta != nil {
+				ls.TMDBID = meta.TmdbID
+				ls.Title = meta.Title
+			}
+		}
+		shows = append(shows, ls)
+	}
+	return shows, nil
 }
 
 // LibraryMovie is used for API responses, combining file and metadata info

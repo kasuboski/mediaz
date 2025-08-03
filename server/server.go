@@ -207,7 +207,7 @@ func (s Server) ListTVShows() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("content-type", "application/json")
 		log := logger.FromCtx(r.Context())
-		episodes, err := s.manager.ListShowsInLibrary(r.Context())
+		shows, err := s.manager.ListShowsInLibrary(r.Context())
 		if err != nil {
 			log.Error("failed to list shows", zap.Error(err))
 			http.Error(w, "failed to list shows", http.StatusInternalServerError)
@@ -215,7 +215,7 @@ func (s Server) ListTVShows() http.HandlerFunc {
 		}
 
 		resp := GenericResponse{
-			Response: episodes,
+			Response: shows,
 		}
 
 		writeResponse(w, http.StatusOK, resp)
