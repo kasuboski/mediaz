@@ -27,6 +27,7 @@ type seriesMetadataTable struct {
 	SeasonCount  sqlite.ColumnInteger
 	EpisodeCount sqlite.ColumnInteger
 	Status       sqlite.ColumnString
+	PosterPath   sqlite.ColumnString
 
 	AllColumns     sqlite.ColumnList
 	MutableColumns sqlite.ColumnList
@@ -77,8 +78,9 @@ func newSeriesMetadataTableImpl(schemaName, tableName, alias string) seriesMetad
 		SeasonCountColumn  = sqlite.IntegerColumn("season_count")
 		EpisodeCountColumn = sqlite.IntegerColumn("episode_count")
 		StatusColumn       = sqlite.StringColumn("status")
-		allColumns         = sqlite.ColumnList{IDColumn, TmdbIDColumn, TitleColumn, OverviewColumn, LastInfoSyncColumn, FirstAirDateColumn, LastAirDateColumn, SeasonCountColumn, EpisodeCountColumn, StatusColumn}
-		mutableColumns     = sqlite.ColumnList{TmdbIDColumn, TitleColumn, OverviewColumn, LastInfoSyncColumn, FirstAirDateColumn, LastAirDateColumn, SeasonCountColumn, EpisodeCountColumn, StatusColumn}
+		PosterPathColumn   = sqlite.StringColumn("poster_path")
+		allColumns         = sqlite.ColumnList{IDColumn, TmdbIDColumn, TitleColumn, OverviewColumn, LastInfoSyncColumn, FirstAirDateColumn, LastAirDateColumn, SeasonCountColumn, EpisodeCountColumn, StatusColumn, PosterPathColumn}
+		mutableColumns     = sqlite.ColumnList{TmdbIDColumn, TitleColumn, OverviewColumn, LastInfoSyncColumn, FirstAirDateColumn, LastAirDateColumn, SeasonCountColumn, EpisodeCountColumn, StatusColumn, PosterPathColumn}
 	)
 
 	return seriesMetadataTable{
@@ -95,6 +97,7 @@ func newSeriesMetadataTableImpl(schemaName, tableName, alias string) seriesMetad
 		SeasonCount:  SeasonCountColumn,
 		EpisodeCount: EpisodeCountColumn,
 		Status:       StatusColumn,
+		PosterPath:   PosterPathColumn,
 
 		AllColumns:     allColumns,
 		MutableColumns: mutableColumns,

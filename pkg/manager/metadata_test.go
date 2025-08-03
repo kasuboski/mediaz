@@ -190,13 +190,14 @@ func TestFromSeriesDetails(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "valid series details",
+			name: "valid series details with poster",
 			input: tmdb.SeriesDetails{
 				ID:               123,
 				Name:             "Test Series",
 				NumberOfSeasons:  2,
 				NumberOfEpisodes: 20,
 				FirstAirDate:     "2023-01-01",
+				PosterPath:       "poster.jpg",
 			},
 			want: model.SeriesMetadata{
 				TmdbID:       123,
@@ -207,6 +208,30 @@ func TestFromSeriesDetails(t *testing.T) {
 					t, _ := time.Parse(tmdb.ReleaseDateFormat, "2023-01-01")
 					return &t
 				}(),
+				PosterPath: ptr("poster.jpg"),
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid series details without poster",
+			input: tmdb.SeriesDetails{
+				ID:               124,
+				Name:             "No Poster",
+				NumberOfSeasons:  1,
+				NumberOfEpisodes: 10,
+				FirstAirDate:     "2022-02-02",
+				PosterPath:       "",
+			},
+			want: model.SeriesMetadata{
+				TmdbID:       124,
+				Title:        "No Poster",
+				SeasonCount:  1,
+				EpisodeCount: 10,
+				FirstAirDate: func() *time.Time {
+					t, _ := time.Parse(tmdb.ReleaseDateFormat, "2022-02-02")
+					return &t
+				}(),
+				PosterPath: nil,
 			},
 			wantErr: false,
 		},

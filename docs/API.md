@@ -41,8 +41,7 @@ Base path: `/api/v1`
 
 #### GET /library/tv
 - Status: 200 OK
-- Response: `{ "response": [ string ] }`  
-(list of episode paths)
+- Response: `{ "response": [ LibraryShow ] }`
 
 #### POST /library/tv
 - Request (JSON): `{ "tmdbID": int, "qualityProfileID": int }`
@@ -164,6 +163,14 @@ Base path: `/api/v1`
 - `qualityProfileID`: int
 - `tmdbID`: int
 - `seriesMetadataID?`: int
+- `state`: string
+
+### LibraryShow
+- `path`: string
+- `tmdbID`: int
+- `title`: string
+- `poster_path`: string
+- `year?`: int
 - `state`: string
 
 ### MovieDetailResult

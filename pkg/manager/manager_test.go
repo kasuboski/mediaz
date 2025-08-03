@@ -247,6 +247,101 @@ func TestListMoviesInLibrary(t *testing.T) {
 	})
 }
 
+func TestListShowsInLibrary(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("no shows in library", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		store := mocks.NewMockStorage(ctrl)
+		m := New(nil, nil, nil, store, nil, config.Manager{})
+
+		store.EXPECT().ListSeries(ctx).Return([]*storage.Series{}, nil)
+
+		shows, err := m.ListShowsInLibrary(ctx)
+		require.NoError(t, err)
+		assert.Empty(t, shows)
+	})
+
+	t.Run("shows with metadata", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		store := mocks.NewMockStorage(ctrl)
+		m := New(nil, nil, nil, store, nil, config.Manager{})
+
+		metadataID := int32(1)
+		path := "Show 1"
+		series := &storage.Series{
+			Series: model.Series{
+				SeriesMetadataID: &metadataID,
+				Path:             &path,
+			},
+			State: storage.SeriesStateDiscovered,
+		}
+
+		seriesMetadata := &model.SeriesMetadata{
+			ID:     1,
+			TmdbID: 321,
+			Title:  "Test Series",
+			PosterPath: ptr("poster.jpg"),
+		}
+
+		store.EXPECT().ListSeries(ctx).Return([]*storage.Series{series}, nil)
+		store.EXPECT().GetSeriesMetadata(ctx, gomock.Any()).Return(seriesMetadata, nil)
+
+		shows, err := m.ListShowsInLibrary(ctx)
+		require.NoError(t, err)
+		require.Len(t, shows, 1)
+
+		expected := LibraryShow{
+			Path:       path,
+			TMDBID:     seriesMetadata.TmdbID,
+			Title:      seriesMetadata.Title,
+			PosterPath: *seriesMetadata.PosterPath,
+		}
+		assert.Equal(t, expected.Path, shows[0].Path)
+		assert.Equal(t, expected.TMDBID, shows[0].TMDBID)
+		assert.Equal(t, expected.Title, shows[0].Title)
+		assert.Equal(t, expected.PosterPath, shows[0].PosterPath)
+	})
+
+	t.Run("shows without metadata", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		store := mocks.NewMockStorage(ctrl)
+		m := New(nil, nil, nil, store, nil, config.Manager{})
+
+		path := "Show 1"
+		series := &storage.Series{
+			Series: model.Series{
+				Path: &path,
+			},
+			State: storage.SeriesStateDiscovered,
+		}
+
+		store.EXPECT().ListSeries(ctx).Return([]*storage.Series{series}, nil)
+
+		shows, err := m.ListShowsInLibrary(ctx)
+		require.NoError(t, err)
+		require.Len(t, shows, 1)
+
+		expected := LibraryShow{
+			Path:  path,
+			State: string(storage.SeriesStateDiscovered),
+		}
+		assert.Equal(t, expected, shows[0])
+	})
+
+	t.Run("error listing series", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		store := mocks.NewMockStorage(ctrl)
+		m := New(nil, nil, nil, store, nil, config.Manager{})
+
+		store.EXPECT().ListSeries(ctx).Return(nil, errors.New("db error"))
+
+		shows, err := m.ListShowsInLibrary(ctx)
+		assert.Error(t, err)
+		assert.Nil(t, shows)
+	})
+}
+
 func TestIndexMovieLibrary(t *testing.T) {
 	t.Run("error listing finding files in library", func(t *testing.T) {
 		ctrl := gomock.NewController(t)

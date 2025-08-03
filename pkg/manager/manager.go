@@ -50,107 +50,6 @@ func now() time.Time {
 	return time.Now()
 }
 
-type SearchMediaResponse struct {
-	Page         *int                 `json:"page,omitempty"`
-	TotalPages   *int                 `json:"total_pages,omitempty"`
-	TotalResults *int                 `json:"total_results,omitempty"`
-	Results      []*SearchMediaResult `json:"results,omitempty"`
-}
-
-type SearchMediaResult struct {
-	Adult            *bool    `json:"adult,omitempty"`
-	BackdropPath     *string  `json:"backdrop_path,omitempty"`
-	GenreIds         *[]int   `json:"genre_ids,omitempty"`
-	ID               *int     `json:"id,omitempty"`
-	OriginalLanguage *string  `json:"original_language,omitempty"`
-	OriginalTitle    *string  `json:"original_title,omitempty"`
-	Overview         *string  `json:"overview,omitempty"`
-	Popularity       *float32 `json:"popularity,omitempty"`
-	PosterPath       *string  `json:"poster_path,omitempty"`
-	ReleaseDate      *string  `json:"release_date,omitempty"`
-	Title            *string  `json:"title,omitempty"`
-	Video            *bool    `json:"video,omitempty"`
-	VoteAverage      *float32 `json:"vote_average,omitempty"`
-	VoteCount        *int     `json:"vote_count,omitempty"`
-}
-
-// MovieDetailResult provides detailed information for a single movie
-type MovieDetailResult struct {
-	// Core identifiers and basic info
-	TMDBID        int32   `json:"tmdbID"`
-	ImdbID        *string `json:"imdbID,omitempty"`
-	Title         string  `json:"title"`
-	OriginalTitle *string `json:"originalTitle,omitempty"`
-	Overview      *string `json:"overview,omitempty"`
-
-	// Media assets
-	PosterPath   string  `json:"posterPath,omitempty"`
-	BackdropPath *string `json:"backdropPath,omitempty"`
-
-	// Release and timing info
-	ReleaseDate *string `json:"releaseDate,omitempty"`
-	Year        *int32  `json:"year,omitempty"`
-	Runtime     *int32  `json:"runtime,omitempty"`
-
-	// Content classification and ratings
-	Adult       *bool    `json:"adult,omitempty"`
-	VoteAverage *float32 `json:"voteAverage,omitempty"`
-	VoteCount   *int     `json:"voteCount,omitempty"`
-	Popularity  *float64 `json:"popularity,omitempty"`
-
-	// Genre and production info
-	Genres  *string `json:"genres,omitempty"`
-	Studio  *string `json:"studio,omitempty"`
-	Website *string `json:"website,omitempty"`
-
-	// Collection info
-	CollectionTmdbID *int32  `json:"collectionTmdbID,omitempty"`
-	CollectionTitle  *string `json:"collectionTitle,omitempty"`
-
-	// Library status
-	LibraryStatus    string  `json:"libraryStatus"` // Available, Missing, Requested, etc.
-	Path             *string `json:"path,omitempty"`
-	QualityProfileID *int32  `json:"qualityProfileID,omitempty"`
-	Monitored        *bool   `json:"monitored,omitempty"`
-}
-
-// TVDetailResult provides detailed information for a single TV show
-type TVDetailResult struct {
-	// Core identifiers and basic info
-	TMDBID        int32   `json:"tmdbID"`
-	Title         string  `json:"title"`
-	OriginalTitle *string `json:"originalTitle,omitempty"`
-	Overview      *string `json:"overview,omitempty"`
-
-	// Media assets
-	PosterPath   string  `json:"posterPath,omitempty"`
-	BackdropPath *string `json:"backdropPath,omitempty"`
-
-	// TV-specific timing info
-	FirstAirDate *string `json:"firstAirDate,omitempty"`
-	LastAirDate  *string `json:"lastAirDate,omitempty"`
-
-	// TV-specific metadata
-	Networks     []string `json:"networks,omitempty"`
-	SeasonCount  int32    `json:"seasonCount"`
-	EpisodeCount int32    `json:"episodeCount"`
-
-	// Content classification and ratings
-	Adult       *bool    `json:"adult,omitempty"`
-	VoteAverage *float32 `json:"voteAverage,omitempty"`
-	VoteCount   *int     `json:"voteCount,omitempty"`
-	Popularity  *float64 `json:"popularity,omitempty"`
-
-	// Genre and production info
-	Genres []string `json:"genres,omitempty"`
-
-	// Library status
-	LibraryStatus    string  `json:"libraryStatus"` // Available, Missing, Requested, etc.
-	Path             *string `json:"path,omitempty"`
-	QualityProfileID *int32  `json:"qualityProfileID,omitempty"`
-	Monitored        *bool   `json:"monitored,omitempty"`
-}
-
 // SearchMovie querie tmdb for a movie
 func (m MediaManager) SearchMovie(ctx context.Context, query string) (*SearchMediaResponse, error) {
 	log := logger.FromCtx(ctx)
@@ -408,18 +307,31 @@ func (m MediaManager) ListIndexers(ctx context.Context) ([]Indexer, error) {
 	return m.indexer.ListIndexers(ctx)
 }
 
-func (m MediaManager) ListShowsInLibrary(ctx context.Context) ([]string, error) {
-	return m.library.FindEpisodes(ctx)
-}
-
-// LibraryMovie is used for API responses, combining file and metadata info
-type LibraryMovie struct {
-	Path       string `json:"path"`
-	TMDBID     int32  `json:"tmdbID"`
-	Title      string `json:"title"`
-	PosterPath string `json:"poster_path"`
-	Year       int32  `json:"year,omitempty"`
-	State      string `json:"state"`
+func (m MediaManager) ListShowsInLibrary(ctx context.Context) ([]LibraryShow, error) {
+	series, err := m.storage.ListSeries(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var shows []LibraryShow
+	for _, sp := range series {
+		srec := *sp
+		ls := LibraryShow{State: string(srec.State)}
+		if srec.Path != nil {
+			ls.Path = *srec.Path
+		}
+		if srec.SeriesMetadataID != nil {
+			meta, err := m.storage.GetSeriesMetadata(ctx, table.SeriesMetadata.ID.EQ(sqlite.Int(int64(*srec.SeriesMetadataID))))
+			if err == nil && meta != nil {
+				ls.TMDBID = meta.TmdbID
+				ls.Title = meta.Title
+				if meta.PosterPath != nil {
+					ls.PosterPath = *meta.PosterPath
+				}
+			}
+		}
+		shows = append(shows, ls)
+	}
+	return shows, nil
 }
 
 // ListMoviesInLibrary returns library movies enriched with metadata
@@ -628,18 +540,6 @@ func (m MediaManager) IndexMovieLibrary(ctx context.Context) error {
 	return nil
 }
 
-// AddMovieRequest describes what is required to add a movie to a library
-type AddMovieRequest struct {
-	TMDBID           int   `json:"tmdbID"`
-	QualityProfileID int32 `json:"qualityProfileID"`
-}
-
-// AddSeriesRequest describes what is required to add a series to a library
-type AddSeriesRequest struct {
-	TMDBID           int   `json:"tmdbID"`
-	QualityProfileID int32 `json:"qualityProfileID"`
-}
-
 // AddMovieToLibrary adds a movie to be managed by mediaz
 // TODO: check status of movie before doing anything else.. do we already have it tracked? is it downloaded or already discovered? error state?
 func (m MediaManager) AddMovieToLibrary(ctx context.Context, request AddMovieRequest) (*storage.Movie, error) {
@@ -837,11 +737,6 @@ func (m MediaManager) SearchIndexers(ctx context.Context, indexers, categories [
 	return releases, nil
 }
 
-// AddIndexerRequest describes what is required to add an indexer
-type AddIndexerRequest struct {
-	model.Indexer
-}
-
 // AddIndexer stores a new indexer in the database
 func (m MediaManager) AddIndexer(ctx context.Context, request AddIndexerRequest) (model.Indexer, error) {
 	indexer := request.Indexer
@@ -858,11 +753,6 @@ func (m MediaManager) AddIndexer(ctx context.Context, request AddIndexerRequest)
 	indexer.ID = int32(id)
 
 	return indexer, nil
-}
-
-// DeleteIndexerRequest request to delete an indexer
-type DeleteIndexerRequest struct {
-	ID *int `json:"id" yaml:"id"`
 }
 
 // AddIndexer stores a new indexer in the database

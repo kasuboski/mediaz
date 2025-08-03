@@ -34,3 +34,8 @@ local.yaml
 # db files
 *.sqlite
 .aider*
+
+# Crush workspace
+.crush/
+
+.direnv/
