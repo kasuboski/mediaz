@@ -22,4 +22,5 @@ type SeriesMetadata struct {
 	SeasonCount  int32
 	EpisodeCount int32
 	Status       string
+	PosterPath   *string
 }

@@ -112,7 +112,8 @@ CREATE TABLE IF NOT EXISTS "series_metadata" (
     "last_air_date" DATETIME,
     "season_count" INTEGER NOT NULL,
     "episode_count" INTEGER NOT NULL,
-    "status" TEXT NOT NULL
+    "status" TEXT NOT NULL,
+    "poster_path" TEXT
 );
 
 CREATE TABLE IF NOT EXISTS "season" (

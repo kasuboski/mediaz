@@ -203,12 +203,19 @@ func FromSeriesDetails(series tmdb.SeriesDetails) (model.SeriesMetadata, error) 
 		return model.SeriesMetadata{}, err
 	}
 
+	var poster *string
+	if series.PosterPath != "" {
+		p := series.PosterPath
+		poster = &p
+	}
+
 	return model.SeriesMetadata{
 		TmdbID:       int32(series.ID),
 		Title:        series.Name,
 		SeasonCount:  int32(series.NumberOfSeasons),
 		EpisodeCount: int32(series.NumberOfEpisodes),
 		FirstAirDate: airDate,
+		PosterPath:   poster,
 	}, nil
 
 }

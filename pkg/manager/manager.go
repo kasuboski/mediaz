@@ -425,6 +425,9 @@ func (m MediaManager) ListShowsInLibrary(ctx context.Context) ([]LibraryShow, er
 			if err == nil && meta != nil {
 				ls.TMDBID = meta.TmdbID
 				ls.Title = meta.Title
+				if meta.PosterPath != nil {
+					ls.PosterPath = *meta.PosterPath
+				}
 			}
 		}
 		shows = append(shows, ls)
