@@ -7,7 +7,8 @@
     "dev": "vite --port 3000",
     "build": "vite build",
     "build:dev": "vite build --mode development",
-    "lint": "eslint .",
+    "lint": "biome lint --write .",
+    "format": "biome format --write .",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -68,6 +69,7 @@
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react-swc": "^3.5.0",
+    "@biomejs/biome": "^1.9.4",
     "autoprefixer": "^10.4.20",
     "eslint": "^9.9.0",
     "eslint-plugin-react-hooks": "^5.1.0-rc.0",

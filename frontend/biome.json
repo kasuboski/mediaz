@@ -1,0 +1,27 @@
+{
+	"$schema": "https://biomejs.dev/schemas/1.9.4/schema.json",
+	"files": {
+		"include": [
+			"src/**/*.{ts,tsx,js,jsx}",
+			"*.{js,ts,tsx,json}",
+			"components.json",
+			"tailwind.config.ts",
+			"vite.config.ts",
+			"tsconfig*.json"
+		],
+		"ignore": ["node_modules", ".vite", "public", "bun.lockb"]
+	},
+	"formatter": {
+		"enabled": true,
+		"formatWithErrors": true
+	},
+	"linter": {
+		"enabled": true,
+		"rules": {
+			"recommended": true
+		}
+	},
+	"organizeImports": {
+		"enabled": true
+	}
+}

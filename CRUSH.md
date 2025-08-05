@@ -6,6 +6,7 @@
 - Generate code/clients: `make generate` or `go generate ./...`
 - Format: `go fmt ./...`
 - Lint: `golangci-lint run` (if installed); otherwise `go vet ./...`
+- Frontend lint: `npm run lint --prefix frontend`
 - Test all: `go test ./...`
 - Test with race: `go test -race ./...`
 - Test with coverage: `go test -cover ./...`
