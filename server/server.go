@@ -8,9 +8,11 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strconv"
 	"time"
 
+	"github.com/kasuboski/mediaz/config"
 	"github.com/kasuboski/mediaz/pkg/logger"
 	"github.com/kasuboski/mediaz/pkg/manager"
 	"go.uber.org/zap"
@@ -28,13 +30,15 @@ type GenericResponse struct {
 type Server struct {
 	baseLogger *zap.SugaredLogger
 	manager    manager.MediaManager
+	config     *config.Server
 }
 
 // New creates a new media server
-func New(logger *zap.SugaredLogger, manager manager.MediaManager) Server {
+func New(logger *zap.SugaredLogger, manager manager.MediaManager, config *config.Server) Server {
 	return Server{
 		baseLogger: logger,
 		manager:    manager,
+		config:     config,
 	}
 }
 
@@ -65,8 +69,8 @@ func (s Server) Serve(port int) error {
 	rtr.Use(s.LogMiddleware())
 	rtr.HandleFunc("/healthz", s.Healthz()).Methods(http.MethodGet)
 
+	// API routes - these take precedence
 	api := rtr.PathPrefix("/api").Subrouter()
-
 	v1 := api.PathPrefix("/v1").Subrouter()
 
 	v1.HandleFunc("/library/movies", s.ListMovies()).Methods(http.MethodGet)
@@ -98,6 +102,9 @@ func (s Server) Serve(port int) error {
 
 	v1.HandleFunc("/quality/profiles/{id}", s.GetQualityProfile()).Methods(http.MethodGet)
 	v1.HandleFunc("/quality/profiles", s.ListQualityProfiles()).Methods(http.MethodGet)
+
+	// Static file handler for frontend - this comes AFTER API routes
+	rtr.PathPrefix("/").Handler(s.StaticFileHandler()).Methods(http.MethodGet)
 
 	corsHandler := handlers.CORS(
 		handlers.AllowedOrigins([]string{"*"}),
@@ -605,7 +612,7 @@ func (s Server) GetDownloadClient() http.HandlerFunc {
 	}
 }
 
-// DeleDownloadClient deletes a download client from storage
+// DeleteDownloadClient deletes a download client from storage
 func (s Server) DeleteDownloadClient() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromCtx(r.Context())
@@ -681,4 +688,23 @@ func (s Server) AddSeriesToLibrary() http.HandlerFunc {
 			return
 		}
 	}
+}
+
+// StaticFileHandler serves static files from the configured directory
+func (s Server) StaticFileHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestPath := r.URL.Path
+		if requestPath == "/" {
+			requestPath = "/index.html"
+		}
+
+		path := filepath.Join(s.config.StaticAssetsDir, requestPath)
+		f, err := os.Stat(path)
+		if err == nil && !f.IsDir() {
+			http.ServeFile(w, r, path)
+			return
+		}
+
+		http.NotFound(w, r)
+	})
 }

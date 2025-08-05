@@ -24,7 +24,8 @@ type TMDB struct {
 }
 
 type Server struct {
-	Port int `json:"port" yaml:"port" mapstructure:"port"`
+	Port            int    `json:"port" yaml:"port" mapstructure:"port"`
+	StaticAssetsDir string `json:"staticAssetsDir" yaml:"staticAssetsDir" mapstructure:"staticAssetsDir"`
 }
 
 type Library struct {
