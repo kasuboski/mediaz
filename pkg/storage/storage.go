@@ -282,7 +282,7 @@ func ReadSchemaFiles(files ...string) ([]string, error) {
 	return schemas, nil
 }
 
-// GetSchemas returns the embedded SQL schema files as string slices
+// GetSchemas returns the SQL schema files as string slices
 func GetSchemas() ([]string, error) {
 	var schemas []string
 
