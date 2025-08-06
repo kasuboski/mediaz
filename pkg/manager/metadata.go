@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/go-jet/jet/v2/sqlite"
-	"github.com/kasuboski/mediaz/pkg/library"
 	"github.com/kasuboski/mediaz/pkg/storage"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/table"
@@ -122,15 +121,6 @@ func (m MediaManager) loadSeriesMetadata(ctx context.Context, tmdbID int) (*mode
 
 	return m.storage.GetSeriesMetadata(ctx, table.SeriesMetadata.ID.EQ(sqlite.Int(seriesMetadataID)))
 
-}
-
-func FromSearchMediaResult(resp SearchMediaResult) library.MovieMetadata {
-	return library.MovieMetadata{
-		TMDBID:   *resp.ID,
-		Images:   *resp.PosterPath,
-		Title:    *resp.Title,
-		Overview: *resp.Overview,
-	}
 }
 
 func FromMediaDetails(det tmdb.MediaDetails) model.MovieMetadata {

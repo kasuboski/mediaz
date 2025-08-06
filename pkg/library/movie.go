@@ -2,7 +2,6 @@ package library
 
 import (
 	"fmt"
-	"time"
 )
 
 type MovieFile struct {
@@ -22,22 +21,4 @@ func FromPath(path string) MovieFile {
 		Name:         MovieNameFromFilepath(path),
 		RelativePath: path,
 	}
-}
-
-type Movie struct {
-	Added           time.Time `json:"added"`
-	LastSearch      time.Time `json:"last_search"`
-	ID              string    `json:"id"`
-	MovieFileID     string    `json:"movie_file_id"`
-	MovieMetadataID string    `json:"movie_metadata_id"`
-}
-
-type MovieMetadata struct {
-	LastInfoSync time.Time `json:"last_info_sync"`
-	ID           string    `json:"id"`
-	Images       string    `json:"images"`
-	Title        string    `json:"title"`
-	Overview     string    `json:"overview"`
-	TMDBID       int       `json:"tmdb_id"`
-	Runtime      int       `json:"runtime"`
 }
