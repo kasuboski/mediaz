@@ -1,10 +1,8 @@
 tmdb:
-  host: my-host
-  scheme: https
+  uri: https://my-host
   apiKey: my-api-key
 prowlarr:
-  host: my-prowlarr-host
-  scheme: https
+  uri: https://my-prowlarr-host
   apiKey: my-prowlarr-api-key
 manager:
   jobs:

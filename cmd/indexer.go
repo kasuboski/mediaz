@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"net/url"
 	"os"
 
 	"github.com/dustin/go-humanize"
@@ -37,12 +36,7 @@ var listIndexerCmd = &cobra.Command{
 			log.Fatalf("failed to read configurations: %v", err)
 		}
 
-		u := url.URL{
-			Scheme: cfg.Prowlarr.Scheme,
-			Host:   cfg.Prowlarr.Host,
-		}
-
-		c, err := prowlarr.NewClient(u.String(), prowlarr.WithRequestEditorFn(prowlarr.SetRequestAPIKey((cfg.Prowlarr.APIKey))))
+		c, err := prowlarr.NewClient(cfg.Prowlarr.URI, prowlarr.WithRequestEditorFn(prowlarr.SetRequestAPIKey((cfg.Prowlarr.APIKey))))
 		if err != nil {
 			log.Fatalf("failed to create client: %v", err)
 		}
@@ -86,22 +80,12 @@ var searchIndexerCmd = &cobra.Command{
 			log.Fatalf("failed to read configurations: %v", err)
 		}
 
-		u := url.URL{
-			Scheme: cfg.Prowlarr.Scheme,
-			Host:   cfg.Prowlarr.Host,
-		}
-
-		prowlarrClient, err := prowlarr.New(u.String(), cfg.Prowlarr.APIKey)
+		prowlarrClient, err := prowlarr.New(cfg.Prowlarr.URI, cfg.Prowlarr.APIKey)
 		if err != nil {
 			log.Fatalf("failed to create client: %v", err)
 		}
 
-		tmdbURL := url.URL{
-			Scheme: cfg.TMDB.Scheme,
-			Host:   cfg.TMDB.Host,
-		}
-
-		tmdbClient, err := tmdb.New(tmdbURL.String(), cfg.TMDB.APIKey)
+		tmdbClient, err := tmdb.New(cfg.TMDB.URI, cfg.TMDB.APIKey)
 		if err != nil {
 			log.Fatal("failed to create tmdb client", err)
 		}
@@ -133,7 +117,7 @@ var searchIndexerCmd = &cobra.Command{
 			log.Fatal("failed to create storage connection", zap.Error(err))
 		}
 
-		schemas, err := storage.ReadSchemaFiles(defaultSchemas...)
+		schemas, err := storage.GetSchemas()
 		if err != nil {
 			log.Fatal("failed to read schema files", zap.Error(err))
 		}

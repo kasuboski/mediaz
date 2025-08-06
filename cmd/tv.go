@@ -3,7 +3,6 @@ package cmd
 import (
 	"context"
 	"encoding/json"
-	"net/url"
 	"os"
 
 	"github.com/kasuboski/mediaz/config"
@@ -68,13 +67,8 @@ var seriesDetailsCmd = &cobra.Command{
 			log.Fatal("failed to read configurations", zap.Error(err))
 		}
 
-		tmdbURL := url.URL{
-			Scheme: cfg.TMDB.Scheme,
-			Host:   cfg.TMDB.Host,
-		}
-
 		tmdbHttpClient := mhttp.NewRateLimitedClient()
-		tmdbClient, err := tmdb.New(tmdbURL.String(), cfg.TMDB.APIKey, tmdb.WithHTTPClient(tmdbHttpClient))
+		tmdbClient, err := tmdb.New(cfg.TMDB.URI, cfg.TMDB.APIKey, tmdb.WithHTTPClient(tmdbHttpClient))
 		if err != nil {
 			log.Fatal("failed to create tmdb client", zap.Error(err))
 		}

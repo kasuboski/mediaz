@@ -47,15 +47,14 @@ func initConfig() {
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_", "-", ""))
 	viper.AutomaticEnv()
 
-	viper.SetDefault("tmdb.scheme", "https")
-	viper.SetDefault("tmdb.host", "api.themoviedb.org")
+	viper.SetDefault("tmdb.uri", "https://api.themoviedb.org")
 	viper.SetDefault("tmdb.apiKey", "")
 
-	viper.SetDefault("prowlarr.scheme", "")
-	viper.SetDefault("prowlarr.host", "")
+	viper.SetDefault("prowlarr.uri", "")
 	viper.SetDefault("prowlarr.apiKey", "")
 
 	viper.SetDefault("server.port", 8080)
+	viper.SetDefault("server.distDir", "./frontend/dist")
 
 	viper.SetDefault("library.tv", "")
 	viper.SetDefault("library.movie", "")

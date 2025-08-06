@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/kasuboski/mediaz/config"
 	"github.com/kasuboski/mediaz/pkg/logger"
 	"github.com/kasuboski/mediaz/pkg/manager"
 	"go.uber.org/zap"
@@ -28,13 +29,16 @@ type GenericResponse struct {
 type Server struct {
 	baseLogger *zap.SugaredLogger
 	manager    manager.MediaManager
+	config     config.Server
+	fileServer http.Handler
 }
 
 // New creates a new media server
-func New(logger *zap.SugaredLogger, manager manager.MediaManager) Server {
+func New(logger *zap.SugaredLogger, manager manager.MediaManager, config config.Server) Server {
 	return Server{
 		baseLogger: logger,
 		manager:    manager,
+		config:     config,
 	}
 }
 
@@ -60,13 +64,17 @@ func writeResponse(w http.ResponseWriter, status int, body any) error {
 }
 
 // Serve starts the http server and is a blocking call
-func (s Server) Serve(port int) error {
+func (s *Server) Serve(port int) error {
+	if _, err := os.Stat(s.config.DistDir); os.IsNotExist(err) {
+		return fmt.Errorf("static file directory does not exist: %s", s.config.DistDir)
+	}
+	s.fileServer = http.FileServer(http.Dir(s.config.DistDir))
+
 	rtr := mux.NewRouter()
 	rtr.Use(s.LogMiddleware())
 	rtr.HandleFunc("/healthz", s.Healthz()).Methods(http.MethodGet)
 
 	api := rtr.PathPrefix("/api").Subrouter()
-
 	v1 := api.PathPrefix("/v1").Subrouter()
 
 	v1.HandleFunc("/library/movies", s.ListMovies()).Methods(http.MethodGet)
@@ -98,6 +106,8 @@ func (s Server) Serve(port int) error {
 
 	v1.HandleFunc("/quality/profiles/{id}", s.GetQualityProfile()).Methods(http.MethodGet)
 	v1.HandleFunc("/quality/profiles", s.ListQualityProfiles()).Methods(http.MethodGet)
+
+	rtr.PathPrefix("/").Handler(s.fileServer).Methods(http.MethodGet)
 
 	corsHandler := handlers.CORS(
 		handlers.AllowedOrigins([]string{"*"}),
@@ -605,7 +615,7 @@ func (s Server) GetDownloadClient() http.HandlerFunc {
 	}
 }
 
-// DeleDownloadClient deletes a download client from storage
+// DeleteDownloadClient deletes a download client from storage
 func (s Server) DeleteDownloadClient() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromCtx(r.Context())
