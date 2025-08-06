@@ -2,7 +2,9 @@ package storage
 
 import (
 	"context"
+	"embed"
 	"errors"
+	"fmt"
 	"os"
 
 	"github.com/go-jet/jet/v2/sqlite"
@@ -11,6 +13,9 @@ import (
 )
 
 var ErrNotFound = errors.New("not found in storage")
+
+//go:embed sqlite/schema/*.sql
+var schemaFiles embed.FS
 
 type Storage interface {
 	Init(ctx context.Context, schemas ...string) error
@@ -273,6 +278,27 @@ func ReadSchemaFiles(files ...string) ([]string, error) {
 
 		schemas = append(schemas, string(f))
 	}
+
+	return schemas, nil
+}
+
+// GetSchemas returns the embedded SQL schema files as string slices
+func GetSchemas() ([]string, error) {
+	var schemas []string
+
+	// Read schema.sql
+	schemaSQL, err := schemaFiles.ReadFile("sqlite/schema/schema.sql")
+	if err != nil {
+		return nil, fmt.Errorf("failed to read schema.sql: %w", err)
+	}
+	schemas = append(schemas, string(schemaSQL))
+
+	// Read defaults.sql
+	defaultsSQL, err := schemaFiles.ReadFile("sqlite/schema/defaults.sql")
+	if err != nil {
+		return nil, fmt.Errorf("failed to read defaults.sql: %w", err)
+	}
+	schemas = append(schemas, string(defaultsSQL))
 
 	return schemas, nil
 }

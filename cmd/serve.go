@@ -72,9 +72,9 @@ var serveCmd = &cobra.Command{
 			log.Fatal("failed to create storage connection", zap.Error(err))
 		}
 
-		schemas, err := storage.ReadSchemaFiles(defaultSchemas...)
+		schemas, err := storage.GetSchemas()
 		if err != nil {
-			log.Fatal("failed to read schema files", zap.Error(err))
+			log.Fatal("failed to read embedded schema files", zap.Error(err))
 		}
 
 		err = store.Init(context.TODO(), schemas...)
