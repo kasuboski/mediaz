@@ -3,7 +3,6 @@ package cmd
 import (
 	"context"
 	"errors"
-	"net/url"
 	"os"
 
 	"github.com/kasuboski/mediaz/config"
@@ -38,25 +37,15 @@ var serveCmd = &cobra.Command{
 			log.Fatal("failed to read configurations", zap.Error(err))
 		}
 
-		tmdbURL := url.URL{
-			Scheme: cfg.TMDB.Scheme,
-			Host:   cfg.TMDB.Host,
-		}
-
 		tmdbHttpClient := mhttp.NewRateLimitedClient()
-		tmdbClient, err := tmdb.New(tmdbURL.String(), cfg.TMDB.APIKey, tmdb.WithHTTPClient(tmdbHttpClient))
+		tmdbClient, err := tmdb.New(cfg.TMDB.URI, cfg.TMDB.APIKey, tmdb.WithHTTPClient(tmdbHttpClient))
 		if err != nil {
 			log.Fatal("failed to create tmdb client", zap.Error(err))
 		}
 
-		prowlarrURL := url.URL{
-			Scheme: cfg.Prowlarr.Scheme,
-			Host:   cfg.Prowlarr.Host,
-		}
-
-		prowlarrClient, err := prowlarr.New(prowlarrURL.String(), cfg.Prowlarr.APIKey)
+		prowlarrClient, err := prowlarr.New(cfg.Prowlarr.URI, cfg.Prowlarr.APIKey)
 		if err != nil {
-			log.Fatal("failed to create prowlarr client", zap.Error(err))
+			log.Fatal("failed to create client", zap.Error(err))
 		}
 
 		defaultSchemas := cfg.Storage.Schemas

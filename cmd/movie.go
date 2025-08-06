@@ -3,7 +3,6 @@ package cmd
 import (
 	"context"
 	"log"
-	"net/url"
 	"os"
 
 	"github.com/kasuboski/mediaz/config"
@@ -31,12 +30,7 @@ var discoverMovieCmd = &cobra.Command{
 			log.Fatalf("failed to read configurations: %v", err)
 		}
 
-		u := url.URL{
-			Scheme: cfg.TMDB.Scheme,
-			Host:   cfg.TMDB.Host,
-		}
-
-		c, err := tmdb.NewClient(u.String(), tmdb.WithHTTPClient(mhttp.NewRateLimitedClient()))
+		c, err := tmdb.NewClient(cfg.TMDB.URI, tmdb.WithHTTPClient(mhttp.NewRateLimitedClient()))
 		if err != nil {
 			log.Fatalf("failed to create tmdb client: %v", err)
 		}
