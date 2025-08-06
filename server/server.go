@@ -695,7 +695,5 @@ func (s Server) AddSeriesToLibrary() http.HandlerFunc {
 
 // StaticFileHandler serves static files from the configured directory
 func (s Server) StaticFileHandler() http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		s.fileServer.ServeHTTP(w, r)
-	})
+	return s.fileServer
 }
