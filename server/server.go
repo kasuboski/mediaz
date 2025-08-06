@@ -107,7 +107,7 @@ func (s *Server) Serve(port int) error {
 	v1.HandleFunc("/quality/profiles/{id}", s.GetQualityProfile()).Methods(http.MethodGet)
 	v1.HandleFunc("/quality/profiles", s.ListQualityProfiles()).Methods(http.MethodGet)
 
-	rtr.PathPrefix("/").Handler(s.StaticFileHandler()).Methods(http.MethodGet)
+	rtr.PathPrefix("/").Handler(s.fileServer).Methods(http.MethodGet)
 
 	corsHandler := handlers.CORS(
 		handlers.AllowedOrigins([]string{"*"}),
@@ -691,9 +691,4 @@ func (s Server) AddSeriesToLibrary() http.HandlerFunc {
 			return
 		}
 	}
-}
-
-// StaticFileHandler serves static files from the configured directory
-func (s Server) StaticFileHandler() http.Handler {
-	return s.fileServer
 }
