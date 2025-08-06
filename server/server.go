@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"strconv"
 	"time"
 
@@ -31,6 +30,7 @@ type Server struct {
 	baseLogger *zap.SugaredLogger
 	manager    manager.MediaManager
 	config     *config.Server
+	fileServer http.Handler
 }
 
 // New creates a new media server
@@ -64,12 +64,16 @@ func writeResponse(w http.ResponseWriter, status int, body any) error {
 }
 
 // Serve starts the http server and is a blocking call
-func (s Server) Serve(port int) error {
+func (s *Server) Serve(port int) error {
+	if _, err := os.Stat(s.config.DistDir); os.IsNotExist(err) {
+		return fmt.Errorf("static file directory does not exist: %s", s.config.DistDir)
+	}
+	s.fileServer = http.FileServer(http.Dir(s.config.DistDir))
+
 	rtr := mux.NewRouter()
 	rtr.Use(s.LogMiddleware())
 	rtr.HandleFunc("/healthz", s.Healthz()).Methods(http.MethodGet)
 
-	// API routes - these take precedence
 	api := rtr.PathPrefix("/api").Subrouter()
 	v1 := api.PathPrefix("/v1").Subrouter()
 
@@ -103,7 +107,6 @@ func (s Server) Serve(port int) error {
 	v1.HandleFunc("/quality/profiles/{id}", s.GetQualityProfile()).Methods(http.MethodGet)
 	v1.HandleFunc("/quality/profiles", s.ListQualityProfiles()).Methods(http.MethodGet)
 
-	// Static file handler for frontend - this comes AFTER API routes
 	rtr.PathPrefix("/").Handler(s.StaticFileHandler()).Methods(http.MethodGet)
 
 	corsHandler := handlers.CORS(
@@ -693,18 +696,6 @@ func (s Server) AddSeriesToLibrary() http.HandlerFunc {
 // StaticFileHandler serves static files from the configured directory
 func (s Server) StaticFileHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		requestPath := r.URL.Path
-		if requestPath == "/" {
-			requestPath = "/index.html"
-		}
-
-		path := filepath.Join(s.config.DistDir, requestPath)
-		f, err := os.Stat(path)
-		if err == nil && !f.IsDir() {
-			http.ServeFile(w, r, path)
-			return
-		}
-
-		http.NotFound(w, r)
+		s.fileServer.ServeHTTP(w, r)
 	})
 }
