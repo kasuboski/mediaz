@@ -1,4 +1,4 @@
-FROM node:20-alpine AS frontend-builder
+FROM node:alpine3.22 AS frontend-builder
 WORKDIR /app/frontend
 COPY frontend/package.json frontend/package-lock.json* ./
 RUN npm ci
@@ -13,8 +13,10 @@ RUN go mod download
 COPY . .
 RUN CGO_ENABLED=1 go build -o mediaz main.go
 
-FROM alpine:latest
+FROM alpine:3.22
 WORKDIR /app
 COPY --from=backend-builder /app/mediaz .
 COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
-CMD ["./mediaz", "serve"]
+
+ENTRYPOINT [ "./mediaz" ]
+CMD ["serve"]
