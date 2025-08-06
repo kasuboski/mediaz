@@ -54,7 +54,7 @@ func initConfig() {
 	viper.SetDefault("prowlarr.apiKey", "")
 
 	viper.SetDefault("server.port", 8080)
-	viper.SetDefault("server.staticAssetsDir", "./frontend/dist")
+	viper.SetDefault("server.distDir", "./frontend/dist")
 
 	viper.SetDefault("library.tv", "")
 	viper.SetDefault("library.movie", "")

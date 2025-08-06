@@ -698,7 +698,7 @@ func (s Server) StaticFileHandler() http.Handler {
 			requestPath = "/index.html"
 		}
 
-		path := filepath.Join(s.config.StaticAssetsDir, requestPath)
+		path := filepath.Join(s.config.DistDir, requestPath)
 		f, err := os.Stat(path)
 		if err == nil && !f.IsDir() {
 			http.ServeFile(w, r, path)
