@@ -29,12 +29,12 @@ type GenericResponse struct {
 type Server struct {
 	baseLogger *zap.SugaredLogger
 	manager    manager.MediaManager
-	config     *config.Server
+	config     config.Server
 	fileServer http.Handler
 }
 
 // New creates a new media server
-func New(logger *zap.SugaredLogger, manager manager.MediaManager, config *config.Server) Server {
+func New(logger *zap.SugaredLogger, manager manager.MediaManager, config config.Server) Server {
 	return Server{
 		baseLogger: logger,
 		manager:    manager,
