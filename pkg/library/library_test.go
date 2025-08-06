@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 	"slices"
@@ -46,9 +47,7 @@ func TestFindMovies(t *testing.T) {
 		"My Movie/Uh Oh/My Movie.mp4":                      {},
 	}
 	fs, expected := MovieFSFromFile(t, "./testing/test_movies.txt")
-	for k, v := range negatives {
-		fs[k] = v
-	}
+	maps.Copy(fs, negatives)
 
 	fileSystem := FileSystem{
 		FS: fs,

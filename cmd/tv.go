@@ -19,7 +19,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-// listMovieCmd lists movies in a library
+// listTVCmd lists tv episodes found in library
 var listTVCmd = &cobra.Command{
 	Use:        "tv",
 	Short:      "List tv episodes found at a path",
