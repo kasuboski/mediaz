@@ -130,7 +130,7 @@ func (l *MediaLibrary) AddEpisode(ctx context.Context, seriesTitle string, seaso
 	var episodeFile EpisodeFile
 
 	// downloads/episode.mp4 -> /library/tv/Series Name (Year)/Season XX/Series Name (Year) - sXXeXX - Episode Title.mp4
-	seriesDir := filepath.Join(l.tv.Path, seriesTitle)
+	seriesDir := filepath.Join(l.tv.Path, sanitizeName(seriesTitle))
 	seasonDir := filepath.Join(seriesDir, formatSeasonDirectory(seasonNumber))
 	filename := formatEpisodeFilename(seriesTitle, filepath.Base(sourcePath))
 	targetPath := filepath.Join(seasonDir, filename)
