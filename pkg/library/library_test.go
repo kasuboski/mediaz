@@ -82,8 +82,12 @@ func TestFindEpisodes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !slices.Equal(expected, episodes) {
-		t.Fatalf("wanted %v; got %v", expected, episodes)
+	names := make([]string, len(episodes))
+	for i, e := range episodes {
+		names[i] = e.Name
+	}
+	if !slices.Equal(expected, names) {
+		t.Fatalf("wanted %v; got %v", expected, names)
 	}
 }
 
