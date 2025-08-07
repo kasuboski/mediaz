@@ -380,6 +380,10 @@ func (m MediaManager) Run(ctx context.Context) error {
 	defer movieReconcileTicker.Stop()
 	movieReconcileLock := new(sync.Mutex)
 
+	seriesIndexTicker := time.NewTicker(m.configs.Jobs.SeriesIndex)
+	defer seriesIndexTicker.Stop()
+	seriesIndexLock := new(sync.Mutex)
+
 	seriesReconcileTicker := time.NewTicker(m.configs.Jobs.SeriesReconcile)
 	defer seriesReconcileTicker.Stop()
 	seriesReconcileLock := new(sync.Mutex)
@@ -409,6 +413,18 @@ func (m MediaManager) Run(ctx context.Context) error {
 				err := m.ReconcileMovies(ctx)
 				if err != nil {
 					log.Errorf("movie reconcile failed", zap.Error(err))
+				}
+			})
+
+		case <-seriesIndexTicker.C:
+			if !seriesIndexLock.TryLock() {
+				continue
+			}
+
+			go lock(seriesIndexLock, func() {
+				err := m.IndexSeriesLibrary(ctx)
+				if err != nil {
+					log.Errorf("series library indexing failed", zap.Error(err))
 				}
 			})
 
