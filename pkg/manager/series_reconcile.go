@@ -41,6 +41,11 @@ func (m MediaManager) ReconcileSeries(ctx context.Context) error {
 		log.Error("failed to reconcile missing series", zap.Error(err))
 	}
 
+	err = m.ReconcileDownloadingSeries(ctx, snapshot)
+	if err != nil {
+		log.Error("failed to reconcile downloading series", zap.Error(err))
+	}
+
 	err = m.ReconcileContinuingSeries(ctx, snapshot)
 	if err != nil {
 		log.Error("failed to reconcile continuing series", zap.Error(err))
@@ -49,11 +54,6 @@ func (m MediaManager) ReconcileSeries(ctx context.Context) error {
 	err = m.ReconcileCompletedSeasons(ctx)
 	if err != nil {
 		log.Error("failed to reconcile completed seasons", zap.Error(err))
-	}
-
-	err = m.ReconcileDownloadingSeries(ctx, snapshot)
-	if err != nil {
-		log.Error("failed to reconcile downloading series", zap.Error(err))
 	}
 
 	err = m.ReconcileCompletedSeries(ctx)
