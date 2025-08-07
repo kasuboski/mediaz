@@ -7,6 +7,7 @@ import (
 	"slices"
 
 	"github.com/go-jet/jet/v2/sqlite"
+	"github.com/kasuboski/mediaz/pkg/download"
 	"github.com/kasuboski/mediaz/pkg/logger"
 	"github.com/kasuboski/mediaz/pkg/prowlarr"
 	"github.com/kasuboski/mediaz/pkg/storage"
@@ -48,6 +49,11 @@ func (m MediaManager) ReconcileSeries(ctx context.Context) error {
 	err = m.ReconcileCompletedSeasons(ctx)
 	if err != nil {
 		log.Error("failed to reconcile completed seasons", zap.Error(err))
+	}
+
+	err = m.ReconcileDownloadingSeries(ctx, snapshot)
+	if err != nil {
+		log.Error("failed to reconcile downloading series", zap.Error(err))
 	}
 
 	err = m.ReconcileCompletedSeries(ctx)
@@ -892,6 +898,212 @@ func (m MediaManager) ReconcileCompletedSeasons(ctx context.Context) error {
 			log.Error("failed to evaluate season state", zap.Error(err))
 			continue
 		}
+	}
+
+	return nil
+}
+
+func (m MediaManager) ReconcileDownloadingSeries(ctx context.Context, snapshot *ReconcileSnapshot) error {
+	log := logger.FromCtx(ctx)
+
+	if snapshot == nil {
+		log.Warn("snapshot is nil, skipping reconcile")
+		return nil
+	}
+
+	where := table.EpisodeTransition.ToState.EQ(sqlite.String(string(storage.EpisodeStateDownloading))).
+		AND(table.EpisodeTransition.MostRecent.EQ(sqlite.Bool(true)))
+
+	episodes, err := m.storage.ListEpisodes(ctx, where)
+	if err != nil {
+		if !errors.Is(err, storage.ErrNotFound) {
+			log.Error("failed to list downloading episodes", zap.Error(err))
+			return err
+		}
+		log.Debug("no downloading episodes found")
+		return nil
+	}
+
+	for _, episode := range episodes {
+		log.Debug("reconciling downloading episode", zap.Any("episode", episode.ID))
+		err = m.reconcileDownloadingEpisode(ctx, episode, snapshot)
+		if err != nil {
+			log.Error("failed to reconcile downloading episode", zap.Error(err))
+			continue
+		}
+		log.Debug("successfully reconciled downloading episode", zap.Any("episode", episode.ID))
+	}
+
+	return nil
+}
+
+func (m MediaManager) reconcileDownloadingEpisode(ctx context.Context, episode *storage.Episode, snapshot *ReconcileSnapshot) error {
+	log := logger.FromCtx(ctx)
+	log = log.With("reconcile loop", "downloading episode", "episode id", episode.ID)
+
+	if episode.DownloadClientID == 0 || episode.DownloadID == "" {
+		log.Warn("episode missing download client or download ID")
+		return nil
+	}
+
+	dc := snapshot.GetDownloadClient(episode.DownloadClientID)
+	if dc == nil {
+		log.Warn("episode download client not found in snapshot", zap.Int32("download client id", episode.DownloadClientID))
+		return nil
+	}
+
+	downloadClient, err := m.factory.NewDownloadClient(*dc)
+	if err != nil {
+		log.Warn("failed to create download client", zap.Error(err))
+		return err
+	}
+
+	status, err := downloadClient.Get(ctx, download.GetRequest{
+		ID: episode.DownloadID,
+	})
+	if err != nil {
+		log.Warn("failed to get download status", zap.Error(err))
+		return err
+	}
+
+	log.Debug("download status", zap.Any("status", status))
+	if !status.Done {
+		log.Debug("download not finished")
+		return nil
+	}
+
+	episodeMetadata, err := m.storage.GetEpisodeMetadata(ctx, table.EpisodeMetadata.ID.EQ(sqlite.Int32(*episode.EpisodeMetadataID)))
+	if err != nil {
+		log.Error("failed to get episode metadata", zap.Error(err))
+		return err
+	}
+
+	season, err := m.storage.GetSeason(ctx, table.Season.ID.EQ(sqlite.Int32(episode.SeasonID)))
+	if err != nil {
+		log.Error("failed to get season", zap.Error(err))
+		return err
+	}
+
+	seasonMetadata, err := m.storage.GetSeasonMetadata(ctx, table.SeasonMetadata.ID.EQ(sqlite.Int32(*season.SeasonMetadataID)))
+	if err != nil {
+		log.Error("failed to get season metadata", zap.Error(err))
+		return err
+	}
+
+	series, err := m.storage.GetSeries(ctx, table.Series.ID.EQ(sqlite.Int32(season.SeriesID)))
+	if err != nil {
+		log.Error("failed to get series", zap.Error(err))
+		return err
+	}
+
+	seriesMetadata, err := m.storage.GetSeriesMetadata(ctx, table.SeriesMetadata.ID.EQ(sqlite.Int32(*series.SeriesMetadataID)))
+	if err != nil {
+		log.Error("failed to get series metadata", zap.Error(err))
+		return err
+	}
+
+	if episode.IsEntireSeasonDownload {
+		log.Debug("processing season pack download")
+		return m.processSeasonPackDownload(ctx, episode, status, seriesMetadata, seasonMetadata, episodeMetadata)
+	} else {
+		log.Debug("processing individual episode download")
+		return m.processIndividualEpisodeDownload(ctx, episode, status, seriesMetadata, seasonMetadata, episodeMetadata)
+	}
+}
+
+func (m MediaManager) processSeasonPackDownload(ctx context.Context, episode *storage.Episode, status download.Status, seriesMetadata *model.SeriesMetadata, seasonMetadata *model.SeasonMetadata, episodeMetadata *model.EpisodeMetadata) error {
+	log := logger.FromCtx(ctx)
+	log = log.With("episode id", episode.ID, "series", seriesMetadata.Title, "season", seasonMetadata.Number)
+
+	if len(status.FilePaths) == 0 {
+		log.Warn("no files found in completed download")
+		return nil
+	}
+
+	where := table.Episode.SeasonID.EQ(sqlite.Int32(episode.SeasonID)).
+		AND(table.EpisodeTransition.DownloadID.EQ(sqlite.String(episode.DownloadID))).
+		AND(table.EpisodeTransition.MostRecent.EQ(sqlite.Bool(true)))
+
+	seasonEpisodes, err := m.storage.ListEpisodes(ctx, where)
+	if err != nil {
+		log.Error("failed to list season episodes", zap.Error(err))
+		return err
+	}
+
+	log.Debug("processing season pack", zap.Int("episode_count", len(seasonEpisodes)))
+
+	for _, filePath := range status.FilePaths {
+		err = m.addEpisodeFileToLibrary(ctx, seriesMetadata.Title, seasonMetadata.Number, filePath, seasonEpisodes)
+		if err != nil {
+			log.Error("failed to add episode file to library", zap.Error(err))
+			return err
+		}
+		log.Debug("successfully added season pack file to library", zap.String("file", filePath))
+	}
+
+	for _, ep := range seasonEpisodes {
+		err = m.updateEpisodeState(ctx, *ep, storage.EpisodeStateDownloaded, nil)
+		if err != nil {
+			log.Error("failed to update episode state", zap.Error(err))
+			continue
+		}
+	}
+
+	return nil
+}
+
+func (m MediaManager) processIndividualEpisodeDownload(ctx context.Context, episode *storage.Episode, status download.Status, seriesMetadata *model.SeriesMetadata, seasonMetadata *model.SeasonMetadata, episodeMetadata *model.EpisodeMetadata) error {
+	log := logger.FromCtx(ctx)
+	log = log.With("episode id", episode.ID, "series", seriesMetadata.Title, "season", seasonMetadata.Number, "episode", episodeMetadata.Number)
+
+	if len(status.FilePaths) == 0 {
+		log.Warn("no files found in completed download")
+		return nil
+	}
+
+	for _, filePath := range status.FilePaths {
+		err := m.addEpisodeFileToLibrary(ctx, seriesMetadata.Title, seasonMetadata.Number, filePath, []*storage.Episode{episode})
+		if err != nil {
+			log.Error("failed to add episode file to library", zap.Error(err))
+			return err
+		}
+		log.Debug("successfully added episode file to library", zap.String("file", filePath))
+	}
+
+	return m.updateEpisodeState(ctx, *episode, storage.EpisodeStateDownloaded, nil)
+}
+
+func (m MediaManager) addEpisodeFileToLibrary(ctx context.Context, seriesTitle string, seasonNumber int32, filePath string, episodes []*storage.Episode) error {
+	log := logger.FromCtx(ctx)
+	log = log.With("series", seriesTitle, "season", seasonNumber, "episodes", len(episodes))
+
+	ef, err := m.library.AddEpisode(ctx, seriesTitle, seasonNumber, filePath)
+	if err != nil {
+		log.Error("failed to add episode to library", zap.Error(err))
+		return err
+	}
+
+	log.Debug("moved episode file to library", zap.String("from", filePath), zap.String("to", ef.RelativePath))
+
+	episodeFileID, err := m.storage.CreateEpisodeFile(ctx, model.EpisodeFile{
+		Size:             ef.Size,
+		RelativePath:     &ef.RelativePath,
+		OriginalFilePath: &filePath,
+	})
+	if err != nil {
+		log.Error("failed to create episode file record", zap.Error(err))
+		return err
+	}
+
+	// Link all episodes to this file (for season packs, multiple episodes share one file)
+	for _, episode := range episodes {
+		err = m.storage.UpdateEpisodeEpisodeFileID(ctx, int64(episode.ID), episodeFileID)
+		if err != nil {
+			log.Error("failed to link episode to file", zap.Error(err), zap.Int32("episode_id", episode.ID))
+			continue
+		}
+
+		log.Debug("linked episode to file", zap.Int32("episode_id", episode.ID), zap.String("path", ef.RelativePath))
 	}
 
 	return nil

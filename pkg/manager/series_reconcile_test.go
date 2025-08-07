@@ -12,6 +12,8 @@ import (
 	"github.com/kasuboski/mediaz/config"
 	"github.com/kasuboski/mediaz/pkg/download"
 	downloadMock "github.com/kasuboski/mediaz/pkg/download/mocks"
+	"github.com/kasuboski/mediaz/pkg/library"
+	libraryMock "github.com/kasuboski/mediaz/pkg/library/mocks"
 	"github.com/kasuboski/mediaz/pkg/prowlarr"
 	prowlMock "github.com/kasuboski/mediaz/pkg/prowlarr/mocks"
 	"github.com/kasuboski/mediaz/pkg/storage"
@@ -1616,4 +1618,541 @@ func TestDetermineSeasonStateWithCounts(t *testing.T) {
 			assert.Equal(t, tt.expectedCounts, counts)
 		})
 	}
+}
+
+func TestMediaManager_ReconcileDownloadingSeries(t *testing.T) {
+	t.Run("nil snapshot", func(t *testing.T) {
+		ctx := context.Background()
+		store, err := mediaSqlite.New(":memory:")
+		require.NoError(t, err)
+
+		schemas, err := storage.ReadSchemaFiles("../storage/sqlite/schema/schema.sql", "../storage/sqlite/schema/defaults.sql")
+		require.NoError(t, err)
+
+		err = store.Init(ctx, schemas...)
+		require.NoError(t, err)
+
+		manager := MediaManager{
+			storage: store,
+		}
+
+		err = manager.ReconcileDownloadingSeries(ctx, nil)
+		require.NoError(t, err)
+	})
+
+	t.Run("no downloading episodes", func(t *testing.T) {
+		ctx := context.Background()
+		store, err := mediaSqlite.New(":memory:")
+		require.NoError(t, err)
+
+		schemas, err := storage.ReadSchemaFiles("../storage/sqlite/schema/schema.sql", "../storage/sqlite/schema/defaults.sql")
+		require.NoError(t, err)
+
+		err = store.Init(ctx, schemas...)
+		require.NoError(t, err)
+
+		manager := MediaManager{
+			storage: store,
+		}
+
+		snapshot := newReconcileSnapshot([]Indexer{{ID: 1}}, []*model.DownloadClient{})
+
+		err = manager.ReconcileDownloadingSeries(ctx, snapshot)
+		require.NoError(t, err)
+	})
+
+	t.Run("successful reconciliation", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		ctx := context.Background()
+		store := newStore(t, ctx)
+
+		mockDownloadClient := downloadMock.NewMockDownloadClient(ctrl)
+		mockFactory := downloadMock.NewMockFactory(ctrl)
+		mockLibrary := libraryMock.NewMockLibrary(ctrl)
+
+		downloadClientModel := model.DownloadClient{
+			ID:             1,
+			Implementation: "transmission",
+			Type:           "torrent",
+			Port:           8080,
+			Host:           "transmission",
+			Scheme:         "http",
+		}
+
+		manager := MediaManager{
+			storage: store,
+			factory: mockFactory,
+			library: mockLibrary,
+		}
+
+		snapshot := newReconcileSnapshot([]Indexer{{ID: 1}}, []*model.DownloadClient{&downloadClientModel})
+
+		// Create series metadata
+		seriesMetadataID, err := store.CreateSeriesMetadata(ctx, model.SeriesMetadata{
+			Title:  "Test Series",
+			TmdbID: 12345,
+		})
+		require.NoError(t, err)
+
+		// Create series
+		seriesID, err := store.CreateSeries(ctx, storage.Series{
+			Series: model.Series{
+				SeriesMetadataID: ptr(int32(seriesMetadataID)),
+				Monitored:        1,
+			},
+		}, storage.SeriesStateMissing)
+		require.NoError(t, err)
+
+		// Create season metadata
+		seasonMetadataID, err := store.CreateSeasonMetadata(ctx, model.SeasonMetadata{
+			SeriesID: int32(seriesMetadataID),
+			Number:   1,
+			Title:    "Season 1",
+		})
+		require.NoError(t, err)
+
+		// Create season
+		seasonID, err := store.CreateSeason(ctx, storage.Season{
+			Season: model.Season{
+				SeriesID:         int32(seriesID),
+				SeasonMetadataID: ptr(int32(seasonMetadataID)),
+				Monitored:        1,
+			},
+		}, storage.SeasonStateMissing)
+		require.NoError(t, err)
+
+		// Create episode metadata first
+		episodeMetadataID, err := store.CreateEpisodeMetadata(ctx, model.EpisodeMetadata{
+			SeasonID: int32(seasonID),
+			Number:   1,
+			Title:    "Test Episode",
+			Runtime:  ptr(int32(30)),
+		})
+		require.NoError(t, err)
+
+		// Create test data
+		episodeID, err := store.CreateEpisode(ctx, storage.Episode{
+			Episode: model.Episode{
+				SeasonID:          int32(seasonID),
+				EpisodeNumber:     1,
+				EpisodeMetadataID: ptr(int32(episodeMetadataID)),
+				Runtime:           ptr(int32(30)),
+			},
+		}, storage.EpisodeStateMissing)
+		require.NoError(t, err)
+
+		// Update episode with download info
+		err = store.UpdateEpisodeState(ctx, episodeID, storage.EpisodeStateDownloading, &storage.TransitionStateMetadata{
+			DownloadID:       ptr("test-download-123"),
+			DownloadClientID: ptr(int32(1)),
+		})
+		require.NoError(t, err)
+
+		// Mock download client calls
+		mockFactory.EXPECT().NewDownloadClient(downloadClientModel).Return(mockDownloadClient, nil)
+		mockDownloadClient.EXPECT().Get(ctx, download.GetRequest{
+			ID: "test-download-123",
+		}).Return(download.Status{
+			ID:        "test-download-123",
+			Done:      true,
+			FilePaths: []string{"/downloads/episode.mp4"},
+		}, nil)
+
+		// Mock library call for adding episode
+		mockLibrary.EXPECT().AddEpisode(ctx, "Test Series", int32(1), "/downloads/episode.mp4").Return(library.EpisodeFile{
+			Name:         "episode.mp4",
+			RelativePath: "Test Series/Season 01/episode.mp4",
+			AbsolutePath: "/library/Test Series/Season 01/episode.mp4",
+			Size:         1024,
+			SeriesTitle:  "Test Series",
+			Season:       1,
+		}, nil)
+
+		err = manager.ReconcileDownloadingSeries(ctx, snapshot)
+		require.NoError(t, err)
+	})
+}
+
+func TestMediaManager_reconcileDownloadingEpisode(t *testing.T) {
+	t.Run("missing download client info", func(t *testing.T) {
+		ctx := context.Background()
+		store, err := mediaSqlite.New(":memory:")
+		require.NoError(t, err)
+
+		schemas, err := storage.ReadSchemaFiles("../storage/sqlite/schema/schema.sql", "../storage/sqlite/schema/defaults.sql")
+		require.NoError(t, err)
+
+		err = store.Init(ctx, schemas...)
+		require.NoError(t, err)
+
+		manager := MediaManager{
+			storage: store,
+		}
+
+		episode := &storage.Episode{
+			Episode: model.Episode{
+				ID:            1,
+				SeasonID:      1,
+				EpisodeNumber: 1,
+			},
+		}
+
+		snapshot := newReconcileSnapshot([]Indexer{{ID: 1}}, []*model.DownloadClient{})
+
+		err = manager.reconcileDownloadingEpisode(ctx, episode, snapshot)
+		require.NoError(t, err)
+	})
+
+	t.Run("download not finished", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		ctx := context.Background()
+		store := newStore(t, ctx)
+
+		mockDownloadClient := downloadMock.NewMockDownloadClient(ctrl)
+		mockFactory := downloadMock.NewMockFactory(ctrl)
+
+		downloadClientModel := model.DownloadClient{
+			ID:             1,
+			Implementation: "transmission",
+		}
+
+		manager := MediaManager{
+			storage: store,
+			factory: mockFactory,
+		}
+
+		episode := &storage.Episode{
+			Episode: model.Episode{
+				ID:            1,
+				SeasonID:      1,
+				EpisodeNumber: 1,
+			},
+			DownloadClientID: 1,
+			DownloadID:       "test-download-123",
+		}
+
+		snapshot := newReconcileSnapshot([]Indexer{{ID: 1}}, []*model.DownloadClient{&downloadClientModel})
+
+		mockFactory.EXPECT().NewDownloadClient(downloadClientModel).Return(mockDownloadClient, nil)
+		mockDownloadClient.EXPECT().Get(ctx, download.GetRequest{
+			ID: "test-download-123",
+		}).Return(download.Status{
+			ID:   "test-download-123",
+			Done: false,
+		}, nil)
+
+		err := manager.reconcileDownloadingEpisode(ctx, episode, snapshot)
+		require.NoError(t, err)
+	})
+}
+
+func TestMediaManager_processSeasonPackDownload(t *testing.T) {
+	t.Run("no files in download", func(t *testing.T) {
+		ctx := context.Background()
+		store, err := mediaSqlite.New(":memory:")
+		require.NoError(t, err)
+
+		schemas, err := storage.ReadSchemaFiles("../storage/sqlite/schema/schema.sql", "../storage/sqlite/schema/defaults.sql")
+		require.NoError(t, err)
+
+		err = store.Init(ctx, schemas...)
+		require.NoError(t, err)
+
+		manager := MediaManager{
+			storage: store,
+		}
+
+		episode := &storage.Episode{
+			Episode: model.Episode{
+				ID:       1,
+				SeasonID: 1,
+			},
+		}
+
+		status := download.Status{
+			ID:        "test-download",
+			FilePaths: []string{},
+		}
+
+		seriesMetadata := &model.SeriesMetadata{
+			Title: "Test Series",
+		}
+
+		seasonMetadata := &model.SeasonMetadata{
+			Number: 1,
+		}
+
+		episodeMetadata := &model.EpisodeMetadata{
+			Number: 1,
+		}
+
+		err = manager.processSeasonPackDownload(ctx, episode, status, seriesMetadata, seasonMetadata, episodeMetadata)
+		require.NoError(t, err)
+	})
+
+	t.Run("successful season pack processing", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		ctx := context.Background()
+		store := newStore(t, ctx)
+
+		mockLibrary := libraryMock.NewMockLibrary(ctrl)
+
+		manager := MediaManager{
+			storage: store,
+			library: mockLibrary,
+		}
+
+		// Create season episodes
+		episodeID1, err := store.CreateEpisode(ctx, storage.Episode{
+			Episode: model.Episode{
+				SeasonID:      1,
+				EpisodeNumber: 1,
+			},
+		}, storage.EpisodeStateMissing)
+		require.NoError(t, err)
+
+		episodeID2, err := store.CreateEpisode(ctx, storage.Episode{
+			Episode: model.Episode{
+				SeasonID:      1,
+				EpisodeNumber: 2,
+			},
+		}, storage.EpisodeStateMissing)
+		require.NoError(t, err)
+
+		// Update episodes with download info
+		err = store.UpdateEpisodeState(ctx, episodeID1, storage.EpisodeStateDownloading, &storage.TransitionStateMetadata{
+			DownloadID: ptr("season-pack-123"),
+		})
+		require.NoError(t, err)
+
+		err = store.UpdateEpisodeState(ctx, episodeID2, storage.EpisodeStateDownloading, &storage.TransitionStateMetadata{
+			DownloadID: ptr("season-pack-123"),
+		})
+		require.NoError(t, err)
+
+		episode := &storage.Episode{
+			Episode: model.Episode{
+				ID:       int32(episodeID1),
+				SeasonID: 1,
+			},
+		}
+
+		status := download.Status{
+			ID:        "season-pack-123",
+			FilePaths: []string{"/downloads/episode1.mp4", "/downloads/episode2.mp4"},
+		}
+
+		seriesMetadata := &model.SeriesMetadata{
+			Title: "Test Series",
+		}
+
+		seasonMetadata := &model.SeasonMetadata{
+			Number: 1,
+		}
+
+		episodeMetadata := &model.EpisodeMetadata{
+			Number: 1,
+		}
+
+		// Mock library calls for each file
+		mockLibrary.EXPECT().AddEpisode(ctx, "Test Series", int32(1), "/downloads/episode1.mp4").Return(library.EpisodeFile{
+			Name:         "episode1.mp4",
+			RelativePath: "Test Series/Season 01/episode1.mp4",
+			Size:         1024,
+		}, nil)
+
+		mockLibrary.EXPECT().AddEpisode(ctx, "Test Series", int32(1), "/downloads/episode2.mp4").Return(library.EpisodeFile{
+			Name:         "episode2.mp4",
+			RelativePath: "Test Series/Season 01/episode2.mp4",
+			Size:         1024,
+		}, nil)
+
+		err = manager.processSeasonPackDownload(ctx, episode, status, seriesMetadata, seasonMetadata, episodeMetadata)
+		require.NoError(t, err)
+	})
+}
+
+func TestMediaManager_processIndividualEpisodeDownload(t *testing.T) {
+	t.Run("no files in download", func(t *testing.T) {
+		ctx := context.Background()
+		store, err := mediaSqlite.New(":memory:")
+		require.NoError(t, err)
+
+		schemas, err := storage.ReadSchemaFiles("../storage/sqlite/schema/schema.sql", "../storage/sqlite/schema/defaults.sql")
+		require.NoError(t, err)
+
+		err = store.Init(ctx, schemas...)
+		require.NoError(t, err)
+
+		manager := MediaManager{
+			storage: store,
+		}
+
+		episode := &storage.Episode{
+			Episode: model.Episode{
+				ID:       1,
+				SeasonID: 1,
+			},
+		}
+
+		status := download.Status{
+			ID:        "test-download",
+			FilePaths: []string{},
+		}
+
+		seriesMetadata := &model.SeriesMetadata{
+			Title: "Test Series",
+		}
+
+		seasonMetadata := &model.SeasonMetadata{
+			Number: 1,
+		}
+
+		episodeMetadata := &model.EpisodeMetadata{
+			Number: 1,
+		}
+
+		err = manager.processIndividualEpisodeDownload(ctx, episode, status, seriesMetadata, seasonMetadata, episodeMetadata)
+		require.NoError(t, err)
+	})
+
+	t.Run("successful individual episode processing", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		ctx := context.Background()
+		store := newStore(t, ctx)
+
+		mockLibrary := libraryMock.NewMockLibrary(ctrl)
+
+		manager := MediaManager{
+			storage: store,
+			library: mockLibrary,
+		}
+
+		episodeID, err := store.CreateEpisode(ctx, storage.Episode{
+			Episode: model.Episode{
+				SeasonID:      1,
+				EpisodeNumber: 1,
+			},
+		}, storage.EpisodeStateMissing)
+		require.NoError(t, err)
+
+		// Transition to downloading state first
+		err = store.UpdateEpisodeState(ctx, episodeID, storage.EpisodeStateDownloading, nil)
+		require.NoError(t, err)
+
+		// Get the episode with current state from database
+		episode, err := store.GetEpisode(ctx, table.Episode.ID.EQ(sqlite.Int64(episodeID)))
+		require.NoError(t, err)
+
+		status := download.Status{
+			ID:        "episode-download-123",
+			FilePaths: []string{"/downloads/episode.mp4"},
+		}
+
+		seriesMetadata := &model.SeriesMetadata{
+			Title: "Test Series",
+		}
+
+		seasonMetadata := &model.SeasonMetadata{
+			Number: 1,
+		}
+
+		episodeMetadata := &model.EpisodeMetadata{
+			Number: 1,
+		}
+
+		mockLibrary.EXPECT().AddEpisode(ctx, "Test Series", int32(1), "/downloads/episode.mp4").Return(library.EpisodeFile{
+			Name:         "episode.mp4",
+			RelativePath: "Test Series/Season 01/episode.mp4",
+			Size:         1024,
+		}, nil)
+
+		err = manager.processIndividualEpisodeDownload(ctx, episode, status, seriesMetadata, seasonMetadata, episodeMetadata)
+		require.NoError(t, err)
+	})
+}
+
+func TestMediaManager_addEpisodeFileToLibrary(t *testing.T) {
+	t.Run("successful file addition", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		ctx := context.Background()
+		store := newStore(t, ctx)
+
+		mockLibrary := libraryMock.NewMockLibrary(ctrl)
+
+		manager := MediaManager{
+			storage: store,
+			library: mockLibrary,
+		}
+
+		episodeID, err := store.CreateEpisode(ctx, storage.Episode{
+			Episode: model.Episode{
+				SeasonID:      1,
+				EpisodeNumber: 1,
+			},
+		}, storage.EpisodeStateMissing)
+		require.NoError(t, err)
+
+		episode := &storage.Episode{
+			Episode: model.Episode{
+				ID:       int32(episodeID),
+				SeasonID: 1,
+			},
+		}
+
+		mockLibrary.EXPECT().AddEpisode(ctx, "Test Series", int32(1), "/downloads/episode.mp4").Return(library.EpisodeFile{
+			Name:         "episode.mp4",
+			RelativePath: "Test Series/Season 01/episode.mp4",
+			AbsolutePath: "/library/Test Series/Season 01/episode.mp4",
+			Size:         1024,
+			SeriesTitle:  "Test Series",
+			Season:       1,
+		}, nil)
+
+		err = manager.addEpisodeFileToLibrary(ctx, "Test Series", 1, "/downloads/episode.mp4", []*storage.Episode{episode})
+		require.NoError(t, err)
+
+		// Verify episode file was created and linked
+		foundEpisode, err := store.GetEpisode(ctx, table.Episode.ID.EQ(sqlite.Int32(episode.ID)))
+		require.NoError(t, err)
+		require.NotNil(t, foundEpisode.EpisodeFileID)
+	})
+
+	t.Run("library error", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		ctx := context.Background()
+		store := newStore(t, ctx)
+
+		mockLibrary := libraryMock.NewMockLibrary(ctrl)
+
+		manager := MediaManager{
+			storage: store,
+			library: mockLibrary,
+		}
+
+		episode := &storage.Episode{
+			Episode: model.Episode{
+				ID:       1,
+				SeasonID: 1,
+			},
+		}
+
+		mockLibrary.EXPECT().AddEpisode(ctx, "Test Series", int32(1), "/downloads/episode.mp4").Return(library.EpisodeFile{}, errors.New("library error"))
+
+		err := manager.addEpisodeFileToLibrary(ctx, "Test Series", 1, "/downloads/episode.mp4", []*storage.Episode{episode})
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "library error")
+	})
 }
