@@ -321,7 +321,7 @@ func (s SQLite) UpdateMovieState(ctx context.Context, id int64, state storage.Mo
 	return tx.Commit()
 }
 
-// GetMovieByMetadataID checks if there's a movie already associated with the given tmdb id
+// GetMovieByMetadataID checks if there's a movie already associated with the given metadata id
 func (s SQLite) GetMovieByMetadataID(ctx context.Context, metadataID int) (*storage.Movie, error) {
 	movie := new(storage.Movie)
 
