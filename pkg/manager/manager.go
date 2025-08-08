@@ -488,8 +488,8 @@ func (m MediaManager) IndexMovieLibrary(ctx context.Context) error {
 
 			if strings.EqualFold(*mf.OriginalFilePath, discoveredFile.AbsolutePath) {
 				log.Debug("discovered file absolute path matches monitored movie file original path",
-					zap.String("discovered file absolute path", discoveredFile.RelativePath),
-					zap.String("monitored file original path", *mf.RelativePath))
+					zap.String("discovered file absolute path", discoveredFile.AbsolutePath),
+					zap.String("monitored file original path", *mf.OriginalFilePath))
 				isTracked = true
 				break
 			}

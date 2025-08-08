@@ -278,9 +278,9 @@ func TestListShowsInLibrary(t *testing.T) {
 		}
 
 		seriesMetadata := &model.SeriesMetadata{
-			ID:     1,
-			TmdbID: 321,
-			Title:  "Test Series",
+			ID:         1,
+			TmdbID:     321,
+			Title:      "Test Series",
 			PosterPath: ptr("poster.jpg"),
 		}
 
