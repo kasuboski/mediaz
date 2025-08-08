@@ -319,7 +319,6 @@ func (m MediaManager) refreshSeriesEpisodes(ctx context.Context, series *storage
 						EpisodeMetadataID: ptr(episodeMeta.ID),
 						SeasonID:          int32(seasonID),
 						Monitored:         1,
-						Runtime:           episodeMeta.Runtime,
 						EpisodeNumber:     episodeMeta.Number,
 					},
 				}
@@ -452,7 +451,20 @@ func (m MediaManager) reconcileMissingSeason(ctx context.Context, seriesTitle st
 		return m.reconcileMissingEpisodes(ctx, seriesTitle, season.ID, metadata.Number, missingEpisodes, snapshot, qualityProfile, releases)
 	}
 
-	runtime := getSeasonRuntime(missingEpisodes, len(episodes))
+	// Fetch episode metadata for missing episodes to calculate runtime
+	var missingEpisodesMetadata []*model.EpisodeMetadata
+	for _, e := range missingEpisodes {
+		if e.EpisodeMetadataID != nil {
+			episodeMetadata, err := m.storage.GetEpisodeMetadata(ctx, table.EpisodeMetadata.ID.EQ(sqlite.Int32(*e.EpisodeMetadataID)))
+			if err != nil {
+				log.Warn("failed to get episode metadata for runtime calculation", zap.Error(err))
+				continue
+			}
+			missingEpisodesMetadata = append(missingEpisodesMetadata, episodeMetadata)
+		}
+	}
+
+	runtime := getSeasonRuntime(missingEpisodesMetadata, len(episodes))
 	log.Debug("considering releases for season pack", zap.Int("count", len(releases)))
 
 	var chosenSeasonPackRelease *prowlarr.ReleaseResource
@@ -660,12 +672,12 @@ func (m MediaManager) updateSeasonState(ctx context.Context, id int64, state sto
 	return nil
 }
 
-func getSeasonRuntime(episodes []*storage.Episode, totalSeasonEpisodes int) int32 {
+func getSeasonRuntime(episodeMetadata []*model.EpisodeMetadata, totalSeasonEpisodes int) int32 {
 	var runtime int32
 	var consideredRuntimeCount int
-	for _, e := range episodes {
-		if e.Runtime != nil {
-			runtime = runtime + *e.Runtime
+	for _, meta := range episodeMetadata {
+		if meta.Runtime != nil {
+			runtime = runtime + *meta.Runtime
 			consideredRuntimeCount++
 		}
 	}
@@ -893,12 +905,12 @@ func (m MediaManager) ReconcileDiscoveredEpisodes(ctx context.Context) error {
 
 func (m MediaManager) reconcileDiscoveredEpisode(ctx context.Context, episode *storage.Episode) error {
 	log := logger.FromCtx(ctx)
-	
+
 	if episode == nil {
 		log.Warn("episode is nil, skipping reconcile")
 		return nil
 	}
-	
+
 	log = log.With("reconcile loop", "discovered", "episode id", episode.ID)
 
 	season, err := m.storage.GetSeason(ctx, table.Season.ID.EQ(sqlite.Int32(episode.SeasonID)))

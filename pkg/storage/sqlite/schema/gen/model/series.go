@@ -16,7 +16,6 @@ type Series struct {
 	Path             *string
 	Monitored        int32
 	Added            *time.Time
-	TmdbID           int32
 	QualityProfileID int32
 	SeriesMetadataID *int32
 	LastSearchTime   *time.Time

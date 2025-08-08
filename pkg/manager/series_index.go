@@ -171,7 +171,6 @@ func modelSeriesFromMeta(meta *model.SeriesMetadata) model.Series {
 		SeriesMetadataID: &meta.ID,
 		QualityProfileID: 0,
 		Monitored:        1,
-		TmdbID:           int32(meta.TmdbID),
 		Path:             &meta.Title,
 	}
 }

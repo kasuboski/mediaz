@@ -96,7 +96,6 @@ CREATE TABLE IF NOT EXISTS "series" (
     "path" TEXT,
     "monitored" INTEGER NOT NULL,
     "added" DATETIME DEFAULT current_timestamp,
-    "tmdb_id" INTEGER NOT NULL,
     "quality_profile_id" INTEGER NOT NULL,
     "series_metadata_id" INTEGER UNIQUE,
     "last_search_time" DATETIME
@@ -142,7 +141,6 @@ CREATE TABLE IF NOT EXISTS "episode" (
     "monitored" INTEGER NOT NULL,
     "episode_metadata_id" INTEGER UNIQUE,
     "episode_file_id" INTEGER,
-    "runtime" INTEGER,
     FOREIGN KEY ("season_id") REFERENCES "season" ("id")
 );
 

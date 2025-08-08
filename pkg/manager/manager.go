@@ -647,7 +647,6 @@ func (m MediaManager) AddSeriesToLibrary(ctx context.Context, request AddSeriesR
 			SeriesMetadataID: &seriesMetadata.ID,
 			QualityProfileID: qualityProfile.ID,
 			Monitored:        1,
-			TmdbID:           int32(seriesMetadata.TmdbID),
 			Path:             &seriesMetadata.Title,
 		},
 	}
@@ -702,7 +701,6 @@ func (m MediaManager) AddSeriesToLibrary(ctx context.Context, request AddSeriesR
 					EpisodeMetadataID: ptr(e.ID),
 					SeasonID:          int32(seasonID),
 					Monitored:         1,
-					Runtime:           e.Runtime,
 					EpisodeNumber:     e.Number,
 				},
 			}

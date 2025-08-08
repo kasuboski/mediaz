@@ -495,7 +495,6 @@ func TestSQLite_UpdateSeriesState(t *testing.T) {
 		series := storage.Series{
 			Series: model.Series{
 				ID:               1,
-				TmdbID:           12345,
 				Monitored:        1,
 				QualityProfileID: 1,
 				Added:            ptr(time.Now()),
@@ -515,7 +514,7 @@ func TestSQLite_UpdateSeriesState(t *testing.T) {
 		require.NotNil(t, foundSeries)
 
 		assert.Equal(t, storage.SeriesStateDownloading, foundSeries.State)
-		assert.Equal(t, int32(12345), foundSeries.TmdbID)
+		// TmdbID is now in SeriesMetadata, not Series model
 		assert.Equal(t, int32(1), foundSeries.Monitored)
 		assert.Equal(t, int32(1), foundSeries.QualityProfileID)
 
@@ -541,7 +540,6 @@ func TestSQLite_UpdateSeriesState(t *testing.T) {
 		series := storage.Series{
 			Series: model.Series{
 				ID:               2,
-				TmdbID:           54321,
 				Monitored:        1,
 				QualityProfileID: 1,
 				Added:            ptr(time.Now()),
@@ -575,7 +573,6 @@ func TestSQLite_UpdateSeriesState(t *testing.T) {
 		series := storage.Series{
 			Series: model.Series{
 				ID:               3,
-				TmdbID:           99999,
 				Monitored:        1,
 				QualityProfileID: 1,
 				Added:            ptr(time.Now()),
@@ -626,7 +623,6 @@ func TestSQLite_UpdateSeriesState(t *testing.T) {
 		series := storage.Series{
 			Series: model.Series{
 				ID:               4,
-				TmdbID:           44444,
 				Monitored:        1,
 				QualityProfileID: 1,
 				Added:            ptr(time.Now()),
