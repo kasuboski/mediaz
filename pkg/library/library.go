@@ -56,7 +56,7 @@ func (l *MediaLibrary) AddMovie(ctx context.Context, title, sourcePath string) (
 		if !errors.Is(err, io.ErrFileExists) {
 			return movieFile, err
 		}
-		log.Debug("file already exists in library, creating record for existing file")
+		log.Debug("file already exists in library")
 	}
 
 	movieFile.Name = sanitizeName(filepath.Base(actualTargetPath))
@@ -161,7 +161,7 @@ func (l *MediaLibrary) AddEpisode(ctx context.Context, seriesTitle string, seaso
 		if !errors.Is(err, io.ErrFileExists) {
 			return episodeFile, err
 		}
-		log.Debug("file already exists in library, creating record for existing file")
+		log.Debug("file already exists in library")
 	}
 
 	episodeFile.Name = sanitizeName(filepath.Base(actualTargetPath))
