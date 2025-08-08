@@ -131,7 +131,7 @@ CREATE TABLE IF NOT EXISTS "season_metadata" (
     "title" TEXT NOT NULL,
     "overview" TEXT,
     "air_date" DATETIME,
-    FOREIGN KEY ("series_id") REFERENCES "series_metadata" ("id")
+    FOREIGN KEY ("series_id") REFERENCES "series" ("id")
 );
 
 CREATE TABLE IF NOT EXISTS "episode" (
@@ -162,7 +162,7 @@ CREATE TABLE IF NOT EXISTS "episode_metadata" (
     "overview" TEXT,
     "air_date" DATETIME,
     "runtime" INTEGER,
-    FOREIGN KEY ("season_id") REFERENCES "season_metadata" ("id")
+    FOREIGN KEY ("season_id") REFERENCES "season" ("id")
 );
 
 CREATE TABLE IF NOT EXISTS "movie_transition" (

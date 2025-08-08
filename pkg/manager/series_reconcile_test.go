@@ -117,6 +117,7 @@ func TestMediaManager_reconcileMissingEpisodes(t *testing.T) {
 			Number: 1,
 			// time in the past
 			AirDate: ptr(snapshot.time.Add(time.Hour * -2)),
+			Runtime: ptr(int32(42)),
 		}
 
 		metadataID1, err := store.CreateEpisodeMetadata(ctx, episodeMetadata)
@@ -139,6 +140,7 @@ func TestMediaManager_reconcileMissingEpisodes(t *testing.T) {
 			Number: 2,
 			// time in the past
 			AirDate: ptr(snapshot.time.Add(time.Hour * -2)),
+			Runtime: ptr(int32(42)),
 		}
 
 		metadataID2, err := store.CreateEpisodeMetadata(ctx, episodeMetadata)
@@ -160,6 +162,7 @@ func TestMediaManager_reconcileMissingEpisodes(t *testing.T) {
 			Number: 3,
 			// future time
 			AirDate: ptr(snapshot.time.Add(time.Hour * 2)),
+			Runtime: ptr(int32(42)),
 		}
 
 		metadataID3, err := store.CreateEpisodeMetadata(ctx, episodeMetadata)
@@ -286,6 +289,7 @@ func TestMediaManager_reconcileMissingEpisodes(t *testing.T) {
 			Number: 1,
 			// time in the past
 			AirDate: ptr(snapshot.time.Add(time.Hour * -2)),
+			Runtime: ptr(int32(42)),
 		}
 
 		metadataID1, err := store.CreateEpisodeMetadata(ctx, episodeMetadata)
@@ -308,6 +312,7 @@ func TestMediaManager_reconcileMissingEpisodes(t *testing.T) {
 			Number: 2,
 			// time in the past
 			AirDate: ptr(snapshot.time.Add(time.Hour * -2)),
+			Runtime: ptr(int32(42)),
 		}
 
 		metadataID2, err := store.CreateEpisodeMetadata(ctx, episodeMetadata)
@@ -572,6 +577,8 @@ func TestMediaManager_reconcileMissingSeason(t *testing.T) {
 			Title:    "Hello",
 			Number:   1,
 			SeasonID: int32(seasonID),
+			AirDate:  ptr(time.Now().Add(time.Hour * -2)),
+			Runtime:  ptr(int32(42)),
 		})
 		require.NoError(t, err)
 
@@ -589,6 +596,8 @@ func TestMediaManager_reconcileMissingSeason(t *testing.T) {
 			Title:    "There",
 			Number:   2,
 			SeasonID: int32(seasonID),
+			AirDate:  ptr(time.Now().Add(time.Hour * -2)),
+			Runtime:  ptr(int32(42)),
 		})
 		require.NoError(t, err)
 
@@ -722,6 +731,7 @@ func TestMediaManager_reconcileMissingSeason(t *testing.T) {
 			Number:   1,
 			SeasonID: int32(seasonID),
 			AirDate:  ptr(snapshot.time.Add(time.Hour * -2)),
+			Runtime:  ptr(int32(42)),
 		})
 		require.NoError(t, err)
 
@@ -740,6 +750,7 @@ func TestMediaManager_reconcileMissingSeason(t *testing.T) {
 			Number:   2,
 			SeasonID: int32(seasonID),
 			AirDate:  ptr(snapshot.time.Add(time.Hour * -2)),
+			Runtime:  ptr(int32(42)),
 		})
 		require.NoError(t, err)
 
@@ -983,6 +994,7 @@ func TestMediaManager_ReconcileMissingSeries(t *testing.T) {
 			Number:   1,
 			SeasonID: int32(seasonID),
 			AirDate:  ptr(snapshot.time.Add(time.Hour * -2)),
+			Runtime:  ptr(int32(42)),
 		})
 		require.NoError(t, err)
 
@@ -1002,6 +1014,7 @@ func TestMediaManager_ReconcileMissingSeries(t *testing.T) {
 			Number:   2,
 			SeasonID: int32(seasonID),
 			AirDate:  ptr(snapshot.time.Add(time.Hour * -2)),
+			Runtime:  ptr(int32(42)),
 		})
 		require.NoError(t, err)
 
@@ -1184,6 +1197,7 @@ func TestMediaManager_ReconcileContinuingSeries(t *testing.T) {
 			Number:   3,
 			SeasonID: int32(seasonID),
 			AirDate:  ptr(snapshot.time.Add(time.Hour * -2)),
+			Runtime:  ptr(int32(42)),
 		})
 		require.NoError(t, err)
 
