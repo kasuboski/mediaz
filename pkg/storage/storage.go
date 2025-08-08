@@ -173,6 +173,7 @@ type SeriesTransition model.SeriesTransition
 func (s Series) Machine() *machine.StateMachine[SeriesState] {
 	return machine.New(s.State,
 		machine.From(SeriesStateNew).To(SeriesStateUnreleased, SeriesStateMissing, SeriesStateDiscovered),
+		machine.From(SeriesStateDiscovered).To(SeriesStateMissing, SeriesStateContinuing, SeriesStateCompleted),
 		machine.From(SeriesStateMissing).To(SeriesStateDiscovered, SeriesStateDownloading),
 		machine.From(SeriesStateUnreleased).To(SeriesStateDiscovered, SeriesStateMissing),
 		machine.From(SeriesStateDownloading).To(SeriesStateContinuing, SeriesStateCompleted),
@@ -193,6 +194,7 @@ type SeasonTransition model.SeasonTransition
 func (s Season) Machine() *machine.StateMachine[SeasonState] {
 	return machine.New(s.State,
 		machine.From(SeasonStateNew).To(SeasonStateUnreleased, SeasonStateMissing, SeasonStateDiscovered),
+		machine.From(SeasonStateDiscovered).To(SeasonStateMissing, SeasonStateContinuing, SeasonStateCompleted),
 		machine.From(SeasonStateMissing).To(SeasonStateDiscovered, SeasonStateDownloading),
 		machine.From(SeasonStateUnreleased).To(SeasonStateDiscovered, SeasonStateMissing),
 		machine.From(SeasonStateDownloading).To(SeasonStateContinuing, SeasonStateCompleted),

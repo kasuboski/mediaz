@@ -34,7 +34,7 @@ func init() {
 }
 
 const (
-	defaultJobTicker = time.Minute * 2
+	defaultJobTicker = time.Minute * 10
 )
 
 // initConfig sets viper configurations and default values
