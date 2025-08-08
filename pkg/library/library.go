@@ -2,6 +2,7 @@ package library
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io/fs"
 	"os"
@@ -21,7 +22,7 @@ type FileSystem struct {
 	Path string
 }
 
-// MediaLibary describes the media that create a library
+// MediaLibrary describes the media that create a library
 type MediaLibrary struct {
 	io     io.FileIO
 	movies FileSystem
@@ -52,7 +53,10 @@ func (l *MediaLibrary) AddMovie(ctx context.Context, title, sourcePath string) (
 
 	fileInfo, actualTargetPath, err := l.moveFileToLibrary(ctx, sourcePath, targetPath, l.movies.Path)
 	if err != nil {
-		return movieFile, err
+		if !errors.Is(err, io.ErrFileExists) {
+			return movieFile, err
+		}
+		log.Debug("file already exists in library, creating record for existing file")
 	}
 
 	movieFile.Name = sanitizeName(filepath.Base(actualTargetPath))
@@ -60,11 +64,12 @@ func (l *MediaLibrary) AddMovie(ctx context.Context, title, sourcePath string) (
 	movieFile.RelativePath = fmt.Sprintf("%s/%s", title, movieFile.Name)
 	movieFile.AbsolutePath = actualTargetPath
 
-	return movieFile, nil
+	return movieFile, err
 }
 
 // moveFileToLibrary is a common helper that handles the file system operations
 // for moving files from downloads to library locations. Returns the file info and the actual target path used.
+// if the file already exists, ErrFileExists is returned along with the file info.
 func (l *MediaLibrary) moveFileToLibrary(ctx context.Context, sourcePath, targetPath, libraryRoot string) (os.FileInfo, string, error) {
 	log := logger.FromCtx(ctx)
 
@@ -76,48 +81,64 @@ func (l *MediaLibrary) moveFileToLibrary(ctx context.Context, sourcePath, target
 
 	log = log.With("source path", sourcePath, "target path", sanitizedTargetPath, "library root", libraryRoot)
 
-	ok, err := l.io.IsSameFileSystem(libraryRoot, sourcePath)
-	if err != nil {
-		log.Debug("failed to determine if request path and library path share a file system", zap.Error(err))
-		return nil, "", err
-	}
-
-	// Create target directory
-	err = l.io.MkdirAll(targetDir, os.ModePerm)
+	err := l.io.MkdirAll(targetDir, os.ModePerm)
 	if err != nil {
 		log.Error("failed to create target directory", zap.Error(err))
 		return nil, "", err
 	}
 
-	if ok {
-		log.Debug("renaming file")
-		err := l.io.Rename(sourcePath, sanitizedTargetPath)
-		if err != nil {
-			log.Error("failed to rename file", zap.Error(err))
-			return nil, "", err
-		}
-	} else {
-		log.Debug("copying file")
-		_, err = l.io.Copy(sourcePath, sanitizedTargetPath)
-		if err != nil {
-			log.Error("failed to copy file", zap.Error(err))
-			return nil, "", err
-		}
-	}
-
-	file, err := l.io.Open(sanitizedTargetPath)
+	err = l.moveFile(ctx, libraryRoot, sourcePath, sanitizedTargetPath)
 	if err != nil {
-		return nil, "", err
-	}
-	defer file.Close()
+		if !errors.Is(err, io.ErrFileExists) {
+			return nil, "", err
+		}
 
-	info, err := file.Stat()
+		log.Debug("file already exists in library")
+
+		file, err := l.io.Stat(sanitizedTargetPath)
+		if err != nil {
+			log.Error("failed to stat existing file", zap.Error(err))
+			return nil, "", err
+		}
+
+		return file, sanitizedTargetPath, io.ErrFileExists
+	}
+
+	file, err := l.io.Stat(sanitizedTargetPath)
 	if err != nil {
 		log.Error("failed to stat file", zap.Error(err))
 		return nil, "", err
 	}
 
-	return info, sanitizedTargetPath, nil
+	return file, sanitizedTargetPath, nil
+}
+
+func (l *MediaLibrary) moveFile(ctx context.Context, libraryRoot, sourcePath, targetPath string) error {
+	log := logger.FromCtx(ctx)
+	ok, err := l.io.IsSameFileSystem(libraryRoot, sourcePath)
+	if err != nil {
+		log.Debug("failed to determine if request path and library path share a file system", zap.Error(err))
+		return err
+	}
+
+	if ok {
+		return l.renameFile(ctx, sourcePath, targetPath)
+	}
+
+	return l.copyFile(ctx, sourcePath, targetPath)
+}
+
+func (l *MediaLibrary) renameFile(ctx context.Context, sourcePath, targetPath string) error {
+	log := logger.FromCtx(ctx)
+	log.Debug("renaming file")
+	return l.io.Rename(sourcePath, targetPath)
+}
+
+func (l *MediaLibrary) copyFile(ctx context.Context, sourcePath, targetPath string) error {
+	log := logger.FromCtx(ctx)
+	log.Debug("copying file")
+	_, err := l.io.Copy(sourcePath, targetPath)
+	return err
 }
 
 // AddEpisode adds an episode file from an absolute path to the TV library.
@@ -137,7 +158,10 @@ func (l *MediaLibrary) AddEpisode(ctx context.Context, seriesTitle string, seaso
 
 	fileInfo, actualTargetPath, err := l.moveFileToLibrary(ctx, sourcePath, targetPath, l.tv.Path)
 	if err != nil {
-		return episodeFile, err
+		if !errors.Is(err, io.ErrFileExists) {
+			return episodeFile, err
+		}
+		log.Debug("file already exists in library, creating record for existing file")
 	}
 
 	episodeFile.Name = sanitizeName(filepath.Base(actualTargetPath))
@@ -147,8 +171,10 @@ func (l *MediaLibrary) AddEpisode(ctx context.Context, seriesTitle string, seaso
 	episodeFile.RelativePath = fmt.Sprintf("%s/%s/%s", seriesTitle, formatSeasonDirectory(seasonNumber), episodeFile.Name)
 	episodeFile.AbsolutePath = actualTargetPath
 
-	return episodeFile, nil
-} // FindMovies lists media in the movie library
+	return episodeFile, err
+}
+
+// FindMovies lists media in the movie library
 func (l *MediaLibrary) FindMovies(ctx context.Context) ([]MovieFile, error) {
 	log := logger.FromCtx(ctx)
 

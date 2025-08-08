@@ -104,7 +104,7 @@ CREATE TABLE IF NOT EXISTS "series" (
 
 CREATE TABLE IF NOT EXISTS "series_metadata" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-    "tmdb_id" INTEGER NOT NULL,
+    "tmdb_id" INTEGER NOT NULL UNIQUE,
     "title" TEXT NOT NULL,
     "overview" TEXT,
     "last_info_sync" DATETIME,
