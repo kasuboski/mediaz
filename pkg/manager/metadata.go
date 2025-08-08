@@ -7,10 +7,12 @@ import (
 	"time"
 
 	"github.com/go-jet/jet/v2/sqlite"
+	"github.com/kasuboski/mediaz/pkg/logger"
 	"github.com/kasuboski/mediaz/pkg/storage"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/table"
 	"github.com/kasuboski/mediaz/pkg/tmdb"
+	"go.uber.org/zap"
 )
 
 func (m MediaManager) GetMovieMetadata(ctx context.Context, tmdbID int) (*model.MovieMetadata, error) {
@@ -58,25 +60,29 @@ func (m MediaManager) GetSeriesMetadata(ctx context.Context, tmdbID int) (*model
 	return m.loadSeriesMetadata(ctx, tmdbID)
 }
 
-// RefreshSeriesMetadataFromTMDB always fetches fresh series metadata from TMDB, regardless of whether cached data exists.
+// RefreshSeriesMetadataFromTMDB always fetches fresh series metadata, regardless of whether cached data exists.
 // This is useful for discovering new episodes and seasons for continuing series.
 func (m MediaManager) RefreshSeriesMetadataFromTMDB(ctx context.Context, tmdbID int) (*model.SeriesMetadata, error) {
 	return m.loadSeriesMetadata(ctx, tmdbID)
 }
 
 func (m MediaManager) loadSeriesMetadata(ctx context.Context, tmdbID int) (*model.SeriesMetadata, error) {
+	log := logger.FromCtx(ctx)
 	details, err := m.tmdb.GetSeriesDetails(ctx, tmdbID)
 	if err != nil {
+		log.Error("failed to get series details", zap.Error(err))
 		return nil, err
 	}
 
 	series, err := FromSeriesDetails(*details)
 	if err != nil {
+		log.Error("failed to parse series details", zap.Error(err))
 		return nil, err
 	}
 
 	seriesMetadataID, err := m.storage.CreateSeriesMetadata(ctx, series)
 	if err != nil {
+		log.Error("failed to create series metadata", zap.Error(err))
 		return nil, err
 	}
 
@@ -86,6 +92,7 @@ func (m MediaManager) loadSeriesMetadata(ctx context.Context, tmdbID int) (*mode
 
 		existingSeason, err := m.storage.GetSeasonMetadata(ctx, table.SeasonMetadata.TmdbID.EQ(sqlite.Int(int64(season.TmdbID))))
 		if err != nil && !errors.Is(err, storage.ErrNotFound) {
+			log.Error("failed to get existing season metadata", zap.Error(err))
 			return nil, err
 		}
 
@@ -96,6 +103,7 @@ func (m MediaManager) loadSeriesMetadata(ctx context.Context, tmdbID int) (*mode
 		if seasonMetadataID == 0 {
 			seasonMetadataID, err = m.storage.CreateSeasonMetadata(ctx, season)
 			if err != nil {
+				log.Error("failed to create season metadata", zap.Error(err))
 				return nil, err
 			}
 		}
@@ -109,11 +117,13 @@ func (m MediaManager) loadSeriesMetadata(ctx context.Context, tmdbID int) (*mode
 				continue
 			}
 			if !errors.Is(err, storage.ErrNotFound) {
+				log.Error("failed to get existing episode metadata", zap.Error(err))
 				return nil, err
 			}
 
 			_, err = m.storage.CreateEpisodeMetadata(ctx, episodeMetadata)
 			if err != nil {
+				log.Error("failed to create episode metadata", zap.Error(err))
 				return nil, err
 			}
 		}

@@ -51,8 +51,8 @@ VALUES
     (28, 'Remux-2160p', 995, 187.4, 1000, 'episode');
 
 -- Movie Profiles
-INSERT INTO
-    quality_profile (id, name, cutoff_quality_id, upgrade_allowed)
+INSERT
+    OR IGNORE INTO quality_profile (id, name, cutoff_quality_id, upgrade_allowed)
 VALUES
     (1, 'Standard Definition', 2, TRUE),
     (2, 'High Definition', 8, TRUE),
@@ -77,8 +77,8 @@ VALUES
     (3, 13);
 
 -- Episode Profiles
-INSERT INTO
-    quality_profile (id, name, cutoff_quality_id, upgrade_allowed)
+INSERT
+    OR IGNORE INTO quality_profile (id, name, cutoff_quality_id, upgrade_allowed)
 VALUES
     (4, 'Standard Definition', 16, TRUE),
     (5, 'High Definition', 23, TRUE),

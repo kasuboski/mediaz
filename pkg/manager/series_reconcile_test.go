@@ -1267,7 +1267,9 @@ func TestMediaManager_ReconcileContinuingSeries(t *testing.T) {
 		seriesMetadataID, err := store.CreateSeriesMetadata(ctx, model.SeriesMetadata{
 			TmdbID:       100,
 			Title:        "Weekly Series",
-			EpisodeCount: 5,
+			SeasonCount:  1,
+			EpisodeCount: 3,
+			Status:       "Returning Series", // Add required status field
 		})
 		require.NoError(t, err)
 
@@ -1289,7 +1291,7 @@ func TestMediaManager_ReconcileContinuingSeries(t *testing.T) {
 		require.NoError(t, err)
 
 		seasonMetadataID, err := store.CreateSeasonMetadata(ctx, model.SeasonMetadata{
-			SeriesID: int32(seriesID), // Should reference the series metadata ID, not storage series ID
+			SeriesID: int32(seriesMetadataID), // Should reference the series metadata ID, not storage series ID
 			Title:    "Season 1",
 			Number:   1,
 			TmdbID:   1001, // Match the TMDB ID from our mock
@@ -1353,15 +1355,21 @@ func TestMediaManager_ReconcileContinuingSeries(t *testing.T) {
 		// Set up TMDB mock for metadata refresh
 		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
 		tmdbMock.EXPECT().GetSeriesDetails(ctx, 100).Return(&tmdb.SeriesDetails{
-			ID: 100, // Match the series TMDB ID
+			ID:               100, // Match the series TMDB ID
+			Name:             "Weekly Series",
+			NumberOfSeasons:  1,
+			NumberOfEpisodes: 3,
+			FirstAirDate:     "2024-01-01",
 			Seasons: []tmdb.Season{
 				{
 					ID:           1001, // Set explicit TMDB ID for season
 					SeasonNumber: 1,
+					Name:         "Season 1",
+					Overview:     "First season",
 					Episodes: []tmdb.Episode{
-						{ID: 1001001, EpisodeNumber: 1},
-						{ID: 1001002, EpisodeNumber: 2},
-						{ID: 1001003, EpisodeNumber: 3}, // This new episode should be discovered
+						{ID: 1001001, EpisodeNumber: 1, Name: "Episode 1", Overview: "First episode", Runtime: 45, AirDate: "2024-01-01"},
+						{ID: 1001002, EpisodeNumber: 2, Name: "Episode 2", Overview: "Second episode", Runtime: 45, AirDate: "2024-01-02"},
+						{ID: 1001003, EpisodeNumber: 3, Name: "Episode 3", Overview: "Third episode", Runtime: 45, AirDate: "2025-12-31"},
 					},
 				},
 			},
@@ -1385,7 +1393,6 @@ func TestMediaManager_ReconcileContinuingSeries(t *testing.T) {
 		err = m.ReconcileContinuingSeries(ctx, snapshot)
 		require.NoError(t, err)
 
-		// After reconciliation, we should have 3 episode records (episode 3 should be discovered and created)
 		episodesAfter, err := store.ListEpisodes(ctx, table.Episode.SeasonID.EQ(sqlite.Int64(seasonID)))
 		require.NoError(t, err)
 		assert.Len(t, episodesAfter, 3, "Should have 3 episodes after reconciliation (episode 3 should be discovered)")
