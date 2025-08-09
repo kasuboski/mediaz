@@ -2,6 +2,8 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
+port: &port 8080
+
 # This will set the replicaset count more information can be found here: https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/
 replicaCount: 1
 
@@ -56,7 +58,7 @@ service:
   # This sets the service type more information can be found here: https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types
   type: ClusterIP
   # This sets the ports more information can be found here: https://kubernetes.io/docs/concepts/services-networking/service/#field-spec-ports
-  port: 8080
+  port: *port
 
 # This block is for setting up the ingress for more information can be found here: https://kubernetes.io/docs/concepts/services-networking/ingress/
 ingress:
@@ -88,7 +90,7 @@ httproute:
   rules:
     backendRefs:
       - name: mediaz
-        port: 8080
+        port: *port
 
 resources:
   {}
@@ -106,20 +108,12 @@ resources:
 # This is to setup the liveness and readiness probes more information can be found here: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/
 livenessProbe:
   httpGet:
-    path: /
+    path: /healthz
     port: http
 readinessProbe:
   httpGet:
-    path: /
+    path: /healthz
     port: http
-
-# This section is for setting up autoscaling more information can be found here: https://kubernetes.io/docs/concepts/workloads/autoscaling/
-autoscaling:
-  enabled: false
-  minReplicas: 1
-  maxReplicas: 100
-  targetCPUUtilizationPercentage: 80
-  # targetMemoryUtilizationPercentage: 80
 
 # Additional volumes on the output Deployment definition.
 volumes: []
@@ -140,5 +134,44 @@ tolerations: []
 
 affinity: {}
 
+persistence:
+  enabled: false
+  # existingClaim: ""  # Use an existing PVC instead of creating a new one
+  # storageClass: ""
+  accessMode: ReadWriteOnce
+  size: 256Mi
+  mountPath: /config
+  annotations: {}
+  labels: {}
+
+prowlarr:
+  # apiKey: "" # yolo
+  secretRef: "" # expects the key to be "apiKey"
+
+tmdb:
+  # apiKey: "" # yolo
+  secretRef: "" # expects the key to be "apiKey"
+
 config:
-  
+  filePath: "/app/config.yaml"
+  prowlarr:
+    uri: "http://prowlarr.local"
+
+  # tmdb:
+  #   uri: https://api.themoviedb.org
+
+  library:
+    tv: "/tv"
+    movie: "/movies"
+    downloadMountDir: "/downloads"
+
+  # manager:
+  #   jobs:
+  #     seriesReconcile: 10m
+  #     movieReconcile: 10m
+  #     seriesIndex: 10m
+  #     movieIndex: 10m
+
+  server:
+    port: *port
+    # staticAssetsDir: "./frontend/dist"

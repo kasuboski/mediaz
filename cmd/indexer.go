@@ -3,7 +3,6 @@ package cmd
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -25,7 +24,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-// indexerCmd represents the indexer command
+// listIndexerCmd represents the indexer command
 var listIndexerCmd = &cobra.Command{
 	Use:   "indexer",
 	Short: "list indexers that are currently managed",
@@ -67,7 +66,7 @@ var listIndexerCmd = &cobra.Command{
 	},
 }
 
-// searchIdexerCmd represents searching an indexer
+// searchIndexerCmd represents searching an indexer
 var searchIndexerCmd = &cobra.Command{
 	Use:        "indexer",
 	Short:      "search indexers that are currently managed",
@@ -103,14 +102,6 @@ var searchIndexerCmd = &cobra.Command{
 			},
 			&mio.MediaFileSystem{},
 		)
-
-		defaultSchemas := cfg.Storage.Schemas
-		if _, err := os.Stat(cfg.Storage.FilePath); err != nil {
-			if errors.Is(err, os.ErrNotExist) {
-				log.Debug("database does not exist, defaulting table values", zap.Any("schemas", cfg.Storage.TableValueSchemas))
-				defaultSchemas = append(defaultSchemas, cfg.Storage.TableValueSchemas...)
-			}
-		}
 
 		store, err := sqlite.New(cfg.Storage.FilePath)
 		if err != nil {

@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"context"
-	"errors"
 	"os"
 
 	"github.com/kasuboski/mediaz/config"
@@ -46,14 +45,6 @@ var serveCmd = &cobra.Command{
 		prowlarrClient, err := prowlarr.New(cfg.Prowlarr.URI, cfg.Prowlarr.APIKey)
 		if err != nil {
 			log.Fatal("failed to create client", zap.Error(err))
-		}
-
-		defaultSchemas := cfg.Storage.Schemas
-		if _, err := os.Stat(cfg.Storage.FilePath); err != nil {
-			if errors.Is(err, os.ErrNotExist) {
-				log.Debug("database does not exist, defaulting table values", zap.Any("schemas", cfg.Storage.TableValueSchemas))
-				defaultSchemas = append(defaultSchemas, cfg.Storage.TableValueSchemas...)
-			}
 		}
 
 		store, err := sqlite.New(cfg.Storage.FilePath)

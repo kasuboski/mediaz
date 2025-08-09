@@ -248,10 +248,9 @@ var (
 )
 
 type AddTorrentPayload struct {
-	DownloadDir string   `json:"download-dir"`
-	Filename    string   `json:"filename"`
-	MetaInfo    string   `json:"metainfo"`
-	Labels      []string `json:"labels"`
+	Filename string   `json:"filename"`
+	MetaInfo string   `json:"metainfo"`
+	Labels   []string `json:"labels"`
 }
 
 // Get fetches a torrent given an id
@@ -375,8 +374,7 @@ func (c *TransmissionClient) Add(ctx context.Context, request AddRequest) (Statu
 	}
 
 	arguments := AddTorrentPayload{
-		DownloadDir: "/downloads/transmission",
-		Filename:    uri,
+		Filename: uri,
 	}
 
 	transmissionRequest := &TransmissionRequest{

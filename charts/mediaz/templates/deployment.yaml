@@ -5,9 +5,7 @@ metadata:
   labels:
     {{- include "mediaz.labels" . | nindent 4 }}
 spec:
-  {{- if not .Values.autoscaling.enabled }}
-  replicas: {{ .Values.replicaCount }}
-  {{- end }}
+  replicas: {{ .Values.replicaCount | default 1 }}
   selector:
     matchLabels:
       {{- include "mediaz.selectorLabels" . | nindent 6 }}
@@ -56,14 +54,60 @@ spec:
           resources:
             {{- toYaml . | nindent 12 }}
           {{- end }}
-          {{- with .Values.volumeMounts }}
+          env:
+            {{- if .Values.prowlarr.secretRef }}
+            - name: MEDIAZ_PROWLARR_APIKEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.prowlarr.secretRef }}
+                  key: {{ .Values.prowlarr.secretKey }}
+            {{- else if .Values.prowlarr.apiKey }}
+            - name: MEDIAZ_PROWLARR_APIKEY
+              value: {{ .Values.prowlarr.apiKey | quote }}
+            {{- end }}
+            {{- if .Values.tmdb.secretRef }}
+            - name: MEDIAZ_TMDB_APIKEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.tmdb.secretRef }}
+                  key: {{ .Values.tmdb.secretKey }}
+            {{- else if .Values.tmdb.apiKey }}
+            - name: MEDIAZ_TMDB_APIKEY
+              value: {{ .Values.tmdb.apiKey | quote }}
+            {{- end }}
+            {{- with .Values.config }}
+            {{- with .filePath }}
+            - name: MEDIAZ_CONFIGPATH
+              value: {{ . }}
+            {{- end }}
+            {{- end }}
           volumeMounts:
+            {{- if .Values.config }}
+            - name: config
+              mountPath: /etc/mediaz
+              readOnly: true
+            {{- end }}
+            {{- if .Values.persistence.enabled }}
+            - name: config-storage
+              mountPath: {{ .Values.persistence.mountPath }}
+            {{- end }}
+            {{- with .Values.volumeMounts }}
             {{- toYaml . | nindent 12 }}
-          {{- end }}
-      {{- with .Values.volumes }}
+            {{- end }}
       volumes:
+        {{- if .Values.config }}
+        - name: config
+          configMap:
+            name: {{ include "mediaz.fullname" . }}-config
+        {{- end }}
+        {{- if .Values.persistence.enabled }}
+        - name: config-storage
+          persistentVolumeClaim:
+            claimName: {{ .Values.persistence.existingClaim | default (printf "%s-config" (include "mediaz.fullname" .)) }}
+        {{- end }}
+        {{- with .Values.volumes }}
         {{- toYaml . | nindent 8 }}
-      {{- end }}
+        {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
