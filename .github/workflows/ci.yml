@@ -13,6 +13,7 @@ jobs:
 
       - name: Run unit tests
         run: nix develop --command go test -v -coverprofile=coverage.txt ./...
+      
       - name: Upload results to Codecov
         uses: codecov/codecov-action@v4
         with:
@@ -22,7 +23,6 @@ jobs:
         run: nix develop --command go build .
 
       - name: Set up Docker Buildx
-        if: github.ref == 'refs/heads/main'
         uses: docker/setup-buildx-action@v3
 
       - name: Log in to GitHub Container Registry
@@ -34,7 +34,6 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Extract metadata
-        if: github.ref == 'refs/heads/main'
         id: meta
         uses: docker/metadata-action@v5
         with:
@@ -43,11 +42,10 @@ jobs:
             type=sha,format=long
 
       - name: Build and push Docker image
-        if: github.ref == 'refs/heads/main'
         uses: docker/build-push-action@v5
         with:
           context: .
-          push: true
+          push: ${{ github.ref == 'refs/heads/main' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
