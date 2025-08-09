@@ -1,0 +1,367 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+        "affinity": {
+            "default": {},
+            "type": "object"
+        },
+        "config": {
+            "type": "object",
+            "properties": {
+                "filePath": {
+                    "default": "/app/config.yaml",
+                    "type": "string"
+                },
+                "library": {
+                    "type": "object",
+                    "properties": {
+                        "downloadMountDir": {
+                            "default": "/downloads",
+                            "type": "string"
+                        },
+                        "movie": {
+                            "default": "/movies",
+                            "type": "string"
+                        },
+                        "tv": {
+                            "default": "/tv",
+                            "type": "string"
+                        }
+                    }
+                },
+                "server": {
+                    "type": "object",
+                    "properties": {
+                        "port": {
+                            "default": 8080
+                        }
+                    }
+                }
+            }
+        },
+        "fullnameOverride": {
+            "default": "",
+            "type": "string"
+        },
+        "httproute": {
+            "type": "object",
+            "properties": {
+                "annotations": {
+                    "default": {},
+                    "type": "object"
+                },
+                "enabled": {
+                    "default": false,
+                    "type": "boolean"
+                },
+                "hostnames": {
+                    "default": [
+                        "mediaz.local"
+                    ],
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "labels": {
+                    "default": {},
+                    "type": "object"
+                },
+                "parentRefs": {
+                    "default": [
+                        {
+                            "name": "gateway",
+                            "namespace": "envoy-gateway-system"
+                        }
+                    ],
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "name": {
+                                "type": "string"
+                            },
+                            "namespace": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "rules": {
+                    "default": {
+                        "backendRefs": [
+                            {
+                                "name": "mediaz",
+                                "port": 8080
+                            }
+                        ]
+                    },
+                    "type": "object",
+                    "properties": {
+                        "backendRefs": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "port": {}
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "image": {
+            "type": "object",
+            "properties": {
+                "pullPolicy": {
+                    "default": "IfNotPresent",
+                    "type": "string"
+                },
+                "repository": {
+                    "default": "ghcr.io/kasuboski/mediaz",
+                    "type": "string"
+                },
+                "tag": {
+                    "type": "string"
+                }
+            }
+        },
+        "imagePullSecrets": {
+            "default": [],
+            "type": "array"
+        },
+        "ingress": {
+            "type": "object",
+            "properties": {
+                "annotations": {
+                    "default": {},
+                    "type": "object"
+                },
+                "className": {
+                    "default": "",
+                    "type": "string"
+                },
+                "enabled": {
+                    "default": false,
+                    "type": "boolean"
+                },
+                "hosts": {
+                    "default": [
+                        {
+                            "host": "chart-example.local",
+                            "paths": [
+                                {
+                                    "path": "/",
+                                    "pathType": "ImplementationSpecific"
+                                }
+                            ]
+                        }
+                    ],
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "host": {
+                                "type": "string"
+                            },
+                            "paths": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "path": {
+                                            "type": "string"
+                                        },
+                                        "pathType": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "tls": {
+                    "default": [],
+                    "type": "array"
+                }
+            }
+        },
+        "livenessProbe": {
+            "default": {
+                "httpGet": {
+                    "path": "/healthz",
+                    "port": "http"
+                }
+            },
+            "type": "object",
+            "properties": {
+                "httpGet": {
+                    "type": "object",
+                    "properties": {
+                        "path": {
+                            "type": "string"
+                        },
+                        "port": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "nameOverride": {
+            "default": "",
+            "type": "string"
+        },
+        "nodeSelector": {
+            "default": {},
+            "type": "object"
+        },
+        "persistence": {
+            "type": "object",
+            "properties": {
+                "accessMode": {
+                    "default": "ReadWriteOnce",
+                    "type": "string"
+                },
+                "annotations": {
+                    "default": {},
+                    "type": "object"
+                },
+                "enabled": {
+                    "default": false,
+                    "type": "boolean"
+                },
+                "labels": {
+                    "default": {},
+                    "type": "object"
+                },
+                "mountPath": {
+                    "default": "/config",
+                    "type": "string"
+                },
+                "size": {
+                    "default": "256Mi",
+                    "type": "string"
+                }
+            }
+        },
+        "podAnnotations": {
+            "default": {},
+            "type": "object"
+        },
+        "podLabels": {
+            "default": {},
+            "type": "object"
+        },
+        "podSecurityContext": {
+            "default": {},
+            "type": "object"
+        },
+        "port": {
+            "type": "integer"
+        },
+        "prowlarr": {
+            "type": "object",
+            "properties": {
+                "secretRef": {
+                    "default": "",
+                    "type": "string"
+                }
+            }
+        },
+        "readinessProbe": {
+            "default": {
+                "httpGet": {
+                    "path": "/healthz",
+                    "port": "http"
+                }
+            },
+            "type": "object",
+            "properties": {
+                "httpGet": {
+                    "type": "object",
+                    "properties": {
+                        "path": {
+                            "type": "string"
+                        },
+                        "port": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "replicaCount": {
+            "default": 1,
+            "type": "integer"
+        },
+        "resources": {
+            "default": {},
+            "type": "object"
+        },
+        "securityContext": {
+            "default": {},
+            "type": "object"
+        },
+        "service": {
+            "type": "object",
+            "properties": {
+                "port": {
+                    "default": 8080
+                },
+                "type": {
+                    "default": "ClusterIP",
+                    "type": "string"
+                }
+            }
+        },
+        "serviceAccount": {
+            "type": "object",
+            "properties": {
+                "annotations": {
+                    "default": {},
+                    "type": "object"
+                },
+                "automount": {
+                    "default": true,
+                    "type": "boolean"
+                },
+                "create": {
+                    "default": true,
+                    "type": "boolean"
+                },
+                "name": {
+                    "default": "",
+                    "type": "string"
+                }
+            }
+        },
+        "tmdb": {
+            "type": "object",
+            "properties": {
+                "secretRef": {
+                    "default": "",
+                    "type": "string"
+                }
+            }
+        },
+        "tolerations": {
+            "default": [],
+            "type": "array"
+        },
+        "volumeMounts": {
+            "default": [],
+            "type": "array"
+        },
+        "volumes": {
+            "default": [],
+            "type": "array"
+        }
+    }
+}
