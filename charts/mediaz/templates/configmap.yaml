@@ -1,0 +1,34 @@
+{{- if .Values.config }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "mediaz.fullname" . }}-config
+  labels:
+    {{- include "mediaz.labels" . | nindent 4 }}
+data:
+  config.yaml: |
+    {{- with .Values.config.prowlarr }}
+    prowlarr:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
+    {{- with .Values.config.tmdb }}
+    tmdb:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
+    {{- with .Values.config.library }}
+    library:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
+    {{- with .Values.config.manager }}
+    manager:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
+    {{- with .Values.config.server }}
+    server:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
+    {{- with .Values.config.database }}
+    database:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
+{{- end }}
