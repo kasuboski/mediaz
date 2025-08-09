@@ -78,7 +78,7 @@ spec:
             {{- with .Values.config }}
             {{- with .filePath }}
             - name: MEDIAZ_CONFIGPATH
-              value: {{ . }}
+              value: {{ . | quote }}
             {{- end }}
             {{- end }}
           volumeMounts:
