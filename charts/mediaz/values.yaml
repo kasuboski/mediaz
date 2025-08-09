@@ -147,10 +147,12 @@ persistence:
 prowlarr:
   # apiKey: "" # yolo
   secretRef: "" # @schema default: ""
+  secretKey: "" # @schema default: ""
 
 tmdb:
   # apiKey: "" # yolo
   secretRef: "" # @schema default: ""
+  secretKey: "" # @schema default: ""
 
 config:
   filePath: "/app/config.yaml" # @schema default: "/app/config.yaml"

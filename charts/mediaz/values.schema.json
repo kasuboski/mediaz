@@ -269,6 +269,10 @@
         "prowlarr": {
             "type": "object",
             "properties": {
+                "secretKey": {
+                    "default": "",
+                    "type": "string"
+                },
                 "secretRef": {
                     "default": "",
                     "type": "string"
@@ -345,6 +349,10 @@
         "tmdb": {
             "type": "object",
             "properties": {
+                "secretKey": {
+                    "default": "",
+                    "type": "string"
+                },
                 "secretRef": {
                     "default": "",
                     "type": "string"

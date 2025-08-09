@@ -48,6 +48,7 @@ A Helm chart for Mediaz
 | podLabels | object | `{}` |  |
 | podSecurityContext | object | `{}` |  |
 | port | int | `8080` |  |
+| prowlarr.secretKey | string | `""` |  |
 | prowlarr.secretRef | string | `""` |  |
 | readinessProbe.httpGet.path | string | `"/healthz"` |  |
 | readinessProbe.httpGet.port | string | `"http"` |  |
@@ -60,6 +61,7 @@ A Helm chart for Mediaz
 | serviceAccount.automount | bool | `true` |  |
 | serviceAccount.create | bool | `true` |  |
 | serviceAccount.name | string | `""` |  |
+| tmdb.secretKey | string | `""` |  |
 | tmdb.secretRef | string | `""` |  |
 | tolerations | list | `[]` |  |
 | volumeMounts | list | `[]` |  |
