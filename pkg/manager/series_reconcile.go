@@ -249,8 +249,12 @@ func (m MediaManager) refreshSeriesEpisodes(ctx context.Context, series *storage
 	}
 
 	existingSeasonNumbers := make(map[int32]int64)
+	existingSeasonsWithoutMetadata := make([]*storage.Season, 0)
+	
 	for _, season := range existingSeasons {
 		if season.SeasonMetadataID == nil {
+			// Track seasons without metadata for later linking
+			existingSeasonsWithoutMetadata = append(existingSeasonsWithoutMetadata, season)
 			continue
 		}
 
@@ -341,6 +345,30 @@ func (m MediaManager) refreshSeriesEpisodes(ctx context.Context, series *storage
 					zap.Int32("season_number", seasonMeta.Number),
 					zap.Int32("episode_number", episodeMeta.Number),
 					zap.String("state", string(episodeState)))
+			}
+		}
+	}
+
+	// Link existing seasons without metadata to the appropriate metadata
+	for _, season := range existingSeasonsWithoutMetadata {
+		// Use the season number stored in the database (set during indexing)
+		seasonNumber := season.SeasonNumber
+
+		// Find matching season metadata
+		for _, seasonMeta := range allSeasonMetadata {
+			if seasonMeta.Number == seasonNumber {
+				err := m.storage.LinkSeasonMetadata(ctx, int64(season.ID), seasonMeta.ID)
+				if err != nil {
+					log.Error("failed to link season metadata", zap.Error(err))
+				} else {
+					log.Debug("linked existing season to metadata",
+						zap.Int32("season_id", season.ID),
+						zap.Int32("season_number", seasonNumber),
+						zap.Int32("metadata_id", seasonMeta.ID))
+					// Update the existingSeasonNumbers map
+					existingSeasonNumbers[seasonNumber] = int64(season.ID)
+				}
+				break
 			}
 		}
 	}

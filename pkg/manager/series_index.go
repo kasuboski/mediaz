@@ -128,29 +128,34 @@ func (m MediaManager) IndexSeriesLibrary(ctx context.Context) error {
 		}
 
 		// ensure season exists for the specific season number parsed from path
-		season, err := m.storage.GetSeason(ctx, table.Season.SeriesID.EQ(sqlite.Int64(seriesID)).AND(table.Season.SeasonMetadataID.IS_NOT_NULL()))
+		season, err := m.storage.GetSeason(ctx, table.Season.SeriesID.EQ(sqlite.Int64(seriesID)).AND(table.Season.SeasonNumber.EQ(sqlite.Int32(int32(df.SeasonNumber)))))
 		if err != nil && !errors.Is(err, storage.ErrNotFound) {
 			log.Debug("failed to get season", zap.Error(err))
 			continue
 		}
 		var seasonID int64
 		if season == nil || errors.Is(err, storage.ErrNotFound) {
-			created, cerr := m.storage.CreateSeason(ctx, storage.Season{Season: model.Season{SeriesID: int32(seriesID), Monitored: 1}}, storage.SeasonStateDiscovered)
+			created, cerr := m.storage.CreateSeason(ctx, storage.Season{Season: model.Season{SeriesID: int32(seriesID), SeasonNumber: int32(df.SeasonNumber), Monitored: 1}}, storage.SeasonStateDiscovered)
 			if cerr != nil {
 				log.Debug("failed to create season", zap.Error(cerr))
 				continue
 			}
 			seasonID = created
+			log.Debug("created new season with parsed season number", 
+				zap.Int64("series_id", seriesID), 
+				zap.Int("season_number", df.SeasonNumber),
+				zap.Int64("season_id", seasonID))
 		} else {
 			seasonID = int64(season.ID)
 		}
 
-		// ensure episode exists; we don't parse episode number here, just create placeholder
+		// ensure episode exists; parse episode number from the discovered file data
 		// Link the episode to the episode file so reconciliation can find the file details
 		episode := storage.Episode{Episode: model.Episode{
 			SeasonID:      int32(seasonID),
 			Monitored:     1,
 			EpisodeFileID: &f.ID,
+			EpisodeNumber: int32(df.EpisodeNumber),
 		}}
 		_, _ = m.storage.CreateEpisode(ctx, episode, storage.EpisodeStateDiscovered)
 	}
