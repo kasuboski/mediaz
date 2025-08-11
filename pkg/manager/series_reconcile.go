@@ -940,6 +940,7 @@ func (m MediaManager) reconcileDiscoveredEpisode(ctx context.Context, episode *s
 	}
 
 	log = log.With("reconcile loop", "discovered", "episode id", episode.ID)
+	log.Debug("starting episode reconciliation", zap.Int32("episode_id", episode.ID))
 
 	season, err := m.storage.GetSeason(ctx, table.Season.ID.EQ(sqlite.Int32(episode.SeasonID)))
 	if err != nil || season == nil {
@@ -985,7 +986,8 @@ func (m MediaManager) reconcileDiscoveredEpisode(ctx context.Context, episode *s
 
 	// Check if we need to refresh series metadata from TMDB
 	// Only refresh if we don't have adequate season/episode metadata
-	log.Debug("checking if series has adequate metadata for episode reconciliation")
+	log.Debug("checking if series has adequate metadata for episode reconciliation",
+		zap.Bool("series_has_metadata_id", series.SeriesMetadataID != nil))
 
 	// Check if we have season metadata for the discovered file's season
 	allSeasonMetadata, err := m.storage.ListSeasonMetadata(ctx,
@@ -995,13 +997,32 @@ func (m MediaManager) reconcileDiscoveredEpisode(ctx context.Context, episode *s
 		return fmt.Errorf("failed to check season metadata: %w", err)
 	}
 
-	// If we don't have season metadata, refresh from TMDB
-	if len(allSeasonMetadata) == 0 {
-		log.Debug("no season metadata found, refreshing from TMDB")
+	// Check if we need to refresh - either no season metadata exists, or current season lacks metadata link
+	shouldRefresh := len(allSeasonMetadata) == 0 || season.SeasonMetadataID == nil
+	
+	log.Debug("refresh decision",
+		zap.Int("season_metadata_count", len(allSeasonMetadata)),
+		zap.Bool("season_has_metadata_id", season.SeasonMetadataID != nil),
+		zap.Bool("should_refresh", shouldRefresh))
+	
+	if shouldRefresh {
+		if len(allSeasonMetadata) == 0 {
+			log.Debug("no season metadata found, refreshing from TMDB")
+		} else {
+			log.Debug("season lacks metadata link, refreshing to link existing metadata")
+		}
+		
 		err = m.refreshSeriesEpisodes(ctx, series, seriesMetadata, snapshot)
 		if err != nil {
 			log.Warn("failed to refresh series metadata from TMDB, skipping episode reconciliation", zap.Error(err))
 			return nil // Skip this episode rather than fail
+		}
+		
+		// Reload season to get updated metadata link
+		season, err = m.storage.GetSeason(ctx, table.Season.ID.EQ(sqlite.Int32(episode.SeasonID)))
+		if err != nil || season == nil {
+			log.Error("failed to reload season after refresh", zap.Error(err))
+			return fmt.Errorf("failed to reload season: %w", err)
 		}
 	}
 

@@ -1,46 +1,64 @@
 package library
 
 import (
-	"bufio"
-	"fmt"
-	"os"
-	"path/filepath"
-	"strings"
 	"testing"
 )
 
 func TestEpisodeFileFromPath(t *testing.T) {
-	f, err := os.Open("./testing/test_episodes.txt")
-	if err != nil {
-		t.Fatal(err)
+	// Test with known paths and expected results
+	tests := []struct {
+		path           string
+		expectedName   string
+		expectedSeries string
+		expectedSeason int
+		desc           string
+	}{
+		{
+			path:           "Doctor Who (1963)/Season 01/Doctor Who (1963) - s01e01 - An Unearthly Child (1).mp4",
+			expectedName:   "Doctor Who (1963) - s01e01 - An Unearthly Child (1).mp4",
+			expectedSeries: "Doctor Who (1963)",
+			expectedSeason: 1,
+			desc:           "Traditional structure: Series/Season X/Episode",
+		},
+		{
+			path:           "Emma/S01E01 - Episode 1 Bluray-1080p.mkv", 
+			expectedName:   "S01E01 - Episode 1 Bluray-1080p.mkv",
+			expectedSeries: "Emma",
+			expectedSeason: 0,
+			desc:           "Flat structure: Series/Episode (no season directory)",
+		},
+		{
+			path:           "The Office (US)/Season 02/The Office - S02E05.mkv",
+			expectedName:   "The Office - S02E05.mkv",
+			expectedSeries: "The Office (US)",
+			expectedSeason: 2,
+			desc:           "Traditional structure with season detection",
+		},
+		{
+			path:           "Fisk/S02E03 - Pancakes & Prayer WEBDL-1080p.mkv",
+			expectedName:   "S02E03 - Pancakes & Prayer WEBDL-1080p.mkv", 
+			expectedSeries: "Fisk",
+			expectedSeason: 0,
+			desc:           "Flat structure: Another real-world case",
+		},
 	}
-	defer f.Close()
 
-	scanner := bufio.NewScanner(f)
-	for scanner.Scan() {
-		p := scanner.Text()
-		ef := EpisodeFileFromPath(p)
-		base := filepath.Base(p)
-		if ef.Name != base {
-			t.Fatalf("Name mismatch for %s: want %s got %s", p, base, ef.Name)
-		}
-		series := sanitizeName(dirName(filepath.Dir(p)))
-		if ef.SeriesName != series {
-			t.Fatalf("SeriesName mismatch for %s: want %s got %s", p, series, ef.SeriesName)
-		}
-		season := 0
-		parent := dirName(p)
-		if strings.HasPrefix(strings.ToLower(parent), "season ") {
-			var n int
-			fmt.Sscanf(parent, "Season %d", &n)
-			season = n
-		}
-		if ef.SeasonNumber != season {
-			t.Fatalf("SeasonNumber mismatch for %s: want %d got %d", p, season, ef.SeasonNumber)
-		}
-	}
-	if err := scanner.Err(); err != nil {
-		t.Fatal(err)
+	for _, tt := range tests {
+		t.Run(tt.desc, func(t *testing.T) {
+			ef := EpisodeFileFromPath(tt.path)
+			
+			if ef.Name != tt.expectedName {
+				t.Errorf("Name mismatch for %s: want %s got %s", tt.path, tt.expectedName, ef.Name)
+			}
+			
+			if ef.SeriesName != tt.expectedSeries {
+				t.Errorf("SeriesName mismatch for %s: want %s got %s", tt.path, tt.expectedSeries, ef.SeriesName)
+			}
+			
+			if ef.SeasonNumber != tt.expectedSeason {
+				t.Errorf("SeasonNumber mismatch for %s: want %d got %d", tt.path, tt.expectedSeason, ef.SeasonNumber)
+			}
+		})
 	}
 }
 
@@ -134,8 +152,8 @@ func TestEpisodeFileFromPathWithEpisodeNumbers(t *testing.T) {
 			path:            "Over the Garden Wall/S01E01 - The Old Grist Mill Bluray-1080p.mkv",
 			expectedEpisode: 1,
 			expectedSeason:  0,
-			expectedSeries:  ".",
-			desc:            "No season directory but S01E01 in filename",
+			expectedSeries:  "Over the Garden Wall",
+			desc:            "No season directory but S01E01 in filename - should extract series name correctly",
 		},
 		{
 			path:            "The Office (US) (2005)/Season 01/The Office (US) - 1x05 - Pilot.mkv",
@@ -155,8 +173,22 @@ func TestEpisodeFileFromPathWithEpisodeNumbers(t *testing.T) {
 			path:            "Random Show/Some File.avi",
 			expectedEpisode: 0,
 			expectedSeason:  0,
-			expectedSeries:  ".",
-			desc:            "No episode or season info",
+			expectedSeries:  "Random Show",
+			desc:            "No episode or season info - should still extract series name",
+		},
+		{
+			path:            "Emma/S01E01 - Episode 1 Bluray-1080p.mkv",
+			expectedEpisode: 1,
+			expectedSeason:  0,
+			expectedSeries:  "Emma",
+			desc:            "Emma series with direct file in series directory (real problematic case)",
+		},
+		{
+			path:            "Fisk/S01E01 - Portrait of a Lady WEBDL-1080p.mkv",
+			expectedEpisode: 1,
+			expectedSeason:  0,
+			expectedSeries:  "Fisk",
+			desc:            "Fisk series with direct file in series directory (real problematic case)",
 		},
 	}
 

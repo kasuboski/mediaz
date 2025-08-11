@@ -119,7 +119,7 @@ CREATE TABLE IF NOT EXISTS "season" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     "series_id" INTEGER NOT NULL,
     "season_number" INTEGER NOT NULL,
-    "season_metadata_id" INTEGER UNIQUE,
+    "season_metadata_id" INTEGER,
     "monitored" INTEGER NOT NULL,
     FOREIGN KEY ("series_id") REFERENCES "series" ("id")
 );

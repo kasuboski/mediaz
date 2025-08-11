@@ -37,7 +37,21 @@ var (
 
 func EpisodeFileFromPath(path string) EpisodeFile {
 	name := sanitizeName(filepath.Base(path))
-	series := sanitizeName(dirName(filepath.Dir(path)))
+	
+	// Extract series name from path structure
+	// Support both directory structures:
+	// 1. "Series/Season X/Episode.mkv" - traditional structure with season directories
+	// 2. "Series/Episode.mkv" - flat structure with episodes directly in series directory
+	pathParts := strings.Split(path, string(filepath.Separator))
+	var series string
+	if len(pathParts) >= 2 {
+		// Extract series name from first path component
+		series = sanitizeName(pathParts[0])
+	} else {
+		// Single path component - extract from directory structure
+		series = sanitizeName(dirName(filepath.Dir(path)))
+	}
+	
 	season := 0
 	parent := dirName(path)
 	if m := seasonDirRe.FindStringSubmatch(parent); len(m) == 2 {
