@@ -51,7 +51,7 @@ func EpisodeFileFromPath(path string) EpisodeFile {
 		// Single path component - extract from directory structure
 		series = sanitizeName(dirName(filepath.Dir(path)))
 	}
-  
+
 	season := 0
 	parent := dirName(path)
 	if m := seasonDirRe.FindStringSubmatch(parent); len(m) == 2 {

@@ -21,7 +21,7 @@ func TestEpisodeFileFromPath(t *testing.T) {
 			desc:           "Traditional structure: Series/Season X/Episode",
 		},
 		{
-			path:           "Emma/S01E01 - Episode 1 Bluray-1080p.mkv", 
+			path:           "Emma/S01E01 - Episode 1 Bluray-1080p.mkv",
 			expectedName:   "S01E01 - Episode 1 Bluray-1080p.mkv",
 			expectedSeries: "Emma",
 			expectedSeason: 0,
@@ -36,7 +36,7 @@ func TestEpisodeFileFromPath(t *testing.T) {
 		},
 		{
 			path:           "Fisk/S02E03 - Pancakes & Prayer WEBDL-1080p.mkv",
-			expectedName:   "S02E03 - Pancakes & Prayer WEBDL-1080p.mkv", 
+			expectedName:   "S02E03 - Pancakes & Prayer WEBDL-1080p.mkv",
 			expectedSeries: "Fisk",
 			expectedSeason: 0,
 			desc:           "Flat structure: Another real-world case",
@@ -46,15 +46,15 @@ func TestEpisodeFileFromPath(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
 			ef := EpisodeFileFromPath(tt.path)
-			
+
 			if ef.Name != tt.expectedName {
 				t.Errorf("Name mismatch for %s: want %s got %s", tt.path, tt.expectedName, ef.Name)
 			}
-			
+
 			if ef.SeriesName != tt.expectedSeries {
 				t.Errorf("SeriesName mismatch for %s: want %s got %s", tt.path, tt.expectedSeries, ef.SeriesName)
 			}
-			
+
 			if ef.SeasonNumber != tt.expectedSeason {
 				t.Errorf("SeasonNumber mismatch for %s: want %d got %d", tt.path, tt.expectedSeason, ef.SeasonNumber)
 			}

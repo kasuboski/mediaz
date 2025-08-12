@@ -141,8 +141,8 @@ func (m MediaManager) IndexSeriesLibrary(ctx context.Context) error {
 				continue
 			}
 			seasonID = created
-			log.Debug("created new season with parsed season number", 
-				zap.Int64("series_id", seriesID), 
+			log.Debug("created new season with parsed season number",
+				zap.Int64("series_id", seriesID),
 				zap.Int("season_number", df.SeasonNumber),
 				zap.Int64("season_id", seasonID))
 		} else {

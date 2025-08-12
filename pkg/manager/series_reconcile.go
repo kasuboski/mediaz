@@ -250,7 +250,7 @@ func (m MediaManager) refreshSeriesEpisodes(ctx context.Context, series *storage
 
 	existingSeasonNumbers := make(map[int32]int64)
 	existingSeasonsWithoutMetadata := make([]*storage.Season, 0)
-	
+
 	for _, season := range existingSeasons {
 		if season.SeasonMetadataID == nil {
 			// Track seasons without metadata for later linking
@@ -1005,25 +1005,25 @@ func (m MediaManager) reconcileDiscoveredEpisode(ctx context.Context, episode *s
 
 	// Check if we need to refresh - either no season metadata exists, or current season lacks metadata link
 	shouldRefresh := len(allSeasonMetadata) == 0 || season.SeasonMetadataID == nil
-	
+
 	log.Debug("refresh decision",
 		zap.Int("season_metadata_count", len(allSeasonMetadata)),
 		zap.Bool("season_has_metadata_id", season.SeasonMetadataID != nil),
 		zap.Bool("should_refresh", shouldRefresh))
-	
+
 	if shouldRefresh {
 		if len(allSeasonMetadata) == 0 {
 			log.Debug("no season metadata found, refreshing from TMDB")
 		} else {
 			log.Debug("season lacks metadata link, refreshing to link existing metadata")
 		}
-		
+
 		err = m.refreshSeriesEpisodes(ctx, series, seriesMetadata, snapshot)
 		if err != nil {
 			log.Warn("failed to refresh series metadata from TMDB, skipping episode reconciliation", zap.Error(err))
 			return nil // Skip this episode rather than fail
 		}
-		
+
 		// Reload season to get updated metadata link
 		season, err = m.storage.GetSeason(ctx, table.Season.ID.EQ(sqlite.Int32(episode.SeasonID)))
 		if err != nil || season == nil {
