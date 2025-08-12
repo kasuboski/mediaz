@@ -40,13 +40,11 @@ func TestNew(t *testing.T) {
 
 		wantConfig := Config{
 			TMDB: TMDB{
-				Scheme: "https",
-				Host:   "my-host",
+				URI:    "https://my-host",
 				APIKey: "my-api-key",
 			},
 			Prowlarr: Prowlarr{
-				Scheme: "https",
-				Host:   "my-prowlarr-host",
+				URI:    "https://my-prowlarr-host",
 				APIKey: "my-prowlarr-api-key",
 			},
 			Manager: Manager{
@@ -65,9 +63,9 @@ func TestNew(t *testing.T) {
 	t.Run("success without file", func(t *testing.T) {
 		cu := viper.New()
 		cu.SetConfigFile("")
-		cu.SetDefault("tmdb.scheme", "https")
+		cu.SetDefault("tmdb.uri", "https://api.themoviedb.org")
 		cu.SetDefault("tmdb.apiKey", "fake-key")
-		cu.SetDefault("prowlarr.scheme", "http")
+		cu.SetDefault("prowlarr.uri", "http://localhost")
 		cu.SetDefault("manager.jobs.movieIndex", time.Minute*15)
 		cu.SetDefault("manager.jobs.movieReconcile", time.Minute*10)
 		c, err := New(cu)
@@ -77,11 +75,11 @@ func TestNew(t *testing.T) {
 
 		wantConfig := Config{
 			TMDB: TMDB{
-				Scheme: "https",
+				URI:    "https://api.themoviedb.org",
 				APIKey: "fake-key",
 			},
 			Prowlarr: Prowlarr{
-				Scheme: "http",
+				URI: "http://localhost",
 			},
 			Manager: Manager{
 				Jobs: Jobs{

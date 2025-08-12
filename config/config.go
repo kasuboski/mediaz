@@ -16,15 +16,15 @@ type Config struct {
 }
 
 type TMDB struct {
-	Scheme      string        `json:"scheme" yaml:"scheme" mapstructure:"scheme"`
-	Host        string        `json:"host" yaml:"host" mapstructure:"host"`
+	URI         string        `json:"uri" yaml:"uri" mapstructure:"uri"`
 	APIKey      string        `json:"apiKey" yaml:"apiKey" mapstructure:"apiKey"`
 	BaseBackoff time.Duration `json:"backoff" yaml:"backoff" mapstructure:"backoff"`
 	MaxRetries  int           `json:"maxRetries" yaml:"maxRetries" mapstructure:"maxRetries"`
 }
 
 type Server struct {
-	Port int `json:"port" yaml:"port" mapstructure:"port"`
+	Port    int    `json:"port" yaml:"port" mapstructure:"port"`
+	DistDir string `json:"distDir" yaml:"distDir" mapstructure:"distDir"`
 }
 
 type Library struct {
@@ -34,8 +34,7 @@ type Library struct {
 }
 
 type Prowlarr struct {
-	Scheme string `json:"scheme" yaml:"scheme" mapstructure:"scheme"`
-	Host   string `json:"host" yaml:"host" mapstructure:"host"`
+	URI    string `json:"uri" yaml:"uri" mapstructure:"uri"`
 	APIKey string `json:"apiKey" yaml:"apiKey" mapstructure:"apiKey"`
 }
 

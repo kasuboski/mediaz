@@ -710,9 +710,15 @@ func getSeasonRuntime(episodeMetadata []*model.EpisodeMetadata, totalSeasonEpiso
 		}
 	}
 
-	if consideredRuntimeCount > 0 && consideredRuntimeCount < totalSeasonEpisodes {
+	if consideredRuntimeCount == 0 {
+		return 0
+	}
+
+	// If we have runtimes for some but not all episodes, calculate an average and apply it to the missing ones
+	if consideredRuntimeCount < totalSeasonEpisodes {
 		averageRuntime := runtime / int32(consideredRuntimeCount)
-		runtime += averageRuntime * int32(totalSeasonEpisodes-consideredRuntimeCount)
+		missingRuntimes := (totalSeasonEpisodes - consideredRuntimeCount)
+		runtime = runtime + (averageRuntime * int32(missingRuntimes))
 	}
 
 	return runtime

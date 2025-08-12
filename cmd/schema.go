@@ -23,7 +23,7 @@ var schemaCmd = &cobra.Command{
 	Short: "generate database code",
 	Long:  `generate database code`,
 	Run: func(cmd *cobra.Command, args []string) {
-		schemas, err := storage.ReadSchemaFiles(schemaFiles...)
+		schemas, err := storage.GetSchemas()
 		if err != nil {
 			log.Fatal(err)
 		}

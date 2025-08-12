@@ -514,7 +514,6 @@ func TestSQLite_UpdateSeriesState(t *testing.T) {
 		require.NotNil(t, foundSeries)
 
 		assert.Equal(t, storage.SeriesStateDownloading, foundSeries.State)
-		// TmdbID is now in SeriesMetadata, not Series model
 		assert.Equal(t, int32(1), foundSeries.Monitored)
 		assert.Equal(t, int32(1), foundSeries.QualityProfileID)
 

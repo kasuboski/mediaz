@@ -75,7 +75,6 @@ func TestMediaManager_updateEpisodeState(t *testing.T) {
 		assert.Equal(t, "123", foundEpisode.DownloadID)
 		assert.Equal(t, int32(1), foundEpisode.SeasonID)
 		assert.Equal(t, int32(1), foundEpisode.EpisodeNumber)
-		// Runtime is now in EpisodeMetadata, not Episode model
 	})
 }
 
