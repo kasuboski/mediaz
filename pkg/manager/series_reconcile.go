@@ -906,7 +906,7 @@ func (m MediaManager) evaluateAndUpdateSeriesState(ctx context.Context, seriesID
 
 // ReconcileDiscoveredEpisodes processes episodes in the "discovered" state by linking them to their
 // corresponding TMDB metadata hierarchy (series -> season -> episode). Discovered episodes have video
-// files on disk that need to be associated with the proper metadata before transitioning to "downloaded" state.
+// files on disk that need to be associated with the proper metadata before transitioning to "completed" state.
 func (m MediaManager) ReconcileDiscoveredEpisodes(ctx context.Context) error {
 	log := logger.FromCtx(ctx)
 
