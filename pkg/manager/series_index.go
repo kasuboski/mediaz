@@ -78,10 +78,6 @@ func (m MediaManager) IndexSeriesLibrary(ctx context.Context) error {
 		if f == nil || f.RelativePath == nil {
 			continue
 		}
-
-		seriesName := library.MovieNameFromFilepath(*f.RelativePath)
-		_ = seriesName
-
 		// rely on discovered EpisodeFile data; library provides series/season parsing
 		var df library.EpisodeFile
 		for _, d := range discoveredFiles {
