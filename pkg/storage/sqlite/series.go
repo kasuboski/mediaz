@@ -635,10 +635,6 @@ func (s SQLite) ListEpisodeFiles(ctx context.Context) ([]*model.EpisodeFile, err
 
 // CreateSeriesMetadata creates the given series metadata
 func (s SQLite) CreateSeriesMetadata(ctx context.Context, seriesMeta model.SeriesMetadata) (int64, error) {
-	setColumns := make([]sqlite.Expression, len(table.SeriesMetadata.MutableColumns))
-	for i, c := range table.SeriesMetadata.MutableColumns {
-		setColumns[i] = c
-	}
 	// don't insert a zeroed ID
 	insertColumns := table.SeriesMetadata.MutableColumns
 	if seriesMeta.ID != 0 {
@@ -648,21 +644,32 @@ func (s SQLite) CreateSeriesMetadata(ctx context.Context, seriesMeta model.Serie
 	stmt := table.SeriesMetadata.
 		INSERT(insertColumns).
 		MODEL(seriesMeta).
-		RETURNING(table.SeriesMetadata.ID).
-		ON_CONFLICT(table.SeriesMetadata.ID).
-		DO_UPDATE(sqlite.SET(table.SeriesMetadata.MutableColumns.SET(sqlite.ROW(setColumns...))))
+		ON_CONFLICT(table.SeriesMetadata.TmdbID).
+		DO_UPDATE(sqlite.SET(
+			table.SeriesMetadata.Title.SET(sqlite.String(seriesMeta.Title)),
+			table.SeriesMetadata.LastInfoSync.SET(sqlite.CURRENT_TIMESTAMP()),
+			table.SeriesMetadata.SeasonCount.SET(sqlite.Int32(seriesMeta.SeasonCount)),
+			table.SeriesMetadata.EpisodeCount.SET(sqlite.Int32(seriesMeta.EpisodeCount)),
+			table.SeriesMetadata.Status.SET(sqlite.String(seriesMeta.Status)),
+		))
 
-	result, err := s.handleInsert(ctx, stmt)
+	_, err := s.handleInsert(ctx, stmt)
 	if err != nil {
 		return 0, err
 	}
 
-	inserted, err := result.LastInsertId()
+	var existing model.SeriesMetadata
+	getStmt := table.SeriesMetadata.
+		SELECT(table.SeriesMetadata.ID).
+		FROM(table.SeriesMetadata).
+		WHERE(table.SeriesMetadata.TmdbID.EQ(sqlite.Int32(seriesMeta.TmdbID)))
+
+	err = getStmt.QueryContext(ctx, s.db, &existing)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("failed to get series metadata ID after upsert: %w", err)
 	}
 
-	return inserted, nil
+	return int64(existing.ID), nil
 }
 
 // DeleteSeriesMetadata deletes a Series metadata by id

@@ -14,5 +14,4 @@ type Episode struct {
 	Monitored         int32
 	EpisodeMetadataID *int32
 	EpisodeFileID     *int32
-	Runtime           *int32
 }

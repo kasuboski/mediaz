@@ -21,7 +21,6 @@ type seriesTable struct {
 	Path             sqlite.ColumnString
 	Monitored        sqlite.ColumnInteger
 	Added            sqlite.ColumnTimestamp
-	TmdbID           sqlite.ColumnInteger
 	QualityProfileID sqlite.ColumnInteger
 	SeriesMetadataID sqlite.ColumnInteger
 	LastSearchTime   sqlite.ColumnTimestamp
@@ -69,12 +68,11 @@ func newSeriesTableImpl(schemaName, tableName, alias string) seriesTable {
 		PathColumn             = sqlite.StringColumn("path")
 		MonitoredColumn        = sqlite.IntegerColumn("monitored")
 		AddedColumn            = sqlite.TimestampColumn("added")
-		TmdbIDColumn           = sqlite.IntegerColumn("tmdb_id")
 		QualityProfileIDColumn = sqlite.IntegerColumn("quality_profile_id")
 		SeriesMetadataIDColumn = sqlite.IntegerColumn("series_metadata_id")
 		LastSearchTimeColumn   = sqlite.TimestampColumn("last_search_time")
-		allColumns             = sqlite.ColumnList{IDColumn, PathColumn, MonitoredColumn, AddedColumn, TmdbIDColumn, QualityProfileIDColumn, SeriesMetadataIDColumn, LastSearchTimeColumn}
-		mutableColumns         = sqlite.ColumnList{PathColumn, MonitoredColumn, AddedColumn, TmdbIDColumn, QualityProfileIDColumn, SeriesMetadataIDColumn, LastSearchTimeColumn}
+		allColumns             = sqlite.ColumnList{IDColumn, PathColumn, MonitoredColumn, AddedColumn, QualityProfileIDColumn, SeriesMetadataIDColumn, LastSearchTimeColumn}
+		mutableColumns         = sqlite.ColumnList{PathColumn, MonitoredColumn, AddedColumn, QualityProfileIDColumn, SeriesMetadataIDColumn, LastSearchTimeColumn}
 	)
 
 	return seriesTable{
@@ -85,7 +83,6 @@ func newSeriesTableImpl(schemaName, tableName, alias string) seriesTable {
 		Path:             PathColumn,
 		Monitored:        MonitoredColumn,
 		Added:            AddedColumn,
-		TmdbID:           TmdbIDColumn,
 		QualityProfileID: QualityProfileIDColumn,
 		SeriesMetadataID: SeriesMetadataIDColumn,
 		LastSearchTime:   LastSearchTimeColumn,

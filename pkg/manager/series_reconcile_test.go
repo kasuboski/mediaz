@@ -49,7 +49,6 @@ func TestMediaManager_updateEpisodeState(t *testing.T) {
 				SeasonID:          1,
 				EpisodeNumber:     1,
 				EpisodeMetadataID: ptr(int32(1)),
-				Runtime:           ptr(int32(100)),
 			},
 		}
 
@@ -74,7 +73,6 @@ func TestMediaManager_updateEpisodeState(t *testing.T) {
 		assert.Equal(t, "123", foundEpisode.DownloadID)
 		assert.Equal(t, int32(1), foundEpisode.SeasonID)
 		assert.Equal(t, int32(1), foundEpisode.EpisodeNumber)
-		assert.Equal(t, ptr(int32(100)), foundEpisode.Runtime)
 	})
 }
 
@@ -127,7 +125,6 @@ func TestMediaManager_reconcileMissingEpisodes(t *testing.T) {
 				SeasonID:          1,
 				EpisodeNumber:     1,
 				EpisodeMetadataID: ptr(int32(metadataID1)),
-				Runtime:           ptr(int32(45)),
 			},
 		}
 
@@ -151,7 +148,6 @@ func TestMediaManager_reconcileMissingEpisodes(t *testing.T) {
 				SeasonID:          1,
 				EpisodeNumber:     2,
 				EpisodeMetadataID: ptr(int32(metadataID2)),
-				Runtime:           ptr(int32(45)),
 			},
 		}
 		_, err = store.CreateEpisode(ctx, episode2, storage.EpisodeStateMissing)
@@ -174,7 +170,6 @@ func TestMediaManager_reconcileMissingEpisodes(t *testing.T) {
 				SeasonID:          1,
 				EpisodeNumber:     3,
 				EpisodeMetadataID: ptr(int32(metadataID3)),
-				Runtime:           ptr(int32(45)),
 			},
 		}
 
@@ -302,7 +297,6 @@ func TestMediaManager_reconcileMissingEpisodes(t *testing.T) {
 				SeasonID:          int32(seasonID),
 				EpisodeNumber:     1,
 				EpisodeMetadataID: ptr(int32(metadataID1)),
-				Runtime:           ptr(int32(45)),
 			},
 		}
 
@@ -326,7 +320,6 @@ func TestMediaManager_reconcileMissingEpisodes(t *testing.T) {
 				SeasonID:          int32(seasonID),
 				EpisodeNumber:     2,
 				EpisodeMetadataID: ptr(int32(metadataID2)),
-				Runtime:           ptr(int32(45)),
 			},
 		}
 		_, err = store.CreateEpisode(ctx, episode2, storage.EpisodeStateMissing)
@@ -591,7 +584,6 @@ func TestMediaManager_reconcileMissingSeason(t *testing.T) {
 				SeasonID:          int32(seasonID),
 				EpisodeNumber:     1,
 				EpisodeMetadataID: ptr(int32(episodeMetadataID1)),
-				Runtime:           ptr(int32(45)),
 			},
 		}, storage.EpisodeStateMissing)
 		require.NoError(t, err)
@@ -610,7 +602,6 @@ func TestMediaManager_reconcileMissingSeason(t *testing.T) {
 				SeasonID:          int32(seasonID),
 				EpisodeNumber:     2,
 				EpisodeMetadataID: ptr(int32(episodeMetadataID2)),
-				Runtime:           ptr(int32(45)),
 			},
 		}, storage.EpisodeStateMissing)
 		require.NoError(t, err)
@@ -745,7 +736,6 @@ func TestMediaManager_reconcileMissingSeason(t *testing.T) {
 				SeasonID:          int32(seasonID),
 				EpisodeNumber:     1,
 				EpisodeMetadataID: ptr(int32(episodeMetadataID1)),
-				Runtime:           ptr(int32(45)),
 			},
 		}, storage.EpisodeStateMissing)
 		require.NoError(t, err)
@@ -765,7 +755,6 @@ func TestMediaManager_reconcileMissingSeason(t *testing.T) {
 				SeasonID:          int32(seasonID),
 				EpisodeNumber:     2,
 				EpisodeMetadataID: ptr(int32(episodeMetadataID2)),
-				Runtime:           ptr(int32(45)),
 			},
 		}, storage.EpisodeStateMissing)
 		require.NoError(t, err)
@@ -819,51 +808,51 @@ func TestMediaManager_reconcileMissingSeason(t *testing.T) {
 func Test_getSeasonRuntime(t *testing.T) {
 	tests := []struct {
 		name                string
-		episodes            []*storage.Episode
+		episodeMetadata     []*model.EpisodeMetadata
 		totalSeasonEpisodes int
 		want                int32
 	}{
 		{
 			name: "all episodes have runtime",
-			episodes: []*storage.Episode{
-				{Episode: model.Episode{Runtime: ptr(int32(30))}},
-				{Episode: model.Episode{Runtime: ptr(int32(30))}},
-				{Episode: model.Episode{Runtime: ptr(int32(30))}},
+			episodeMetadata: []*model.EpisodeMetadata{
+				{Runtime: ptr(int32(30))},
+				{Runtime: ptr(int32(30))},
+				{Runtime: ptr(int32(30))},
 			},
 			totalSeasonEpisodes: 3,
 			want:                90,
 		},
 		{
 			name: "some episodes missing runtime",
-			episodes: []*storage.Episode{
-				{Episode: model.Episode{Runtime: ptr(int32(30))}},
-				{Episode: model.Episode{Runtime: nil}},
-				{Episode: model.Episode{Runtime: ptr(int32(30))}},
+			episodeMetadata: []*model.EpisodeMetadata{
+				{Runtime: ptr(int32(30))},
+				{Runtime: nil},
+				{Runtime: ptr(int32(30))},
 			},
 			totalSeasonEpisodes: 3,
 			want:                90, // Average of 30 mins applied to missing episode
 		},
 		{
 			name: "all episodes missing runtime",
-			episodes: []*storage.Episode{
-				{Episode: model.Episode{Runtime: nil}},
-				{Episode: model.Episode{Runtime: nil}},
-				{Episode: model.Episode{Runtime: nil}},
+			episodeMetadata: []*model.EpisodeMetadata{
+				{Runtime: nil},
+				{Runtime: nil},
+				{Runtime: nil},
 			},
 			totalSeasonEpisodes: 3,
 			want:                0,
 		},
 		{
 			name:                "empty episode list",
-			episodes:            []*storage.Episode{},
+			episodeMetadata:     []*model.EpisodeMetadata{},
 			totalSeasonEpisodes: 0,
 			want:                0,
 		},
 		{
 			name: "more total episodes than provided",
-			episodes: []*storage.Episode{
-				{Episode: model.Episode{Runtime: ptr(int32(30))}},
-				{Episode: model.Episode{Runtime: ptr(int32(30))}},
+			episodeMetadata: []*model.EpisodeMetadata{
+				{Runtime: ptr(int32(30))},
+				{Runtime: ptr(int32(30))},
 			},
 			totalSeasonEpisodes: 4,
 			want:                120, // (30+30) + (30*2) for missing episodes
@@ -872,7 +861,7 @@ func Test_getSeasonRuntime(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := getSeasonRuntime(tt.episodes, tt.totalSeasonEpisodes)
+			got := getSeasonRuntime(tt.episodeMetadata, tt.totalSeasonEpisodes)
 			assert.Equal(t, tt.want, got)
 		})
 	}
@@ -1010,7 +999,6 @@ func TestMediaManager_ReconcileMissingSeries(t *testing.T) {
 				SeasonID:          int32(seasonID),
 				EpisodeNumber:     1,
 				EpisodeMetadataID: ptr(int32(episodeMetadataID1)),
-				Runtime:           ptr(int32(45)),
 				Monitored:         1,
 			},
 		}, storage.EpisodeStateMissing)
@@ -1031,7 +1019,6 @@ func TestMediaManager_ReconcileMissingSeries(t *testing.T) {
 				SeasonID:          int32(seasonID),
 				EpisodeNumber:     2,
 				EpisodeMetadataID: ptr(int32(episodeMetadataID2)),
-				Runtime:           ptr(int32(45)),
 			},
 		}, storage.EpisodeStateMissing)
 		require.NoError(t, err)
@@ -1215,7 +1202,6 @@ func TestMediaManager_ReconcileContinuingSeries(t *testing.T) {
 				SeasonID:          int32(seasonID),
 				EpisodeNumber:     3,
 				EpisodeMetadataID: ptr(int32(episodeMetadataID)),
-				Runtime:           ptr(int32(45)),
 				Monitored:         1,
 			},
 		}, storage.EpisodeStateMissing)
@@ -1336,7 +1322,6 @@ func TestMediaManager_ReconcileContinuingSeries(t *testing.T) {
 					EpisodeNumber:     int32(i),
 					EpisodeMetadataID: ptr(int32(episodeMetadataID)),
 					Monitored:         1,
-					Runtime:           ptr(int32(45)),
 				},
 			}, storage.EpisodeStateMissing)
 			require.NoError(t, err)
