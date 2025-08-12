@@ -127,7 +127,7 @@ func (l *MediaLibrary) FindMovies(ctx context.Context) ([]MovieFile, error) {
 			return nil
 		}
 
-		movie := FromPath(path)
+		movie := MovieFileFromPath(path)
 		info, err := d.Info()
 		if err == nil {
 			movie.Size = info.Size()
@@ -146,13 +146,12 @@ func (l *MediaLibrary) FindMovies(ctx context.Context) ([]MovieFile, error) {
 }
 
 // FindEpisodes lists episodes in the tv library
-func (l *MediaLibrary) FindEpisodes(ctx context.Context) ([]string, error) {
+func (l *MediaLibrary) FindEpisodes(ctx context.Context) ([]EpisodeFile, error) {
 	log := logger.FromCtx(ctx)
-	episodes := []string{}
+	episodes := []EpisodeFile{}
 	err := fs.WalkDir(l.tv.FS, ".", func(path string, d fs.DirEntry, err error) error {
 		log.Debugw("episode walk", "path", path)
 		if err != nil {
-			// just skip this dir for now if there's an issue
 			return fs.SkipDir
 		}
 
@@ -173,8 +172,11 @@ func (l *MediaLibrary) FindEpisodes(ctx context.Context) ([]string, error) {
 			return nil
 		}
 
-		episodes = append(episodes, d.Name())
-
+		e := EpisodeFileFromPath(path)
+		if info, err := d.Info(); err == nil {
+			e.Size = info.Size()
+		}
+		episodes = append(episodes, e)
 		return nil
 	})
 
