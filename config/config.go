@@ -7,6 +7,7 @@ import (
 )
 
 type Config struct {
+	FilePath string   `json:"filePath" yaml:"filePath" mapstructure:"filePath"`
 	TMDB     TMDB     `json:"tmdb" yaml:"tmdb" mapstructure:"tmdb"`
 	Prowlarr Prowlarr `json:"prowlarr" yaml:"prowlarr" mapstructure:"prowlarr"`
 	Library  Library  `json:"library" yaml:"library" mapstructure:"library"`
