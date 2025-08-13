@@ -4,9 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"path/filepath"
 	"slices"
-	"strconv"
 
 	"github.com/go-jet/jet/v2/sqlite"
 	"github.com/kasuboski/mediaz/pkg/download"
@@ -1373,13 +1371,13 @@ func (m MediaManager) reconcileSeasonPackDownload(ctx context.Context, episode *
 
 	// For each file in the season pack, match it to an episode and link it
 	for _, filePath := range status.FilePaths {
-		matchedEpisodes := m.matchEpisodeFileToEpisodes(ctx, filePath, episodes)
-		if len(matchedEpisodes) == 0 {
+		matchedEpisode := m.matchEpisodeFileToEpisode(ctx, filePath, episodes)
+		if matchedEpisode == nil {
 			log.Warn("could not match file to episode, skipping", zap.String("file", filePath))
 			continue
 		}
 
-		err = m.addEpisodeFileToLibrary(ctx, seriesMetadata.Title, seasonMetadata.Number, filePath, matchedEpisodes)
+		err = m.addEpisodeFileToLibrary(ctx, seriesMetadata.Title, seasonMetadata.Number, filePath, matchedEpisode)
 		if err != nil {
 			log.Warn("failed to add episode file to library", zap.Error(err))
 			continue
@@ -1477,7 +1475,7 @@ func (m MediaManager) processIndividualEpisodeDownload(ctx context.Context, epis
 	}
 
 	for _, filePath := range status.FilePaths {
-		err := m.addEpisodeFileToLibrary(ctx, seriesMetadata.Title, seasonMetadata.Number, filePath, []*storage.Episode{episode})
+		err := m.addEpisodeFileToLibrary(ctx, seriesMetadata.Title, seasonMetadata.Number, filePath, episode)
 		if err != nil {
 			log.Error("failed to add episode file to library", zap.Error(err))
 			return err
@@ -1488,16 +1486,13 @@ func (m MediaManager) processIndividualEpisodeDownload(ctx context.Context, epis
 	return m.updateEpisodeState(ctx, *episode, storage.EpisodeStateDownloaded, nil)
 }
 
-func (m MediaManager) addEpisodeFileToLibrary(ctx context.Context, seriesTitle string, seasonNumber int32, filePath string, episodes []*storage.Episode) error {
+func (m MediaManager) addEpisodeFileToLibrary(ctx context.Context, seriesTitle string, seasonNumber int32, filePath string, episode *storage.Episode) error {
 	log := logger.FromCtx(ctx)
-	log = log.With("series", seriesTitle, "season", seasonNumber, "episodes", len(episodes))
+	log = log.With("series", seriesTitle, "season", seasonNumber, "episodes")
 
-	// Check if any episodes already have files linked to avoid duplicate processing
-	for _, episode := range episodes {
-		if episode.EpisodeFileID != nil {
-			log.Debug("episode already has file linked, skipping", zap.Int32("episode_id", episode.ID))
-			return nil
-		}
+	if episode.EpisodeFileID != nil {
+		log.Debug("episode already has file linked, skipping", zap.Int32("episode_id", episode.ID))
+		return nil
 	}
 
 	ef, err := m.library.AddEpisode(ctx, seriesTitle, seasonNumber, filePath)
@@ -1522,51 +1517,61 @@ func (m MediaManager) addEpisodeFileToLibrary(ctx context.Context, seriesTitle s
 		return err
 	}
 
-	// Link all episodes to this file (for season packs, multiple episodes share one file)
-	for _, episode := range episodes {
-		err = m.storage.UpdateEpisodeEpisodeFileID(ctx, int64(episode.ID), episodeFileID)
-		if err != nil {
-			log.Error("failed to link episode to file", zap.Error(err), zap.Int32("episode_id", episode.ID))
-			continue
-		}
-
-		log.Debug("linked episode to file", zap.Int32("episode_id", episode.ID), zap.String("path", ef.RelativePath))
+	err = m.storage.UpdateEpisodeEpisodeFileID(ctx, int64(episode.ID), episodeFileID)
+	if err != nil {
+		log.Error("failed to link episode to file", zap.Error(err), zap.Int32("episode_id", episode.ID))
+		return err
 	}
+
+	log.Debug("linked episode to file", zap.Int32("episode_id", episode.ID), zap.String("path", ef.RelativePath))
 
 	return nil
 }
 
-// matchEpisodeFileToEpisodes attempts to match an episode file to specific episodes based on filename patterns
-func (m MediaManager) matchEpisodeFileToEpisodes(ctx context.Context, filePath string, seasonEpisodes []*storage.Episode) []*storage.Episode {
+// matchEpisodeFileToEpisode matches a downloaded file to a specific episode using the library package's
+// episode extraction logic. Returns the matched episode or nil if no match is found.
+func (m MediaManager) matchEpisodeFileToEpisode(ctx context.Context, filePath string, episodes []*storage.Episode) *storage.Episode {
 	log := logger.FromCtx(ctx)
-	fileName := filepath.Base(filePath)
+	log = log.With("file_path", filePath, "candidate_episodes", len(episodes))
 
-	// Extract episode numbers from filename using regex patterns
-	matches := episodeNumberPattern.FindStringSubmatch(fileName)
-	if len(matches) < 3 {
-		log.Debug("could not extract episode number from filename", zap.String("filename", fileName))
+	// Use the library package to extract episode information from the file path
+	episodeFile := library.EpisodeFileFromPath(filePath)
+
+	log.Debug("extracted episode info from file",
+		zap.String("series_name", episodeFile.SeriesName),
+		zap.Int("season_number", episodeFile.SeasonNumber),
+		zap.Int("episode_number", episodeFile.EpisodeNumber))
+
+	// If we couldn't extract episode number, we can't match
+	if episodeFile.EpisodeNumber == 0 {
+		log.Warn("could not extract episode number from file path")
 		return nil
 	}
 
-	episodeNumberStr := matches[2] // The episode number part
-	episodeNumber, err := strconv.Atoi(episodeNumberStr)
-	if err != nil {
-		log.Debug("could not parse episode number", zap.String("episode_str", episodeNumberStr))
-		return nil
-	}
+	// Look for an episode that matches the extracted episode number
+	for _, episode := range episodes {
+		if episode.EpisodeMetadataID == nil {
+			continue // Skip episodes without metadata
+		}
 
-	// Find episodes that match this episode number
-	var matchedEpisodes []*storage.Episode
-	for _, ep := range seasonEpisodes {
-		if ep.EpisodeNumber == int32(episodeNumber) {
-			matchedEpisodes = append(matchedEpisodes, ep)
+		// Get the episode metadata to check the episode number
+		episodeMetadata, err := m.storage.GetEpisodeMetadata(ctx,
+			table.EpisodeMetadata.ID.EQ(sqlite.Int32(*episode.EpisodeMetadataID)))
+		if err != nil {
+			log.Warn("failed to get episode metadata", zap.Error(err), zap.Int32("episode_id", episode.ID))
+			continue
+		}
+
+		// Check if the episode numbers match
+		if int32(episodeFile.EpisodeNumber) == episodeMetadata.Number {
+			log.Debug("matched file to episode",
+				zap.Int32("episode_id", episode.ID),
+				zap.Int32("episode_number", episodeMetadata.Number))
+			return episode
 		}
 	}
 
-	log.Debug("matched episode file to episodes",
-		zap.String("filename", fileName),
-		zap.Int("episode_number", episodeNumber),
-		zap.Int("matched_count", len(matchedEpisodes)))
-
-	return matchedEpisodes
+	log.Warn("no matching episode found",
+		zap.Int("file_episode_number", episodeFile.EpisodeNumber))
+	return nil
 }
