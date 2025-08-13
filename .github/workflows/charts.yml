@@ -2,10 +2,8 @@ name: charts
 
 on:
   push:
-    branches:
-      - main
-    paths:
-      - 'charts/**'
+    tags:
+        - v*.*.*
 
 permissions:
   contents: write
