@@ -302,7 +302,7 @@ func TestSeasonMetadataStorage(t *testing.T) {
 	metadata := model.SeasonMetadata{
 		TmdbID:   12345,
 		Title:    "Season 1",
-		Overview: "Test season overview",
+		Overview: ptr("Test season overview"),
 		Number:   1,
 	}
 

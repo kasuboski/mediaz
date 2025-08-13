@@ -17,6 +17,6 @@ type SeasonMetadata struct {
 	Number   int32
 	TmdbID   int32
 	Title    string
-	Overview string
+	Overview *string
 	AirDate  *time.Time
 }

@@ -248,7 +248,7 @@ func TestServer_GetTVDetailByTMDBID(t *testing.T) {
 			ID:           1,
 			TmdbID:       12345,
 			Title:        "Test TV Show",
-			Overview:     "A test TV show overview",
+			Overview:     ptr("A test TV show overview"),
 			FirstAirDate: ptr(time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC)),
 			LastAirDate:  ptr(time.Date(2023, 12, 31, 0, 0, 0, 0, time.UTC)),
 			SeasonCount:  3,

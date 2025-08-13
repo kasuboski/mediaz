@@ -730,10 +730,7 @@ func (s SQLite) CreateSeasonMetadata(ctx context.Context, seasonMeta model.Seaso
 		INSERT(insertColumns).
 		MODEL(seasonMeta).
 		ON_CONFLICT(table.SeasonMetadata.TmdbID).
-		DO_UPDATE(sqlite.SET(
-			table.SeasonMetadata.Title.SET(sqlite.String(seasonMeta.Title)),
-			table.SeasonMetadata.Overview.SET(sqlite.String(seasonMeta.Overview)),
-		))
+		DO_NOTHING()
 
 	_, err := s.handleInsert(ctx, stmt)
 	if err != nil {

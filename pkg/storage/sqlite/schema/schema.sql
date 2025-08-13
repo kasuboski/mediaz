@@ -105,7 +105,7 @@ CREATE TABLE IF NOT EXISTS "series_metadata" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     "tmdb_id" INTEGER NOT NULL UNIQUE,
     "title" TEXT NOT NULL,
-    "overview" TEXT NOT NULL,
+    "overview" TEXT,
     "last_info_sync" DATETIME,
     "first_air_date" DATETIME,
     "last_air_date" DATETIME,
@@ -130,7 +130,7 @@ CREATE TABLE IF NOT EXISTS "season_metadata" (
     "number" INTEGER NOT NULL,
     "tmdb_id" INTEGER NOT NULL UNIQUE,
     "title" TEXT NOT NULL,
-    "overview" TEXT NOT NULL,
+    "overview" TEXT,
     "air_date" DATETIME,
     FOREIGN KEY ("series_id") REFERENCES "series" ("id")
 );
@@ -235,3 +235,21 @@ WHERE
     "most_recent" = 1;
 
 CREATE UNIQUE INDEX IF NOT EXISTS "idx_movie_transitions_by_parent_sort_key" ON "movie_transition"("movie_id", "sort_key");
+
+CREATE UNIQUE INDEX IF NOT EXISTS "idx_series_transitions_by_parent_most_recent" ON "series_transition"("series_id", "most_recent")
+WHERE
+    "most_recent" = 1;
+
+CREATE UNIQUE INDEX IF NOT EXISTS "idx_series_transitions_by_parent_sort_key" ON "series_transition"("series_id", "sort_key");
+
+CREATE UNIQUE INDEX IF NOT EXISTS "idx_season_transitions_by_parent_most_recent" ON "season_transition"("season_id", "most_recent")
+WHERE
+    "most_recent" = 1;
+
+CREATE UNIQUE INDEX IF NOT EXISTS "idx_season_transitions_by_parent_sort_key" ON "season_transition"("season_id", "sort_key");
+
+CREATE UNIQUE INDEX IF NOT EXISTS "idx_episode_transitions_by_parent_most_recent" ON "episode_transition"("episode_id", "most_recent")
+WHERE
+    "most_recent" = 1;
+
+CREATE UNIQUE INDEX IF NOT EXISTS "idx_episode_transitions_by_parent_sort_key" ON "episode_transition"("episode_id", "sort_key");
