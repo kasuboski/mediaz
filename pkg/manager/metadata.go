@@ -225,7 +225,7 @@ func FromSeriesSeasons(tmdbSeason tmdb.Season) model.SeasonMetadata {
 		TmdbID:   int32(tmdbSeason.ID),
 		Title:    tmdbSeason.Name,
 		Number:   int32(tmdbSeason.SeasonNumber),
-		Overview: &tmdbSeason.Overview,
+		Overview: tmdbSeason.Overview,
 	}
 
 	airDate, err := parseTMDBDate(tmdbSeason.AirDate)

@@ -105,7 +105,7 @@ CREATE TABLE IF NOT EXISTS "series_metadata" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     "tmdb_id" INTEGER NOT NULL UNIQUE,
     "title" TEXT NOT NULL,
-    "overview" TEXT,
+    "overview" TEXT NOT NULL,
     "last_info_sync" DATETIME,
     "first_air_date" DATETIME,
     "last_air_date" DATETIME,
@@ -130,7 +130,7 @@ CREATE TABLE IF NOT EXISTS "season_metadata" (
     "number" INTEGER NOT NULL,
     "tmdb_id" INTEGER NOT NULL UNIQUE,
     "title" TEXT NOT NULL,
-    "overview" TEXT,
+    "overview" TEXT NOT NULL,
     "air_date" DATETIME,
     FOREIGN KEY ("series_id") REFERENCES "series" ("id")
 );

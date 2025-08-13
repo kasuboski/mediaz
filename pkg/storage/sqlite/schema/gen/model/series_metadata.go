@@ -15,7 +15,7 @@ type SeriesMetadata struct {
 	ID           int32 `sql:"primary_key"`
 	TmdbID       int32
 	Title        string
-	Overview     *string
+	Overview     string
 	LastInfoSync *time.Time
 	FirstAirDate *time.Time
 	LastAirDate  *time.Time
