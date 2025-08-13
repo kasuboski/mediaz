@@ -1256,7 +1256,9 @@ func TestMediaManager_ReconcileContinuingSeries(t *testing.T) {
 		seriesMetadataID, err := store.CreateSeriesMetadata(ctx, model.SeriesMetadata{
 			TmdbID:       100,
 			Title:        "Weekly Series",
-			EpisodeCount: 5,
+			SeasonCount:  1,
+			EpisodeCount: 3,
+			Status:       "Returning Series", // Add required status field
 		})
 		require.NoError(t, err)
 
@@ -1278,7 +1280,7 @@ func TestMediaManager_ReconcileContinuingSeries(t *testing.T) {
 		require.NoError(t, err)
 
 		seasonMetadataID, err := store.CreateSeasonMetadata(ctx, model.SeasonMetadata{
-			SeriesID: int32(seriesID), // Should reference the series metadata ID, not storage series ID
+			SeriesID: int32(seriesMetadataID), // Should reference the series metadata ID, not storage series ID
 			Title:    "Season 1",
 			Number:   1,
 			TmdbID:   1001, // Match the TMDB ID from our mock
@@ -1340,15 +1342,21 @@ func TestMediaManager_ReconcileContinuingSeries(t *testing.T) {
 		// Set up TMDB mock for metadata refresh
 		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
 		tmdbMock.EXPECT().GetSeriesDetails(ctx, 100).Return(&tmdb.SeriesDetails{
-			ID: 100, // Match the series TMDB ID
+			ID:               100, // Match the series TMDB ID
+			Name:             "Weekly Series",
+			NumberOfSeasons:  1,
+			NumberOfEpisodes: 3,
+			FirstAirDate:     "2024-01-01",
 			Seasons: []tmdb.Season{
 				{
 					ID:           1001, // Set explicit TMDB ID for season
 					SeasonNumber: 1,
+					Name:         "Season 1",
+					Overview:     "First season",
 					Episodes: []tmdb.Episode{
-						{ID: 1001001, EpisodeNumber: 1},
-						{ID: 1001002, EpisodeNumber: 2},
-						{ID: 1001003, EpisodeNumber: 3}, // This new episode should be discovered
+						{ID: 1001001, EpisodeNumber: 1, Name: "Episode 1", Overview: "First episode", Runtime: 45, AirDate: "2024-01-01"},
+						{ID: 1001002, EpisodeNumber: 2, Name: "Episode 2", Overview: "Second episode", Runtime: 45, AirDate: "2024-01-02"},
+						{ID: 1001003, EpisodeNumber: 3, Name: "Episode 3", Overview: "Third episode", Runtime: 45, AirDate: "2025-12-31"},
 					},
 				},
 			},
@@ -1372,7 +1380,6 @@ func TestMediaManager_ReconcileContinuingSeries(t *testing.T) {
 		err = m.ReconcileContinuingSeries(ctx, snapshot)
 		require.NoError(t, err)
 
-		// After reconciliation, we should have 3 episode records (episode 3 should be discovered and created)
 		episodesAfter, err := store.ListEpisodes(ctx, table.Episode.SeasonID.EQ(sqlite.Int64(seasonID)))
 		require.NoError(t, err)
 		assert.Len(t, episodesAfter, 3, "Should have 3 episodes after reconciliation (episode 3 should be discovered)")
@@ -1800,5 +1807,96 @@ func TestMediaManager_ReconcileDiscoveredEpisodes(t *testing.T) {
 		m := New(nil, nil, nil, store, nil, config.Manager{})
 		err = m.ReconcileDiscoveredEpisodes(ctx)
 		require.NoError(t, err) // Function should not fail even if individual episodes fail to reconcile
+	})
+}
+
+func TestMediaManager_matchEpisodeFileToEpisode(t *testing.T) {
+	t.Run("matches S01E03 format", func(t *testing.T) {
+		ctx := context.Background()
+		store := newStore(t, ctx)
+
+		// Create season metadata first
+		seasonMetadataID, err := store.CreateSeasonMetadata(ctx, model.SeasonMetadata{
+			TmdbID: 1,
+			Title:  "Season 1",
+			Number: 1,
+		})
+		require.NoError(t, err)
+
+		// Create episode metadata for episodes 1,2,3
+		episodeMetadataID1, err := store.CreateEpisodeMetadata(ctx, model.EpisodeMetadata{TmdbID: 1, Title: "Episode 1", Number: 1, SeasonID: int32(seasonMetadataID)})
+		require.NoError(t, err)
+		episodeMetadataID2, err := store.CreateEpisodeMetadata(ctx, model.EpisodeMetadata{TmdbID: 2, Title: "Episode 2", Number: 2, SeasonID: int32(seasonMetadataID)})
+		require.NoError(t, err)
+		episodeMetadataID3, err := store.CreateEpisodeMetadata(ctx, model.EpisodeMetadata{TmdbID: 3, Title: "Episode 3", Number: 3, SeasonID: int32(seasonMetadataID)})
+		require.NoError(t, err)
+
+		// Create episodes
+		episodes := []*storage.Episode{
+			{Episode: model.Episode{ID: 1, EpisodeMetadataID: ptr(int32(episodeMetadataID1))}},
+			{Episode: model.Episode{ID: 2, EpisodeMetadataID: ptr(int32(episodeMetadataID2))}},
+			{Episode: model.Episode{ID: 3, EpisodeMetadataID: ptr(int32(episodeMetadataID3))}},
+		}
+
+		m := New(nil, nil, nil, store, nil, config.Manager{})
+		result := m.matchEpisodeFileToEpisode(ctx, "/downloads/Series.Name.S01E03.1080p.WEB-DL.x264-GROUP.mkv", episodes)
+		require.NotNil(t, result)
+		assert.Equal(t, int32(3), result.ID)
+	})
+
+	t.Run("matches 1x05 format", func(t *testing.T) {
+		ctx := context.Background()
+		store := newStore(t, ctx)
+
+		seasonMetadataID, err := store.CreateSeasonMetadata(ctx, model.SeasonMetadata{TmdbID: 2, Title: "Season 1", Number: 1})
+		require.NoError(t, err)
+
+		episodeMetadataID4, err := store.CreateEpisodeMetadata(ctx, model.EpisodeMetadata{TmdbID: 4, Title: "Episode 4", Number: 4, SeasonID: int32(seasonMetadataID)})
+		require.NoError(t, err)
+		episodeMetadataID5, err := store.CreateEpisodeMetadata(ctx, model.EpisodeMetadata{TmdbID: 5, Title: "Episode 5", Number: 5, SeasonID: int32(seasonMetadataID)})
+		require.NoError(t, err)
+
+		episodes := []*storage.Episode{
+			{Episode: model.Episode{ID: 4, EpisodeMetadataID: ptr(int32(episodeMetadataID4))}},
+			{Episode: model.Episode{ID: 5, EpisodeMetadataID: ptr(int32(episodeMetadataID5))}},
+		}
+
+		m := New(nil, nil, nil, store, nil, config.Manager{})
+		result := m.matchEpisodeFileToEpisode(ctx, "/downloads/Series.Name.1x05.720p.HDTV.x264-GROUP.mkv", episodes)
+		require.NotNil(t, result)
+		assert.Equal(t, int32(5), result.ID)
+	})
+
+	t.Run("no match when episode number not found", func(t *testing.T) {
+		ctx := context.Background()
+		store := newStore(t, ctx)
+
+		episodeMetadataID6, err := store.CreateEpisodeMetadata(ctx, model.EpisodeMetadata{TmdbID: 6, Title: "Episode 1", Number: 1, SeasonID: 1})
+		require.NoError(t, err)
+
+		episodes := []*storage.Episode{{Episode: model.Episode{ID: 6, EpisodeMetadataID: ptr(int32(episodeMetadataID6))}}}
+
+		m := New(nil, nil, nil, store, nil, config.Manager{})
+		result := m.matchEpisodeFileToEpisode(ctx, "/downloads/Series.Name.Some.Random.File.mkv", episodes)
+		assert.Nil(t, result)
+	})
+
+	t.Run("no match when episode number doesn't exist in episodes", func(t *testing.T) {
+		ctx := context.Background()
+		store := newStore(t, ctx)
+
+		episodeMetadataID7, err := store.CreateEpisodeMetadata(ctx, model.EpisodeMetadata{TmdbID: 7, Title: "Episode 1", Number: 1, SeasonID: 1})
+		require.NoError(t, err)
+		episodeMetadataID8, err := store.CreateEpisodeMetadata(ctx, model.EpisodeMetadata{TmdbID: 8, Title: "Episode 2", Number: 2, SeasonID: 1})
+		require.NoError(t, err)
+
+		episodes := []*storage.Episode{
+			{Episode: model.Episode{ID: 7, EpisodeMetadataID: ptr(int32(episodeMetadataID7))}},
+			{Episode: model.Episode{ID: 8, EpisodeMetadataID: ptr(int32(episodeMetadataID8))}},
+		}
+
+		m := New(nil, nil, nil, store, nil, config.Manager{})
+		result := m.matchEpisodeFileToEpisode(ctx, "/downloads/Series.Name.S01E10.1080p.WEB-DL.x264-GROUP.mkv", episodes)
+		assert.Nil(t, result)
 	})
 }

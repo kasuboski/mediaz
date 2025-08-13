@@ -20,5 +20,6 @@ type Library interface {
 	FindMovies(ctx context.Context) ([]MovieFile, error)
 	AddMovie(ctx context.Context, title, sourcePath string) (MovieFile, error)
 
+	AddEpisode(ctx context.Context, seriesTitle string, seasonNumber int32, sourcePath string) (EpisodeFile, error)
 	FindEpisodes(ctx context.Context) ([]EpisodeFile, error)
 }

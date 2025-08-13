@@ -79,7 +79,7 @@ type TVDetailResult struct {
 	TMDBID           int32    `json:"tmdbID"`
 	Title            string   `json:"title"`
 	OriginalTitle    *string  `json:"originalTitle,omitempty"`
-	Overview         *string  `json:"overview,omitempty"`
+	Overview         string  `json:"overview,omitempty"`
 	PosterPath       string   `json:"posterPath,omitempty"`
 	BackdropPath     *string  `json:"backdropPath,omitempty"`
 	FirstAirDate     *string  `json:"firstAirDate,omitempty"`

@@ -287,7 +287,7 @@ func TestFromSeriesSeasons(t *testing.T) {
 					return &t
 				}(),
 				Number:   1,
-				Overview: func() *string { o := "Test overview"; return &o }(),
+				Overview: ptr("Test overview"),
 			},
 		},
 		{
@@ -304,7 +304,7 @@ func TestFromSeriesSeasons(t *testing.T) {
 				TmdbID:   123,
 				Title:    "Season 1",
 				Number:   1,
-				Overview: func() *string { o := "Test overview"; return &o }(),
+				Overview: ptr("Test overview"),
 			},
 		},
 	}
