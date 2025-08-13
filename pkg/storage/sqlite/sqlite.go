@@ -429,6 +429,29 @@ func (s SQLite) LinkMovieMetadata(ctx context.Context, movieID int64, metadataID
 	return err
 }
 
+// LinkSeriesMetadata links a series with its metadata
+func (s SQLite) LinkSeriesMetadata(ctx context.Context, seriesID int64, metadataID int32) error {
+	stmt := table.Series.UPDATE(table.Series.SeriesMetadataID).SET(metadataID).WHERE(table.Series.ID.EQ(sqlite.Int64(seriesID)))
+	_, err := stmt.Exec(s.db)
+	return err
+}
+
+// LinkSeasonMetadata links a season with its metadata
+func (s SQLite) LinkSeasonMetadata(ctx context.Context, seasonID int64, metadataID int32) error {
+	stmt := table.Season.UPDATE(table.Season.SeasonMetadataID).SET(metadataID).WHERE(table.Season.ID.EQ(sqlite.Int64(seasonID)))
+	_, err := stmt.Exec(s.db)
+	return err
+}
+
+// LinkEpisodeMetadata links an episode with its season and episode metadata
+func (s SQLite) LinkEpisodeMetadata(ctx context.Context, episodeID int64, seasonID int32, episodeMetadataID int32) error {
+	stmt := table.Episode.UPDATE(table.Episode.SeasonID, table.Episode.EpisodeMetadataID).
+		SET(seasonID, episodeMetadataID).
+		WHERE(table.Episode.ID.EQ(sqlite.Int64(episodeID)))
+	_, err := stmt.Exec(s.db)
+	return err
+}
+
 // ListMovieFiles lists all movie files
 func (s SQLite) ListMovieFiles(ctx context.Context) ([]*model.MovieFile, error) {
 	var movieFiles []*model.MovieFile

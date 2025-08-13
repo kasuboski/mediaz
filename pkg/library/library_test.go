@@ -82,8 +82,12 @@ func TestFindEpisodes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !slices.Equal(expected, episodes) {
-		t.Fatalf("wanted %v; got %v", expected, episodes)
+	names := make([]string, len(episodes))
+	for i, e := range episodes {
+		names[i] = e.Name
+	}
+	if !slices.Equal(expected, names) {
+		t.Fatalf("wanted %v; got %v", expected, names)
 	}
 }
 
@@ -383,8 +387,6 @@ func TestMediaLibrary_AddEpisode(t *testing.T) {
 		wantEpisodeFile := EpisodeFile{
 			Name:         expectedFilename,
 			Size:         1024,
-			SeriesTitle:  seriesTitle,
-			Season:       seasonNumber,
 			RelativePath: fmt.Sprintf("%s/Season %02d/%s", seriesTitle, seasonNumber, expectedFilename),
 			AbsolutePath: filepath.Join(fileSystem.Path, seriesTitle, fmt.Sprintf("Season %02d", seasonNumber), expectedFilename),
 		}
@@ -433,8 +435,6 @@ func TestMediaLibrary_AddEpisode(t *testing.T) {
 		wantEpisodeFile := EpisodeFile{
 			Name:         expectedFilename,
 			Size:         1024,
-			SeriesTitle:  seriesTitle,
-			Season:       seasonNumber,
 			RelativePath: fmt.Sprintf("%s/Season %02d/%s", seriesTitle, seasonNumber, expectedFilename),
 			AbsolutePath: filepath.Join(fileSystem.Path, seriesTitle, fmt.Sprintf("Season %02d", seasonNumber), expectedFilename),
 		}
@@ -484,8 +484,6 @@ func TestMediaLibrary_AddEpisode(t *testing.T) {
 		wantEpisodeFile := EpisodeFile{
 			Name:         expectedFilename,
 			Size:         1024,
-			SeriesTitle:  seriesTitle,
-			Season:       seasonNumber,
 			RelativePath: fmt.Sprintf("%s/Season %02d/%s", seriesTitle, seasonNumber, expectedFilename),
 			AbsolutePath: filepath.Join(fileSystem.Path, seriesTitle, fmt.Sprintf("Season %02d", seasonNumber), expectedFilename),
 		}

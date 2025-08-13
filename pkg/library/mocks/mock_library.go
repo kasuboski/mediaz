@@ -71,10 +71,10 @@ func (mr *MockLibraryMockRecorder) AddMovie(arg0, arg1, arg2 any) *gomock.Call {
 }
 
 // FindEpisodes mocks base method.
-func (m *MockLibrary) FindEpisodes(arg0 context.Context) ([]string, error) {
+func (m *MockLibrary) FindEpisodes(arg0 context.Context) ([]library.EpisodeFile, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "FindEpisodes", arg0)
-	ret0, _ := ret[0].([]string)
+	ret0, _ := ret[0].([]library.EpisodeFile)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

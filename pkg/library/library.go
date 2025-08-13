@@ -150,10 +150,11 @@ func (l *MediaLibrary) AddEpisode(ctx context.Context, seriesTitle string, seaso
 
 	var episodeFile EpisodeFile
 
-	// downloads/episode.mp4 -> /library/tv/Series Name (Year)/Season XX/Series Name (Year) - sXXeXX - Episode Title.mp4
+	// downloads/episode.mp4 -> /library/tv/Series Name/Season XX/Episode Title.mp4
+	seasonDirectory := formatSeasonDirectory(seasonNumber)
 	seriesDir := filepath.Join(l.tv.Path, sanitizeName(seriesTitle))
-	seasonDir := filepath.Join(seriesDir, formatSeasonDirectory(seasonNumber))
-	filename := formatEpisodeFilename(seriesTitle, filepath.Base(sourcePath))
+	seasonDir := filepath.Join(seriesDir, seasonDirectory)
+	filename := formatEpisodeFilename(filepath.Base(sourcePath))
 	targetPath := filepath.Join(seasonDir, filename)
 
 	fileInfo, actualTargetPath, err := l.moveFileToLibrary(ctx, sourcePath, targetPath, l.tv.Path)
@@ -166,12 +167,22 @@ func (l *MediaLibrary) AddEpisode(ctx context.Context, seriesTitle string, seaso
 
 	episodeFile.Name = sanitizeName(filepath.Base(actualTargetPath))
 	episodeFile.Size = fileInfo.Size()
-	episodeFile.SeriesTitle = seriesTitle
-	episodeFile.Season = seasonNumber
-	episodeFile.RelativePath = fmt.Sprintf("%s/%s/%s", seriesTitle, formatSeasonDirectory(seasonNumber), episodeFile.Name)
+	episodeFile.RelativePath = fmt.Sprintf("%s/%s/%s", seriesTitle, seasonDirectory, episodeFile.Name)
 	episodeFile.AbsolutePath = actualTargetPath
 
 	return episodeFile, err
+}
+
+// formatSeasonDirectory formats season number as "Season XX"
+func formatSeasonDirectory(seasonNumber int32) string {
+	return fmt.Sprintf("Season %02d", seasonNumber)
+}
+
+func formatEpisodeFilename(filePath string) string {
+	ext := filepath.Ext(filePath)
+	base := strings.TrimSuffix(filepath.Base(filePath), ext)
+	name := fmt.Sprintf("%s%s", base, ext)
+	return sanitizeFilename(name)
 }
 
 // FindMovies lists media in the movie library
@@ -200,7 +211,7 @@ func (l *MediaLibrary) FindMovies(ctx context.Context) ([]MovieFile, error) {
 			return nil
 		}
 
-		movie := FromPath(path)
+		movie := MovieFileFromPath(path)
 		info, err := d.Info()
 		if err == nil {
 			movie.Size = info.Size()
@@ -219,13 +230,12 @@ func (l *MediaLibrary) FindMovies(ctx context.Context) ([]MovieFile, error) {
 }
 
 // FindEpisodes lists episodes in the tv library
-func (l *MediaLibrary) FindEpisodes(ctx context.Context) ([]string, error) {
+func (l *MediaLibrary) FindEpisodes(ctx context.Context) ([]EpisodeFile, error) {
 	log := logger.FromCtx(ctx)
-	episodes := []string{}
+	episodes := []EpisodeFile{}
 	err := fs.WalkDir(l.tv.FS, ".", func(path string, d fs.DirEntry, err error) error {
 		log.Debugw("episode walk", "path", path)
 		if err != nil {
-			// just skip this dir for now if there's an issue
 			return fs.SkipDir
 		}
 
@@ -246,8 +256,11 @@ func (l *MediaLibrary) FindEpisodes(ctx context.Context) ([]string, error) {
 			return nil
 		}
 
-		episodes = append(episodes, d.Name())
-
+		e := EpisodeFileFromPath(path)
+		if info, err := d.Info(); err == nil {
+			e.Size = info.Size()
+		}
+		episodes = append(episodes, e)
 		return nil
 	})
 
