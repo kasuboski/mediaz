@@ -96,7 +96,6 @@ CREATE TABLE IF NOT EXISTS "series" (
     "path" TEXT,
     "monitored" INTEGER NOT NULL,
     "added" DATETIME DEFAULT current_timestamp,
-    "tmdb_id" INTEGER NOT NULL,
     "quality_profile_id" INTEGER NOT NULL,
     "series_metadata_id" INTEGER UNIQUE,
     "last_search_time" DATETIME
@@ -104,7 +103,7 @@ CREATE TABLE IF NOT EXISTS "series" (
 
 CREATE TABLE IF NOT EXISTS "series_metadata" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-    "tmdb_id" INTEGER NOT NULL,
+    "tmdb_id" INTEGER NOT NULL UNIQUE,
     "title" TEXT NOT NULL,
     "overview" TEXT,
     "last_info_sync" DATETIME,
@@ -119,7 +118,8 @@ CREATE TABLE IF NOT EXISTS "series_metadata" (
 CREATE TABLE IF NOT EXISTS "season" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     "series_id" INTEGER NOT NULL,
-    "season_metadata_id" INTEGER UNIQUE,
+    "season_number" INTEGER NOT NULL,
+    "season_metadata_id" INTEGER,
     "monitored" INTEGER NOT NULL,
     FOREIGN KEY ("series_id") REFERENCES "series" ("id")
 );
@@ -132,7 +132,7 @@ CREATE TABLE IF NOT EXISTS "season_metadata" (
     "title" TEXT NOT NULL,
     "overview" TEXT,
     "air_date" DATETIME,
-    FOREIGN KEY ("series_id") REFERENCES "series_metadata" ("id")
+    FOREIGN KEY ("series_id") REFERENCES "series" ("id")
 );
 
 CREATE TABLE IF NOT EXISTS "episode" (
@@ -142,7 +142,6 @@ CREATE TABLE IF NOT EXISTS "episode" (
     "monitored" INTEGER NOT NULL,
     "episode_metadata_id" INTEGER UNIQUE,
     "episode_file_id" INTEGER,
-    "runtime" INTEGER,
     FOREIGN KEY ("season_id") REFERENCES "season" ("id")
 );
 
@@ -164,7 +163,7 @@ CREATE TABLE IF NOT EXISTS "episode_metadata" (
     "overview" TEXT,
     "air_date" DATETIME,
     "runtime" INTEGER,
-    FOREIGN KEY ("season_id") REFERENCES "season_metadata" ("id")
+    FOREIGN KEY ("season_id") REFERENCES "season" ("id")
 );
 
 CREATE TABLE IF NOT EXISTS "movie_transition" (
@@ -236,3 +235,21 @@ WHERE
     "most_recent" = 1;
 
 CREATE UNIQUE INDEX IF NOT EXISTS "idx_movie_transitions_by_parent_sort_key" ON "movie_transition"("movie_id", "sort_key");
+
+CREATE UNIQUE INDEX IF NOT EXISTS "idx_series_transitions_by_parent_most_recent" ON "series_transition"("series_id", "most_recent")
+WHERE
+    "most_recent" = 1;
+
+CREATE UNIQUE INDEX IF NOT EXISTS "idx_series_transitions_by_parent_sort_key" ON "series_transition"("series_id", "sort_key");
+
+CREATE UNIQUE INDEX IF NOT EXISTS "idx_season_transitions_by_parent_most_recent" ON "season_transition"("season_id", "most_recent")
+WHERE
+    "most_recent" = 1;
+
+CREATE UNIQUE INDEX IF NOT EXISTS "idx_season_transitions_by_parent_sort_key" ON "season_transition"("season_id", "sort_key");
+
+CREATE UNIQUE INDEX IF NOT EXISTS "idx_episode_transitions_by_parent_most_recent" ON "episode_transition"("episode_id", "most_recent")
+WHERE
+    "most_recent" = 1;
+
+CREATE UNIQUE INDEX IF NOT EXISTS "idx_episode_transitions_by_parent_sort_key" ON "episode_transition"("episode_id", "sort_key");

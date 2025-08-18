@@ -278,9 +278,9 @@ func TestListShowsInLibrary(t *testing.T) {
 		}
 
 		seriesMetadata := &model.SeriesMetadata{
-			ID:     1,
-			TmdbID: 321,
-			Title:  "Test Series",
+			ID:         1,
+			TmdbID:     321,
+			Title:      "Test Series",
 			PosterPath: ptr("poster.jpg"),
 		}
 
@@ -934,7 +934,7 @@ func TestBuildTVDetailResult(t *testing.T) {
 
 		assert.Equal(t, int32(123), result.TMDBID)
 		assert.Equal(t, "Test Series", result.Title)
-		assert.Equal(t, ptr("Test series overview"), result.Overview)
+		assert.Equal(t, "Test series overview", result.Overview)
 		assert.Equal(t, "poster.jpg", result.PosterPath)
 		assert.Equal(t, ptr("backdrop.jpg"), result.BackdropPath)
 		assert.Equal(t, ptr("2023-01-15"), result.FirstAirDate)
@@ -1088,7 +1088,7 @@ func TestGetTVDetailByTMDBID(t *testing.T) {
 
 		assert.Equal(t, int32(123), result.TMDBID)
 		assert.Equal(t, "Test Series", result.Title)
-		assert.Equal(t, ptr("Test series overview"), result.Overview)
+		assert.Equal(t, "Test series overview", result.Overview)
 		assert.Equal(t, "poster.jpg", result.PosterPath)
 		assert.Equal(t, ptr("backdrop.jpg"), result.BackdropPath)
 		assert.Equal(t, ptr("2023-01-15"), result.FirstAirDate)

@@ -73,7 +73,7 @@ func (s SQLite) DeleteIndexer(ctx context.Context, id int64) error {
 	return err
 }
 
-// ListIndexer lists the stored indexers
+// ListIndexers lists the stored indexers
 func (s SQLite) ListIndexers(ctx context.Context) ([]*model.Indexer, error) {
 	indexers := make([]*model.Indexer, 0)
 
@@ -321,7 +321,7 @@ func (s SQLite) UpdateMovieState(ctx context.Context, id int64, state storage.Mo
 	return tx.Commit()
 }
 
-// GetMovieByTmdb checks if there's a movie already associated with the given tmdb id
+// GetMovieByMetadataID checks if there's a movie already associated with the given metadata id
 func (s SQLite) GetMovieByMetadataID(ctx context.Context, metadataID int) (*storage.Movie, error) {
 	movie := new(storage.Movie)
 
@@ -425,6 +425,29 @@ func (s SQLite) DeleteMovieFile(ctx context.Context, id int64) error {
 // LinkMovieMetadata links a movie with its metadata
 func (s SQLite) LinkMovieMetadata(ctx context.Context, movieID int64, metadataID int32) error {
 	stmt := table.Movie.UPDATE(table.Movie.MovieMetadataID).SET(metadataID).WHERE(table.Movie.ID.EQ(sqlite.Int64(movieID)))
+	_, err := stmt.Exec(s.db)
+	return err
+}
+
+// LinkSeriesMetadata links a series with its metadata
+func (s SQLite) LinkSeriesMetadata(ctx context.Context, seriesID int64, metadataID int32) error {
+	stmt := table.Series.UPDATE(table.Series.SeriesMetadataID).SET(metadataID).WHERE(table.Series.ID.EQ(sqlite.Int64(seriesID)))
+	_, err := stmt.Exec(s.db)
+	return err
+}
+
+// LinkSeasonMetadata links a season with its metadata
+func (s SQLite) LinkSeasonMetadata(ctx context.Context, seasonID int64, metadataID int32) error {
+	stmt := table.Season.UPDATE(table.Season.SeasonMetadataID).SET(metadataID).WHERE(table.Season.ID.EQ(sqlite.Int64(seasonID)))
+	_, err := stmt.Exec(s.db)
+	return err
+}
+
+// LinkEpisodeMetadata links an episode with its season and episode metadata
+func (s SQLite) LinkEpisodeMetadata(ctx context.Context, episodeID int64, seasonID int32, episodeMetadataID int32) error {
+	stmt := table.Episode.UPDATE(table.Episode.SeasonID, table.Episode.EpisodeMetadataID).
+		SET(seasonID, episodeMetadataID).
+		WHERE(table.Episode.ID.EQ(sqlite.Int64(episodeID)))
 	_, err := stmt.Exec(s.db)
 	return err
 }
@@ -556,7 +579,7 @@ func (s SQLite) GetQualityProfileItem(ctx context.Context, id int64) (model.Qual
 	return result, err
 }
 
-// ListQualityProfileItem lists all quality definitions
+// ListQualityProfileItems lists all quality definitions
 func (s SQLite) ListQualityProfileItems(ctx context.Context) ([]*model.QualityProfileItem, error) {
 	items := make([]*model.QualityProfileItem, 0)
 	stmt := table.Indexer.SELECT(table.QualityProfileItem.AllColumns).FROM(table.QualityProfileItem).ORDER_BY(table.QualityProfileItem.ID.ASC())
