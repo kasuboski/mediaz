@@ -185,11 +185,14 @@ func (m MediaManager) buildTVDetailResult(metadata *model.SeriesMetadata, detail
 	result := &TVDetailResult{
 		TMDBID:        metadata.TmdbID,
 		Title:         metadata.Title,
-		Overview:      metadata.Overview,
 		PosterPath:    details.PosterPath,
 		SeasonCount:   metadata.SeasonCount,
 		EpisodeCount:  metadata.EpisodeCount,
 		LibraryStatus: "Not In Library", // Default status
+	}
+
+	if metadata.Overview != nil {
+		result.Overview = *metadata.Overview
 	}
 
 	// Set backdrop path only if not empty

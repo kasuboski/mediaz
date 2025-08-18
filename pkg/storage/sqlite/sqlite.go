@@ -73,7 +73,7 @@ func (s SQLite) DeleteIndexer(ctx context.Context, id int64) error {
 	return err
 }
 
-// ListIndexer lists the stored indexers
+// ListIndexers lists the stored indexers
 func (s SQLite) ListIndexers(ctx context.Context) ([]*model.Indexer, error) {
 	indexers := make([]*model.Indexer, 0)
 
@@ -321,7 +321,7 @@ func (s SQLite) UpdateMovieState(ctx context.Context, id int64, state storage.Mo
 	return tx.Commit()
 }
 
-// GetMovieByTmdb checks if there's a movie already associated with the given tmdb id
+// GetMovieByMetadataID checks if there's a movie already associated with the given metadata id
 func (s SQLite) GetMovieByMetadataID(ctx context.Context, metadataID int) (*storage.Movie, error) {
 	movie := new(storage.Movie)
 
@@ -579,7 +579,7 @@ func (s SQLite) GetQualityProfileItem(ctx context.Context, id int64) (model.Qual
 	return result, err
 }
 
-// ListQualityProfileItem lists all quality definitions
+// ListQualityProfileItems lists all quality definitions
 func (s SQLite) ListQualityProfileItems(ctx context.Context) ([]*model.QualityProfileItem, error) {
 	items := make([]*model.QualityProfileItem, 0)
 	stmt := table.Indexer.SELECT(table.QualityProfileItem.AllColumns).FROM(table.QualityProfileItem).ORDER_BY(table.QualityProfileItem.ID.ASC())

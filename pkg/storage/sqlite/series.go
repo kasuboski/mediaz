@@ -7,7 +7,6 @@ import (
 
 	"github.com/go-jet/jet/v2/qrm"
 	"github.com/go-jet/jet/v2/sqlite"
-	"github.com/kasuboski/mediaz/pkg/logger"
 	"github.com/kasuboski/mediaz/pkg/storage"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/table"
@@ -273,7 +272,6 @@ func (s SQLite) DeleteSeason(ctx context.Context, id int64) error {
 
 // ListSeasons lists all seasons for a Series
 func (s SQLite) ListSeasons(ctx context.Context, where ...sqlite.BoolExpression) ([]*storage.Season, error) {
-	log := logger.FromCtx(ctx)
 	stmt := table.Series.
 		SELECT(
 			table.Season.AllColumns,
@@ -290,9 +288,6 @@ func (s SQLite) ListSeasons(ctx context.Context, where ...sqlite.BoolExpression)
 	for _, w := range where {
 		stmt = stmt.WHERE(w)
 	}
-
-	log.Debug(stmt.DebugSql())
-
 	var seasons []*storage.Season
 	err := stmt.QueryContext(ctx, s.db, &seasons)
 	if err != nil {
@@ -577,8 +572,7 @@ func (s SQLite) CreateEpisodeFile(ctx context.Context, file model.EpisodeFile) (
 	for i, c := range table.EpisodeFile.MutableColumns {
 		setColumns[i] = c
 	}
-	// don't insert a zeroed ID
-	insertColumns := table.EpisodeFile.MutableColumns
+	insertColumns := table.EpisodeFile.MutableColumns.Except(table.EpisodeFile.Added)
 	if file.ID != 0 {
 		insertColumns = table.EpisodeFile.AllColumns
 	}
@@ -726,10 +720,6 @@ func (s SQLite) GetSeriesMetadata(ctx context.Context, where sqlite.BoolExpressi
 
 // CreateSeasonMetadata creates the given seasonMeta
 func (s SQLite) CreateSeasonMetadata(ctx context.Context, seasonMeta model.SeasonMetadata) (int64, error) {
-	setColumns := make([]sqlite.Expression, len(table.SeasonMetadata.MutableColumns))
-	for i, c := range table.SeasonMetadata.MutableColumns {
-		setColumns[i] = c
-	}
 	// don't insert a zeroed ID
 	insertColumns := table.SeasonMetadata.MutableColumns
 	if seasonMeta.ID != 0 {
@@ -739,21 +729,26 @@ func (s SQLite) CreateSeasonMetadata(ctx context.Context, seasonMeta model.Seaso
 	stmt := table.SeasonMetadata.
 		INSERT(insertColumns).
 		MODEL(seasonMeta).
-		RETURNING(table.SeasonMetadata.ID).
-		ON_CONFLICT(table.SeasonMetadata.ID).
-		DO_UPDATE(sqlite.SET(table.SeasonMetadata.MutableColumns.SET(sqlite.ROW(setColumns...))))
+		ON_CONFLICT(table.SeasonMetadata.TmdbID).
+		DO_NOTHING()
 
-	result, err := s.handleInsert(ctx, stmt)
+	_, err := s.handleInsert(ctx, stmt)
 	if err != nil {
 		return 0, err
 	}
 
-	inserted, err := result.LastInsertId()
+	var existing model.SeasonMetadata
+	getStmt := table.SeasonMetadata.
+		SELECT(table.SeasonMetadata.ID).
+		FROM(table.SeasonMetadata).
+		WHERE(table.SeasonMetadata.TmdbID.EQ(sqlite.Int32(seasonMeta.TmdbID)))
+
+	err = getStmt.QueryContext(ctx, s.db, &existing)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("failed to get season metadata ID after upsert: %w", err)
 	}
 
-	return inserted, nil
+	return int64(existing.ID), nil
 }
 
 // DeleteSeasonMetadata deletes a season metadata by id
@@ -810,10 +805,6 @@ func (s SQLite) GetSeasonMetadata(ctx context.Context, where sqlite.BoolExpressi
 
 // CreateEpisodeMetadata creates the given episodeMeta
 func (s SQLite) CreateEpisodeMetadata(ctx context.Context, episodeMeta model.EpisodeMetadata) (int64, error) {
-	setColumns := make([]sqlite.Expression, len(table.EpisodeMetadata.MutableColumns))
-	for i, c := range table.EpisodeMetadata.MutableColumns {
-		setColumns[i] = c
-	}
 	// don't insert a zeroed ID
 	insertColumns := table.EpisodeMetadata.MutableColumns
 	if episodeMeta.ID != 0 {
@@ -823,21 +814,28 @@ func (s SQLite) CreateEpisodeMetadata(ctx context.Context, episodeMeta model.Epi
 	stmt := table.EpisodeMetadata.
 		INSERT(insertColumns).
 		MODEL(episodeMeta).
-		RETURNING(table.EpisodeMetadata.ID).
-		ON_CONFLICT(table.EpisodeMetadata.ID).
-		DO_UPDATE(sqlite.SET(table.EpisodeMetadata.MutableColumns.SET(sqlite.ROW(setColumns...))))
+		ON_CONFLICT(table.EpisodeMetadata.TmdbID).
+		DO_UPDATE(sqlite.SET(
+			table.EpisodeMetadata.Title.SET(sqlite.String(episodeMeta.Title)),
+		))
 
-	result, err := s.handleInsert(ctx, stmt)
+	_, err := s.handleInsert(ctx, stmt)
 	if err != nil {
 		return 0, err
 	}
 
-	inserted, err := result.LastInsertId()
+	var existing model.EpisodeMetadata
+	getStmt := table.EpisodeMetadata.
+		SELECT(table.EpisodeMetadata.ID).
+		FROM(table.EpisodeMetadata).
+		WHERE(table.EpisodeMetadata.TmdbID.EQ(sqlite.Int32(episodeMeta.TmdbID)))
+
+	err = getStmt.QueryContext(ctx, s.db, &existing)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("failed to get episode metadata ID after upsert: %w", err)
 	}
 
-	return inserted, nil
+	return int64(existing.ID), nil
 }
 
 // DeleteEpisodeMetadata deletes an episode metadata by id
