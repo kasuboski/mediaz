@@ -29,7 +29,7 @@ func Execute() {
 
 func init() {
 	cobra.OnInitialize(initConfig)
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "config.yaml", "config file")
+	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file path")
 	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
 
@@ -38,7 +38,9 @@ const (
 )
 
 func initConfig() {
-	viper.SetConfigFile(cfgFile)
+	if cfgFile != "" {
+		viper.SetConfigFile(cfgFile)
+	}
 
 	viper.SetEnvPrefix("MEDIAZ")
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_", "-", ""))
