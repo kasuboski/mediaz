@@ -77,7 +77,7 @@ spec:
             {{- end }}
             {{- with .Values.config }}
             {{- with .filePath }}
-            - name: MEDIAZ_CONFIGPATH
+            - name: MEDIAZ_CONFIGFILEPATH
               value: {{ . | quote }}
             {{- end }}
             {{- end }}
@@ -85,7 +85,6 @@ spec:
             {{- if .Values.config }}
             - name: config
               mountPath: /etc/mediaz
-              readOnly: true
             {{- end }}
             {{- if .Values.persistence.enabled }}
             - name: config-storage
