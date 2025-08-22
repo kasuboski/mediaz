@@ -37,15 +37,20 @@ const (
 	defaultJobTicker = time.Minute * 10
 )
 
-// initConfig sets viper configurations and default values
 func initConfig() {
-	if cfgFile != "" {
-		viper.SetConfigFile(cfgFile)
-	}
-
 	viper.SetEnvPrefix("MEDIAZ")
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_", "-", ""))
 	viper.AutomaticEnv()
+
+	cfg := viper.GetString("configFilePath")
+	if cfg != "" {
+		cfgFile = cfg
+	}
+
+	// only set the config file if it actually exists
+	if _, err := os.Stat(cfgFile); err == nil {
+		viper.SetConfigFile(cfgFile)
+	}
 
 	viper.SetDefault("tmdb.uri", "https://api.themoviedb.org")
 	viper.SetDefault("tmdb.apiKey", "")

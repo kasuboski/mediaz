@@ -7,12 +7,13 @@ import (
 )
 
 type Config struct {
-	TMDB     TMDB     `json:"tmdb" yaml:"tmdb" mapstructure:"tmdb"`
-	Prowlarr Prowlarr `json:"prowlarr" yaml:"prowlarr" mapstructure:"prowlarr"`
-	Library  Library  `json:"library" yaml:"library" mapstructure:"library"`
-	Storage  Storage  `json:"storage" yaml:"storage" mapstructure:"storage"`
-	Server   Server   `json:"server" yaml:"server" mapstructure:"server"`
-	Manager  Manager  `json:"manager" yaml:"manager" mapstructure:"manager"`
+	ConfigFilePath string   `json:"configFilePath" yaml:"configFilePath" mapstructure:"configFilePath"`
+	TMDB           TMDB     `json:"tmdb" yaml:"tmdb" mapstructure:"tmdb"`
+	Prowlarr       Prowlarr `json:"prowlarr" yaml:"prowlarr" mapstructure:"prowlarr"`
+	Library        Library  `json:"library" yaml:"library" mapstructure:"library"`
+	Storage        Storage  `json:"storage" yaml:"storage" mapstructure:"storage"`
+	Server         Server   `json:"server" yaml:"server" mapstructure:"server"`
+	Manager        Manager  `json:"manager" yaml:"manager" mapstructure:"manager"`
 }
 
 type TMDB struct {

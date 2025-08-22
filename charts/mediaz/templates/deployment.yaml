@@ -1,0 +1,121 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "mediaz.fullname" . }}
+  labels:
+    {{- include "mediaz.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount | default 1 }}
+  selector:
+    matchLabels:
+      {{- include "mediaz.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "mediaz.labels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "mediaz.serviceAccountName" . }}
+      {{- with .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: {{ .Chart.Name }}
+          {{- with .Values.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.port }}
+              protocol: TCP
+          {{- with .Values.livenessProbe }}
+          livenessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.readinessProbe }}
+          readinessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          env:
+            {{- if .Values.prowlarr.secretRef }}
+            - name: MEDIAZ_PROWLARR_APIKEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.prowlarr.secretRef }}
+                  key: {{ .Values.prowlarr.secretKey }}
+            {{- else if .Values.prowlarr.apiKey }}
+            - name: MEDIAZ_PROWLARR_APIKEY
+              value: {{ .Values.prowlarr.apiKey | quote }}
+            {{- end }}
+            {{- if .Values.tmdb.secretRef }}
+            - name: MEDIAZ_TMDB_APIKEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.tmdb.secretRef }}
+                  key: {{ .Values.tmdb.secretKey }}
+            {{- else if .Values.tmdb.apiKey }}
+            - name: MEDIAZ_TMDB_APIKEY
+              value: {{ .Values.tmdb.apiKey | quote }}
+            {{- end }}
+            {{- with .Values.config }}
+            {{- with .filePath }}
+            - name: MEDIAZ_CONFIGFILEPATH
+              value: {{ . | quote }}
+            {{- end }}
+            {{- end }}
+          volumeMounts:
+            {{- if .Values.config }}
+            - name: config
+              mountPath: /etc/mediaz
+            {{- end }}
+            {{- if .Values.persistence.enabled }}
+            - name: config-storage
+              mountPath: {{ .Values.persistence.mountPath }}
+            {{- end }}
+            {{- with .Values.volumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+      volumes:
+        {{- if .Values.config }}
+        - name: config
+          configMap:
+            name: {{ include "mediaz.fullname" . }}-config
+        {{- end }}
+        {{- if .Values.persistence.enabled }}
+        - name: config-storage
+          persistentVolumeClaim:
+            claimName: {{ .Values.persistence.existingClaim | default (printf "%s-config" (include "mediaz.fullname" .)) }}
+        {{- end }}
+        {{- with .Values.volumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
