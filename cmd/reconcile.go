@@ -150,12 +150,6 @@ var reconcileSeriesCmd = &cobra.Command{
 		if err != nil {
 			log.Fatal("failed to init database", zap.Error(err))
 		}
-
-		err = store.Init(ctx, schemas...)
-		if err != nil {
-			log.Fatal("failed to init database", zap.Error(err))
-		}
-
 		// Setup library filesystem
 		movieFS := os.DirFS(cfg.Library.MovieDir)
 		tvFS := os.DirFS(cfg.Library.TVDir)
