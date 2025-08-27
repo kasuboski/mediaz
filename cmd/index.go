@@ -121,6 +121,7 @@ var indexSeriesCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		// Setup logger and config
 		log := logger.Get()
+		ctx := logger.WithCtx(context.Background(), log)
 
 		cfg, err := config.New(viper.GetViper())
 		if err != nil {
@@ -149,12 +150,12 @@ var indexSeriesCmd = &cobra.Command{
 			log.Fatal(err)
 		}
 
-		err = store.Init(context.TODO(), schemas...)
+		err = store.Init(ctx, schemas...)
 		if err != nil {
 			log.Fatal("failed to init database", zap.Error(err))
 		}
 
-		err = store.Init(context.TODO(), schemas...)
+		err = store.Init(ctx, schemas...)
 		if err != nil {
 			log.Fatal("failed to init database", zap.Error(err))
 		}
@@ -181,7 +182,6 @@ var indexSeriesCmd = &cobra.Command{
 		m := manager.New(tmdbClient, prowlarrClient, library, store, factory, cfg.Manager)
 
 		// Setup context and call IndexSeriesLibrary
-		ctx := logger.WithCtx(context.Background(), log)
 
 		if indexVerbose {
 			log.Info("Starting series library indexing")
