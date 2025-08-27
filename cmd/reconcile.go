@@ -67,12 +67,7 @@ var reconcileMoviesCmd = &cobra.Command{
 			log.Fatal(err)
 		}
 
-		err = store.Init(context.TODO(), schemas...)
-		if err != nil {
-			log.Fatal("failed to init database", zap.Error(err))
-		}
-
-		err = store.Init(context.TODO(), schemas...)
+		err = store.Init(ctx, schemas...)
 		if err != nil {
 			log.Fatal("failed to init database", zap.Error(err))
 		}
