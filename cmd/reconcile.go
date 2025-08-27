@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"context"
-	"errors"
 	"os"
 
 	"github.com/kasuboski/mediaz/config"
@@ -57,25 +56,19 @@ var reconcileMoviesCmd = &cobra.Command{
 			log.Fatal("failed to create prowlarr client", zap.Error(err))
 		}
 
-		// Setup storage with schema initialization
-		defaultSchemas := cfg.Storage.Schemas
-		if _, err := os.Stat(cfg.Storage.FilePath); err != nil {
-			if errors.Is(err, os.ErrNotExist) {
-				if verbose {
-					log.Debug("database does not exist, defaulting table values", zap.Any("schemas", cfg.Storage.TableValueSchemas))
-				}
-				defaultSchemas = append(defaultSchemas, cfg.Storage.TableValueSchemas...)
-			}
-		}
-
 		store, err := sqlite.New(cfg.Storage.FilePath)
 		if err != nil {
 			log.Fatal("failed to create storage connection", zap.Error(err))
 		}
 
-		schemas, err := storage.ReadSchemaFiles(defaultSchemas...)
+		schemas, err := storage.GetSchemas()
 		if err != nil {
-			log.Fatal("failed to read schema files", zap.Error(err))
+			log.Fatal(err)
+		}
+
+		err = store.Init(context.TODO(), schemas...)
+		if err != nil {
+			log.Fatal("failed to init database", zap.Error(err))
 		}
 
 		err = store.Init(context.TODO(), schemas...)
@@ -147,25 +140,19 @@ var reconcileSeriesCmd = &cobra.Command{
 			log.Fatal("failed to create prowlarr client", zap.Error(err))
 		}
 
-		// Setup storage with schema initialization
-		defaultSchemas := cfg.Storage.Schemas
-		if _, err := os.Stat(cfg.Storage.FilePath); err != nil {
-			if errors.Is(err, os.ErrNotExist) {
-				if verbose {
-					log.Debug("database does not exist, defaulting table values", zap.Any("schemas", cfg.Storage.TableValueSchemas))
-				}
-				defaultSchemas = append(defaultSchemas, cfg.Storage.TableValueSchemas...)
-			}
-		}
-
 		store, err := sqlite.New(cfg.Storage.FilePath)
 		if err != nil {
 			log.Fatal("failed to create storage connection", zap.Error(err))
 		}
 
-		schemas, err := storage.ReadSchemaFiles(defaultSchemas...)
+		schemas, err := storage.GetSchemas()
 		if err != nil {
-			log.Fatal("failed to read schema files", zap.Error(err))
+			log.Fatal(err)
+		}
+
+		err = store.Init(context.TODO(), schemas...)
+		if err != nil {
+			log.Fatal("failed to init database", zap.Error(err))
 		}
 
 		err = store.Init(context.TODO(), schemas...)

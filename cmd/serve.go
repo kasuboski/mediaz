@@ -54,7 +54,12 @@ var serveCmd = &cobra.Command{
 
 		schemas, err := storage.GetSchemas()
 		if err != nil {
-			log.Fatal("failed to read schema files", zap.Error(err))
+			log.Fatal(err)
+		}
+
+		err = store.Init(context.TODO(), schemas...)
+		if err != nil {
+			log.Fatal("failed to init database", zap.Error(err))
 		}
 
 		err = store.Init(context.TODO(), schemas...)
