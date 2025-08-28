@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"context"
-	"errors"
 	"os"
 
 	"github.com/kasuboski/mediaz/config"
@@ -38,6 +37,7 @@ var reconcileMoviesCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		// Setup logger and config
 		log := logger.Get()
+		ctx := logger.WithCtx(context.Background(), log)
 
 		cfg, err := config.New(viper.GetViper())
 		if err != nil {
@@ -57,28 +57,17 @@ var reconcileMoviesCmd = &cobra.Command{
 			log.Fatal("failed to create prowlarr client", zap.Error(err))
 		}
 
-		// Setup storage with schema initialization
-		defaultSchemas := cfg.Storage.Schemas
-		if _, err := os.Stat(cfg.Storage.FilePath); err != nil {
-			if errors.Is(err, os.ErrNotExist) {
-				if verbose {
-					log.Debug("database does not exist, defaulting table values", zap.Any("schemas", cfg.Storage.TableValueSchemas))
-				}
-				defaultSchemas = append(defaultSchemas, cfg.Storage.TableValueSchemas...)
-			}
-		}
-
 		store, err := sqlite.New(cfg.Storage.FilePath)
 		if err != nil {
 			log.Fatal("failed to create storage connection", zap.Error(err))
 		}
 
-		schemas, err := storage.ReadSchemaFiles(defaultSchemas...)
+		schemas, err := storage.GetSchemas()
 		if err != nil {
-			log.Fatal("failed to read schema files", zap.Error(err))
+			log.Fatal(err)
 		}
 
-		err = store.Init(context.TODO(), schemas...)
+		err = store.Init(ctx, schemas...)
 		if err != nil {
 			log.Fatal("failed to init database", zap.Error(err))
 		}
@@ -104,12 +93,7 @@ var reconcileMoviesCmd = &cobra.Command{
 		factory := download.NewDownloadClientFactory(cfg.Library.DownloadMountDir)
 		m := manager.New(tmdbClient, prowlarrClient, library, store, factory, cfg.Manager)
 
-		// Setup context and call ReconcileMovies
-		ctx := logger.WithCtx(context.Background(), log)
-
-		if verbose {
-			log.Info("Starting movie reconciliation")
-		}
+		log.Info("Starting movie reconciliation")
 
 		err = m.ReconcileMovies(ctx)
 		if err != nil {
@@ -126,8 +110,8 @@ var reconcileSeriesCmd = &cobra.Command{
 	Short: "Reconcile discovered series with metadata and downloads",
 	Long:  `Reconcile discovered series/TV shows by matching TMDB metadata and setting up downloads`,
 	Run: func(cmd *cobra.Command, args []string) {
-		// Setup logger and config
 		log := logger.Get()
+		ctx := logger.WithCtx(context.Background(), log)
 
 		cfg, err := config.New(viper.GetViper())
 		if err != nil {
@@ -147,32 +131,20 @@ var reconcileSeriesCmd = &cobra.Command{
 			log.Fatal("failed to create prowlarr client", zap.Error(err))
 		}
 
-		// Setup storage with schema initialization
-		defaultSchemas := cfg.Storage.Schemas
-		if _, err := os.Stat(cfg.Storage.FilePath); err != nil {
-			if errors.Is(err, os.ErrNotExist) {
-				if verbose {
-					log.Debug("database does not exist, defaulting table values", zap.Any("schemas", cfg.Storage.TableValueSchemas))
-				}
-				defaultSchemas = append(defaultSchemas, cfg.Storage.TableValueSchemas...)
-			}
-		}
-
 		store, err := sqlite.New(cfg.Storage.FilePath)
 		if err != nil {
 			log.Fatal("failed to create storage connection", zap.Error(err))
 		}
 
-		schemas, err := storage.ReadSchemaFiles(defaultSchemas...)
+		schemas, err := storage.GetSchemas()
 		if err != nil {
-			log.Fatal("failed to read schema files", zap.Error(err))
+			log.Fatal(err)
 		}
 
-		err = store.Init(context.TODO(), schemas...)
+		err = store.Init(ctx, schemas...)
 		if err != nil {
 			log.Fatal("failed to init database", zap.Error(err))
 		}
-
 		// Setup library filesystem
 		movieFS := os.DirFS(cfg.Library.MovieDir)
 		tvFS := os.DirFS(cfg.Library.TVDir)
@@ -194,12 +166,7 @@ var reconcileSeriesCmd = &cobra.Command{
 		factory := download.NewDownloadClientFactory(cfg.Library.DownloadMountDir)
 		m := manager.New(tmdbClient, prowlarrClient, library, store, factory, cfg.Manager)
 
-		// Setup context and call ReconcileSeries
-		ctx := logger.WithCtx(context.Background(), log)
-
-		if verbose {
-			log.Info("Starting series reconciliation")
-		}
+		log.Debug("Starting series reconciliation")
 
 		err = m.ReconcileSeries(ctx)
 		if err != nil {
@@ -210,14 +177,8 @@ var reconcileSeriesCmd = &cobra.Command{
 	},
 }
 
-var verbose bool
-
 func init() {
 	rootCmd.AddCommand(reconcileCmd)
-
 	reconcileCmd.AddCommand(reconcileMoviesCmd)
 	reconcileCmd.AddCommand(reconcileSeriesCmd)
-
-	// Add verbose flag support for detailed logging
-	reconcileCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Enable verbose logging")
 }

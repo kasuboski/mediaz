@@ -74,6 +74,8 @@ var searchIndexerCmd = &cobra.Command{
 	ArgAliases: []string{"query"},
 	Run: func(cmd *cobra.Command, args []string) {
 		log := logger.Get()
+		ctx := logger.WithCtx(context.Background(), log)
+
 		cfg, err := config.New(viper.GetViper())
 		if err != nil {
 			log.Fatalf("failed to read configurations: %v", err)
@@ -110,17 +112,16 @@ var searchIndexerCmd = &cobra.Command{
 
 		schemas, err := storage.GetSchemas()
 		if err != nil {
-			log.Fatal("failed to read schema files", zap.Error(err))
+			log.Fatal(err)
 		}
 
-		err = store.Init(context.TODO(), schemas...)
+		err = store.Init(ctx, schemas...)
 		if err != nil {
 			log.Fatal("failed to init database", zap.Error(err))
 		}
 
 		m := manager.New(tmdbClient, prowlarrClient, library, store, nil, cfg.Manager)
 
-		ctx := logger.WithCtx(context.Background(), log)
 		idx, err := m.ListIndexers(ctx)
 		if err != nil {
 			log.Fatal(err)

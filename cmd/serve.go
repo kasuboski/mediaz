@@ -30,6 +30,7 @@ var serveCmd = &cobra.Command{
 	Long:  `start the media server`,
 	Run: func(cmd *cobra.Command, args []string) {
 		log := logger.Get()
+		ctx := context.Background()
 
 		cfg, err := config.New(viper.GetViper())
 		if err != nil {
@@ -54,10 +55,10 @@ var serveCmd = &cobra.Command{
 
 		schemas, err := storage.GetSchemas()
 		if err != nil {
-			log.Fatal("failed to read schema files", zap.Error(err))
+			log.Fatal(err)
 		}
 
-		err = store.Init(context.TODO(), schemas...)
+		err = store.Init(ctx, schemas...)
 		if err != nil {
 			log.Fatal("failed to init database", zap.Error(err))
 		}
@@ -80,7 +81,7 @@ var serveCmd = &cobra.Command{
 		manager := manager.New(tmdbClient, prowlarrClient, library, store, factory, cfg.Manager)
 
 		go func() {
-			log.Fatal(manager.Run(context.Background()))
+			log.Fatal(manager.Run(ctx))
 		}()
 
 		server := server.New(log, manager, cfg.Server)
