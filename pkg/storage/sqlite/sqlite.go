@@ -25,14 +25,29 @@ const (
 	timestampFormat = "2006-01-02 15:04:05"
 )
 
-// New creates a new sqlite database given a path to the database file
+// New creates a new sqlite database given a path to the database file.
 func New(filePath string) (storage.Storage, error) {
 	db, err := sql.Open("sqlite3", filePath)
 	if err != nil {
 		return nil, err
 	}
 
-	return SQLite{
+	if _, err := db.Exec(`PRAGMA journal_mode=WAL;`); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("failed to enable WAL: %w", err)
+	}
+
+	if _, err := db.Exec(`PRAGMA synchronous = NORMAL;`); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("failed to set synchronous: %w", err)
+	}
+
+	if _, err := db.Exec(`PRAGMA busy_timeout = 5000;`); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("failed to set busy_timeout: %w", err)
+	}
+
+	return &SQLite{
 		db: db,
 	}, nil
 }
