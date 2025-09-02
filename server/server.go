@@ -83,6 +83,8 @@ func (s *Server) Serve(port int) error {
 	v1.HandleFunc("/movie/{tmdbID}", s.GetMovieDetailByTMDBID()).Methods(http.MethodGet)
 
 	v1.HandleFunc("/tv/{tmdbID}", s.GetTVDetailByTMDBID()).Methods(http.MethodGet)
+	v1.HandleFunc("/tv/{tmdbID}/seasons", s.ListSeasonsForSeries()).Methods(http.MethodGet)
+	v1.HandleFunc("/tv/{tmdbID}/seasons/{seasonNumber}/episodes", s.ListEpisodesForSeason()).Methods(http.MethodGet)
 
 	v1.HandleFunc("/library/tv", s.ListTVShows()).Methods(http.MethodGet)
 	v1.HandleFunc("/library/tv", s.AddSeriesToLibrary()).Methods(http.MethodPost)
@@ -208,6 +210,64 @@ func (s Server) GetTVDetailByTMDBID() http.HandlerFunc {
 		}
 
 		resp := GenericResponse{Response: tvDetail}
+		writeResponse(w, http.StatusOK, resp)
+	}
+}
+
+// ListSeasonsForSeries lists all seasons for a TV series
+func (s Server) ListSeasonsForSeries() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log := logger.FromCtx(r.Context())
+		vars := mux.Vars(r)
+		tmdbIDVar := vars["tmdbID"]
+
+		tmdbID, err := strconv.Atoi(tmdbIDVar)
+		if err != nil {
+			http.Error(w, "Invalid TMDB ID format", http.StatusBadRequest)
+			return
+		}
+
+		seasons, err := s.manager.ListSeasonsForSeries(r.Context(), tmdbID)
+		if err != nil {
+			log.Error("failed to list seasons", zap.Error(err), zap.Int("tmdbID", tmdbID))
+			writeErrorResponse(w, http.StatusInternalServerError, err)
+			return
+		}
+
+		resp := GenericResponse{Response: seasons}
+		writeResponse(w, http.StatusOK, resp)
+	}
+}
+
+// ListEpisodesForSeason lists all episodes for a specific season
+func (s Server) ListEpisodesForSeason() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log := logger.FromCtx(r.Context())
+		vars := mux.Vars(r)
+		tmdbIDVar := vars["tmdbID"]
+		seasonNumberVar := vars["seasonNumber"]
+
+		tmdbID, err := strconv.Atoi(tmdbIDVar)
+		if err != nil {
+			http.Error(w, "Invalid TMDB ID format", http.StatusBadRequest)
+			return
+		}
+
+		seasonNumber, err := strconv.Atoi(seasonNumberVar)
+		if err != nil {
+			http.Error(w, "Invalid season number format", http.StatusBadRequest)
+			return
+		}
+
+		episodes, err := s.manager.ListEpisodesForSeason(r.Context(), tmdbID, seasonNumber)
+		if err != nil {
+			log.Error("failed to list episodes", zap.Error(err),
+				zap.Int("tmdbID", tmdbID), zap.Int("seasonNumber", seasonNumber))
+			writeErrorResponse(w, http.StatusInternalServerError, err)
+			return
+		}
+
+		resp := GenericResponse{Response: episodes}
 		writeResponse(w, http.StatusOK, resp)
 	}
 }
