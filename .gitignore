@@ -31,10 +31,12 @@ local.yaml
 .DS_Store
 
 # db files
-*.sqlite
+*.sqlite*
 .aider*
 
 # Crush workspace
 .crush/
 
 .direnv/
+
+mediaz
