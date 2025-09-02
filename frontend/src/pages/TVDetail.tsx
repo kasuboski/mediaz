@@ -1,11 +1,30 @@
 import { useParams } from "react-router-dom";
-import { Calendar, Tv, Users } from "lucide-react";
+import { Calendar, Tv, Users, Film, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { RequestModal } from "@/components/media/RequestModal";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useState } from "react";
 import { useTVDetail } from "@/lib/queries";
+
+// Mock season data structure for future API integration
+interface MockSeason {
+  seasonNumber: number;
+  episodeCount: number;
+  airDate?: string;
+  overview?: string;
+  posterPath?: string;
+}
+
+interface MockEpisode {
+  episodeNumber: number;
+  title: string;
+  airDate: string;
+  overview: string;
+  runtime?: number;
+}
 
 export default function TVDetail() {
   const { id } = useParams<{ id: string }>();
@@ -13,6 +32,63 @@ export default function TVDetail() {
 
   const tmdbID = parseInt(id || '0');
   const { data: show, isLoading, error } = useTVDetail(tmdbID);
+
+  // Generate mock season data based on seasonCount
+  const generateMockSeasons = (seasonCount: number): MockSeason[] => {
+    const seasons: MockSeason[] = [];
+    for (let i = 1; i <= seasonCount; i++) {
+      seasons.push({
+        seasonNumber: i,
+        episodeCount: Math.floor(Math.random() * 20) + 6, // 6-25 episodes
+        airDate: show?.firstAirDate ? 
+          new Date(new Date(show.firstAirDate).getFullYear() + i - 1, 0, 1).toISOString().split('T')[0] 
+          : undefined,
+        overview: `Season ${i} continues the story with new challenges and adventures.`,
+      });
+    }
+    return seasons;
+  };
+
+  // Generate mock episode data for a season
+  const generateMockEpisodes = (seasonNumber: number, episodeCount: number): MockEpisode[] => {
+    const episodes: MockEpisode[] = [];
+    const episodeTitles = [
+      "Pilot", "The Awakening", "Shadows Fall", "Breaking Point", "The Truth Revealed",
+      "New Beginnings", "Dark Secrets", "The Final Hour", "Redemption", "Legacy",
+      "Origins", "The Hunt Begins", "Betrayal", "Last Stand", "The Reckoning",
+      "Into the Unknown", "Crossroads", "The Real Monsters", "Coming Home", "Finale"
+    ];
+
+    const episodeDescriptions = [
+      "A mysterious event sets everything in motion, changing the lives of our protagonists forever.",
+      "The team discovers something that challenges everything they thought they knew about their world.",
+      "As tensions rise, alliances are tested and new threats emerge from unexpected places.",
+      "A crucial decision must be made that will determine the fate of everyone involved.",
+      "Long-buried secrets come to light, forcing characters to confront their past.",
+      "In the aftermath of recent events, the characters must find a way to move forward.",
+      "Hidden agendas are revealed as trust becomes a luxury no one can afford.",
+      "Time is running out as our heroes face their greatest challenge yet.",
+      "A chance for redemption presents itself, but at what cost?",
+      "The consequences of past actions finally catch up with everyone involved."
+    ];
+
+    for (let i = 1; i <= episodeCount; i++) {
+      const baseDate = show?.firstAirDate ? new Date(show.firstAirDate) : new Date();
+      const episodeDate = new Date(baseDate);
+      episodeDate.setFullYear(episodeDate.getFullYear() + seasonNumber - 1);
+      episodeDate.setDate(episodeDate.getDate() + (i - 1) * 7); // Weekly episodes
+
+      episodes.push({
+        episodeNumber: i,
+        title: episodeTitles[Math.min(i - 1, episodeTitles.length - 1)] || `Episode ${i}`,
+        airDate: episodeDate.toISOString().split('T')[0],
+        overview: episodeDescriptions[Math.min(i - 1, episodeDescriptions.length - 1)] || 
+                 "An exciting episode that advances the story and develops the characters further.",
+        runtime: Math.floor(Math.random() * 20) + 40, // 40-60 minutes
+      });
+    }
+    return episodes;
+  };
 
   if (isLoading) {
     return (
@@ -85,7 +161,7 @@ export default function TVDetail() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2 mb-4">
-                  {show.genres.map((genre) => (
+                  {show.genres && show.genres.length > 0 && show.genres.map((genre) => (
                     <Badge key={genre} variant="secondary" className="bg-white/20 text-white border-white/30">
                       {genre}
                     </Badge>
@@ -102,11 +178,13 @@ export default function TVDetail() {
           <div className="lg:col-span-2">
             <h2 className="text-2xl font-bold mb-4">Overview</h2>
             <p className="text-muted-foreground leading-relaxed mb-6">
-              {show.overview}
+              {show.overview && show.overview.trim() 
+                ? show.overview 
+                : "No overview available for this series."}
             </p>
 
             {show.networks && show.networks.length > 0 && (
-              <div className="mb-4">
+              <div className="mb-6">
                 <h3 className="font-semibold mb-2">Networks</h3>
                 <div className="flex gap-2">
                   {show.networks.map((network) => (
@@ -115,6 +193,84 @@ export default function TVDetail() {
                 </div>
               </div>
             )}
+
+
+            {/* Seasons Section */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Seasons</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Accordion type="single" collapsible className="w-full">
+                  {generateMockSeasons(show.seasonCount).map((season) => (
+                    <AccordionItem key={season.seasonNumber} value={`season-${season.seasonNumber}`}>
+                      <AccordionTrigger className="hover:no-underline">
+                        <div className="flex items-center justify-between w-full mr-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-12 h-16 bg-muted rounded flex items-center justify-center">
+                              <Play className="h-4 w-4 text-muted-foreground" />
+                            </div>
+                            <div className="text-left">
+                              <h4 className="font-medium">Season {season.seasonNumber}</h4>
+                              <p className="text-sm text-muted-foreground">
+                                {season.episodeCount} episodes
+                                {season.airDate && (
+                                  <span> • {new Date(season.airDate).getFullYear()}</span>
+                                )}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent>
+                        <div className="pl-15 space-y-6">
+                          <p className="text-sm text-muted-foreground">
+                            {season.overview}
+                          </p>
+                          <div className="space-y-4">
+                            {generateMockEpisodes(season.seasonNumber, Math.min(season.episodeCount, 8)).map((episode) => (
+                              <div key={episode.episodeNumber} className="bg-background/50 dark:bg-gray-800/50 rounded-lg p-4 border border-border/50 hover:border-border transition-colors">
+                                <div className="flex items-start justify-between mb-3">
+                                  <div className="flex-1">
+                                    <h4 className="font-bold text-lg text-foreground mb-1">
+                                      {episode.episodeNumber} - {episode.title}
+                                    </h4>
+                                    <div className="flex items-center gap-2 mb-2">
+                                      <Badge variant="secondary" className="text-xs px-2 py-1 bg-muted/80 text-muted-foreground">
+                                        {new Date(episode.airDate).toLocaleDateString('en-US', { 
+                                          month: 'short', 
+                                          day: 'numeric', 
+                                          year: 'numeric' 
+                                        })}
+                                      </Badge>
+                                      {episode.runtime && (
+                                        <Badge variant="secondary" className="text-xs px-2 py-1 bg-muted/80 text-muted-foreground">
+                                          {episode.runtime}m
+                                        </Badge>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                                <p className="text-sm text-muted-foreground leading-relaxed">
+                                  {episode.overview}
+                                </p>
+                              </div>
+                            ))}
+                            {season.episodeCount > 8 && (
+                              <div className="text-center py-4">
+                                <p className="text-sm text-muted-foreground">
+                                  ... and {season.episodeCount - 8} more episodes
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  ))}
+                </Accordion>
+              </CardContent>
+            </Card>
           </div>
 
           <div className="lg:col-span-1">
@@ -133,34 +289,62 @@ export default function TVDetail() {
                 </Button>
               )}
 
-              <div className="bg-card border border-border rounded-lg p-4">
-                <h3 className="font-semibold mb-3">Details</h3>
-                <div className="space-y-2 text-sm">
-                  {show.firstAirDate && (
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">First Air Date</span>
-                      <span>{new Date(show.firstAirDate).toLocaleDateString()}</span>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Details</CardTitle>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <div className="space-y-3 text-sm">
+                    {show.firstAirDate && (
+                      <div className="flex justify-between items-center py-2 border-b border-border/50">
+                        <span className="text-muted-foreground">First Air Date</span>
+                        <span className="font-medium">{new Date(show.firstAirDate).toLocaleDateString()}</span>
+                      </div>
+                    )}
+                    {show.lastAirDate && (
+                      <div className="flex justify-between items-center py-2 border-b border-border/50">
+                        <span className="text-muted-foreground">Last Air Date</span>
+                        <span className="font-medium">{new Date(show.lastAirDate).toLocaleDateString()}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between items-center py-2 border-b border-border/50">
+                      <span className="text-muted-foreground">Seasons</span>
+                      <span className="font-medium">{show.seasonCount}</span>
                     </div>
-                  )}
-                  {show.lastAirDate && (
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Last Air Date</span>
-                      <span>{new Date(show.lastAirDate).toLocaleDateString()}</span>
+                    <div className="flex justify-between items-center py-2 border-b border-border/50">
+                      <span className="text-muted-foreground">Episodes</span>
+                      <span className="font-medium">{show.episodeCount}</span>
                     </div>
-                  )}
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Seasons</span>
-                    <span>{show.seasonCount}</span>
+                    {show.voteAverage && (
+                      <div className="flex justify-between items-center py-2 border-b border-border/50">
+                        <span className="text-muted-foreground">Rating</span>
+                        <span className="font-medium">{show.voteAverage.toFixed(1)}/10</span>
+                      </div>
+                    )}
+                    {show.popularity && (
+                      <div className="flex justify-between items-center py-2 border-b border-border/50">
+                        <span className="text-muted-foreground">Popularity</span>
+                        <span className="font-medium">{Math.round(show.popularity)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between items-center py-2">
+                      <span className="text-muted-foreground">TMDB ID</span>
+                      <span className="font-medium">{show.tmdbID}</span>
+                    </div>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Episodes</span>
-                    <span>{show.episodeCount}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">TMDB ID</span>
-                    <span>{show.tmdbID}</span>
-                  </div>
-                </div>
+                </CardContent>
+              </Card>
+
+              {/* External Links */}
+              <div className="flex gap-2 mt-4">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => window.open(`https://www.themoviedb.org/tv/${show.tmdbID}`, '_blank')}
+                  title="View on TMDB"
+                >
+                  <Film className="h-4 w-4" />
+                </Button>
               </div>
             </div>
           </div>
