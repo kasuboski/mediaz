@@ -56,7 +56,7 @@ const SeasonContent = ({ tmdbID, season }: { tmdbID: number, season: SeasonResul
     return (
       <div className="pl-15 space-y-6">
         <p className="text-sm text-muted-foreground">
-          {season.overview || `Season ${season.seasonNumber} continues the story with new challenges and adventures.`}
+          {season.overview || "Season overview is not available."}
         </p>
         <div className="flex justify-center py-8">
           <LoadingSpinner size="md" />
@@ -69,7 +69,7 @@ const SeasonContent = ({ tmdbID, season }: { tmdbID: number, season: SeasonResul
     return (
       <div className="pl-15 space-y-6">
         <p className="text-sm text-muted-foreground">
-          {season.overview || `Season ${season.seasonNumber} continues the story with new challenges and adventures.`}
+          {season.overview || "Season overview is not available."}
         </p>
         <div className="text-center py-4">
           <p className="text-sm text-red-500">Failed to load episodes</p>
@@ -84,7 +84,7 @@ const SeasonContent = ({ tmdbID, season }: { tmdbID: number, season: SeasonResul
   return (
     <div className="pl-15 space-y-6">
       <p className="text-sm text-muted-foreground">
-        {season.overview || `Season ${season.seasonNumber} continues the story with new challenges and adventures.`}
+        {season.overview || "Season overview is not available."}
       </p>
       <div className="space-y-4">
         {episodesToShow.map((episode) => (
