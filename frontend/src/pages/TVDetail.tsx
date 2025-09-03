@@ -7,7 +7,7 @@ import { RequestModal } from "@/components/media/RequestModal";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useState } from "react";
-import { useTVDetail, useSeasons, useEpisodes } from "@/lib/queries";
+import { useTVDetail } from "@/lib/queries";
 import { type SeasonResult, type EpisodeResult } from "@/lib/api";
 
 // Component for rendering individual episodes
@@ -49,55 +49,34 @@ const EpisodeItem = ({ episode }: { episode: EpisodeResult }) => (
 );
 
 // Component for rendering season content with episodes
-const SeasonContent = ({ tmdbID, season }: { tmdbID: number, season: SeasonResult }) => {
-  const { data: episodes, isLoading: episodesLoading, error: episodesError } = useEpisodes(tmdbID, season.seasonNumber);
-
-  if (episodesLoading) {
-    return (
-      <div className="pl-15 space-y-6">
-        <p className="text-sm text-muted-foreground">
-          {season.overview || "Season overview is not available."}
-        </p>
-        <div className="flex justify-center py-8">
-          <LoadingSpinner size="md" />
-        </div>
-      </div>
-    );
-  }
-
-  if (episodesError) {
-    return (
-      <div className="pl-15 space-y-6">
-        <p className="text-sm text-muted-foreground">
-          {season.overview || "Season overview is not available."}
-        </p>
-        <div className="text-center py-4">
-          <p className="text-sm text-red-500">Failed to load episodes</p>
-        </div>
-      </div>
-    );
-  }
-
-  const episodesToShow = episodes?.slice(0, 8) || [];
-  const remainingCount = (episodes?.length || 0) - 8;
+const SeasonContent = ({ season }: { season: SeasonResult }) => {
+  const episodes = season.episodes || [];
+  const episodesToShow = episodes.slice(0, 8);
+  const remainingCount = episodes.length - 8;
 
   return (
     <div className="pl-15 space-y-6">
       <p className="text-sm text-muted-foreground">
         {season.overview || "Season overview is not available."}
       </p>
-      <div className="space-y-4">
-        {episodesToShow.map((episode) => (
-          <EpisodeItem key={episode.episodeNumber} episode={episode} />
-        ))}
-        {remainingCount > 0 && (
-          <div className="text-center py-4">
-            <p className="text-sm text-muted-foreground">
-              ... and {remainingCount} more episodes
-            </p>
-          </div>
-        )}
-      </div>
+      {episodes.length === 0 ? (
+        <div className="text-center py-4">
+          <p className="text-sm text-muted-foreground">No episodes available</p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {episodesToShow.map((episode) => (
+            <EpisodeItem key={episode.episodeNumber} episode={episode} />
+          ))}
+          {remainingCount > 0 && (
+            <div className="text-center py-4">
+              <p className="text-sm text-muted-foreground">
+                ... and {remainingCount} more episodes
+              </p>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };
@@ -108,9 +87,8 @@ export default function TVDetail() {
 
   const tmdbID = parseInt(id || '0');
   const { data: show, isLoading, error } = useTVDetail(tmdbID);
-  const { data: seasons, isLoading: seasonsLoading, error: seasonsError } = useSeasons(tmdbID);
 
-  if (isLoading || seasonsLoading) {
+  if (isLoading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
         <LoadingSpinner size="lg" />
@@ -227,17 +205,13 @@ export default function TVDetail() {
                 <CardTitle className="text-lg">Seasons</CardTitle>
               </CardHeader>
               <CardContent>
-                {seasonsError ? (
-                  <div className="text-center py-8">
-                    <p className="text-sm text-red-500">Failed to load seasons data</p>
-                  </div>
-                ) : !seasons || seasons.length === 0 ? (
+                {!show.seasons || show.seasons.length === 0 ? (
                   <div className="text-center py-8">
                     <p className="text-sm text-muted-foreground">No seasons data available</p>
                   </div>
                 ) : (
                   <Accordion type="single" collapsible className="w-full">
-                    {seasons.map((season) => (
+                    {show.seasons.map((season) => (
                       <AccordionItem key={season.seasonNumber} value={`season-${season.seasonNumber}`}>
                         <AccordionTrigger className="hover:no-underline">
                           <div className="flex items-center justify-between w-full mr-4">
@@ -274,7 +248,7 @@ export default function TVDetail() {
                           </div>
                         </AccordionTrigger>
                         <AccordionContent>
-                          <SeasonContent tmdbID={tmdbID} season={season} />
+                          <SeasonContent season={season} />
                         </AccordionContent>
                       </AccordionItem>
                     ))}

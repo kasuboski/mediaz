@@ -126,6 +126,7 @@ export interface TVDetailResult {
   path?: string;
   qualityProfileID?: number;
   monitored?: boolean;
+  seasons?: SeasonResult[];
 }
 
 export interface TVDetail {
@@ -149,6 +150,7 @@ export interface TVDetail {
   path?: string;
   qualityProfileID?: number;
   monitored: boolean;
+  seasons: SeasonResult[];
 }
 
 /**
@@ -217,6 +219,7 @@ function transformTVDetailResult(result: TVDetailResult): TVDetail {
     networks: result.networks ?? [],
     libraryStatus: result.libraryStatus === 'InLibrary',
     monitored: result.monitored ?? false,
+    seasons: result.seasons ?? [],
   };
 }
 
@@ -244,6 +247,7 @@ export interface SeasonResult {
   posterPath?: string;
   episodeCount: number;
   monitored: boolean;
+  episodes?: EpisodeResult[];
 }
 
 /**
@@ -272,13 +276,5 @@ export const tvApi = {
   async getTVDetail(tmdbID: number): Promise<TVDetail> {
     const result = await apiRequest<TVDetailResult>(`/tv/${tmdbID}`);
     return transformTVDetailResult(result);
-  },
-  async getSeasons(tmdbID: number): Promise<SeasonResult[]> {
-    const seasons = await apiRequest<SeasonResult[] | null>(`/tv/${tmdbID}/seasons`);
-    return seasons ?? [];
-  },
-  async getEpisodes(tmdbID: number, seasonNumber: number): Promise<EpisodeResult[]> {
-    const episodes = await apiRequest<EpisodeResult[] | null>(`/tv/${tmdbID}/seasons/${seasonNumber}/episodes`);
-    return episodes ?? [];
   },
 };
