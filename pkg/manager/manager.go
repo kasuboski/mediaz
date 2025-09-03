@@ -860,13 +860,20 @@ func (m MediaManager) ListSeasonsForSeries(ctx context.Context, tmdbID int) ([]S
 			continue
 		}
 
+		// Count episodes for this season
+		episodes, err := m.storage.ListEpisodes(ctx,
+			table.Episode.SeasonID.EQ(sqlite.Int32(season.ID)))
+		if err != nil {
+			log.Debug("failed to count episodes for season", zap.Error(err), zap.Int32("seasonID", season.ID))
+		}
+
 		result := SeasonResult{
 			SeriesID:     season.SeriesID,
 			Number:       seasonMeta.Number,
 			Title:        seasonMeta.Title,
 			TMDBID:       seasonMeta.TmdbID,
 			Monitored:    season.Monitored == 1,
-			EpisodeCount: 0, // Will count episodes separately if needed
+			EpisodeCount: len(episodes),
 		}
 
 		// Add optional fields
@@ -915,7 +922,7 @@ func (m MediaManager) ListEpisodesForSeason(ctx context.Context, tmdbID int, sea
 	// Priority: 1) Season with metadata matching number, 2) Season with matching season_number
 	var candidateSeasons []*storage.Season
 	var candidateMetas []*model.SeasonMetadata
-	
+
 	for _, season := range seasons {
 		// Check if season has metadata with the right number
 		if season.SeasonMetadataID != nil {
@@ -927,7 +934,7 @@ func (m MediaManager) ListEpisodesForSeason(ctx context.Context, tmdbID int, sea
 			}
 		}
 	}
-	
+
 	// If no seasons found with metadata, fall back to season_number matching
 	if len(candidateSeasons) == 0 {
 		for _, season := range seasons {
@@ -946,7 +953,7 @@ func (m MediaManager) ListEpisodesForSeason(ctx context.Context, tmdbID int, sea
 	// If we have multiple candidates, prefer the one with episodes
 	var targetSeason *storage.Season
 	var seasonMeta *model.SeasonMetadata
-	
+
 	if len(candidateSeasons) == 1 {
 		targetSeason = candidateSeasons[0]
 		seasonMeta = candidateMetas[0]
@@ -961,7 +968,7 @@ func (m MediaManager) ListEpisodesForSeason(ctx context.Context, tmdbID int, sea
 				break
 			}
 		}
-		
+
 		// If no season has episodes, just use the first one
 		if targetSeason == nil {
 			targetSeason = candidateSeasons[0]
@@ -981,7 +988,7 @@ func (m MediaManager) ListEpisodesForSeason(ctx context.Context, tmdbID int, sea
 	results := make([]EpisodeResult, 0)
 	for _, episode := range episodes {
 		var episodeMeta *model.EpisodeMetadata
-		
+
 		// Try to get episode metadata if available
 		if episode.EpisodeMetadataID != nil {
 			meta, err := m.storage.GetEpisodeMetadata(ctx,
@@ -1013,7 +1020,7 @@ func (m MediaManager) ListEpisodesForSeason(ctx context.Context, tmdbID int, sea
 			result.TMDBID = episodeMeta.TmdbID
 			result.Number = episodeMeta.Number
 			result.Title = episodeMeta.Title
-			
+
 			// Add optional fields
 			if episodeMeta.Overview != nil {
 				result.Overview = episodeMeta.Overview
