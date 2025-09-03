@@ -133,11 +133,11 @@ export default function TVDetail() {
     );
   }
 
-  const backdropUrl = show.backdropPath
+  const backdropUrl = (show.backdropPath && show.backdropPath.trim() !== '')
     ? `https://image.tmdb.org/t/p/original${show.backdropPath}`
     : null;
 
-  const posterUrl = show.posterPath
+  const posterUrl = (show.posterPath && show.posterPath.trim() !== '')
     ? `https://image.tmdb.org/t/p/w500${show.posterPath}`
     : "/placeholder.svg";
 
@@ -158,6 +158,12 @@ export default function TVDetail() {
                 src={posterUrl}
                 alt={show.title}
                 className="w-48 h-72 object-cover rounded-lg shadow-modal border border-border/20"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  if (target.src !== '/placeholder.svg') {
+                    target.src = '/placeholder.svg';
+                  }
+                }}
               />
               <div className="flex-1 text-white">
                 <h1 className="text-4xl font-bold mb-2">{show.title}</h1>
@@ -242,6 +248,14 @@ export default function TVDetail() {
                                     src={`https://image.tmdb.org/t/p/w92${season.posterPath}`}
                                     alt={season.title}
                                     className="w-full h-full object-cover rounded"
+                                    onError={(e) => {
+                                      const target = e.target as HTMLImageElement;
+                                      target.style.display = 'none';
+                                      const parentDiv = target.parentElement;
+                                      if (parentDiv) {
+                                        parentDiv.innerHTML = '<svg class="h-4 w-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1m4 0h1m-6 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>';
+                                      }
+                                    }}
                                   />
                                 ) : (
                                   <Play className="h-4 w-4 text-muted-foreground" />

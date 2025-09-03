@@ -185,7 +185,6 @@ func (m MediaManager) buildTVDetailResult(metadata *model.SeriesMetadata, detail
 	result := &TVDetailResult{
 		TMDBID:        metadata.TmdbID,
 		Title:         metadata.Title,
-		PosterPath:    details.PosterPath,
 		SeasonCount:   metadata.SeasonCount,
 		EpisodeCount:  metadata.EpisodeCount,
 		LibraryStatus: "Not In Library", // Default status
@@ -195,7 +194,14 @@ func (m MediaManager) buildTVDetailResult(metadata *model.SeriesMetadata, detail
 		result.Overview = *metadata.Overview
 	}
 
-	// Set backdrop path only if not empty
+	// Set poster path - prefer database over TMDB API to avoid unnecessary API calls
+	if metadata.PosterPath != nil && *metadata.PosterPath != "" {
+		result.PosterPath = *metadata.PosterPath
+	} else if details.PosterPath != "" {
+		result.PosterPath = details.PosterPath
+	}
+
+	// Set backdrop path from TMDB API (not stored in database)
 	if details.BackdropPath != "" {
 		result.BackdropPath = &details.BackdropPath
 	}
