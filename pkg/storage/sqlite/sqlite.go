@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/go-jet/jet/v2/qrm"
@@ -19,6 +20,7 @@ import (
 
 type SQLite struct {
 	db *sql.DB
+	mu sync.Mutex
 }
 
 const (
@@ -49,11 +51,12 @@ func New(filePath string) (storage.Storage, error) {
 
 	return &SQLite{
 		db: db,
+		mu: sync.Mutex{},
 	}, nil
 }
 
 // Init applies the provided schema file contents to the database
-func (s SQLite) Init(ctx context.Context, schemas ...string) error {
+func (s *SQLite) Init(ctx context.Context, schemas ...string) error {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -71,7 +74,7 @@ func (s SQLite) Init(ctx context.Context, schemas ...string) error {
 }
 
 // CreateIndexer stores a new indexer in the database
-func (s SQLite) CreateIndexer(ctx context.Context, indexer model.Indexer) (int64, error) {
+func (s *SQLite) CreateIndexer(ctx context.Context, indexer model.Indexer) (int64, error) {
 	stmt := table.Indexer.INSERT(table.Indexer.AllColumns.Except(table.Indexer.ID)).MODEL(indexer).ON_CONFLICT(table.Indexer.Name).DO_NOTHING().RETURNING(table.Indexer.AllColumns)
 	result, err := s.handleInsert(ctx, stmt)
 	if err != nil {
@@ -82,14 +85,14 @@ func (s SQLite) CreateIndexer(ctx context.Context, indexer model.Indexer) (int64
 }
 
 // DeleteIndexer deletes a stored indexer given the indexer ID
-func (s SQLite) DeleteIndexer(ctx context.Context, id int64) error {
+func (s *SQLite) DeleteIndexer(ctx context.Context, id int64) error {
 	stmt := table.Indexer.DELETE().WHERE(table.Indexer.ID.EQ(sqlite.Int64(id))).RETURNING(table.Indexer.AllColumns)
 	_, err := s.handleDelete(ctx, stmt)
 	return err
 }
 
 // ListIndexers lists the stored indexers
-func (s SQLite) ListIndexers(ctx context.Context) ([]*model.Indexer, error) {
+func (s *SQLite) ListIndexers(ctx context.Context) ([]*model.Indexer, error) {
 	indexers := make([]*model.Indexer, 0)
 
 	stmt := table.Indexer.SELECT(table.Indexer.AllColumns).FROM(table.Indexer).ORDER_BY(table.Indexer.Priority.DESC())
@@ -102,7 +105,7 @@ func (s SQLite) ListIndexers(ctx context.Context) ([]*model.Indexer, error) {
 }
 
 // CreateMovie stores a movie and creates an initial transition state
-func (s SQLite) CreateMovie(ctx context.Context, movie storage.Movie, initialState storage.MovieState) (int64, error) {
+func (s *SQLite) CreateMovie(ctx context.Context, movie storage.Movie, initialState storage.MovieState) (int64, error) {
 	if movie.State == "" {
 		movie.State = storage.MovieStateNew
 	}
@@ -111,6 +114,9 @@ func (s SQLite) CreateMovie(ctx context.Context, movie storage.Movie, initialSta
 	if err != nil {
 		return 0, err
 	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -174,7 +180,7 @@ func (s SQLite) CreateMovie(ctx context.Context, movie storage.Movie, initialSta
 	return inserted, nil
 }
 
-func (s SQLite) GetMovie(ctx context.Context, id int64) (*storage.Movie, error) {
+func (s *SQLite) GetMovie(ctx context.Context, id int64) (*storage.Movie, error) {
 	stmt := sqlite.
 		SELECT(
 			table.Movie.AllColumns,
@@ -193,7 +199,7 @@ func (s SQLite) GetMovie(ctx context.Context, id int64) (*storage.Movie, error) 
 	return movie, err
 }
 
-func (s SQLite) GetMovieByMovieFileID(ctx context.Context, fileID int64) (*storage.Movie, error) {
+func (s *SQLite) GetMovieByMovieFileID(ctx context.Context, fileID int64) (*storage.Movie, error) {
 	stmt := sqlite.
 		SELECT(
 			table.Movie.AllColumns,
@@ -213,7 +219,7 @@ func (s SQLite) GetMovieByMovieFileID(ctx context.Context, fileID int64) (*stora
 }
 
 // ListMovies lists the stored movies
-func (s SQLite) ListMovies(ctx context.Context) ([]*storage.Movie, error) {
+func (s *SQLite) ListMovies(ctx context.Context) ([]*storage.Movie, error) {
 	movies := make([]*storage.Movie, 0)
 	stmt := sqlite.
 		SELECT(
@@ -234,7 +240,7 @@ func (s SQLite) ListMovies(ctx context.Context) ([]*storage.Movie, error) {
 	return movies, err
 }
 
-func (s SQLite) ListMoviesByState(ctx context.Context, state storage.MovieState) ([]*storage.Movie, error) {
+func (s *SQLite) ListMoviesByState(ctx context.Context, state storage.MovieState) ([]*storage.Movie, error) {
 	stmt := sqlite.
 		SELECT(
 			table.Movie.AllColumns,
@@ -256,7 +262,7 @@ func (s SQLite) ListMoviesByState(ctx context.Context, state storage.MovieState)
 }
 
 // DeleteMovie removes a movie by id
-func (s SQLite) DeleteMovie(ctx context.Context, id int64) error {
+func (s *SQLite) DeleteMovie(ctx context.Context, id int64) error {
 	stmt := table.Movie.DELETE().WHERE(table.Movie.ID.EQ(sqlite.Int64(id))).RETURNING(table.Movie.ID)
 	_, err := s.handleDelete(ctx, stmt)
 	if err != nil {
@@ -266,7 +272,7 @@ func (s SQLite) DeleteMovie(ctx context.Context, id int64) error {
 }
 
 // UpdateMovieMovieFileID updates the movie file id for a movie
-func (s SQLite) UpdateMovieMovieFileID(ctx context.Context, id int64, fileID int64) error {
+func (s *SQLite) UpdateMovieMovieFileID(ctx context.Context, id int64, fileID int64) error {
 	stmt := table.Movie.UPDATE().
 		SET(table.Movie.MovieFileID.SET(sqlite.Int64(fileID))).WHERE(table.Movie.ID.EQ(sqlite.Int64(id)))
 	_, err := s.handleStatement(ctx, stmt)
@@ -274,7 +280,7 @@ func (s SQLite) UpdateMovieMovieFileID(ctx context.Context, id int64, fileID int
 }
 
 // UpdateMovieState updates the transition state of a movie. Metadata is optional and can be nil
-func (s SQLite) UpdateMovieState(ctx context.Context, id int64, state storage.MovieState, metadata *storage.TransitionStateMetadata) error {
+func (s *SQLite) UpdateMovieState(ctx context.Context, id int64, state storage.MovieState, metadata *storage.TransitionStateMetadata) error {
 	movie, err := s.GetMovie(ctx, id)
 	if err != nil {
 		return err
@@ -285,6 +291,8 @@ func (s SQLite) UpdateMovieState(ctx context.Context, id int64, state storage.Mo
 		return err
 	}
 
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -337,7 +345,7 @@ func (s SQLite) UpdateMovieState(ctx context.Context, id int64, state storage.Mo
 }
 
 // GetMovieByMetadataID checks if there's a movie already associated with the given metadata id
-func (s SQLite) GetMovieByMetadataID(ctx context.Context, metadataID int) (*storage.Movie, error) {
+func (s *SQLite) GetMovieByMetadataID(ctx context.Context, metadataID int) (*storage.Movie, error) {
 	movie := new(storage.Movie)
 
 	stmt := table.Movie.
@@ -365,7 +373,7 @@ func (s SQLite) GetMovieByMetadataID(ctx context.Context, metadataID int) (*stor
 }
 
 // GetMovieByPath gets a movie by path
-func (s SQLite) GetMovieByPath(ctx context.Context, path string) (*storage.Movie, error) {
+func (s *SQLite) GetMovieByPath(ctx context.Context, path string) (*storage.Movie, error) {
 	stmt := table.Movie.
 		SELECT(
 			table.Movie.AllColumns,
@@ -388,7 +396,7 @@ func (s SQLite) GetMovieByPath(ctx context.Context, path string) (*storage.Movie
 
 // GetMovieFilesByMovieName gets all movie files given a movie name
 // It assumes the movie name is the prefix of the relative path for a movie file
-func (s SQLite) GetMovieFilesByMovieName(ctx context.Context, name string) ([]*model.MovieFile, error) {
+func (s *SQLite) GetMovieFilesByMovieName(ctx context.Context, name string) ([]*model.MovieFile, error) {
 	stmt := table.MovieFile.
 		SELECT(table.MovieFile.AllColumns).
 		FROM(table.MovieFile.INNER_JOIN(table.Movie,
@@ -411,7 +419,7 @@ func (s SQLite) GetMovieFilesByMovieName(ctx context.Context, name string) ([]*m
 }
 
 // CreateMovieFile stores a movie file
-func (s SQLite) CreateMovieFile(ctx context.Context, file model.MovieFile) (int64, error) {
+func (s *SQLite) CreateMovieFile(ctx context.Context, file model.MovieFile) (int64, error) {
 	// Exclude DateAdded so that the default is used
 	stmt := table.MovieFile.INSERT(table.MovieFile.MutableColumns.Except(table.MovieFile.DateAdded).Except(table.MovieFile.ID)).RETURNING(table.MovieFile.ID).MODEL(file)
 	result, err := s.handleInsert(ctx, stmt)
@@ -428,7 +436,7 @@ func (s SQLite) CreateMovieFile(ctx context.Context, file model.MovieFile) (int6
 }
 
 // DeleteMovieFile removes a movie file by id
-func (s SQLite) DeleteMovieFile(ctx context.Context, id int64) error {
+func (s *SQLite) DeleteMovieFile(ctx context.Context, id int64) error {
 	stmt := table.MovieFile.DELETE().WHERE(table.MovieFile.ID.EQ(sqlite.Int64(id))).RETURNING(table.MovieFile.ID)
 	_, err := s.handleDelete(ctx, stmt)
 	if err != nil {
@@ -438,28 +446,28 @@ func (s SQLite) DeleteMovieFile(ctx context.Context, id int64) error {
 }
 
 // LinkMovieMetadata links a movie with its metadata
-func (s SQLite) LinkMovieMetadata(ctx context.Context, movieID int64, metadataID int32) error {
+func (s *SQLite) LinkMovieMetadata(ctx context.Context, movieID int64, metadataID int32) error {
 	stmt := table.Movie.UPDATE(table.Movie.MovieMetadataID).SET(metadataID).WHERE(table.Movie.ID.EQ(sqlite.Int64(movieID)))
 	_, err := stmt.Exec(s.db)
 	return err
 }
 
 // LinkSeriesMetadata links a series with its metadata
-func (s SQLite) LinkSeriesMetadata(ctx context.Context, seriesID int64, metadataID int32) error {
+func (s *SQLite) LinkSeriesMetadata(ctx context.Context, seriesID int64, metadataID int32) error {
 	stmt := table.Series.UPDATE(table.Series.SeriesMetadataID).SET(metadataID).WHERE(table.Series.ID.EQ(sqlite.Int64(seriesID)))
 	_, err := stmt.Exec(s.db)
 	return err
 }
 
 // LinkSeasonMetadata links a season with its metadata
-func (s SQLite) LinkSeasonMetadata(ctx context.Context, seasonID int64, metadataID int32) error {
+func (s *SQLite) LinkSeasonMetadata(ctx context.Context, seasonID int64, metadataID int32) error {
 	stmt := table.Season.UPDATE(table.Season.SeasonMetadataID).SET(metadataID).WHERE(table.Season.ID.EQ(sqlite.Int64(seasonID)))
 	_, err := stmt.Exec(s.db)
 	return err
 }
 
 // LinkEpisodeMetadata links an episode with its season and episode metadata
-func (s SQLite) LinkEpisodeMetadata(ctx context.Context, episodeID int64, seasonID int32, episodeMetadataID int32) error {
+func (s *SQLite) LinkEpisodeMetadata(ctx context.Context, episodeID int64, seasonID int32, episodeMetadataID int32) error {
 	stmt := table.Episode.UPDATE(table.Episode.SeasonID, table.Episode.EpisodeMetadataID).
 		SET(seasonID, episodeMetadataID).
 		WHERE(table.Episode.ID.EQ(sqlite.Int64(episodeID)))
@@ -468,7 +476,7 @@ func (s SQLite) LinkEpisodeMetadata(ctx context.Context, episodeID int64, season
 }
 
 // ListMovieFiles lists all movie files
-func (s SQLite) ListMovieFiles(ctx context.Context) ([]*model.MovieFile, error) {
+func (s *SQLite) ListMovieFiles(ctx context.Context) ([]*model.MovieFile, error) {
 	var movieFiles []*model.MovieFile
 	stmt := table.MovieFile.SELECT(table.MovieFile.AllColumns).FROM(table.MovieFile).ORDER_BY(table.MovieFile.ID.ASC())
 	err := stmt.QueryContext(ctx, s.db, &movieFiles)
@@ -480,7 +488,7 @@ func (s SQLite) ListMovieFiles(ctx context.Context) ([]*model.MovieFile, error) 
 }
 
 // CreateMovieMetadata creates the given movieMeta
-func (s SQLite) CreateMovieMetadata(ctx context.Context, movieMeta model.MovieMetadata) (int64, error) {
+func (s *SQLite) CreateMovieMetadata(ctx context.Context, movieMeta model.MovieMetadata) (int64, error) {
 	stmt := table.MovieMetadata.INSERT(table.MovieMetadata.MutableColumns).MODEL(movieMeta).ON_CONFLICT(table.MovieMetadata.ID).DO_NOTHING()
 	result, err := s.handleInsert(ctx, stmt)
 	if err != nil {
@@ -496,7 +504,7 @@ func (s SQLite) CreateMovieMetadata(ctx context.Context, movieMeta model.MovieMe
 }
 
 // DeleteMovieMetadata deletes a movie metadata by id
-func (s SQLite) DeleteMovieMetadata(ctx context.Context, id int64) error {
+func (s *SQLite) DeleteMovieMetadata(ctx context.Context, id int64) error {
 	stmt := table.MovieMetadata.DELETE().WHERE(table.MovieMetadata.ID.EQ(sqlite.Int64(id))).RETURNING(table.MovieMetadata.ID)
 	_, err := s.handleDelete(ctx, stmt)
 	if err != nil {
@@ -506,7 +514,7 @@ func (s SQLite) DeleteMovieMetadata(ctx context.Context, id int64) error {
 }
 
 // ListMovieMetadata lists all movie metadata
-func (s SQLite) ListMovieMetadata(ctx context.Context) ([]*model.MovieMetadata, error) {
+func (s *SQLite) ListMovieMetadata(ctx context.Context) ([]*model.MovieMetadata, error) {
 	movies := make([]*model.MovieMetadata, 0)
 	stmt := table.Movie.SELECT(table.MovieMetadata.AllColumns).FROM(table.MovieMetadata).ORDER_BY(table.MovieMetadata.LastInfoSync.ASC())
 	err := stmt.QueryContext(ctx, s.db, &movies)
@@ -518,7 +526,7 @@ func (s SQLite) ListMovieMetadata(ctx context.Context) ([]*model.MovieMetadata, 
 }
 
 // GetMovieMetadata get a movie metadata for the given where
-func (s SQLite) GetMovieMetadata(ctx context.Context, where sqlite.BoolExpression) (*model.MovieMetadata, error) {
+func (s *SQLite) GetMovieMetadata(ctx context.Context, where sqlite.BoolExpression) (*model.MovieMetadata, error) {
 	meta := &model.MovieMetadata{}
 	stmt := table.Movie.SELECT(table.MovieMetadata.AllColumns).FROM(table.MovieMetadata).WHERE(where).LIMIT(1)
 	err := stmt.QueryContext(ctx, s.db, meta)
@@ -533,7 +541,7 @@ func (s SQLite) GetMovieMetadata(ctx context.Context, where sqlite.BoolExpressio
 }
 
 // CreateQualityDefinition store a new quality definition
-func (s SQLite) CreateQualityDefinition(ctx context.Context, definition model.QualityDefinition) (int64, error) {
+func (s *SQLite) CreateQualityDefinition(ctx context.Context, definition model.QualityDefinition) (int64, error) {
 	stmt := table.QualityDefinition.INSERT(table.QualityDefinition.AllColumns.Except(table.QualityDefinition.ID)).MODEL(definition).RETURNING(table.QualityDefinition.ID)
 	result, err := s.handleInsert(ctx, stmt)
 	if err != nil {
@@ -549,7 +557,7 @@ func (s SQLite) CreateQualityDefinition(ctx context.Context, definition model.Qu
 }
 
 // GetQualityDefinition gets a quality definition
-func (s SQLite) GetQualityDefinition(ctx context.Context, id int64) (model.QualityDefinition, error) {
+func (s *SQLite) GetQualityDefinition(ctx context.Context, id int64) (model.QualityDefinition, error) {
 	stmt := table.QualityDefinition.SELECT(table.QualityDefinition.AllColumns).FROM(table.QualityDefinition).WHERE(table.QualityDefinition.ID.EQ(sqlite.Int64(id))).ORDER_BY(table.QualityDefinition.ID.ASC())
 	var result model.QualityDefinition
 	err := stmt.QueryContext(ctx, s.db, &result)
@@ -557,7 +565,7 @@ func (s SQLite) GetQualityDefinition(ctx context.Context, id int64) (model.Quali
 }
 
 // ListQualityDefinitions lists all quality definitions
-func (s SQLite) ListQualityDefinitions(ctx context.Context) ([]*model.QualityDefinition, error) {
+func (s *SQLite) ListQualityDefinitions(ctx context.Context) ([]*model.QualityDefinition, error) {
 	definitions := make([]*model.QualityDefinition, 0)
 	stmt := table.Indexer.SELECT(table.QualityDefinition.AllColumns).FROM(table.QualityDefinition).ORDER_BY(table.QualityDefinition.ID.ASC())
 	err := stmt.QueryContext(ctx, s.db, &definitions)
@@ -565,13 +573,13 @@ func (s SQLite) ListQualityDefinitions(ctx context.Context) ([]*model.QualityDef
 }
 
 // DeleteQualityDefinition deletes a quality
-func (s SQLite) DeleteQualityDefinition(ctx context.Context, id int64) error {
+func (s *SQLite) DeleteQualityDefinition(ctx context.Context, id int64) error {
 	stmt := table.QualityDefinition.DELETE().WHERE(table.QualityDefinition.ID.EQ(sqlite.Int64(id))).RETURNING(table.QualityDefinition.AllColumns)
 	_, err := s.handleDelete(ctx, stmt)
 	return err
 }
 
-func (s SQLite) CreateQualityProfileItem(ctx context.Context, item model.QualityProfileItem) (int64, error) {
+func (s *SQLite) CreateQualityProfileItem(ctx context.Context, item model.QualityProfileItem) (int64, error) {
 	stmt := table.QualityProfileItem.INSERT(table.QualityProfileItem.AllColumns.Except(table.QualityProfileItem.ID)).RETURNING(table.QualityProfileItem.ID).MODEL(item)
 	result, err := s.handleInsert(ctx, stmt)
 	if err != nil {
@@ -587,7 +595,7 @@ func (s SQLite) CreateQualityProfileItem(ctx context.Context, item model.Quality
 }
 
 // GetQualityProfileItem gets a quality item that belongs to a profile
-func (s SQLite) GetQualityProfileItem(ctx context.Context, id int64) (model.QualityProfileItem, error) {
+func (s *SQLite) GetQualityProfileItem(ctx context.Context, id int64) (model.QualityProfileItem, error) {
 	stmt := table.QualityProfileItem.SELECT(table.QualityProfileItem.AllColumns).FROM(table.QualityProfileItem).WHERE(table.QualityProfileItem.ID.EQ(sqlite.Int64(id)))
 	var result model.QualityProfileItem
 	err := stmt.QueryContext(ctx, s.db, &result)
@@ -595,7 +603,7 @@ func (s SQLite) GetQualityProfileItem(ctx context.Context, id int64) (model.Qual
 }
 
 // ListQualityProfileItems lists all quality definitions
-func (s SQLite) ListQualityProfileItems(ctx context.Context) ([]*model.QualityProfileItem, error) {
+func (s *SQLite) ListQualityProfileItems(ctx context.Context) ([]*model.QualityProfileItem, error) {
 	items := make([]*model.QualityProfileItem, 0)
 	stmt := table.Indexer.SELECT(table.QualityProfileItem.AllColumns).FROM(table.QualityProfileItem).ORDER_BY(table.QualityProfileItem.ID.ASC())
 	err := stmt.QueryContext(ctx, s.db, &items)
@@ -603,13 +611,13 @@ func (s SQLite) ListQualityProfileItems(ctx context.Context) ([]*model.QualityPr
 }
 
 // DeleteQualityDefinition deletes a quality
-func (s SQLite) DeleteQualityProfileItem(ctx context.Context, id int64) error {
+func (s *SQLite) DeleteQualityProfileItem(ctx context.Context, id int64) error {
 	stmt := table.QualityProfileItem.DELETE().WHERE(table.QualityProfileItem.ID.EQ(sqlite.Int64(id))).RETURNING(table.QualityProfileItem.AllColumns)
 	_, err := s.handleDelete(ctx, stmt)
 	return err
 }
 
-func (s SQLite) CreateQualityProfile(ctx context.Context, profile model.QualityProfile) (int64, error) {
+func (s *SQLite) CreateQualityProfile(ctx context.Context, profile model.QualityProfile) (int64, error) {
 	stmt := table.QualityProfile.INSERT(table.QualityProfile.AllColumns.Except(table.QualityProfile.ID)).MODEL(profile).RETURNING(table.QualityProfile.ID)
 	result, err := s.handleInsert(ctx, stmt)
 	if err != nil {
@@ -625,7 +633,7 @@ func (s SQLite) CreateQualityProfile(ctx context.Context, profile model.QualityP
 }
 
 // GetQualityProfile gets a quality profile and all associated quality items given a quality profile id
-func (s SQLite) GetQualityProfile(ctx context.Context, id int64) (storage.QualityProfile, error) {
+func (s *SQLite) GetQualityProfile(ctx context.Context, id int64) (storage.QualityProfile, error) {
 	stmt := sqlite.
 		SELECT(
 			table.QualityProfile.AllColumns,
@@ -646,7 +654,7 @@ func (s SQLite) GetQualityProfile(ctx context.Context, id int64) (storage.Qualit
 }
 
 // ListQualityProfiles lists all quality profiles and their associated quality items
-func (s SQLite) ListQualityProfiles(ctx context.Context, where ...sqlite.BoolExpression) ([]*storage.QualityProfile, error) {
+func (s *SQLite) ListQualityProfiles(ctx context.Context, where ...sqlite.BoolExpression) ([]*storage.QualityProfile, error) {
 	stmt := sqlite.
 		SELECT(
 			table.QualityProfile.AllColumns,
@@ -670,21 +678,23 @@ func (s SQLite) ListQualityProfiles(ctx context.Context, where ...sqlite.BoolExp
 }
 
 // DeleteQualityProfile delete a quality profile
-func (s SQLite) DeleteQualityProfile(ctx context.Context, id int64) error {
+func (s *SQLite) DeleteQualityProfile(ctx context.Context, id int64) error {
 	stmt := table.QualityProfile.DELETE().WHERE(table.QualityProfile.ID.EQ(sqlite.Int64(id))).RETURNING(table.QualityProfile.AllColumns)
 	_, err := s.handleDelete(ctx, stmt)
 	return err
 }
 
-func (s SQLite) handleInsert(ctx context.Context, stmt sqlite.InsertStatement) (sql.Result, error) {
+func (s *SQLite) handleInsert(ctx context.Context, stmt sqlite.InsertStatement) (sql.Result, error) {
 	return s.handleStatement(ctx, stmt)
 }
 
-func (s SQLite) handleDelete(ctx context.Context, stmt sqlite.DeleteStatement) (sql.Result, error) {
+func (s *SQLite) handleDelete(ctx context.Context, stmt sqlite.DeleteStatement) (sql.Result, error) {
 	return s.handleStatement(ctx, stmt)
 }
 
-func (s SQLite) handleStatement(ctx context.Context, stmt sqlite.Statement) (sql.Result, error) {
+func (s *SQLite) handleStatement(ctx context.Context, stmt sqlite.Statement) (sql.Result, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	log := logger.FromCtx(ctx)
 	var result sql.Result
 
@@ -705,7 +715,7 @@ func (s SQLite) handleStatement(ctx context.Context, stmt sqlite.Statement) (sql
 }
 
 // GetDownloadClient gets a stored download client given an id
-func (s SQLite) GetDownloadClient(ctx context.Context, id int64) (model.DownloadClient, error) {
+func (s *SQLite) GetDownloadClient(ctx context.Context, id int64) (model.DownloadClient, error) {
 	stmt := table.DownloadClient.SELECT(table.DownloadClient.AllColumns).FROM(table.DownloadClient).WHERE(table.DownloadClient.ID.EQ(sqlite.Int64(id)))
 	var result model.DownloadClient
 	err := stmt.QueryContext(ctx, s.db, &result)
@@ -713,7 +723,7 @@ func (s SQLite) GetDownloadClient(ctx context.Context, id int64) (model.Download
 }
 
 // ListDownloadClients lists all stored download clients
-func (s SQLite) ListDownloadClients(ctx context.Context) ([]*model.DownloadClient, error) {
+func (s *SQLite) ListDownloadClients(ctx context.Context) ([]*model.DownloadClient, error) {
 	items := make([]*model.DownloadClient, 0)
 	stmt := table.Indexer.SELECT(table.DownloadClient.AllColumns).FROM(table.DownloadClient).ORDER_BY(table.DownloadClient.ID.ASC())
 	err := stmt.QueryContext(ctx, s.db, &items)
@@ -721,14 +731,14 @@ func (s SQLite) ListDownloadClients(ctx context.Context) ([]*model.DownloadClien
 }
 
 // DeleteDownloadClient deletes a download client given an id
-func (s SQLite) DeleteDownloadClient(ctx context.Context, id int64) error {
+func (s *SQLite) DeleteDownloadClient(ctx context.Context, id int64) error {
 	stmt := table.DownloadClient.DELETE().WHERE(table.DownloadClient.ID.EQ(sqlite.Int64(id)))
 	_, err := s.handleDelete(ctx, stmt)
 	return err
 }
 
 // CreateDownloadClient stores a new download client
-func (s SQLite) CreateDownloadClient(ctx context.Context, profile model.DownloadClient) (int64, error) {
+func (s *SQLite) CreateDownloadClient(ctx context.Context, profile model.DownloadClient) (int64, error) {
 	stmt := table.DownloadClient.INSERT(table.DownloadClient.AllColumns.Except(table.DownloadClient.ID)).MODEL(profile).RETURNING(table.DownloadClient.ID)
 	result, err := s.handleInsert(ctx, stmt)
 	if err != nil {
