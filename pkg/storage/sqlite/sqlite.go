@@ -594,7 +594,7 @@ func (s SQLite) GetQualityProfileItem(ctx context.Context, id int64) (model.Qual
 	return result, err
 }
 
-// ListQualityProfileItems lists all quality definitions
+// ListQualityProfileItems lists all items in a quality profile
 func (s SQLite) ListQualityProfileItems(ctx context.Context) ([]*model.QualityProfileItem, error) {
 	items := make([]*model.QualityProfileItem, 0)
 	stmt := table.QualityProfileItem.SELECT(table.QualityProfileItem.AllColumns).FROM(table.QualityProfileItem).ORDER_BY(table.QualityProfileItem.ID.ASC())
