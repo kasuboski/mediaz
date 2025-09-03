@@ -13,6 +13,10 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
+func int32Ptr(v int32) *int32 {
+	return &v
+}
+
 func TestListSeasonsForSeries(t *testing.T) {
 	ctx := context.Background()
 
@@ -45,7 +49,15 @@ func TestListSeasonsForSeries(t *testing.T) {
 			Title:  "Season 1",
 		}
 
+		series := &storage.Series{
+			Series: model.Series{
+				ID:               1,
+				SeriesMetadataID: int32Ptr(1),
+			},
+		}
+
 		store.EXPECT().GetSeriesMetadata(gomock.Any(), gomock.Any()).Return(seriesMetadata, nil)
+		store.EXPECT().GetSeries(ctx, gomock.Any()).Return(series, nil)
 		store.EXPECT().ListSeasons(ctx, gomock.Any()).Return([]*storage.Season{season}, nil)
 		store.EXPECT().GetSeasonMetadata(ctx, gomock.Any()).Return(seasonMetadata, nil)
 
@@ -93,7 +105,15 @@ func TestListSeasonsForSeries(t *testing.T) {
 			Title:  "Test Series",
 		}
 
+		series := &storage.Series{
+			Series: model.Series{
+				ID:               1,
+				SeriesMetadataID: int32Ptr(1),
+			},
+		}
+
 		store.EXPECT().GetSeriesMetadata(gomock.Any(), gomock.Any()).Return(seriesMetadata, nil)
+		store.EXPECT().GetSeries(ctx, gomock.Any()).Return(series, nil)
 		store.EXPECT().ListSeasons(ctx, gomock.Any()).Return([]*storage.Season{}, nil)
 
 		seasons, err := m.ListSeasonsForSeries(ctx, tmdbID)
@@ -155,9 +175,17 @@ func TestListEpisodesForSeason(t *testing.T) {
 			Title:  "Episode 1",
 		}
 
+		series := &storage.Series{
+			Series: model.Series{
+				ID:               1,
+				SeriesMetadataID: int32Ptr(1),
+			},
+		}
+
 		store.EXPECT().GetSeriesMetadata(gomock.Any(), gomock.Any()).Return(seriesMetadata, nil)
+		store.EXPECT().GetSeries(ctx, gomock.Any()).Return(series, nil)
+		store.EXPECT().ListSeasons(ctx, gomock.Any()).Return([]*storage.Season{season}, nil)
 		store.EXPECT().GetSeasonMetadata(ctx, gomock.Any()).Return(seasonMetadata, nil)
-		store.EXPECT().GetSeason(ctx, gomock.Any()).Return(season, nil)
 		store.EXPECT().ListEpisodes(ctx, gomock.Any()).Return([]*storage.Episode{episode}, nil)
 		store.EXPECT().GetEpisodeMetadata(ctx, gomock.Any()).Return(episodeMetadata, nil)
 
@@ -210,8 +238,16 @@ func TestListEpisodesForSeason(t *testing.T) {
 			Title:  "Test Series",
 		}
 
+		series := &storage.Series{
+			Series: model.Series{
+				ID:               1,
+				SeriesMetadataID: int32Ptr(1),
+			},
+		}
+
 		store.EXPECT().GetSeriesMetadata(gomock.Any(), gomock.Any()).Return(seriesMetadata, nil)
-		store.EXPECT().GetSeasonMetadata(ctx, gomock.Any()).Return(nil, storage.ErrNotFound)
+		store.EXPECT().GetSeries(ctx, gomock.Any()).Return(series, nil)
+		store.EXPECT().ListSeasons(ctx, gomock.Any()).Return([]*storage.Season{}, nil)
 
 		episodes, err := m.ListEpisodesForSeason(ctx, tmdbID, seasonNumber)
 		require.Error(t, err)
@@ -249,9 +285,17 @@ func TestListEpisodesForSeason(t *testing.T) {
 			},
 		}
 
+		series := &storage.Series{
+			Series: model.Series{
+				ID:               1,
+				SeriesMetadataID: int32Ptr(1),
+			},
+		}
+
 		store.EXPECT().GetSeriesMetadata(gomock.Any(), gomock.Any()).Return(seriesMetadata, nil)
+		store.EXPECT().GetSeries(ctx, gomock.Any()).Return(series, nil)
+		store.EXPECT().ListSeasons(ctx, gomock.Any()).Return([]*storage.Season{season}, nil)
 		store.EXPECT().GetSeasonMetadata(ctx, gomock.Any()).Return(seasonMetadata, nil)
-		store.EXPECT().GetSeason(ctx, gomock.Any()).Return(season, nil)
 		store.EXPECT().ListEpisodes(ctx, gomock.Any()).Return([]*storage.Episode{}, nil)
 
 		episodes, err := m.ListEpisodesForSeason(ctx, tmdbID, seasonNumber)

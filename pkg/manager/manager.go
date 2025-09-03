@@ -822,11 +822,19 @@ func (m MediaManager) ListSeasonsForSeries(ctx context.Context, tmdbID int) ([]S
 		return nil, err
 	}
 
+	// Find the series record that uses this metadata
+	series, err := m.storage.GetSeries(ctx,
+		table.Series.SeriesMetadataID.EQ(sqlite.Int32(metadata.ID)))
+	if err != nil {
+		log.Error("failed to get series", zap.Error(err), zap.Int32("metadataID", metadata.ID))
+		return nil, err
+	}
+
 	// Query seasons with metadata join
 	seasons, err := m.storage.ListSeasons(ctx,
-		table.Season.SeriesID.EQ(sqlite.Int32(metadata.ID)))
+		table.Season.SeriesID.EQ(sqlite.Int32(series.ID)))
 	if err != nil {
-		log.Error("failed to list seasons", zap.Error(err), zap.Int32("seriesID", metadata.ID))
+		log.Error("failed to list seasons", zap.Error(err), zap.Int32("seriesID", series.ID))
 		return nil, err
 	}
 
@@ -881,70 +889,141 @@ func (m MediaManager) ListEpisodesForSeason(ctx context.Context, tmdbID int, sea
 		return nil, err
 	}
 
-	// Find the season metadata by series ID and season number
-	seasonMeta, err := m.storage.GetSeasonMetadata(ctx,
-		table.SeasonMetadata.SeriesID.EQ(sqlite.Int32(seriesMetadata.ID)).
-			AND(table.SeasonMetadata.Number.EQ(sqlite.Int32(int32(seasonNumber)))))
+	// Find the series record that uses this metadata
+	series, err := m.storage.GetSeries(ctx,
+		table.Series.SeriesMetadataID.EQ(sqlite.Int32(seriesMetadata.ID)))
 	if err != nil {
-		log.Error("failed to get season metadata", zap.Error(err),
-			zap.Int32("seriesID", seriesMetadata.ID), zap.Int("seasonNumber", seasonNumber))
+		log.Error("failed to get series", zap.Error(err), zap.Int32("metadataID", seriesMetadata.ID))
 		return nil, err
 	}
 
-	// Find the season record to get episodes
-	season, err := m.storage.GetSeason(ctx,
-		table.Season.SeriesID.EQ(sqlite.Int32(seriesMetadata.ID)).
-			AND(table.Season.SeasonMetadataID.EQ(sqlite.Int32(seasonMeta.ID))))
+	// Find all seasons for this series
+	seasons, err := m.storage.ListSeasons(ctx,
+		table.Season.SeriesID.EQ(sqlite.Int32(series.ID)))
 	if err != nil {
-		log.Error("failed to get season", zap.Error(err),
-			zap.Int32("seriesID", seriesMetadata.ID), zap.Int32("seasonMetadataID", seasonMeta.ID))
+		log.Error("failed to list seasons", zap.Error(err), zap.Int32("seriesID", series.ID))
 		return nil, err
+	}
+
+	// Find the season that matches the requested season number
+	// Priority: 1) Season with metadata matching number, 2) Season with matching season_number
+	var candidateSeasons []*storage.Season
+	var candidateMetas []*model.SeasonMetadata
+	
+	for _, season := range seasons {
+		// Check if season has metadata with the right number
+		if season.SeasonMetadataID != nil {
+			meta, err := m.storage.GetSeasonMetadata(ctx,
+				table.SeasonMetadata.ID.EQ(sqlite.Int32(*season.SeasonMetadataID)))
+			if err == nil && meta.Number == int32(seasonNumber) {
+				candidateSeasons = append(candidateSeasons, season)
+				candidateMetas = append(candidateMetas, meta)
+			}
+		}
+	}
+	
+	// If no seasons found with metadata, fall back to season_number matching
+	if len(candidateSeasons) == 0 {
+		for _, season := range seasons {
+			if season.SeasonNumber == int32(seasonNumber) {
+				candidateSeasons = append(candidateSeasons, season)
+				candidateMetas = append(candidateMetas, nil)
+			}
+		}
+	}
+
+	if len(candidateSeasons) == 0 {
+		log.Error("season not found", zap.Int32("seriesID", seriesMetadata.ID), zap.Int("seasonNumber", seasonNumber))
+		return nil, fmt.Errorf("season %d not found for series %d", seasonNumber, tmdbID)
+	}
+
+	// If we have multiple candidates, prefer the one with episodes
+	var targetSeason *storage.Season
+	var seasonMeta *model.SeasonMetadata
+	
+	if len(candidateSeasons) == 1 {
+		targetSeason = candidateSeasons[0]
+		seasonMeta = candidateMetas[0]
+	} else {
+		// Multiple candidates - check which one has episodes
+		for i, season := range candidateSeasons {
+			episodes, err := m.storage.ListEpisodes(ctx,
+				table.Episode.SeasonID.EQ(sqlite.Int32(season.ID)))
+			if err == nil && len(episodes) > 0 {
+				targetSeason = season
+				seasonMeta = candidateMetas[i]
+				break
+			}
+		}
+		
+		// If no season has episodes, just use the first one
+		if targetSeason == nil {
+			targetSeason = candidateSeasons[0]
+			seasonMeta = candidateMetas[0]
+		}
 	}
 
 	// Query episodes for this season
 	episodes, err := m.storage.ListEpisodes(ctx,
-		table.Episode.SeasonID.EQ(sqlite.Int32(season.ID)))
+		table.Episode.SeasonID.EQ(sqlite.Int32(targetSeason.ID)))
 	if err != nil {
-		log.Error("failed to list episodes", zap.Error(err), zap.Int32("seasonID", season.ID))
+		log.Error("failed to list episodes", zap.Error(err), zap.Int32("seasonID", targetSeason.ID))
 		return nil, err
 	}
 
 	// Transform to response format with metadata lookup
-	var results []EpisodeResult
+	results := make([]EpisodeResult, 0)
 	for _, episode := range episodes {
-		// Get episode metadata for rich data
-		if episode.EpisodeMetadataID == nil {
-			log.Debug("episode has no metadata ID, skipping", zap.Int32("episodeID", episode.ID))
-			continue
+		var episodeMeta *model.EpisodeMetadata
+		
+		// Try to get episode metadata if available
+		if episode.EpisodeMetadataID != nil {
+			meta, err := m.storage.GetEpisodeMetadata(ctx,
+				table.EpisodeMetadata.ID.EQ(sqlite.Int32(*episode.EpisodeMetadataID)))
+			if err != nil {
+				log.Error("failed to get episode metadata", zap.Error(err), zap.Int32("episodeMetadataID", *episode.EpisodeMetadataID))
+				// Continue without metadata
+			} else {
+				episodeMeta = meta
+			}
 		}
 
-		episodeMeta, err := m.storage.GetEpisodeMetadata(ctx,
-			table.EpisodeMetadata.ID.EQ(sqlite.Int32(*episode.EpisodeMetadataID)))
-		if err != nil {
-			log.Error("failed to get episode metadata", zap.Error(err), zap.Int32("episodeMetadataID", *episode.EpisodeMetadataID))
-			continue
+		// Determine season number for response
+		seasonNum := int32(seasonNumber)
+		if seasonMeta != nil {
+			seasonNum = seasonMeta.Number
 		}
 
+		// Build result with available data
 		result := EpisodeResult{
-			TMDBID:       episodeMeta.TmdbID,
-			SeriesID:     seriesMetadata.ID,
-			SeasonNumber: seasonMeta.Number,
-			Number:       episodeMeta.Number,
-			Title:        episodeMeta.Title,
+			SeriesID:     series.ID,
+			SeasonNumber: seasonNum,
 			Monitored:    episode.Monitored == 1,
 			Downloaded:   episode.State == storage.EpisodeStateDownloaded || episode.State == storage.EpisodeStateCompleted,
 		}
 
-		// Add optional fields
-		if episodeMeta.Overview != nil {
-			result.Overview = episodeMeta.Overview
-		}
-		if episodeMeta.AirDate != nil {
-			airDateStr := episodeMeta.AirDate.Format("2006-01-02")
-			result.AirDate = &airDateStr
-		}
-		if episodeMeta.Runtime != nil {
-			result.Runtime = episodeMeta.Runtime
+		// Fill in metadata if available
+		if episodeMeta != nil {
+			result.TMDBID = episodeMeta.TmdbID
+			result.Number = episodeMeta.Number
+			result.Title = episodeMeta.Title
+			
+			// Add optional fields
+			if episodeMeta.Overview != nil {
+				result.Overview = episodeMeta.Overview
+			}
+			if episodeMeta.AirDate != nil {
+				airDateStr := episodeMeta.AirDate.Format("2006-01-02")
+				result.AirDate = &airDateStr
+			}
+			if episodeMeta.Runtime != nil {
+				result.Runtime = episodeMeta.Runtime
+			}
+		} else {
+			// Fallback values for episodes without metadata
+			result.TMDBID = 0
+			result.Number = episode.EpisodeNumber
+			result.Title = fmt.Sprintf("Episode %d", episode.EpisodeNumber)
 		}
 
 		results = append(results, result)

@@ -231,6 +231,39 @@ export const moviesApi = {
   },
 };
 
+/**
+ * SeasonResult interface matching the backend SeasonResult struct
+ */
+export interface SeasonResult {
+  tmdbID: number;
+  seriesID: number;
+  seasonNumber: number;
+  title: string;
+  overview?: string;
+  airDate?: string;
+  posterPath?: string;
+  episodeCount: number;
+  monitored: boolean;
+}
+
+/**
+ * EpisodeResult interface matching the backend EpisodeResult struct
+ */
+export interface EpisodeResult {
+  tmdbID: number;
+  seriesID: number;
+  seasonNumber: number;
+  episodeNumber: number;
+  title: string;
+  overview?: string;
+  airDate?: string;
+  stillPath?: string;
+  runtime?: number;
+  voteAverage?: number;
+  monitored: boolean;
+  downloaded: boolean;
+}
+
 export const tvApi = {
   async getLibraryShows(): Promise<MediaItem[]> {
     const shows = await apiRequest<LibraryShow[] | null>('/library/tv');
@@ -239,5 +272,13 @@ export const tvApi = {
   async getTVDetail(tmdbID: number): Promise<TVDetail> {
     const result = await apiRequest<TVDetailResult>(`/tv/${tmdbID}`);
     return transformTVDetailResult(result);
+  },
+  async getSeasons(tmdbID: number): Promise<SeasonResult[]> {
+    const seasons = await apiRequest<SeasonResult[] | null>(`/tv/${tmdbID}/seasons`);
+    return seasons ?? [];
+  },
+  async getEpisodes(tmdbID: number, seasonNumber: number): Promise<EpisodeResult[]> {
+    const episodes = await apiRequest<EpisodeResult[] | null>(`/tv/${tmdbID}/seasons/${seasonNumber}/episodes`);
+    return episodes ?? [];
   },
 };

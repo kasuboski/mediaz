@@ -18,6 +18,8 @@ export const queryKeys = {
     all: ['tv'] as const,
     library: () => ['tv', 'library'] as const,
     detail: (tmdbID: number) => ['tv', 'detail', tmdbID] as const,
+    seasons: (tmdbID: number) => ['tv', 'seasons', tmdbID] as const,
+    episodes: (tmdbID: number, seasonNumber: number) => ['tv', 'episodes', tmdbID, seasonNumber] as const,
   },
 } as const;
 
@@ -62,5 +64,31 @@ export function useMovieDetail(tmdbID: number) {
     staleTime: 10 * 60 * 1000, // 10 minutes (movie details change less frequently)
     gcTime: 30 * 60 * 1000, // 30 minutes
     enabled: !!tmdbID, // Only run query if tmdbID is provided
+  });
+}
+
+/**
+ * Hook to fetch seasons for a TV show
+ */
+export function useSeasons(tmdbID: number) {
+  return useQuery({
+    queryKey: queryKeys.tv.seasons(tmdbID),
+    queryFn: () => tvApi.getSeasons(tmdbID),
+    staleTime: 10 * 60 * 1000, // 10 minutes
+    gcTime: 30 * 60 * 1000, // 30 minutes
+    enabled: !!tmdbID, // Only run query if tmdbID is provided
+  });
+}
+
+/**
+ * Hook to fetch episodes for a specific season of a TV show
+ */
+export function useEpisodes(tmdbID: number, seasonNumber: number) {
+  return useQuery({
+    queryKey: queryKeys.tv.episodes(tmdbID, seasonNumber),
+    queryFn: () => tvApi.getEpisodes(tmdbID, seasonNumber),
+    staleTime: 10 * 60 * 1000, // 10 minutes
+    gcTime: 30 * 60 * 1000, // 30 minutes
+    enabled: !!(tmdbID && seasonNumber), // Only run query if both tmdbID and seasonNumber are provided
   });
 }
