@@ -286,6 +286,45 @@ func TestServer_GetTVDetailByTMDBID(t *testing.T) {
 
 		store.EXPECT().GetSeries(gomock.Any(), gomock.Any()).Return(expectedSeries, nil)
 
+		// Setup expectations for seasons and episodes data
+		seasonMetadataID := int32(10)
+		season := &storage.Season{
+			Season: model.Season{
+				ID:               1,
+				SeriesID:         1,
+				SeasonMetadataID: &seasonMetadataID,
+				Monitored:        1,
+			},
+		}
+		seasonMetadata := &model.SeasonMetadata{
+			ID:     10,
+			Number: 1,
+			TmdbID: 67890,
+			Title:  "Season 1",
+		}
+		episodeMetadataID := int32(200)
+		episode := &storage.Episode{
+			Episode: model.Episode{
+				ID:                100,
+				SeasonID:          1,
+				EpisodeMetadataID: &episodeMetadataID,
+				Monitored:         1,
+				EpisodeNumber:     1,
+			},
+			State: storage.EpisodeStateDownloaded,
+		}
+
+		store.EXPECT().ListSeasons(gomock.Any(), gomock.Any()).Return([]*storage.Season{season}, nil)
+		store.EXPECT().GetSeasonMetadata(gomock.Any(), gomock.Any()).Return(seasonMetadata, nil)
+		store.EXPECT().ListEpisodes(gomock.Any(), gomock.Any()).Return([]*storage.Episode{episode}, nil)
+		episodeMetadata := &model.EpisodeMetadata{
+			ID:     200,
+			Number: 1,
+			TmdbID: 54321,
+			Title:  "Episode 1",
+		}
+		store.EXPECT().GetEpisodeMetadata(gomock.Any(), gomock.Any()).Return(episodeMetadata, nil)
+
 		// Create manager with mocked dependencies
 		mgr := manager.New(tmdbMock, nil, nil, store, nil, config.Manager{})
 
@@ -336,6 +375,33 @@ func TestServer_GetTVDetailByTMDBID(t *testing.T) {
 		assert.Equal(t, "discovered", tvDetail["libraryStatus"])
 		assert.Equal(t, "/tv/Test TV Show (2023)", tvDetail["path"])
 		assert.Equal(t, true, tvDetail["monitored"])
+
+		// Check seasons array
+		seasons, ok := tvDetail["seasons"].([]any)
+		require.True(t, ok, "Response should contain seasons array")
+		require.Len(t, seasons, 1)
+
+		season0 := seasons[0].(map[string]any)
+		assert.Equal(t, float64(67890), season0["tmdbID"])
+		assert.Equal(t, float64(1), season0["seriesID"])
+		assert.Equal(t, float64(1), season0["seasonNumber"])
+		assert.Equal(t, "Season 1", season0["title"])
+		assert.Equal(t, float64(1), season0["episodeCount"])
+		assert.Equal(t, true, season0["monitored"])
+
+		// Check episodes within season
+		episodes, ok := season0["episodes"].([]any)
+		require.True(t, ok, "Season should contain episodes array")
+		require.Len(t, episodes, 1)
+
+		episode0 := episodes[0].(map[string]any)
+		assert.Equal(t, float64(54321), episode0["tmdbID"])
+		assert.Equal(t, float64(1), episode0["seriesID"])
+		assert.Equal(t, float64(1), episode0["seasonNumber"])
+		assert.Equal(t, float64(1), episode0["episodeNumber"])
+		assert.Equal(t, "Episode 1", episode0["title"])
+		assert.Equal(t, true, episode0["monitored"])
+		assert.Equal(t, true, episode0["downloaded"])
 	})
 
 	t.Run("success - TV show not in library", func(t *testing.T) {

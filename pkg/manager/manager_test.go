@@ -930,7 +930,7 @@ func TestBuildTVDetailResult(t *testing.T) {
 			State: storage.SeriesStateDiscovered,
 		}
 
-		result := m.buildTVDetailResult(metadata, details, series)
+		result := m.buildTVDetailResult(metadata, details, series, []SeasonResult{})
 
 		assert.Equal(t, int32(123), result.TMDBID)
 		assert.Equal(t, "Test Series", result.Title)
@@ -970,7 +970,7 @@ func TestBuildTVDetailResult(t *testing.T) {
 		}
 
 		// No series in library (nil)
-		result := m.buildTVDetailResult(metadata, details, nil)
+		result := m.buildTVDetailResult(metadata, details, nil, []SeasonResult{})
 
 		assert.Equal(t, int32(123), result.TMDBID)
 		assert.Equal(t, "Test Series", result.Title)
@@ -996,7 +996,7 @@ func TestBuildTVDetailResult(t *testing.T) {
 			// No backdrop, networks, genres, etc.
 		}
 
-		result := m.buildTVDetailResult(metadata, details, nil)
+		result := m.buildTVDetailResult(metadata, details, nil, []SeasonResult{})
 
 		assert.Equal(t, int32(123), result.TMDBID)
 		assert.Equal(t, "Test Series", result.Title)
@@ -1037,7 +1037,7 @@ func TestBuildTVDetailResult(t *testing.T) {
 			State: storage.SeriesStateMissing,
 		}
 
-		result := m.buildTVDetailResult(metadata, details, series)
+		result := m.buildTVDetailResult(metadata, details, series, []SeasonResult{})
 
 		monitored := false
 		assert.Equal(t, &monitored, result.Monitored)
@@ -1142,6 +1142,9 @@ func TestGetTVDetailByTMDBID(t *testing.T) {
 		tmdbMock.EXPECT().TvSeriesDetails(ctx, int32(123), nil).Return(resp, nil)
 
 		store.EXPECT().GetSeries(ctx, gomock.Any()).Return(series, nil)
+
+		// Mock calls for seasons and episodes (empty list since this test doesn't focus on seasons)
+		store.EXPECT().ListSeasons(ctx, gomock.Any()).Return([]*storage.Season{}, nil)
 
 		result, err := m.GetTVDetailByTMDBID(ctx, 123)
 		require.NoError(t, err)

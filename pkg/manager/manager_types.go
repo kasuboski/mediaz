@@ -75,27 +75,29 @@ type MovieDetailResult struct {
 // TVDetailResult is a consolidated TV series view combining metadata and library status.
 // BackdropPath, FirstAirDate, LastAirDate, Networks, Genres, and ratings may be absent; counts are from metadata and can be zero.
 // LibraryStatus is storage-derived; Path may be empty; QualityProfileID/Monitored are only present when tracked.
+// Seasons array contains detailed season and episode information.
 type TVDetailResult struct {
-	TMDBID           int32    `json:"tmdbID"`
-	Title            string   `json:"title"`
-	OriginalTitle    *string  `json:"originalTitle,omitempty"`
-	Overview         string   `json:"overview,omitempty"`
-	PosterPath       string   `json:"posterPath,omitempty"`
-	BackdropPath     *string  `json:"backdropPath,omitempty"`
-	FirstAirDate     *string  `json:"firstAirDate,omitempty"`
-	LastAirDate      *string  `json:"lastAirDate,omitempty"`
-	Networks         []string `json:"networks,omitempty"`
-	SeasonCount      int32    `json:"seasonCount"`
-	EpisodeCount     int32    `json:"episodeCount"`
-	Adult            *bool    `json:"adult,omitempty"`
-	VoteAverage      *float32 `json:"voteAverage,omitempty"`
-	VoteCount        *int     `json:"voteCount,omitempty"`
-	Popularity       *float64 `json:"popularity,omitempty"`
-	Genres           []string `json:"genres,omitempty"`
-	LibraryStatus    string   `json:"libraryStatus"`
-	Path             *string  `json:"path,omitempty"`
-	QualityProfileID *int32   `json:"qualityProfileID,omitempty"`
-	Monitored        *bool    `json:"monitored,omitempty"`
+	TMDBID           int32          `json:"tmdbID"`
+	Title            string         `json:"title"`
+	OriginalTitle    *string        `json:"originalTitle,omitempty"`
+	Overview         string         `json:"overview,omitempty"`
+	PosterPath       string         `json:"posterPath,omitempty"`
+	BackdropPath     *string        `json:"backdropPath,omitempty"`
+	FirstAirDate     *string        `json:"firstAirDate,omitempty"`
+	LastAirDate      *string        `json:"lastAirDate,omitempty"`
+	Networks         []string       `json:"networks,omitempty"`
+	SeasonCount      int32          `json:"seasonCount"`
+	EpisodeCount     int32          `json:"episodeCount"`
+	Adult            *bool          `json:"adult,omitempty"`
+	VoteAverage      *float32       `json:"voteAverage,omitempty"`
+	VoteCount        *int           `json:"voteCount,omitempty"`
+	Popularity       *float64       `json:"popularity,omitempty"`
+	Genres           []string       `json:"genres,omitempty"`
+	LibraryStatus    string         `json:"libraryStatus"`
+	Path             *string        `json:"path,omitempty"`
+	QualityProfileID *int32         `json:"qualityProfileID,omitempty"`
+	Monitored        *bool          `json:"monitored,omitempty"`
+	Seasons          []SeasonResult `json:"seasons,omitempty"`
 }
 
 // LibraryMovie summarizes a tracked movie in the local library.
@@ -137,16 +139,18 @@ type DeleteIndexerRequest struct {
 
 // SeasonResult represents a season with metadata for API responses.
 // Overview, AirDate, and PosterPath are optional fields from TMDB; EpisodeCount reflects known episodes; Monitored indicates tracking status.
+// Episodes array contains detailed episode information when requested.
 type SeasonResult struct {
-	TMDBID       int32   `json:"tmdbID"`
-	SeriesID     int32   `json:"seriesID"`
-	Number       int32   `json:"seasonNumber"`
-	Title        string  `json:"title"`
-	Overview     *string `json:"overview,omitempty"`
-	AirDate      *string `json:"airDate,omitempty"`
-	PosterPath   *string `json:"posterPath,omitempty"`
-	EpisodeCount int32   `json:"episodeCount"`
-	Monitored    bool    `json:"monitored"`
+	TMDBID       int32           `json:"tmdbID"`
+	SeriesID     int32           `json:"seriesID"`
+	Number       int32           `json:"seasonNumber"`
+	Title        string          `json:"title"`
+	Overview     *string         `json:"overview,omitempty"`
+	AirDate      *string         `json:"airDate,omitempty"`
+	PosterPath   *string         `json:"posterPath,omitempty"`
+	EpisodeCount int32           `json:"episodeCount"`
+	Monitored    bool            `json:"monitored"`
+	Episodes     []EpisodeResult `json:"episodes,omitempty"`
 }
 
 // EpisodeResult represents an episode with metadata for API responses.

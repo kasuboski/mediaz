@@ -2,12 +2,16 @@ package manager
 
 import (
 	"context"
+	"io"
+	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/kasuboski/mediaz/config"
 	"github.com/kasuboski/mediaz/pkg/storage"
 	"github.com/kasuboski/mediaz/pkg/storage/mocks"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
+	tmdbMocks "github.com/kasuboski/mediaz/pkg/tmdb/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -17,13 +21,14 @@ func int32Ptr(v int32) *int32 {
 	return &v
 }
 
-func TestListSeasonsForSeries(t *testing.T) {
+func TestGetTVDetailByTMDBID_WithSeasonsAndEpisodes(t *testing.T) {
 	ctx := context.Background()
 
-	t.Run("successful seasons listing", func(t *testing.T) {
+	t.Run("successful TV detail with seasons and episodes", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		store := mocks.NewMockStorage(ctrl)
-		m := New(nil, nil, nil, store, nil, config.Manager{})
+		tmdbClient := tmdbMocks.NewMockITmdb(ctrl)
+		m := New(tmdbClient, nil, nil, store, nil, config.Manager{})
 
 		tmdbID := 12345
 		seriesMetadata := &model.SeriesMetadata{
@@ -49,118 +54,11 @@ func TestListSeasonsForSeries(t *testing.T) {
 			Title:  "Season 1",
 		}
 
-		series := &storage.Series{
-			Series: model.Series{
-				ID:               1,
-				SeriesMetadataID: int32Ptr(1),
-			},
-		}
-
-		store.EXPECT().GetSeriesMetadata(gomock.Any(), gomock.Any()).Return(seriesMetadata, nil)
-		store.EXPECT().GetSeries(ctx, gomock.Any()).Return(series, nil)
-		store.EXPECT().ListSeasons(ctx, gomock.Any()).Return([]*storage.Season{season}, nil)
-		store.EXPECT().GetSeasonMetadata(ctx, gomock.Any()).Return(seasonMetadata, nil)
-
-		seasons, err := m.ListSeasonsForSeries(ctx, tmdbID)
-		require.NoError(t, err)
-		require.Len(t, seasons, 1)
-
-		expectedSeason := SeasonResult{
-			TMDBID:       67890,
-			SeriesID:     1,
-			Number:       1,
-			Title:        "Season 1",
-			EpisodeCount: 0,
-			Monitored:    true,
-		}
-
-		assert.Equal(t, expectedSeason, seasons[0])
-	})
-
-	t.Run("series metadata storage error", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
-		store := mocks.NewMockStorage(ctrl)
-		m := New(nil, nil, nil, store, nil, config.Manager{})
-
-		tmdbID := 99999
-		// Mock storage to return an error other than ErrNotFound to avoid calling tmdb
-		storageErr := assert.AnError
-		store.EXPECT().GetSeriesMetadata(gomock.Any(), gomock.Any()).Return(nil, storageErr)
-
-		seasons, err := m.ListSeasonsForSeries(ctx, tmdbID)
-		require.Error(t, err)
-		assert.Equal(t, storageErr, err)
-		assert.Nil(t, seasons)
-	})
-
-	t.Run("empty seasons list", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
-		store := mocks.NewMockStorage(ctrl)
-		m := New(nil, nil, nil, store, nil, config.Manager{})
-
-		tmdbID := 12345
-		seriesMetadata := &model.SeriesMetadata{
-			ID:     1,
-			TmdbID: int32(tmdbID),
-			Title:  "Test Series",
-		}
-
-		series := &storage.Series{
-			Series: model.Series{
-				ID:               1,
-				SeriesMetadataID: int32Ptr(1),
-			},
-		}
-
-		store.EXPECT().GetSeriesMetadata(gomock.Any(), gomock.Any()).Return(seriesMetadata, nil)
-		store.EXPECT().GetSeries(ctx, gomock.Any()).Return(series, nil)
-		store.EXPECT().ListSeasons(ctx, gomock.Any()).Return([]*storage.Season{}, nil)
-
-		seasons, err := m.ListSeasonsForSeries(ctx, tmdbID)
-		require.NoError(t, err)
-		assert.Empty(t, seasons)
-	})
-}
-
-func TestListEpisodesForSeason(t *testing.T) {
-	ctx := context.Background()
-
-	t.Run("successful episodes listing", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
-		store := mocks.NewMockStorage(ctrl)
-		m := New(nil, nil, nil, store, nil, config.Manager{})
-
-		tmdbID := 12345
-		seasonNumber := 1
-
-		seriesMetadata := &model.SeriesMetadata{
-			ID:     1,
-			TmdbID: int32(tmdbID),
-			Title:  "Test Series",
-		}
-
-		seasonMetadata := &model.SeasonMetadata{
-			ID:       10,
-			SeriesID: 1,
-			Number:   int32(seasonNumber),
-			TmdbID:   67890,
-			Title:    "Season 1",
-		}
-
-		season := &storage.Season{
-			Season: model.Season{
-				ID:               100,
-				SeriesID:         1,
-				SeasonMetadataID: &seasonMetadata.ID,
-				Monitored:        1,
-			},
-		}
-
 		episodeMetadataID := int32(200)
 		episode := &storage.Episode{
 			Episode: model.Episode{
 				ID:                200,
-				SeasonID:          100,
+				SeasonID:          1,
 				EpisodeMetadataID: &episodeMetadataID,
 				Monitored:         1,
 				EpisodeNumber:     1,
@@ -182,56 +80,100 @@ func TestListEpisodesForSeason(t *testing.T) {
 			},
 		}
 
+		// Mock calls for getting series metadata and details from TMDB
 		store.EXPECT().GetSeriesMetadata(gomock.Any(), gomock.Any()).Return(seriesMetadata, nil)
+		
+		// Mock TMDB API call
+		mockResponse := &http.Response{
+			StatusCode: 200,
+			Body:       io.NopCloser(strings.NewReader(`{"poster_path": "poster.jpg", "backdrop_path": "backdrop.jpg"}`)),
+		}
+		tmdbClient.EXPECT().TvSeriesDetails(gomock.Any(), int32(tmdbID), nil).Return(mockResponse, nil)
+		
+		// Mock storage calls for main TV detail
 		store.EXPECT().GetSeries(ctx, gomock.Any()).Return(series, nil)
+		
+		// Mock storage calls for seasons and episodes
 		store.EXPECT().ListSeasons(ctx, gomock.Any()).Return([]*storage.Season{season}, nil)
 		store.EXPECT().GetSeasonMetadata(ctx, gomock.Any()).Return(seasonMetadata, nil)
 		store.EXPECT().ListEpisodes(ctx, gomock.Any()).Return([]*storage.Episode{episode}, nil)
 		store.EXPECT().GetEpisodeMetadata(ctx, gomock.Any()).Return(episodeMetadata, nil)
 
-		episodes, err := m.ListEpisodesForSeason(ctx, tmdbID, seasonNumber)
+		result, err := m.GetTVDetailByTMDBID(ctx, tmdbID)
 		require.NoError(t, err)
-		require.Len(t, episodes, 1)
-
-		expectedEpisode := EpisodeResult{
-			TMDBID:       54321,
-			SeriesID:     1,
-			SeasonNumber: 1,
-			Number:       1,
-			Title:        "Episode 1",
-			Monitored:    true,
-			Downloaded:   true,
-		}
-
-		assert.Equal(t, expectedEpisode, episodes[0])
+		require.NotNil(t, result)
+		
+		// Verify basic TV details
+		assert.Equal(t, int32(tmdbID), result.TMDBID)
+		assert.Equal(t, "Test Series", result.Title)
+		
+		// Verify seasons are included
+		require.Len(t, result.Seasons, 1)
+		season0 := result.Seasons[0]
+		assert.Equal(t, int32(67890), season0.TMDBID)
+		assert.Equal(t, int32(1), season0.SeriesID)
+		assert.Equal(t, int32(1), season0.Number)
+		assert.Equal(t, "Season 1", season0.Title)
+		assert.True(t, season0.Monitored)
+		
+		// Verify episodes are included within seasons
+		require.Len(t, season0.Episodes, 1)
+		episode0 := season0.Episodes[0]
+		assert.Equal(t, int32(54321), episode0.TMDBID)
+		assert.Equal(t, int32(1), episode0.SeriesID)
+		assert.Equal(t, int32(1), episode0.SeasonNumber)
+		assert.Equal(t, int32(1), episode0.Number)
+		assert.Equal(t, "Episode 1", episode0.Title)
+		assert.True(t, episode0.Monitored)
+		assert.True(t, episode0.Downloaded)
 	})
 
-	t.Run("series metadata storage error", func(t *testing.T) {
+	t.Run("TV detail with series not in library", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		store := mocks.NewMockStorage(ctrl)
-		m := New(nil, nil, nil, store, nil, config.Manager{})
+		tmdbClient := tmdbMocks.NewMockITmdb(ctrl)
+		m := New(tmdbClient, nil, nil, store, nil, config.Manager{})
 
 		tmdbID := 99999
-		seasonNumber := 1
+		seriesMetadata := &model.SeriesMetadata{
+			ID:     1,
+			TmdbID: int32(tmdbID),
+			Title:  "Test Series",
+		}
 
-		// Mock storage to return an error other than ErrNotFound to avoid calling tmdb
-		storageErr := assert.AnError
-		store.EXPECT().GetSeriesMetadata(gomock.Any(), gomock.Any()).Return(nil, storageErr)
+		// Mock calls for getting series metadata and details from TMDB
+		store.EXPECT().GetSeriesMetadata(gomock.Any(), gomock.Any()).Return(seriesMetadata, nil)
+		
+		// Mock TMDB API call
+		mockResponse := &http.Response{
+			StatusCode: 200,
+			Body:       io.NopCloser(strings.NewReader(`{"poster_path": "poster.jpg"}`)),
+		}
+		tmdbClient.EXPECT().TvSeriesDetails(gomock.Any(), int32(tmdbID), nil).Return(mockResponse, nil)
+		
+		// Mock storage calls - series not found
+		store.EXPECT().GetSeries(ctx, gomock.Any()).Return(nil, storage.ErrNotFound)
 
-		episodes, err := m.ListEpisodesForSeason(ctx, tmdbID, seasonNumber)
-		require.Error(t, err)
-		assert.Equal(t, storageErr, err)
-		assert.Nil(t, episodes)
+		result, err := m.GetTVDetailByTMDBID(ctx, tmdbID)
+		require.NoError(t, err)
+		require.NotNil(t, result)
+		
+		// Verify basic TV details
+		assert.Equal(t, int32(tmdbID), result.TMDBID)
+		assert.Equal(t, "Test Series", result.Title)
+		assert.Equal(t, "Not In Library", result.LibraryStatus)
+		
+		// Verify no seasons since series is not in library
+		assert.Empty(t, result.Seasons)
 	})
 
-	t.Run("season not found", func(t *testing.T) {
+	t.Run("TV detail with empty seasons", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		store := mocks.NewMockStorage(ctrl)
-		m := New(nil, nil, nil, store, nil, config.Manager{})
+		tmdbClient := tmdbMocks.NewMockITmdb(ctrl)
+		m := New(tmdbClient, nil, nil, store, nil, config.Manager{})
 
 		tmdbID := 12345
-		seasonNumber := 99
-
 		seriesMetadata := &model.SeriesMetadata{
 			ID:     1,
 			TmdbID: int32(tmdbID),
@@ -245,61 +187,30 @@ func TestListEpisodesForSeason(t *testing.T) {
 			},
 		}
 
+		// Mock calls for getting series metadata and details from TMDB
 		store.EXPECT().GetSeriesMetadata(gomock.Any(), gomock.Any()).Return(seriesMetadata, nil)
+		
+		// Mock TMDB API call
+		mockResponse := &http.Response{
+			StatusCode: 200,
+			Body:       io.NopCloser(strings.NewReader(`{"poster_path": "poster.jpg"}`)),
+		}
+		tmdbClient.EXPECT().TvSeriesDetails(gomock.Any(), int32(tmdbID), nil).Return(mockResponse, nil)
+		
+		// Mock storage calls
 		store.EXPECT().GetSeries(ctx, gomock.Any()).Return(series, nil)
 		store.EXPECT().ListSeasons(ctx, gomock.Any()).Return([]*storage.Season{}, nil)
 
-		episodes, err := m.ListEpisodesForSeason(ctx, tmdbID, seasonNumber)
-		require.Error(t, err)
-		assert.Nil(t, episodes)
-	})
-
-	t.Run("empty episodes list", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
-		store := mocks.NewMockStorage(ctrl)
-		m := New(nil, nil, nil, store, nil, config.Manager{})
-
-		tmdbID := 12345
-		seasonNumber := 1
-
-		seriesMetadata := &model.SeriesMetadata{
-			ID:     1,
-			TmdbID: int32(tmdbID),
-			Title:  "Test Series",
-		}
-
-		seasonMetadata := &model.SeasonMetadata{
-			ID:       10,
-			SeriesID: 1,
-			Number:   int32(seasonNumber),
-			TmdbID:   67890,
-			Title:    "Season 1",
-		}
-
-		season := &storage.Season{
-			Season: model.Season{
-				ID:               100,
-				SeriesID:         1,
-				SeasonMetadataID: &seasonMetadata.ID,
-				Monitored:        1,
-			},
-		}
-
-		series := &storage.Series{
-			Series: model.Series{
-				ID:               1,
-				SeriesMetadataID: int32Ptr(1),
-			},
-		}
-
-		store.EXPECT().GetSeriesMetadata(gomock.Any(), gomock.Any()).Return(seriesMetadata, nil)
-		store.EXPECT().GetSeries(ctx, gomock.Any()).Return(series, nil)
-		store.EXPECT().ListSeasons(ctx, gomock.Any()).Return([]*storage.Season{season}, nil)
-		store.EXPECT().GetSeasonMetadata(ctx, gomock.Any()).Return(seasonMetadata, nil)
-		store.EXPECT().ListEpisodes(ctx, gomock.Any()).Return([]*storage.Episode{}, nil)
-
-		episodes, err := m.ListEpisodesForSeason(ctx, tmdbID, seasonNumber)
+		result, err := m.GetTVDetailByTMDBID(ctx, tmdbID)
 		require.NoError(t, err)
-		assert.Empty(t, episodes)
+		require.NotNil(t, result)
+		
+		// Verify basic TV details
+		assert.Equal(t, int32(tmdbID), result.TMDBID)
+		assert.Equal(t, "Test Series", result.Title)
+		
+		// Verify empty seasons
+		assert.Empty(t, result.Seasons)
 	})
 }
+

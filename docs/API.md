@@ -51,7 +51,7 @@ Base path: `/api/v1`
 #### GET /tv/{tmdbID}
 - Path Parameter: `tmdbID` (integer)
 - Status: 200 OK
-- Response: `{ "response": TVDetailResult }`
+- Response: `{ "response": TVDetailResult }` (includes seasons with episodes)
 
 #### GET /discover/tv
 - Query: `query=string`
@@ -219,6 +219,7 @@ Base path: `/api/v1`
 - `path?`: string
 - `qualityProfileID?`: int
 - `monitored?`: bool
+- `seasons?`: [ `SeasonResult` ]
 
 ### SearchMediaResponse
 - `page?`: int
@@ -267,6 +268,32 @@ Base path: `/api/v1`
 - `preferredSize`: float
 - `minSize`: float
 - `maxSize`: float
+
+### SeasonResult
+- `tmdbID`: int
+- `seriesID`: int
+- `seasonNumber`: int
+- `title`: string
+- `overview?`: string
+- `airDate?`: string
+- `posterPath?`: string
+- `episodeCount`: int
+- `monitored`: bool
+- `episodes?`: [ `EpisodeResult` ]
+
+### EpisodeResult
+- `tmdbID`: int
+- `seriesID`: int
+- `seasonNumber`: int
+- `episodeNumber`: int
+- `title`: string
+- `overview?`: string
+- `airDate?`: string
+- `stillPath?`: string
+- `runtime?`: int
+- `voteAverage?`: float
+- `monitored`: bool
+- `downloaded`: bool
 
 ### QualityProfile
 - `id`: int

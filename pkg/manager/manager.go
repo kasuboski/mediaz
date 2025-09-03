@@ -145,8 +145,23 @@ func (m MediaManager) GetTVDetailByTMDBID(ctx context.Context, tmdbID int) (*TVD
 		log.Debug("error checking series library status", zap.Error(err), zap.Int32("metadataID", metadata.ID))
 	}
 
+	// Get seasons and episodes information for the consolidated response
+	var seasons []SeasonResult
+	if series != nil {
+		seasonsData, err := m.getSeasonsWithEpisodes(ctx, metadata.ID, series.ID)
+		if err != nil {
+			log.Debug("failed to get seasons and episodes", zap.Error(err), zap.Int32("metadataID", metadata.ID))
+			// Continue without seasons data - buildTVDetailResult will handle empty seasons
+			seasons = []SeasonResult{}
+		} else {
+			seasons = seasonsData
+		}
+	} else {
+		seasons = []SeasonResult{}
+	}
+
 	// Transform data into result
-	result := m.buildTVDetailResult(metadata, seriesDetailsResponse, series)
+	result := m.buildTVDetailResult(metadata, seriesDetailsResponse, series, seasons)
 
 	return result, nil
 }
@@ -181,7 +196,7 @@ func (m MediaManager) getTVMetadataAndDetails(ctx context.Context, tmdbID int) (
 }
 
 // buildTVDetailResult transforms metadata and TMDB details into TVDetailResult
-func (m MediaManager) buildTVDetailResult(metadata *model.SeriesMetadata, details *tmdb.SeriesDetailsResponse, series *storage.Series) *TVDetailResult {
+func (m MediaManager) buildTVDetailResult(metadata *model.SeriesMetadata, details *tmdb.SeriesDetailsResponse, series *storage.Series, seasons []SeasonResult) *TVDetailResult {
 	result := &TVDetailResult{
 		TMDBID:        metadata.TmdbID,
 		Title:         metadata.Title,
@@ -252,7 +267,140 @@ func (m MediaManager) buildTVDetailResult(metadata *model.SeriesMetadata, detail
 		result.Monitored = &monitored
 	}
 
+	// Add seasons information if available
+	if len(seasons) > 0 {
+		result.Seasons = seasons
+	}
+
 	return result
+}
+
+// getSeasonsWithEpisodes retrieves seasons and their episodes for a series
+func (m MediaManager) getSeasonsWithEpisodes(ctx context.Context, seriesMetadataID int32, seriesID int32) ([]SeasonResult, error) {
+	log := logger.FromCtx(ctx)
+
+	// Query seasons for this series
+	seasons, err := m.storage.ListSeasons(ctx,
+		table.Season.SeriesID.EQ(sqlite.Int32(seriesID)))
+	if err != nil {
+		log.Error("failed to list seasons", zap.Error(err), zap.Int32("seriesID", seriesID))
+		return nil, err
+	}
+
+	// Transform to response format with metadata and episodes
+	var results []SeasonResult
+	for _, season := range seasons {
+		// Get season metadata for rich data
+		if season.SeasonMetadataID == nil {
+			log.Debug("season has no metadata ID, skipping", zap.Int32("seasonID", season.ID))
+			continue
+		}
+
+		seasonMeta, err := m.storage.GetSeasonMetadata(ctx,
+			table.SeasonMetadata.ID.EQ(sqlite.Int32(*season.SeasonMetadataID)))
+		if err != nil {
+			log.Error("failed to get season metadata", zap.Error(err), zap.Int32("seasonMetadataID", *season.SeasonMetadataID))
+			continue
+		}
+
+		// Get episodes for this season
+		episodes, err := m.getEpisodesForSeason(ctx, season.ID, season.SeriesID, seasonMeta.Number)
+		if err != nil {
+			log.Debug("failed to get episodes for season", zap.Error(err), zap.Int32("seasonID", season.ID))
+			// Continue with empty episodes array
+			episodes = []EpisodeResult{}
+		}
+
+		result := SeasonResult{
+			SeriesID:     season.SeriesID,
+			Number:       seasonMeta.Number,
+			Title:        seasonMeta.Title,
+			TMDBID:       seasonMeta.TmdbID,
+			Monitored:    season.Monitored == 1,
+			EpisodeCount: int32(len(episodes)),
+			Episodes:     episodes,
+		}
+
+		// Add optional fields
+		if seasonMeta.Overview != nil {
+			result.Overview = seasonMeta.Overview
+		}
+		if seasonMeta.AirDate != nil {
+			airDateStr := seasonMeta.AirDate.Format("2006-01-02")
+			result.AirDate = &airDateStr
+		}
+
+		results = append(results, result)
+	}
+
+	return results, nil
+}
+
+// getEpisodesForSeason retrieves episodes for a specific season
+func (m MediaManager) getEpisodesForSeason(ctx context.Context, seasonID int32, seriesID int32, seasonNumber int32) ([]EpisodeResult, error) {
+	log := logger.FromCtx(ctx)
+
+	// Query episodes for this season
+	episodes, err := m.storage.ListEpisodes(ctx,
+		table.Episode.SeasonID.EQ(sqlite.Int32(seasonID)))
+	if err != nil {
+		log.Error("failed to list episodes", zap.Error(err), zap.Int32("seasonID", seasonID))
+		return nil, err
+	}
+
+	// Transform to response format with metadata lookup
+	results := make([]EpisodeResult, 0)
+	for _, episode := range episodes {
+		var episodeMeta *model.EpisodeMetadata
+
+		// Try to get episode metadata if available
+		if episode.EpisodeMetadataID != nil {
+			meta, err := m.storage.GetEpisodeMetadata(ctx,
+				table.EpisodeMetadata.ID.EQ(sqlite.Int32(*episode.EpisodeMetadataID)))
+			if err != nil {
+				log.Error("failed to get episode metadata", zap.Error(err), zap.Int32("episodeMetadataID", *episode.EpisodeMetadataID))
+				// Continue without metadata
+			} else {
+				episodeMeta = meta
+			}
+		}
+
+		// Build result with available data
+		result := EpisodeResult{
+			SeriesID:     seriesID,
+			SeasonNumber: seasonNumber,
+			Monitored:    episode.Monitored == 1,
+			Downloaded:   episode.State == storage.EpisodeStateDownloaded || episode.State == storage.EpisodeStateCompleted,
+		}
+
+		// Fill in metadata if available
+		if episodeMeta != nil {
+			result.TMDBID = episodeMeta.TmdbID
+			result.Number = episodeMeta.Number
+			result.Title = episodeMeta.Title
+
+			// Add optional fields
+			if episodeMeta.Overview != nil {
+				result.Overview = episodeMeta.Overview
+			}
+			if episodeMeta.AirDate != nil {
+				airDateStr := episodeMeta.AirDate.Format("2006-01-02")
+				result.AirDate = &airDateStr
+			}
+			if episodeMeta.Runtime != nil {
+				result.Runtime = episodeMeta.Runtime
+			}
+		} else {
+			// Fallback values for episodes without metadata
+			result.TMDBID = 0
+			result.Number = episode.EpisodeNumber
+			result.Title = fmt.Sprintf("Episode %d", episode.EpisodeNumber)
+		}
+
+		results = append(results, result)
+	}
+
+	return results, nil
 }
 
 // SearchMovie query tmdb for tv shows
@@ -873,7 +1021,7 @@ func (m MediaManager) ListSeasonsForSeries(ctx context.Context, tmdbID int) ([]S
 			Title:        seasonMeta.Title,
 			TMDBID:       seasonMeta.TmdbID,
 			Monitored:    season.Monitored == 1,
-			EpisodeCount: len(episodes),
+			EpisodeCount: int32(len(episodes)),
 		}
 
 		// Add optional fields
