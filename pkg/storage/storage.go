@@ -294,14 +294,12 @@ func ReadSchemaFiles(files ...string) ([]string, error) {
 func GetSchemas() ([]string, error) {
 	var schemas []string
 
-	// Read schema.sql
 	schemaSQL, err := schemaFiles.ReadFile("sqlite/schema/schema.sql")
 	if err != nil {
 		return nil, fmt.Errorf("failed to read schema.sql: %w", err)
 	}
 	schemas = append(schemas, string(schemaSQL))
 
-	// Read defaults.sql
 	defaultsSQL, err := schemaFiles.ReadFile("sqlite/schema/defaults.sql")
 	if err != nil {
 		return nil, fmt.Errorf("failed to read defaults.sql: %w", err)
