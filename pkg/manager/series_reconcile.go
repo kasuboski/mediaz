@@ -1047,7 +1047,7 @@ func (m MediaManager) reconcileDiscoveredEpisode(ctx context.Context, episode *s
 	}
 
 	// Step 6: Try to match episode to existing TMDB metadata
-	err = m.matchDiscoveredEpisodeToTMDBMetadataFromDB(ctx, episode, series, seasonMetadata, episodeNumber, log)
+	err = m.matchDiscoveredEpisodeToTMDBMetadataFromDB(ctx, episode, season.ID, episodeNumber, log)
 	if err != nil {
 		log.Warn("failed to match discovered episode to TMDB metadata, skipping episode reconciliation", zap.Error(err))
 		return nil
@@ -1100,27 +1100,24 @@ func (m MediaManager) linkSeriesMetadata(ctx context.Context, series *storage.Se
 
 // matchDiscoveredEpisodeToTMDBMetadataFromDB attempts to match a discovered episode to existing TMDB metadata
 // using episode number parsed from stored file path (no filesystem scanning)
-func (m MediaManager) matchDiscoveredEpisodeToTMDBMetadataFromDB(ctx context.Context, episode *storage.Episode, series *storage.Series, seasonMetadata *model.SeasonMetadata, episodeNumber int, log *zap.SugaredLogger) error {
-	log.Debug("matching discovered episode to TMDB metadata using parsed episode number",
-		zap.Int32("season_number", seasonMetadata.Number),
-		zap.Int("episode_number", episodeNumber))
+func (m MediaManager) matchDiscoveredEpisodeToTMDBMetadataFromDB(ctx context.Context, episode *storage.Episode, seasonID int32, episodeNumber int, log *zap.SugaredLogger) error {
+	logger := log.With(zap.Int("season_id", int(seasonID)), zap.Int("episode_number", episodeNumber))
+	logger.Debug("matching discovered episode to TMDB metadata using parsed episode number")
 
 	if episodeNumber == 0 {
-		log.Warn("episode number is 0", zap.Int32("episode_id", episode.ID))
+		logger.Warn("episode number is 0", zap.Int32("episode_id", episode.ID))
 		return fmt.Errorf("episode number is 0 for episode %d", episode.ID)
 	}
 
 	// Find episode metadata that matches the episode number
 	episodeMeta, err := m.storage.GetEpisodeMetadata(ctx,
-		table.EpisodeMetadata.SeasonID.EQ(sqlite.Int32(seasonMetadata.ID)).
+		table.EpisodeMetadata.SeasonID.EQ(sqlite.Int32(seasonID)).
 			AND(table.EpisodeMetadata.Number.EQ(sqlite.Int32(int32(episodeNumber)))))
 
 	if err != nil {
 		if errors.Is(err, storage.ErrNotFound) {
-			log.Warn("no TMDB episode metadata found for episode number",
-				zap.Int("episode_number", episodeNumber),
-				zap.Int32("season_number", seasonMetadata.Number))
-			return fmt.Errorf("no TMDB episode metadata for S%dE%d", seasonMetadata.Number, episodeNumber)
+			logger.Warn("no TMDB episode metadata found for episode number")
+			return fmt.Errorf("no TMDB episode metadata found")
 		}
 		return fmt.Errorf("failed to get episode metadata: %w", err)
 	}
@@ -1128,11 +1125,9 @@ func (m MediaManager) matchDiscoveredEpisodeToTMDBMetadataFromDB(ctx context.Con
 	// Check if another episode already has this metadata linked (due to UNIQUE constraint)
 	existingEpisode, err := m.storage.GetEpisode(ctx, table.Episode.EpisodeMetadataID.EQ(sqlite.Int32(episodeMeta.ID)))
 	if err != nil && !errors.Is(err, storage.ErrNotFound) {
-		log.Debug("error checking for existing episode with metadata", zap.Error(err))
+		logger.Debug("error checking for existing episode with metadata", zap.Error(err))
 	} else if existingEpisode != nil {
-		log.Warn("another episode already linked to this TMDB metadata, skipping link",
-			zap.Int32("existing_episode_id", existingEpisode.ID),
-			zap.Int32("episode_metadata_id", episodeMeta.ID))
+		logger.Warn("another episode already linked to this TMDB metadata, skipping link")
 		return nil
 	}
 
@@ -1147,9 +1142,7 @@ func (m MediaManager) matchDiscoveredEpisodeToTMDBMetadataFromDB(ctx context.Con
 
 	log.Info("successfully matched discovered episode to TMDB metadata",
 		zap.Int32("episode_metadata_id", episodeMeta.ID),
-		zap.String("episode_title", episodeMeta.Title),
-		zap.Int32("season_number", seasonMetadata.Number),
-		zap.Int32("episode_number", episodeMeta.Number))
+		zap.String("episode_title", episodeMeta.Title))
 
 	return nil
 }

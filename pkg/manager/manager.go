@@ -569,7 +569,7 @@ func (m MediaManager) Run(ctx context.Context) error {
 			go lock(movieReconcileLock, func() {
 				err := m.ReconcileMovies(ctx)
 				if err != nil {
-					log.Errorf("movie reconcile failed", zap.Error(err))
+					log.Error("movie reconcile failed", zap.Error(err))
 				}
 			})
 
@@ -593,7 +593,7 @@ func (m MediaManager) Run(ctx context.Context) error {
 			go lock(seriesReconcileLock, func() {
 				err := m.ReconcileSeries(ctx)
 				if err != nil {
-					log.Errorf("series reconcile failed", zap.Error(err))
+					log.Error("series reconcile failed", zap.Error(err))
 				}
 			})
 		}
