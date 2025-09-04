@@ -3,7 +3,7 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
-import { moviesApi, type MediaItem, type MovieDetail } from './api';
+import { moviesApi, tvApi } from './api';
 
 /**
  * Query keys for consistent caching
@@ -13,6 +13,11 @@ export const queryKeys = {
     all: ['movies'] as const,
     library: () => [...queryKeys.movies.all, 'library'] as const,
     detail: (tmdbID: number) => [...queryKeys.movies.all, 'detail', tmdbID] as const,
+  },
+  tv: {
+    all: ['tv'] as const,
+    library: () => ['tv', 'library'] as const,
+    detail: (tmdbID: number) => ['tv', 'detail', tmdbID] as const,
   },
 } as const;
 
@@ -28,6 +33,25 @@ export function useLibraryMovies() {
   });
 }
 
+export function useLibraryShows() {
+  return useQuery({
+    queryKey: queryKeys.tv.library(),
+    queryFn: tvApi.getLibraryShows,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+  });
+}
+
+export function useTVDetail(tmdbID: number) {
+  return useQuery({
+    queryKey: queryKeys.tv.detail(tmdbID),
+    queryFn: () => tvApi.getTVDetail(tmdbID),
+    staleTime: 10 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    enabled: !!tmdbID,
+  });
+}
+
 /**
  * Hook to fetch detailed information for a specific movie
  */
@@ -40,3 +64,4 @@ export function useMovieDetail(tmdbID: number) {
     enabled: !!tmdbID, // Only run query if tmdbID is provided
   });
 }
+

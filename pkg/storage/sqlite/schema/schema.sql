@@ -16,6 +16,8 @@ CREATE TABLE IF NOT EXISTS "quality_definition" (
     "media_type" TEXT NOT NULL
 );
 
+CREATE UNIQUE INDEX IF NOT EXISTS "idx_quality_definition_quality_id" ON "quality_definition" ("quality_id");
+
 CREATE TABLE IF NOT EXISTS "quality_profile" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     "name" TEXT NOT NULL,
@@ -30,6 +32,8 @@ CREATE TABLE IF NOT EXISTS "quality_profile_item" (
     FOREIGN KEY ("profile_id") REFERENCES "quality_profile" ("id"),
     FOREIGN KEY ("quality_id") REFERENCES "quality_definition" ("quality_id")
 );
+
+CREATE UNIQUE INDEX IF NOT EXISTS "idx_quality_profile_item_profile_quality" ON "quality_profile_item" ("profile_id", "quality_id");
 
 CREATE TABLE IF NOT EXISTS "movie_file" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
