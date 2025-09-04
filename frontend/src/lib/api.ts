@@ -2,7 +2,10 @@
  * API client for the Mediaz media management platform
  */
 
-const API_BASE_URL = '/api/v1';
+const API_BASE_URL =
+  import.meta.env.VITE_API_HOST
+    ? `${import.meta.env.VITE_API_HOST}/api/v1`
+    : "/api/v1";
 
 /**
  * Generic API response wrapper
