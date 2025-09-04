@@ -212,6 +212,7 @@ func (s Server) GetTVDetailByTMDBID() http.HandlerFunc {
 	}
 }
 
+
 // ListTVShows lists tv shows on disk
 func (s Server) ListTVShows() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
