@@ -275,7 +275,7 @@ func (s *SQLite) DeleteSeason(ctx context.Context, id int64) error {
 }
 
 // ListSeasons lists all seasons for a Series
-func (s SQLite) ListSeasons(ctx context.Context, where ...sqlite.BoolExpression) ([]*storage.Season, error) {
+func (s *SQLite) ListSeasons(ctx context.Context, where ...sqlite.BoolExpression) ([]*storage.Season, error) {
 	stmt := table.Season.
 		SELECT(
 			table.Season.AllColumns,
