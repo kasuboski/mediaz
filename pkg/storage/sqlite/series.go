@@ -13,7 +13,7 @@ import (
 )
 
 // CreateSeries stores a Series in the database
-func (s SQLite) CreateSeries(ctx context.Context, series storage.Series, initialState storage.SeriesState) (int64, error) {
+func (s *SQLite) CreateSeries(ctx context.Context, series storage.Series, initialState storage.SeriesState) (int64, error) {
 	if series.State == "" {
 		series.State = storage.SeriesStateNew
 	}
@@ -23,6 +23,8 @@ func (s SQLite) CreateSeries(ctx context.Context, series storage.Series, initial
 		return 0, err
 	}
 
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return 0, err
@@ -88,7 +90,7 @@ func (s SQLite) CreateSeries(ctx context.Context, series storage.Series, initial
 }
 
 // GetSeries looks for a series given a where condition
-func (s SQLite) GetSeries(ctx context.Context, where sqlite.BoolExpression) (*storage.Series, error) {
+func (s *SQLite) GetSeries(ctx context.Context, where sqlite.BoolExpression) (*storage.Series, error) {
 	stmt := table.Series.
 		SELECT(
 			table.Series.AllColumns,
@@ -118,7 +120,7 @@ func (s SQLite) GetSeries(ctx context.Context, where sqlite.BoolExpression) (*st
 }
 
 // DeleteSeries removes a Series by id
-func (s SQLite) DeleteSeries(ctx context.Context, id int64) error {
+func (s *SQLite) DeleteSeries(ctx context.Context, id int64) error {
 	stmt := table.Series.
 		DELETE().
 		WHERE(table.Series.ID.EQ(sqlite.Int64(id)))
@@ -132,7 +134,7 @@ func (s SQLite) DeleteSeries(ctx context.Context, id int64) error {
 }
 
 // ListSeries lists all Series
-func (s SQLite) ListSeries(ctx context.Context, where ...sqlite.BoolExpression) ([]*storage.Series, error) {
+func (s *SQLite) ListSeries(ctx context.Context, where ...sqlite.BoolExpression) ([]*storage.Series, error) {
 	stmt := table.Series.
 		SELECT(
 			table.Series.AllColumns,
@@ -160,7 +162,7 @@ func (s SQLite) ListSeries(ctx context.Context, where ...sqlite.BoolExpression) 
 }
 
 // CreateSeason stores a season in the database
-func (s SQLite) CreateSeason(ctx context.Context, season storage.Season, initialState storage.SeasonState) (int64, error) {
+func (s *SQLite) CreateSeason(ctx context.Context, season storage.Season, initialState storage.SeasonState) (int64, error) {
 	if season.State == "" {
 		season.State = storage.SeasonStateNew
 	}
@@ -170,6 +172,8 @@ func (s SQLite) CreateSeason(ctx context.Context, season storage.Season, initial
 		return 0, err
 	}
 
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return 0, err
@@ -231,7 +235,7 @@ func (s SQLite) CreateSeason(ctx context.Context, season storage.Season, initial
 }
 
 // GetSeason gets a season by id
-func (s SQLite) GetSeason(ctx context.Context, where sqlite.BoolExpression) (*storage.Season, error) {
+func (s *SQLite) GetSeason(ctx context.Context, where sqlite.BoolExpression) (*storage.Season, error) {
 	stmt := sqlite.
 		SELECT(
 			table.Season.AllColumns,
@@ -257,7 +261,7 @@ func (s SQLite) GetSeason(ctx context.Context, where sqlite.BoolExpression) (*st
 }
 
 // DeleteSeason removes a season by id
-func (s SQLite) DeleteSeason(ctx context.Context, id int64) error {
+func (s *SQLite) DeleteSeason(ctx context.Context, id int64) error {
 	stmt := table.Season.
 		DELETE().
 		WHERE(table.Season.ID.EQ(sqlite.Int64(id)))
@@ -271,7 +275,7 @@ func (s SQLite) DeleteSeason(ctx context.Context, id int64) error {
 }
 
 // ListSeasons lists all seasons for a Series
-func (s SQLite) ListSeasons(ctx context.Context, where ...sqlite.BoolExpression) ([]*storage.Season, error) {
+func (s *SQLite) ListSeasons(ctx context.Context, where ...sqlite.BoolExpression) ([]*storage.Season, error) {
 	stmt := table.Season.
 		SELECT(
 			table.Season.AllColumns,
@@ -298,7 +302,7 @@ func (s SQLite) ListSeasons(ctx context.Context, where ...sqlite.BoolExpression)
 }
 
 // CreateEpisode stores an episode and creates an initial transition state
-func (s SQLite) CreateEpisode(ctx context.Context, episode storage.Episode, initialState storage.EpisodeState) (int64, error) {
+func (s *SQLite) CreateEpisode(ctx context.Context, episode storage.Episode, initialState storage.EpisodeState) (int64, error) {
 	if episode.State == "" {
 		episode.State = storage.EpisodeStateNew
 	}
@@ -308,6 +312,8 @@ func (s SQLite) CreateEpisode(ctx context.Context, episode storage.Episode, init
 		return 0, err
 	}
 
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return 0, err
@@ -369,7 +375,7 @@ func (s SQLite) CreateEpisode(ctx context.Context, episode storage.Episode, init
 }
 
 // GetEpisode gets an episode by id
-func (s SQLite) GetEpisode(ctx context.Context, where sqlite.BoolExpression) (*storage.Episode, error) {
+func (s *SQLite) GetEpisode(ctx context.Context, where sqlite.BoolExpression) (*storage.Episode, error) {
 	stmt := sqlite.
 		SELECT(
 			table.Episode.AllColumns,
@@ -395,7 +401,7 @@ func (s SQLite) GetEpisode(ctx context.Context, where sqlite.BoolExpression) (*s
 }
 
 // DeleteEpisode removes an episode by id
-func (s SQLite) DeleteEpisode(ctx context.Context, id int64) error {
+func (s *SQLite) DeleteEpisode(ctx context.Context, id int64) error {
 	stmt := table.Episode.
 		DELETE().
 		WHERE(table.Episode.ID.EQ(sqlite.Int64(id)))
@@ -409,7 +415,7 @@ func (s SQLite) DeleteEpisode(ctx context.Context, id int64) error {
 }
 
 // ListEpisodes lists all episodes for a season
-func (s SQLite) ListEpisodes(ctx context.Context, where ...sqlite.BoolExpression) ([]*storage.Episode, error) {
+func (s *SQLite) ListEpisodes(ctx context.Context, where ...sqlite.BoolExpression) ([]*storage.Episode, error) {
 	stmt := table.Episode.
 		SELECT(
 			table.Episode.AllColumns,
@@ -437,7 +443,7 @@ func (s SQLite) ListEpisodes(ctx context.Context, where ...sqlite.BoolExpression
 }
 
 // GetEpisodeByEpisodeFileID gets an episode by its associated file ID
-func (s SQLite) GetEpisodeByEpisodeFileID(ctx context.Context, fileID int64) (*storage.Episode, error) {
+func (s *SQLite) GetEpisodeByEpisodeFileID(ctx context.Context, fileID int64) (*storage.Episode, error) {
 	stmt := sqlite.SELECT(
 		table.Episode.AllColumns,
 		table.EpisodeTransition.ToState,
@@ -465,7 +471,7 @@ func (s SQLite) GetEpisodeByEpisodeFileID(ctx context.Context, fileID int64) (*s
 
 // UpdateEpisodeState updates the transition state of an episode
 // Metadata is optional and can be nil
-func (s SQLite) UpdateEpisodeState(ctx context.Context, id int64, state storage.EpisodeState, metadata *storage.TransitionStateMetadata) error {
+func (s *SQLite) UpdateEpisodeState(ctx context.Context, id int64, state storage.EpisodeState, metadata *storage.TransitionStateMetadata) error {
 	episode, err := s.GetEpisode(ctx, table.Episode.ID.EQ(sqlite.Int64(id)))
 	if err != nil {
 		return err
@@ -476,6 +482,8 @@ func (s SQLite) UpdateEpisodeState(ctx context.Context, id int64, state storage.
 		return err
 	}
 
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -532,7 +540,7 @@ func (s SQLite) UpdateEpisodeState(ctx context.Context, id int64, state storage.
 }
 
 // UpdateEpisodeEpisodeFileID updates the episode file id for an episode
-func (s SQLite) UpdateEpisodeEpisodeFileID(ctx context.Context, id int64, fileID int64) error {
+func (s *SQLite) UpdateEpisodeEpisodeFileID(ctx context.Context, id int64, fileID int64) error {
 	stmt := table.Episode.
 		UPDATE().
 		SET(table.Episode.EpisodeFileID.SET(sqlite.Int64(fileID))).
@@ -547,7 +555,7 @@ func (s SQLite) UpdateEpisodeEpisodeFileID(ctx context.Context, id int64, fileID
 }
 
 // GetEpisodeFiles gets all episode files for an episode
-func (s SQLite) GetEpisodeFiles(ctx context.Context, id int64) ([]*model.EpisodeFile, error) {
+func (s *SQLite) GetEpisodeFiles(ctx context.Context, id int64) ([]*model.EpisodeFile, error) {
 	stmt := table.EpisodeFile.
 		SELECT(table.EpisodeFile.AllColumns).
 		FROM(table.EpisodeFile).
@@ -567,7 +575,7 @@ func (s SQLite) GetEpisodeFiles(ctx context.Context, id int64) ([]*model.Episode
 }
 
 // CreateEpisodeFile stores an episode file
-func (s SQLite) CreateEpisodeFile(ctx context.Context, file model.EpisodeFile) (int64, error) {
+func (s *SQLite) CreateEpisodeFile(ctx context.Context, file model.EpisodeFile) (int64, error) {
 	setColumns := make([]sqlite.Expression, len(table.EpisodeFile.MutableColumns))
 	for i, c := range table.EpisodeFile.MutableColumns {
 		setColumns[i] = c
@@ -598,7 +606,7 @@ func (s SQLite) CreateEpisodeFile(ctx context.Context, file model.EpisodeFile) (
 }
 
 // DeleteEpisodeFile removes an episode file by id
-func (s SQLite) DeleteEpisodeFile(ctx context.Context, id int64) error {
+func (s *SQLite) DeleteEpisodeFile(ctx context.Context, id int64) error {
 	stmt := table.EpisodeFile.
 		DELETE().
 		WHERE(table.EpisodeFile.ID.EQ(sqlite.Int64(id))).
@@ -612,7 +620,7 @@ func (s SQLite) DeleteEpisodeFile(ctx context.Context, id int64) error {
 }
 
 // ListEpisodeFiles lists all episode files
-func (s SQLite) ListEpisodeFiles(ctx context.Context) ([]*model.EpisodeFile, error) {
+func (s *SQLite) ListEpisodeFiles(ctx context.Context) ([]*model.EpisodeFile, error) {
 	episodeFiles := make([]*model.EpisodeFile, 0)
 	stmt := table.EpisodeFile.
 		SELECT(table.EpisodeFile.AllColumns).
@@ -628,7 +636,7 @@ func (s SQLite) ListEpisodeFiles(ctx context.Context) ([]*model.EpisodeFile, err
 }
 
 // CreateSeriesMetadata creates the given series metadata
-func (s SQLite) CreateSeriesMetadata(ctx context.Context, seriesMeta model.SeriesMetadata) (int64, error) {
+func (s *SQLite) CreateSeriesMetadata(ctx context.Context, seriesMeta model.SeriesMetadata) (int64, error) {
 	// don't insert a zeroed ID
 	insertColumns := table.SeriesMetadata.MutableColumns
 	if seriesMeta.ID != 0 {
@@ -667,7 +675,7 @@ func (s SQLite) CreateSeriesMetadata(ctx context.Context, seriesMeta model.Serie
 }
 
 // DeleteSeriesMetadata deletes a Series metadata by id
-func (s SQLite) DeleteSeriesMetadata(ctx context.Context, id int64) error {
+func (s *SQLite) DeleteSeriesMetadata(ctx context.Context, id int64) error {
 	stmt := table.SeriesMetadata.
 		DELETE().
 		WHERE(table.SeriesMetadata.ID.EQ(sqlite.Int64(id)))
@@ -681,7 +689,7 @@ func (s SQLite) DeleteSeriesMetadata(ctx context.Context, id int64) error {
 }
 
 // ListSeriesMetadata lists all Series metadata
-func (s SQLite) ListSeriesMetadata(ctx context.Context, where ...sqlite.BoolExpression) ([]*model.SeriesMetadata, error) {
+func (s *SQLite) ListSeriesMetadata(ctx context.Context, where ...sqlite.BoolExpression) ([]*model.SeriesMetadata, error) {
 	stmt := table.SeriesMetadata.
 		SELECT(table.SeriesMetadata.AllColumns).
 		FROM(table.SeriesMetadata)
@@ -700,7 +708,7 @@ func (s SQLite) ListSeriesMetadata(ctx context.Context, where ...sqlite.BoolExpr
 }
 
 // GetSeriesMetadata get a Series metadata for the given where
-func (s SQLite) GetSeriesMetadata(ctx context.Context, where sqlite.BoolExpression) (*model.SeriesMetadata, error) {
+func (s *SQLite) GetSeriesMetadata(ctx context.Context, where sqlite.BoolExpression) (*model.SeriesMetadata, error) {
 	stmt := table.SeriesMetadata.
 		SELECT(table.SeriesMetadata.AllColumns).
 		FROM(table.SeriesMetadata).
@@ -719,7 +727,7 @@ func (s SQLite) GetSeriesMetadata(ctx context.Context, where sqlite.BoolExpressi
 }
 
 // CreateSeasonMetadata creates the given seasonMeta
-func (s SQLite) CreateSeasonMetadata(ctx context.Context, seasonMeta model.SeasonMetadata) (int64, error) {
+func (s *SQLite) CreateSeasonMetadata(ctx context.Context, seasonMeta model.SeasonMetadata) (int64, error) {
 	// don't insert a zeroed ID
 	insertColumns := table.SeasonMetadata.MutableColumns
 	if seasonMeta.ID != 0 {
@@ -752,7 +760,7 @@ func (s SQLite) CreateSeasonMetadata(ctx context.Context, seasonMeta model.Seaso
 }
 
 // DeleteSeasonMetadata deletes a season metadata by id
-func (s SQLite) DeleteSeasonMetadata(ctx context.Context, id int64) error {
+func (s *SQLite) DeleteSeasonMetadata(ctx context.Context, id int64) error {
 	stmt := table.SeasonMetadata.
 		DELETE().
 		WHERE(table.SeasonMetadata.ID.EQ(sqlite.Int64(id)))
@@ -766,7 +774,7 @@ func (s SQLite) DeleteSeasonMetadata(ctx context.Context, id int64) error {
 }
 
 // ListSeasonMetadata lists all season metadata
-func (s SQLite) ListSeasonMetadata(ctx context.Context, where ...sqlite.BoolExpression) ([]*model.SeasonMetadata, error) {
+func (s *SQLite) ListSeasonMetadata(ctx context.Context, where ...sqlite.BoolExpression) ([]*model.SeasonMetadata, error) {
 	stmt := table.SeasonMetadata.
 		SELECT(table.SeasonMetadata.AllColumns).
 		FROM(table.SeasonMetadata)
@@ -785,7 +793,7 @@ func (s SQLite) ListSeasonMetadata(ctx context.Context, where ...sqlite.BoolExpr
 }
 
 // GetSeasonMetadata get a season metadata for the given where
-func (s SQLite) GetSeasonMetadata(ctx context.Context, where sqlite.BoolExpression) (*model.SeasonMetadata, error) {
+func (s *SQLite) GetSeasonMetadata(ctx context.Context, where sqlite.BoolExpression) (*model.SeasonMetadata, error) {
 	stmt := table.SeasonMetadata.
 		SELECT(table.SeasonMetadata.AllColumns).
 		FROM(table.SeasonMetadata).
@@ -804,7 +812,7 @@ func (s SQLite) GetSeasonMetadata(ctx context.Context, where sqlite.BoolExpressi
 }
 
 // CreateEpisodeMetadata creates the given episodeMeta
-func (s SQLite) CreateEpisodeMetadata(ctx context.Context, episodeMeta model.EpisodeMetadata) (int64, error) {
+func (s *SQLite) CreateEpisodeMetadata(ctx context.Context, episodeMeta model.EpisodeMetadata) (int64, error) {
 	// don't insert a zeroed ID
 	insertColumns := table.EpisodeMetadata.MutableColumns
 	if episodeMeta.ID != 0 {
@@ -839,7 +847,7 @@ func (s SQLite) CreateEpisodeMetadata(ctx context.Context, episodeMeta model.Epi
 }
 
 // DeleteEpisodeMetadata deletes an episode metadata by id
-func (s SQLite) DeleteEpisodeMetadata(ctx context.Context, id int64) error {
+func (s *SQLite) DeleteEpisodeMetadata(ctx context.Context, id int64) error {
 	stmt := table.EpisodeMetadata.
 		DELETE().
 		WHERE(table.EpisodeMetadata.ID.EQ(sqlite.Int64(id)))
@@ -853,7 +861,7 @@ func (s SQLite) DeleteEpisodeMetadata(ctx context.Context, id int64) error {
 }
 
 // ListEpisodeMetadata lists all episode metadata
-func (s SQLite) ListEpisodeMetadata(ctx context.Context, where ...sqlite.BoolExpression) ([]*model.EpisodeMetadata, error) {
+func (s *SQLite) ListEpisodeMetadata(ctx context.Context, where ...sqlite.BoolExpression) ([]*model.EpisodeMetadata, error) {
 	stmt := table.EpisodeMetadata.
 		SELECT(table.EpisodeMetadata.AllColumns).
 		FROM(table.EpisodeMetadata)
@@ -872,7 +880,7 @@ func (s SQLite) ListEpisodeMetadata(ctx context.Context, where ...sqlite.BoolExp
 }
 
 // GetEpisodeMetadata get an episode metadata for the given where
-func (s SQLite) GetEpisodeMetadata(ctx context.Context, where sqlite.BoolExpression) (*model.EpisodeMetadata, error) {
+func (s *SQLite) GetEpisodeMetadata(ctx context.Context, where sqlite.BoolExpression) (*model.EpisodeMetadata, error) {
 	stmt := table.EpisodeMetadata.
 		SELECT(table.EpisodeMetadata.AllColumns).
 		FROM(table.EpisodeMetadata).
@@ -892,7 +900,7 @@ func (s SQLite) GetEpisodeMetadata(ctx context.Context, where sqlite.BoolExpress
 
 // UpdateSeasonState updates the transition state of an episode
 // Metadata is optional and can be nil
-func (s SQLite) UpdateSeasonState(ctx context.Context, id int64, state storage.SeasonState, metadata *storage.TransitionStateMetadata) error {
+func (s *SQLite) UpdateSeasonState(ctx context.Context, id int64, state storage.SeasonState, metadata *storage.TransitionStateMetadata) error {
 	season, err := s.GetSeason(ctx, table.Season.ID.EQ(sqlite.Int64(id)))
 	if err != nil {
 		return err
@@ -903,6 +911,8 @@ func (s SQLite) UpdateSeasonState(ctx context.Context, id int64, state storage.S
 		return err
 	}
 
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -960,7 +970,7 @@ func (s SQLite) UpdateSeasonState(ctx context.Context, id int64, state storage.S
 
 // UpdateSeriesState updates the transition state of a series
 // Metadata is optional and can be nil
-func (s SQLite) UpdateSeriesState(ctx context.Context, id int64, state storage.SeriesState, metadata *storage.TransitionStateMetadata) error {
+func (s *SQLite) UpdateSeriesState(ctx context.Context, id int64, state storage.SeriesState, metadata *storage.TransitionStateMetadata) error {
 	series, err := s.GetSeries(ctx, table.Series.ID.EQ(sqlite.Int64(id)))
 	if err != nil {
 		return err
@@ -971,6 +981,8 @@ func (s SQLite) UpdateSeriesState(ctx context.Context, id int64, state storage.S
 		return err
 	}
 
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
