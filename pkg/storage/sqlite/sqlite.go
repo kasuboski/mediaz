@@ -559,7 +559,7 @@ func (s SQLite) GetQualityDefinition(ctx context.Context, id int64) (model.Quali
 // ListQualityDefinitions lists all quality definitions
 func (s SQLite) ListQualityDefinitions(ctx context.Context) ([]*model.QualityDefinition, error) {
 	definitions := make([]*model.QualityDefinition, 0)
-	stmt := table.Indexer.SELECT(table.QualityDefinition.AllColumns).FROM(table.QualityDefinition).ORDER_BY(table.QualityDefinition.ID.ASC())
+	stmt := table.QualityDefinition.SELECT(table.QualityDefinition.AllColumns).FROM(table.QualityDefinition).ORDER_BY(table.QualityDefinition.ID.ASC())
 	err := stmt.QueryContext(ctx, s.db, &definitions)
 	return definitions, err
 }
@@ -594,10 +594,10 @@ func (s SQLite) GetQualityProfileItem(ctx context.Context, id int64) (model.Qual
 	return result, err
 }
 
-// ListQualityProfileItems lists all quality definitions
+// ListQualityProfileItems lists all items in a quality profile
 func (s SQLite) ListQualityProfileItems(ctx context.Context) ([]*model.QualityProfileItem, error) {
 	items := make([]*model.QualityProfileItem, 0)
-	stmt := table.Indexer.SELECT(table.QualityProfileItem.AllColumns).FROM(table.QualityProfileItem).ORDER_BY(table.QualityProfileItem.ID.ASC())
+	stmt := table.QualityProfileItem.SELECT(table.QualityProfileItem.AllColumns).FROM(table.QualityProfileItem).ORDER_BY(table.QualityProfileItem.ID.ASC())
 	err := stmt.QueryContext(ctx, s.db, &items)
 	return items, err
 }

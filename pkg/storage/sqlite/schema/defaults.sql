@@ -1,6 +1,5 @@
--- Quality Definitions for Movies
-INSERT INTO
-    quality_definition (
+INSERT
+    OR IGNORE INTO quality_definition (
         quality_id,
         name,
         preferred_size,
@@ -24,9 +23,8 @@ VALUES
     (13, 'Bluray-2160p', 1999, 102, 2000, 'movie'),
     (14, 'Remux-2160p', 1999, 187.4, 2000, 'movie');
 
--- Quality Definitions for Episodes
-INSERT INTO
-    quality_definition (
+INSERT
+    OR IGNORE INTO quality_definition (
         quality_id,
         name,
         preferred_size,
@@ -50,7 +48,6 @@ VALUES
     (27, 'Bluray-2160p', 995, 94.6, 1000, 'episode'),
     (28, 'Remux-2160p', 995, 187.4, 1000, 'episode');
 
--- Movie Profiles
 INSERT
     OR IGNORE INTO quality_profile (id, name, cutoff_quality_id, upgrade_allowed)
 VALUES
@@ -58,9 +55,8 @@ VALUES
     (2, 'High Definition', 8, TRUE),
     (3, 'Ultra High Definition', 13, FALSE);
 
--- Movie Profile Items
-INSERT INTO
-    quality_profile_item (profile_id, quality_id)
+INSERT
+    OR IGNORE INTO quality_profile_item (profile_id, quality_id)
 VALUES
     (1, 1),
     (1, 2),
@@ -76,7 +72,6 @@ VALUES
     (3, 12),
     (3, 13);
 
--- Episode Profiles
 INSERT
     OR IGNORE INTO quality_profile (id, name, cutoff_quality_id, upgrade_allowed)
 VALUES
@@ -84,9 +79,8 @@ VALUES
     (5, 'High Definition', 23, TRUE),
     (6, 'Ultra High Definition', 27, FALSE);
 
--- Episode Profile Items
-INSERT INTO
-    quality_profile_item (profile_id, quality_id)
+INSERT
+    OR IGNORE INTO quality_profile_item (profile_id, quality_id)
 VALUES
     (4, 15),
     (4, 16),
