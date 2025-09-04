@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strconv"
 	"time"
 
@@ -107,7 +108,8 @@ func (s *Server) Serve(port int) error {
 	v1.HandleFunc("/quality/profiles/{id}", s.GetQualityProfile()).Methods(http.MethodGet)
 	v1.HandleFunc("/quality/profiles", s.ListQualityProfiles()).Methods(http.MethodGet)
 
-	rtr.PathPrefix("/").Handler(s.fileServer).Methods(http.MethodGet)
+	rtr.PathPrefix("/static/").Handler(s.FileHandler()).Methods(http.MethodGet)
+	rtr.PathPrefix("/").Handler(s.IndexHandler())
 
 	corsHandler := handlers.CORS(
 		handlers.AllowedOrigins([]string{"*"}),
@@ -211,7 +213,6 @@ func (s Server) GetTVDetailByTMDBID() http.HandlerFunc {
 		writeResponse(w, http.StatusOK, resp)
 	}
 }
-
 
 // ListTVShows lists tv shows on disk
 func (s Server) ListTVShows() http.HandlerFunc {
@@ -691,5 +692,17 @@ func (s Server) AddSeriesToLibrary() http.HandlerFunc {
 			log.Error("failed to write response", zap.Error(err))
 			return
 		}
+	}
+}
+
+func (s Server) FileHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		http.StripPrefix("/static", s.fileServer).ServeHTTP(w, r)
+	}
+}
+
+func (s Server) IndexHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, filepath.Join(s.config.DistDir, "index.html"))
 	}
 }
