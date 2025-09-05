@@ -68,6 +68,11 @@ func (m MediaManager) ReconcileSeries(ctx context.Context) error {
 		log.Error("failed to reconcile discovered episodes", zap.Error(err))
 	}
 
+	err = m.ReconcileSeriesStateAfterDiscovery(ctx)
+	if err != nil {
+		log.Error("failed to reconcile series states after discovery", zap.Error(err))
+	}
+
 	return nil
 }
 
@@ -534,6 +539,15 @@ func (m MediaManager) reconcileMissingEpisode(ctx context.Context, seriesTitle s
 
 	if !isReleased(snapshot.time, episodeMetadata.AirDate) {
 		log.Debug("episode is not yet released", zap.Any("air_date", episodeMetadata.AirDate))
+		// If this episode was previously missing but is now determined to be unreleased, update its state
+		if episode.State == storage.EpisodeStateMissing {
+			err := m.updateEpisodeState(ctx, *episode, storage.EpisodeStateUnreleased, nil)
+			if err != nil {
+				log.Error("failed to update episode to unreleased state", zap.Error(err))
+				return false, err
+			}
+			log.Debug("updated episode from missing to unreleased state")
+		}
 		return false, nil
 	}
 
@@ -821,6 +835,10 @@ func (m MediaManager) evaluateAndUpdateSeriesState(ctx context.Context, seriesID
 		newSeriesState = storage.SeriesStateContinuing
 	case continuing > 0:
 		newSeriesState = storage.SeriesStateContinuing
+		// Check if continuing series actually has missing episodes that can be downloaded
+		if m.hasReleasedMissingEpisodes(ctx, seriesID) {
+			newSeriesState = storage.SeriesStateMissing
+		}
 	case missing > 0 && unreleased == 0:
 		newSeriesState = storage.SeriesStateMissing
 	case unreleased > 0:
@@ -1567,4 +1585,76 @@ func (m MediaManager) matchEpisodeFileToEpisode(ctx context.Context, filePath st
 	log.Warn("no matching episode found",
 		zap.Int("file_episode_number", episodeFile.EpisodeNumber))
 	return nil
+}
+
+// ReconcileSeriesStateAfterDiscovery re-evaluates series states after discovered episodes have been processed.
+// This ensures that series states accurately reflect the current state of all their seasons and episodes
+// after discovery reconciliation has completed.
+func (m MediaManager) ReconcileSeriesStateAfterDiscovery(ctx context.Context) error {
+	log := logger.FromCtx(ctx)
+
+	where := table.SeriesTransition.ToState.IN(
+		sqlite.String(string(storage.SeriesStateDiscovered)),
+		sqlite.String(string(storage.SeriesStateContinuing)),
+	).AND(table.SeriesTransition.MostRecent.EQ(sqlite.Bool(true))).
+		AND(table.Series.Monitored.EQ(sqlite.Int(1)))
+
+	series, err := m.storage.ListSeries(ctx, where)
+	if err != nil {
+		if !errors.Is(err, storage.ErrNotFound) {
+			log.Error("failed to list series for post-discovery reconciliation", zap.Error(err))
+			return fmt.Errorf("couldn't list series for post-discovery reconciliation: %w", err)
+		}
+		log.Debug("no series found for post-discovery reconciliation")
+		return nil
+	}
+
+	for _, s := range series {
+		log.Debug("re-evaluating series state after discovery", zap.Any("series", s.ID))
+		err = m.evaluateAndUpdateSeriesState(ctx, s.ID)
+		if err != nil {
+			log.Error("failed to re-evaluate series state", zap.Error(err))
+			continue
+		}
+	}
+
+	return nil
+}
+
+// hasReleasedMissingEpisodes checks if a series has any missing episodes that have already been released
+// and can therefore be downloaded. This helps distinguish between series that are missing downloadable
+// content versus series that are just waiting for future episodes to be released.
+func (m MediaManager) hasReleasedMissingEpisodes(ctx context.Context, seriesID int32) bool {
+	log := logger.FromCtx(ctx)
+
+	// Get all seasons for this series
+	seasons, err := m.storage.ListSeasons(ctx, table.Season.SeriesID.EQ(sqlite.Int32(seriesID)))
+	if err != nil {
+		log.Error("failed to check for missing episodes", zap.Error(err))
+		return false
+	}
+
+	snapshot := &ReconcileSnapshot{time: now()}
+
+	for _, season := range seasons {
+		episodes, err := m.storage.ListEpisodes(ctx, table.Episode.SeasonID.EQ(sqlite.Int32(season.ID)))
+		if err != nil {
+			continue
+		}
+
+		for _, episode := range episodes {
+			if episode.State == storage.EpisodeStateMissing && episode.EpisodeMetadataID != nil {
+				episodeMetadata, err := m.storage.GetEpisodeMetadata(ctx, table.EpisodeMetadata.ID.EQ(sqlite.Int32(*episode.EpisodeMetadataID)))
+				if err != nil {
+					continue
+				}
+
+				if isReleased(snapshot.time, episodeMetadata.AirDate) {
+					return true
+				}
+			}
+		}
+	}
+
+	return false
 }
