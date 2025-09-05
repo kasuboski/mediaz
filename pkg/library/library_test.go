@@ -39,6 +39,39 @@ func TestMatchEpisode(t *testing.T) {
 	}
 }
 
+func TestMatchEpisodeRegex(t *testing.T) {
+	tests := []struct {
+		filename string
+		expected bool
+		desc     string
+	}{
+		// These work (Fallout)
+		{"Fallout - S01E01 - The End.mkv", true, "Fallout format that works"},
+		{"Fallout - S01E02 - The Target.mkv", true, "Fallout format that works"},
+		
+		// These should now work with updated regex (House of the Dragon)
+		{"House.of.the.Dragon.S01E01.1080p.BluRay.x265-RARBG[eztv.re].mp4", true, "House of Dragon original format with dots"},
+		{"House.of.the.Dragon.S01E02.1080p.BluRay.x265-RARBG[eztv.re].mp4", true, "House of Dragon original format with dots"},
+		
+		// Test what sanitizeName produces
+		{"House of the Dragon S01E01 1080p BluRay x265-RARBG[eztv re] mp4", true, "House of Dragon sanitized format"},
+		{"House of the Dragon S01E02 1080p BluRay x265-RARBG[eztv re] mp4", true, "House of Dragon sanitized format"},
+		
+		// Test simpler House of Dragon formats
+		{"House of the Dragon - S01E01.mp4", true, "House of Dragon simple format"},
+		{"House of the Dragon S01E01.mp4", true, "House of Dragon without dashes"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.desc, func(t *testing.T) {
+			result := matchEpisode(tt.filename)
+			if result != tt.expected {
+				t.Errorf("matchEpisode(%q) = %t, want %t", tt.filename, result, tt.expected)
+			}
+		})
+	}
+}
+
 func TestFindMovies(t *testing.T) {
 	ctx := context.Background()
 	negatives := fstest.MapFS{

@@ -182,7 +182,7 @@ func (s Series) Machine() *machine.StateMachine[SeriesState] {
 		machine.From(SeriesStateMissing).To(SeriesStateDiscovered, SeriesStateDownloading),
 		machine.From(SeriesStateUnreleased).To(SeriesStateDiscovered, SeriesStateMissing),
 		machine.From(SeriesStateDownloading).To(SeriesStateContinuing, SeriesStateCompleted),
-		machine.From(SeriesStateContinuing).To(SeriesStateCompleted),
+		machine.From(SeriesStateContinuing).To(SeriesStateCompleted, SeriesStateMissing),
 		machine.From(SeriesStateCompleted).To(SeriesStateContinuing),
 	)
 }
