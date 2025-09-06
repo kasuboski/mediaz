@@ -224,23 +224,6 @@ func (m MediaManager) refreshSeriesEpisodes(ctx context.Context, series *storage
 		var exists bool
 
 		if seasonID, exists = existingSeasonNumbers[seasonMeta.Number]; !exists {
-			episodeMetadataWhere := table.EpisodeMetadata.SeasonID.EQ(sqlite.Int64(int64(seasonMeta.ID)))
-			seasonEpisodeMetadata, err := m.storage.ListEpisodeMetadata(ctx, episodeMetadataWhere)
-			if err != nil {
-				log.Error("failed to list episode metadata for season", zap.Error(err))
-				continue
-			}
-			hasReleased := false
-			for _, episodeMeta := range seasonEpisodeMetadata {
-				if isReleased(snapshot.time, episodeMeta.AirDate) {
-					hasReleased = true
-					break
-				}
-			}
-			if !hasReleased {
-				log.Debug("no episodes released for season, skipping creation", zap.Int32("season_number", seasonMeta.Number))
-				continue
-			}
 			season := storage.Season{
 				Season: model.Season{
 					SeriesID:         int32(series.ID),
