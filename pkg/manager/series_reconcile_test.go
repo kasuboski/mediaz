@@ -237,7 +237,7 @@ func TestMediaManager_reconcileMissingEpisodes(t *testing.T) {
 		assert.Equal(t, "124", episodes[1].DownloadID)
 		assert.Equal(t, int32(2), episodes[1].DownloadClientID)
 
-		assert.Equal(t, storage.EpisodeStateUnreleased, episodes[2].State)
+		assert.Equal(t, storage.EpisodeStateMissing, episodes[2].State)
 		assert.Equal(t, "", episodes[2].DownloadID)
 		assert.Equal(t, int32(0), episodes[2].DownloadClientID)
 	})
