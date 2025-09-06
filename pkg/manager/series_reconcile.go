@@ -369,6 +369,40 @@ func (m MediaManager) reconcileMissingSeries(ctx context.Context, series *storag
 		return nil
 	}
 
+	// Check if all missing seasons only have unreleased episodes
+	allMissingSeasonsUnreleased := true
+	for _, season := range seasons {
+		where := table.Episode.SeasonID.EQ(sqlite.Int32(season.ID))
+		episodes, err := m.storage.ListEpisodes(ctx, where)
+		if err != nil {
+			log.Error("failed to list episodes for season", zap.Error(err))
+			allMissingSeasonsUnreleased = false
+			break
+		}
+		for _, e := range episodes {
+			if e.State == storage.EpisodeStateMissing && e.EpisodeMetadataID != nil {
+				episodeMetadata, err := m.storage.GetEpisodeMetadata(ctx, table.EpisodeMetadata.ID.EQ(sqlite.Int32(*e.EpisodeMetadataID)))
+				if err == nil && isReleased(snapshot.time, episodeMetadata.AirDate) {
+					allMissingSeasonsUnreleased = false
+					break
+				}
+			}
+		}
+		if !allMissingSeasonsUnreleased {
+			break
+		}
+	}
+
+	if allMissingSeasonsUnreleased {
+		log.Info("all missing seasons only have unreleased episodes, reverting series state to continuing")
+		err := m.updateSeriesState(ctx, int64(series.ID), storage.SeriesStateContinuing, nil)
+		if err != nil {
+			log.Error("failed to update series state to continuing", zap.Error(err))
+			return err
+		}
+		return nil
+	}
+
 	for _, s := range seasons {
 		log.Debug("reconciling season", zap.Any("season", s.ID))
 		err = m.reconcileMissingSeason(ctx, seriesMetadata.Title, s, snapshot, qualityProfile, releases)
@@ -409,10 +443,18 @@ func (m MediaManager) reconcileMissingSeason(ctx context.Context, seriesTitle st
 
 	var allMissing = true
 	var missingEpisodes []*storage.Episode
+	var allMissingUnreleased = true
 	for _, e := range episodes {
 		switch e.State {
 		case storage.EpisodeStateMissing:
 			missingEpisodes = append(missingEpisodes, e)
+			// Check if episode is unreleased
+			if e.EpisodeMetadataID != nil {
+				episodeMetadata, err := m.storage.GetEpisodeMetadata(ctx, table.EpisodeMetadata.ID.EQ(sqlite.Int32(*e.EpisodeMetadataID)))
+				if err == nil && isReleased(snapshot.time, episodeMetadata.AirDate) {
+					allMissingUnreleased = false
+				}
+			}
 			continue
 		default:
 			allMissing = false
@@ -423,6 +465,17 @@ func (m MediaManager) reconcileMissingSeason(ctx context.Context, seriesTitle st
 
 	if !allMissing {
 		return m.reconcileMissingEpisodes(ctx, seriesTitle, season.ID, metadata.Number, missingEpisodes, snapshot, qualityProfile, releases)
+	}
+
+	// If all missing episodes are unreleased, revert season state to continuing
+	if allMissing && allMissingUnreleased {
+		log.Info("all missing episodes are unreleased, reverting season state to continuing")
+		err := m.updateSeasonState(ctx, int64(season.ID), storage.SeasonStateContinuing, nil)
+		if err != nil {
+			log.Error("failed to update season state to continuing", zap.Error(err))
+			return err
+		}
+		return nil
 	}
 
 	// Fetch episode metadata for missing episodes to calculate runtime

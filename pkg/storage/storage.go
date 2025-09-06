@@ -182,7 +182,7 @@ func (s Series) Machine() *machine.StateMachine[SeriesState] {
 		machine.From(SeriesStateMissing).To(SeriesStateDiscovered, SeriesStateDownloading),
 		machine.From(SeriesStateUnreleased).To(SeriesStateDiscovered, SeriesStateMissing),
 		machine.From(SeriesStateDownloading).To(SeriesStateContinuing, SeriesStateCompleted),
-		machine.From(SeriesStateContinuing).To(SeriesStateCompleted),
+		machine.From(SeriesStateContinuing).To(SeriesStateCompleted, SeriesStateMissing),
 		machine.From(SeriesStateCompleted).To(SeriesStateContinuing),
 	)
 }
@@ -222,7 +222,7 @@ func (e Episode) Machine() *machine.StateMachine[EpisodeState] {
 	return machine.New(e.State,
 		machine.From(EpisodeStateNew).To(EpisodeStateUnreleased, EpisodeStateMissing, EpisodeStateDiscovered),
 		machine.From(EpisodeStateDiscovered).To(EpisodeStateCompleted),
-		machine.From(EpisodeStateMissing).To(EpisodeStateDiscovered, EpisodeStateDownloading),
+		machine.From(EpisodeStateMissing).To(EpisodeStateDiscovered, EpisodeStateDownloading, EpisodeStateUnreleased),
 		machine.From(EpisodeStateUnreleased).To(EpisodeStateDiscovered, EpisodeStateMissing),
 		machine.From(EpisodeStateDownloading).To(EpisodeStateDownloaded),
 		machine.From(EpisodeStateDownloaded).To(EpisodeStateCompleted),
