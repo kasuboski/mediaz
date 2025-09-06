@@ -1280,10 +1280,11 @@ func TestMediaManager_ReconcileContinuingSeries(t *testing.T) {
 		require.NoError(t, err)
 
 		seasonMetadataID, err := store.CreateSeasonMetadata(ctx, model.SeasonMetadata{
-			SeriesID: int32(seriesMetadataID), // Should reference the series metadata ID, not storage series ID
-			Title:    "Season 1",
-			Number:   1,
-			TmdbID:   1001, // Match the TMDB ID from our mock
+			SeriesID:         int32(seriesID),         // Reference the actual series ID
+			SeriesMetadataID: int32(seriesMetadataID), // Reference the series metadata ID
+			Title:            "Season 1",
+			Number:           1,
+			TmdbID:           1001, // Match the TMDB ID from our mock
 		})
 		require.NoError(t, err)
 
@@ -1712,9 +1713,10 @@ func TestMediaManager_ReconcileDiscoveredEpisodes(t *testing.T) {
 
 		// Create season metadata
 		seasonMetadataID, err := store.CreateSeasonMetadata(ctx, model.SeasonMetadata{
-			SeriesID: int32(seriesMetadataID),
-			Title:    "Season 1",
-			Number:   1,
+			SeriesID:         int32(seriesID),         // Reference the actual series ID
+			SeriesMetadataID: int32(seriesMetadataID), // Reference the series metadata ID
+			Title:            "Season 1",
+			Number:           1,
 		})
 		require.NoError(t, err)
 

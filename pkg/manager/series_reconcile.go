@@ -212,7 +212,8 @@ func (m MediaManager) refreshSeriesEpisodes(ctx context.Context, series *storage
 		existingSeasonNumbers[seasonMetadata.Number] = int64(season.ID)
 	}
 
-	seasonMetadataWhere := table.SeasonMetadata.SeriesID.EQ(sqlite.Int64(int64(seriesMetadata.ID)))
+	// Find season metadata by series_metadata_id first
+	seasonMetadataWhere := table.SeasonMetadata.SeriesMetadataID.EQ(sqlite.Int32(*series.SeriesMetadataID))
 	allSeasonMetadata, err := m.storage.ListSeasonMetadata(ctx, seasonMetadataWhere)
 	if err != nil {
 		log.Error("failed to list season metadata", zap.Error(err))
@@ -311,6 +312,13 @@ func (m MediaManager) refreshSeriesEpisodes(ctx context.Context, series *storage
 						zap.Int32("season_id", season.ID),
 						zap.Int32("season_number", seasonNumber),
 						zap.Int32("metadata_id", seasonMeta.ID))
+					
+					// Update season_metadata.series_id to point to the actual series.id
+					err := m.storage.UpdateSeasonMetadataSeriesID(ctx, seasonMeta.ID, series.ID)
+					if err != nil {
+						log.Error("failed to update season metadata series_id", zap.Error(err))
+					}
+					
 					// Update the existingSeasonNumbers map
 					existingSeasonNumbers[seasonNumber] = int64(season.ID)
 				}
@@ -996,7 +1004,7 @@ func (m MediaManager) reconcileDiscoveredEpisode(ctx context.Context, episode *s
 
 	// Check if we have season metadata for the discovered file's season
 	allSeasonMetadata, err := m.storage.ListSeasonMetadata(ctx,
-		table.SeasonMetadata.SeriesID.EQ(sqlite.Int32(*series.SeriesMetadataID)))
+		table.SeasonMetadata.SeriesMetadataID.EQ(sqlite.Int32(*series.SeriesMetadataID)))
 	if err != nil {
 		log.Warn("failed to check existing season metadata", zap.Error(err))
 		return fmt.Errorf("failed to check season metadata: %w", err)
