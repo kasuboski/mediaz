@@ -88,7 +88,9 @@ func (m MediaManager) loadSeriesMetadata(ctx context.Context, tmdbID int) (*mode
 
 	for _, s := range details.Seasons {
 		season := FromSeriesSeasons(s)
-		season.SeriesID = int32(seriesMetadataID)
+		// Set SeriesMetadataID to link this season metadata to the series metadata
+		season.SeriesMetadataID = int32(seriesMetadataID)
+		// SeriesID will be set later during reconciliation when the actual series record exists
 
 		existingSeason, err := m.storage.GetSeasonMetadata(ctx, table.SeasonMetadata.TmdbID.EQ(sqlite.Int(int64(season.TmdbID))))
 		if err != nil && !errors.Is(err, storage.ErrNotFound) {

@@ -269,6 +269,7 @@ type SeriesMetadataStorage interface {
 	DeleteSeasonMetadata(ctx context.Context, id int64) error
 	ListSeasonMetadata(ctx context.Context, where ...sqlite.BoolExpression) ([]*model.SeasonMetadata, error)
 	GetSeasonMetadata(ctx context.Context, where sqlite.BoolExpression) (*model.SeasonMetadata, error)
+	UpdateSeasonMetadataSeriesID(ctx context.Context, seasonMetadataID int32, seriesID int32) error
 
 	CreateEpisodeMetadata(ctx context.Context, episodeMeta model.EpisodeMetadata) (int64, error)
 	DeleteEpisodeMetadata(ctx context.Context, id int64) error
