@@ -38,6 +38,11 @@ func (m MediaManager) ReconcileSeries(ctx context.Context) error {
 
 	snapshot := newReconcileSnapshot(indexers, dcs)
 
+	err = m.ReconcileDiscoveredEpisodes(ctx)
+	if err != nil {
+		log.Error("failed to reconcile discovered episodes", zap.Error(err))
+	}
+
 	err = m.ReconcileMissingSeries(ctx, snapshot)
 	if err != nil {
 		log.Error("failed to reconcile missing series", zap.Error(err))
@@ -61,16 +66,6 @@ func (m MediaManager) ReconcileSeries(ctx context.Context) error {
 	err = m.ReconcileCompletedSeries(ctx)
 	if err != nil {
 		log.Error("failed to reconcile completed series", zap.Error(err))
-	}
-
-	err = m.ReconcileDiscoveredEpisodes(ctx)
-	if err != nil {
-		log.Error("failed to reconcile discovered episodes", zap.Error(err))
-	}
-
-	err = m.ReconcileSeriesStateAfterDiscovery(ctx)
-	if err != nil {
-		log.Error("failed to reconcile series states after discovery", zap.Error(err))
 	}
 
 	return nil
@@ -1584,40 +1579,6 @@ func (m MediaManager) matchEpisodeFileToEpisode(ctx context.Context, filePath st
 
 	log.Warn("no matching episode found",
 		zap.Int("file_episode_number", episodeFile.EpisodeNumber))
-	return nil
-}
-
-// ReconcileSeriesStateAfterDiscovery re-evaluates series states after discovered episodes have been processed.
-// This ensures that series states accurately reflect the current state of all their seasons and episodes
-// after discovery reconciliation has completed.
-func (m MediaManager) ReconcileSeriesStateAfterDiscovery(ctx context.Context) error {
-	log := logger.FromCtx(ctx)
-
-	where := table.SeriesTransition.ToState.IN(
-		sqlite.String(string(storage.SeriesStateDiscovered)),
-		sqlite.String(string(storage.SeriesStateContinuing)),
-	).AND(table.SeriesTransition.MostRecent.EQ(sqlite.Bool(true))).
-		AND(table.Series.Monitored.EQ(sqlite.Int(1)))
-
-	series, err := m.storage.ListSeries(ctx, where)
-	if err != nil {
-		if !errors.Is(err, storage.ErrNotFound) {
-			log.Error("failed to list series for post-discovery reconciliation", zap.Error(err))
-			return fmt.Errorf("couldn't list series for post-discovery reconciliation: %w", err)
-		}
-		log.Debug("no series found for post-discovery reconciliation")
-		return nil
-	}
-
-	for _, s := range series {
-		log.Debug("re-evaluating series state after discovery", zap.Any("series", s.ID))
-		err = m.evaluateAndUpdateSeriesState(ctx, s.ID)
-		if err != nil {
-			log.Error("failed to re-evaluate series state", zap.Error(err))
-			continue
-		}
-	}
-
 	return nil
 }
 
