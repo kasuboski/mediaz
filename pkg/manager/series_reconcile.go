@@ -181,7 +181,7 @@ func (m MediaManager) reconcileContinuingSeries(ctx context.Context, series *sto
 func (m MediaManager) refreshSeriesEpisodes(ctx context.Context, series *storage.Series, seriesMetadata *model.SeriesMetadata, snapshot *ReconcileSnapshot) error {
 	log := logger.FromCtx(ctx)
 
-	_, err := m.RefreshSeriesMetadataFromTMDB(ctx, series, int(seriesMetadata.TmdbID))
+	_, err := m.RefreshSeriesMetadataFromTMDB(ctx, int(seriesMetadata.TmdbID))
 	if err != nil {
 		log.Debug("failed to refresh series metadata", zap.Error(err))
 		return err

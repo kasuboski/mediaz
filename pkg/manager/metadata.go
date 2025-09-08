@@ -62,7 +62,7 @@ func (m MediaManager) GetSeriesMetadata(ctx context.Context, tmdbID int) (*model
 }
 
 // RefreshSeriesMetadataFromTMDB refreshes series metadata with proper entity linking
-func (m MediaManager) RefreshSeriesMetadataFromTMDB(ctx context.Context, series *storage.Series, tmdbID int) (*model.SeriesMetadata, error) {
+func (m MediaManager) RefreshSeriesMetadataFromTMDB(ctx context.Context, tmdbID int) (*model.SeriesMetadata, error) {
 	return m.loadSeriesMetadata(ctx, tmdbID)
 }
 

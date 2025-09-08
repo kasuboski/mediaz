@@ -125,7 +125,7 @@ func (m MediaManager) IndexSeriesLibrary(ctx context.Context) error {
 		}}
 		_, err = m.storage.CreateEpisode(ctx, episode, storage.EpisodeStateDiscovered)
 		if err != nil {
-			log.Warnf("failed to created new epsiode", zap.Error(err))
+			log.Warnf("failed to create new episode", zap.Error(err))
 			continue
 		}
 
