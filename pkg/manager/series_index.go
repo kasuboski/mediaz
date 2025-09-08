@@ -109,7 +109,7 @@ func (m MediaManager) IndexSeriesLibrary(ctx context.Context) error {
 			continue
 		}
 
-		seasonID, err := m.ensureSeason(ctx, seriesID, df.SeasonNumber)
+		seasonID, err := m.getOrCreateSeason(ctx, seriesID, int32(df.SeasonNumber), nil, storage.SeasonStateDiscovered)
 		if err != nil {
 			log.Errorf("couldn't ensure season for discovered file: %w", err)
 			continue
@@ -213,10 +213,6 @@ func (m MediaManager) getOrCreateSeason(ctx context.Context, seriesID int64, sea
 	return seasonID, nil
 }
 
-// ensureSeason wrapper for backward compatibility during file discovery
-func (m MediaManager) ensureSeason(ctx context.Context, seriesID int64, seasonNumber int) (int64, error) {
-	return m.getOrCreateSeason(ctx, seriesID, int32(seasonNumber), nil, storage.SeasonStateDiscovered)
-}
 
 func modelEpisodeFile(df library.EpisodeFile) model.EpisodeFile {
 	return model.EpisodeFile{
