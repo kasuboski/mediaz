@@ -218,6 +218,7 @@ func FromSeriesDetails(series tmdb.SeriesDetails) (model.SeriesMetadata, error) 
 		EpisodeCount: int32(series.NumberOfEpisodes),
 		FirstAirDate: airDate,
 		PosterPath:   poster,
+		Overview:     &series.Overview,
 	}, nil
 
 }
