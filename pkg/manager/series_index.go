@@ -16,7 +16,7 @@ import (
 
 // IndexSeriesLibrary indexes the tv library directory for new files that are not yet monitored. The episodes are then stored with a state of discovered.
 func (m MediaManager) IndexSeriesLibrary(ctx context.Context) error {
-	log := logger.FromCtx(ctx)
+	log := logger.FromCtx(ctx).With("series indexer")
 
 	discoveredFiles, err := m.library.FindEpisodes(ctx)
 	if err != nil {
@@ -123,7 +123,13 @@ func (m MediaManager) IndexSeriesLibrary(ctx context.Context) error {
 			EpisodeFileID: &f.ID,
 			EpisodeNumber: int32(df.EpisodeNumber),
 		}}
-		_, _ = m.storage.CreateEpisode(ctx, episode, storage.EpisodeStateDiscovered)
+		_, err = m.storage.CreateEpisode(ctx, episode, storage.EpisodeStateDiscovered)
+		if err != nil {
+			log.Warnf("failed to created new epsiode", zap.Error(err))
+			continue
+		}
+
+		log.Debug("successfully indexed new episode", zap.Int32("ID", episode.ID), zap.Int("number", df.EpisodeNumber), zap.Int64("Season ID", seasonID))
 	}
 
 	return nil
@@ -161,10 +167,10 @@ func (m MediaManager) getOrCreateSeason(ctx context.Context, seriesID int64, sea
 	)
 
 	// First try to find existing season by series_id + season_number (our unique constraint)
-	season, err := m.storage.GetSeason(ctx, 
+	season, err := m.storage.GetSeason(ctx,
 		table.Season.SeriesID.EQ(sqlite.Int64(seriesID)).
-		AND(table.Season.SeasonNumber.EQ(sqlite.Int32(seasonNumber))))
-	
+			AND(table.Season.SeasonNumber.EQ(sqlite.Int32(seasonNumber))))
+
 	if err != nil && !errors.Is(err, storage.ErrNotFound) {
 		return 0, err
 	}
@@ -177,7 +183,7 @@ func (m MediaManager) getOrCreateSeason(ctx context.Context, seriesID int64, sea
 				log.Error("failed to link season metadata", zap.Error(err))
 				return 0, err
 			}
-			log.Debug("linked existing season to metadata", 
+			log.Debug("linked existing season to metadata",
 				zap.Int64("season_id", int64(season.ID)),
 				zap.Int32("season_metadata_id", *seasonMetadataID))
 		}
@@ -199,11 +205,11 @@ func (m MediaManager) getOrCreateSeason(ctx context.Context, seriesID int64, sea
 		return 0, err
 	}
 
-	log.Debug("created new season", 
+	log.Debug("created new season",
 		zap.Int64("season_id", seasonID),
 		zap.String("initial_state", string(initialState)),
 		zap.Any("season_metadata_id", seasonMetadataID))
-	
+
 	return seasonID, nil
 }
 

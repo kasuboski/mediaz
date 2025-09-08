@@ -1651,6 +1651,10 @@ func TestMediaManager_ReconcileDiscoveredEpisodes(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
+		snapshot := &ReconcileSnapshot{
+			time: time.Now(),
+		}
+
 		ctx := context.Background()
 		store := mocks.NewMockStorage(ctrl)
 
@@ -1661,13 +1665,17 @@ func TestMediaManager_ReconcileDiscoveredEpisodes(t *testing.T) {
 		store.EXPECT().ListEpisodes(ctx, where).Return(nil, storage.ErrNotFound)
 
 		m := New(nil, nil, nil, store, nil, config.Manager{})
-		err := m.ReconcileDiscoveredEpisodes(ctx)
+		err := m.ReconcileDiscoveredEpisodes(ctx, snapshot)
 		require.NoError(t, err)
 	})
 
 	t.Run("error listing episodes", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
+
+		snapshot := &ReconcileSnapshot{
+			time: time.Now(),
+		}
 
 		ctx := context.Background()
 		store := mocks.NewMockStorage(ctrl)
@@ -1680,7 +1688,7 @@ func TestMediaManager_ReconcileDiscoveredEpisodes(t *testing.T) {
 		store.EXPECT().ListEpisodes(ctx, where).Return(nil, expectedErr)
 
 		m := New(nil, nil, nil, store, nil, config.Manager{})
-		err := m.ReconcileDiscoveredEpisodes(ctx)
+		err := m.ReconcileDiscoveredEpisodes(ctx, snapshot)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "couldn't list discovered episodes")
 	})
@@ -1691,6 +1699,10 @@ func TestMediaManager_ReconcileDiscoveredEpisodes(t *testing.T) {
 
 		ctx := context.Background()
 		store := newStore(t, ctx)
+
+		snapshot := &ReconcileSnapshot{
+			time: time.Now(),
+		}
 
 		// Create series metadata for TMDB search functionality
 		seriesMetadataID, err := store.CreateSeriesMetadata(ctx, model.SeriesMetadata{
@@ -1722,6 +1734,7 @@ func TestMediaManager_ReconcileDiscoveredEpisodes(t *testing.T) {
 		seasonID, err := store.CreateSeason(ctx, storage.Season{
 			Season: model.Season{
 				SeriesID:         int32(seriesID),
+				SeasonNumber:     1,
 				SeasonMetadataID: ptr(int32(seasonMetadataID)),
 				Monitored:        1,
 			},
@@ -1762,7 +1775,7 @@ func TestMediaManager_ReconcileDiscoveredEpisodes(t *testing.T) {
 		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
 
 		m := New(tmdbMock, nil, libraryMock, store, nil, config.Manager{})
-		err = m.ReconcileDiscoveredEpisodes(ctx)
+		err = m.ReconcileDiscoveredEpisodes(ctx, snapshot)
 		require.NoError(t, err)
 
 		// Verify episode was transitioned to completed state
@@ -1777,6 +1790,10 @@ func TestMediaManager_ReconcileDiscoveredEpisodes(t *testing.T) {
 
 		ctx := context.Background()
 		store := newStore(t, ctx)
+
+		snapshot := &ReconcileSnapshot{
+			time: time.Now(),
+		}
 
 		// Create series without path (will cause error in reconcileDiscoveredEpisode)
 		seriesID, err := store.CreateSeries(ctx, storage.Series{
@@ -1805,7 +1822,7 @@ func TestMediaManager_ReconcileDiscoveredEpisodes(t *testing.T) {
 		require.NoError(t, err)
 
 		m := New(nil, nil, nil, store, nil, config.Manager{})
-		err = m.ReconcileDiscoveredEpisodes(ctx)
+		err = m.ReconcileDiscoveredEpisodes(ctx, snapshot)
 		require.NoError(t, err) // Function should not fail even if individual episodes fail to reconcile
 	})
 }
