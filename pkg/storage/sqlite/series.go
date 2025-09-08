@@ -811,13 +811,6 @@ func (s *SQLite) GetSeasonMetadata(ctx context.Context, where sqlite.BoolExpress
 	return &seasonMetadata, nil
 }
 
-// UpdateSeasonMetadataSeriesID updates the series_id field of season_metadata
-func (s *SQLite) UpdateSeasonMetadataSeriesID(ctx context.Context, seasonMetadataID int32, seriesID int32) error {
-	stmt := table.SeasonMetadata.UPDATE(table.SeasonMetadata.SeriesID).SET(seriesID).WHERE(table.SeasonMetadata.ID.EQ(sqlite.Int32(seasonMetadataID)))
-	_, err := stmt.Exec(s.db)
-	return err
-}
-
 // CreateEpisodeMetadata creates the given episodeMeta
 func (s *SQLite) CreateEpisodeMetadata(ctx context.Context, episodeMeta model.EpisodeMetadata) (int64, error) {
 	// don't insert a zeroed ID

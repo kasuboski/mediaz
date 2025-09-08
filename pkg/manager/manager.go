@@ -821,8 +821,7 @@ func (m MediaManager) AddSeriesToLibrary(ctx context.Context, request AddSeriesR
 
 	log.Debug("created new missing series", zap.Any("series", series))
 
-	// Find season metadata that belongs to this series metadata
-	where := table.SeasonMetadata.SeriesMetadataID.EQ(sqlite.Int32(seriesMetadata.ID))
+	where := table.SeasonMetadata.SeriesID.EQ(sqlite.Int(seriesID))
 	seasonMetadata, err := m.storage.ListSeasonMetadata(ctx, where)
 	if err != nil {
 		return nil, err
@@ -840,13 +839,6 @@ func (m MediaManager) AddSeriesToLibrary(ctx context.Context, request AddSeriesR
 		seasonID, err := m.storage.CreateSeason(ctx, season, storage.SeasonStateMissing)
 		if err != nil {
 			log.Error("failed to create season", zap.Error(err))
-			return nil, err
-		}
-
-		// Update the season metadata to point to the actual series.id
-		err = m.storage.UpdateSeasonMetadataSeriesID(ctx, s.ID, int32(seriesID))
-		if err != nil {
-			log.Error("failed to update season metadata series_id", zap.Error(err))
 			return nil, err
 		}
 
