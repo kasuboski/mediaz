@@ -33,6 +33,8 @@ var schemaCmd = &cobra.Command{
 			log.Fatal(err)
 		}
 		defer os.Remove("tmp.sqlite")
+		defer os.Remove("tmp.sqlite-shm")
+		defer os.Remove("tmp.sqlite-wal")
 
 		err = tmpStorage.Init(context.Background(), schemas...)
 		if err != nil {

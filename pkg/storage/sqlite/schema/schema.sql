@@ -128,15 +128,17 @@ CREATE TABLE IF NOT EXISTS "season" (
     FOREIGN KEY ("series_id") REFERENCES "series" ("id")
 );
 
+CREATE UNIQUE INDEX IF NOT EXISTS "idx_season_unique_series_number" ON "season" ("series_id", "season_number");
+
 CREATE TABLE IF NOT EXISTS "season_metadata" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-    "series_id" INTEGER NOT NULL,
+    "series_metadata_id" INTEGER NOT NULL,
     "number" INTEGER NOT NULL,
     "tmdb_id" INTEGER NOT NULL UNIQUE,
     "title" TEXT NOT NULL,
     "overview" TEXT,
     "air_date" DATETIME,
-    FOREIGN KEY ("series_id") REFERENCES "series" ("id")
+    FOREIGN KEY ("series_metadata_id") REFERENCES "series_metadata" ("id")
 );
 
 CREATE TABLE IF NOT EXISTS "episode" (
@@ -160,14 +162,14 @@ CREATE TABLE IF NOT EXISTS "episode_file" (
 
 CREATE TABLE IF NOT EXISTS "episode_metadata" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-    "season_id" INTEGER NOT NULL,
+    "season_metadata_id" INTEGER NOT NULL,
     "number" INTEGER NOT NULL,
     "tmdb_id" INTEGER NOT NULL UNIQUE,
     "title" TEXT NOT NULL,
     "overview" TEXT,
     "air_date" DATETIME,
     "runtime" INTEGER,
-    FOREIGN KEY ("season_id") REFERENCES "season" ("id")
+    FOREIGN KEY ("season_metadata_id") REFERENCES "season_metadata" ("id")
 );
 
 CREATE TABLE IF NOT EXISTS "movie_transition" (
@@ -257,3 +259,7 @@ WHERE
     "most_recent" = 1;
 
 CREATE UNIQUE INDEX IF NOT EXISTS "idx_episode_transitions_by_parent_sort_key" ON "episode_transition"("episode_id", "sort_key");
+
+CREATE UNIQUE INDEX IF NOT EXISTS "idx_season_metadata_unique_series_season" ON "season_metadata" ("series_metadata_id", "number");
+
+CREATE UNIQUE INDEX IF NOT EXISTS "idx_episode_metadata_unique_season_episode" ON "episode_metadata" ("season_metadata_id", "number");

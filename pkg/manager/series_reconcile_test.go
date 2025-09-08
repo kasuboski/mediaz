@@ -562,9 +562,9 @@ func TestMediaManager_reconcileMissingSeason(t *testing.T) {
 		assert.Equal(t, ptr(int32(1)), season.SeasonMetadataID)
 
 		seasonMetadataID, err := store.CreateSeasonMetadata(ctx, model.SeasonMetadata{
-			SeriesID: int32(seriesID),
-			Title:    "Season 1",
-			Number:   1,
+			SeriesMetadataID: int32(seriesID),
+			Title:            "Season 1",
+			Number:           1,
 		})
 		require.NoError(t, err)
 
@@ -572,12 +572,12 @@ func TestMediaManager_reconcileMissingSeason(t *testing.T) {
 		require.NoError(t, err)
 
 		episodeMetadataID1, err := store.CreateEpisodeMetadata(ctx, model.EpisodeMetadata{
-			TmdbID:   1,
-			Title:    "Hello",
-			Number:   1,
-			SeasonID: int32(seasonID),
-			AirDate:  ptr(time.Now().Add(time.Hour * -2)),
-			Runtime:  ptr(int32(42)),
+			TmdbID:           1,
+			Title:            "Hello",
+			Number:           1,
+			SeasonMetadataID: int32(seasonID),
+			AirDate:          ptr(time.Now().Add(time.Hour * -2)),
+			Runtime:          ptr(int32(42)),
 		})
 		require.NoError(t, err)
 
@@ -591,12 +591,12 @@ func TestMediaManager_reconcileMissingSeason(t *testing.T) {
 		require.NoError(t, err)
 
 		episodeMetadataID2, err := store.CreateEpisodeMetadata(ctx, model.EpisodeMetadata{
-			TmdbID:   2,
-			Title:    "There",
-			Number:   2,
-			SeasonID: int32(seasonID),
-			AirDate:  ptr(time.Now().Add(time.Hour * -2)),
-			Runtime:  ptr(int32(42)),
+			TmdbID:           2,
+			Title:            "There",
+			Number:           2,
+			SeasonMetadataID: int32(seasonID),
+			AirDate:          ptr(time.Now().Add(time.Hour * -2)),
+			Runtime:          ptr(int32(42)),
 		})
 		require.NoError(t, err)
 
@@ -715,9 +715,9 @@ func TestMediaManager_reconcileMissingSeason(t *testing.T) {
 		assert.Equal(t, ptr(int32(1)), season.SeasonMetadataID)
 
 		seasonMetadataID, err := store.CreateSeasonMetadata(ctx, model.SeasonMetadata{
-			SeriesID: int32(seriesID),
-			Title:    "Season 1",
-			Number:   1,
+			SeriesMetadataID: int32(seriesID),
+			Title:            "Season 1",
+			Number:           1,
 		})
 		require.NoError(t, err)
 
@@ -725,12 +725,12 @@ func TestMediaManager_reconcileMissingSeason(t *testing.T) {
 		require.NoError(t, err)
 
 		episodeMetadataID1, err := store.CreateEpisodeMetadata(ctx, model.EpisodeMetadata{
-			TmdbID:   1,
-			Title:    "Test",
-			Number:   1,
-			SeasonID: int32(seasonID),
-			AirDate:  ptr(snapshot.time.Add(time.Hour * -2)),
-			Runtime:  ptr(int32(42)),
+			TmdbID:           1,
+			Title:            "Test",
+			Number:           1,
+			SeasonMetadataID: int32(seasonID),
+			AirDate:          ptr(snapshot.time.Add(time.Hour * -2)),
+			Runtime:          ptr(int32(42)),
 		})
 		require.NoError(t, err)
 
@@ -744,12 +744,12 @@ func TestMediaManager_reconcileMissingSeason(t *testing.T) {
 		require.NoError(t, err)
 
 		episodeMetadataID2, err := store.CreateEpisodeMetadata(ctx, model.EpisodeMetadata{
-			TmdbID:   2,
-			Title:    "Testing",
-			Number:   2,
-			SeasonID: int32(seasonID),
-			AirDate:  ptr(snapshot.time.Add(time.Hour * -2)),
-			Runtime:  ptr(int32(42)),
+			TmdbID:           2,
+			Title:            "Testing",
+			Number:           2,
+			SeasonMetadataID: int32(seasonID),
+			AirDate:          ptr(snapshot.time.Add(time.Hour * -2)),
+			Runtime:          ptr(int32(42)),
 		})
 		require.NoError(t, err)
 
@@ -981,19 +981,19 @@ func TestMediaManager_ReconcileMissingSeries(t *testing.T) {
 		assert.Equal(t, ptr(int32(1)), season.SeasonMetadataID)
 
 		_, err = store.CreateSeasonMetadata(ctx, model.SeasonMetadata{
-			SeriesID: int32(seriesID),
-			Title:    "Season 1",
-			Number:   1,
+			SeriesMetadataID: int32(seriesID),
+			Title:            "Season 1",
+			Number:           1,
 		})
 		require.NoError(t, err)
 
 		episodeMetadataID1, err := store.CreateEpisodeMetadata(ctx, model.EpisodeMetadata{
-			TmdbID:   1,
-			Title:    "Hello",
-			Number:   1,
-			SeasonID: int32(seasonID),
-			AirDate:  ptr(snapshot.time.Add(time.Hour * -2)),
-			Runtime:  ptr(int32(42)),
+			TmdbID:           1,
+			Title:            "Hello",
+			Number:           1,
+			SeasonMetadataID: int32(seasonID),
+			AirDate:          ptr(snapshot.time.Add(time.Hour * -2)),
+			Runtime:          ptr(int32(42)),
 		})
 		require.NoError(t, err)
 
@@ -1008,12 +1008,12 @@ func TestMediaManager_ReconcileMissingSeries(t *testing.T) {
 		require.NoError(t, err)
 
 		episodeMetadataID2, err := store.CreateEpisodeMetadata(ctx, model.EpisodeMetadata{
-			TmdbID:   2,
-			Title:    "There",
-			Number:   2,
-			SeasonID: int32(seasonID),
-			AirDate:  ptr(snapshot.time.Add(time.Hour * -2)),
-			Runtime:  ptr(int32(42)),
+			TmdbID:           2,
+			Title:            "There",
+			Number:           2,
+			SeasonMetadataID: int32(seasonID),
+			AirDate:          ptr(snapshot.time.Add(time.Hour * -2)),
+			Runtime:          ptr(int32(42)),
 		})
 		require.NoError(t, err)
 
@@ -1171,9 +1171,9 @@ func TestMediaManager_ReconcileContinuingSeries(t *testing.T) {
 		require.NoError(t, err)
 
 		seasonMetadataID, err := store.CreateSeasonMetadata(ctx, model.SeasonMetadata{
-			SeriesID: int32(seriesID),
-			Title:    "Season 1",
-			Number:   1,
+			SeriesMetadataID: int32(seriesID),
+			Title:            "Season 1",
+			Number:           1,
 		})
 		require.NoError(t, err)
 
@@ -1191,12 +1191,12 @@ func TestMediaManager_ReconcileContinuingSeries(t *testing.T) {
 		require.NoError(t, err)
 
 		episodeMetadataID, err := store.CreateEpisodeMetadata(ctx, model.EpisodeMetadata{
-			TmdbID:   1,
-			Title:    "New Episode",
-			Number:   3,
-			SeasonID: int32(seasonID),
-			AirDate:  ptr(snapshot.time.Add(time.Hour * -2)),
-			Runtime:  ptr(int32(42)),
+			TmdbID:           1,
+			Title:            "New Episode",
+			Number:           3,
+			SeasonMetadataID: int32(seasonID),
+			AirDate:          ptr(snapshot.time.Add(time.Hour * -2)),
+			Runtime:          ptr(int32(42)),
 		})
 		require.NoError(t, err)
 
@@ -1280,10 +1280,10 @@ func TestMediaManager_ReconcileContinuingSeries(t *testing.T) {
 		require.NoError(t, err)
 
 		seasonMetadataID, err := store.CreateSeasonMetadata(ctx, model.SeasonMetadata{
-			SeriesID: int32(seriesMetadataID), // Should reference the series metadata ID, not storage series ID
-			Title:    "Season 1",
-			Number:   1,
-			TmdbID:   1001, // Match the TMDB ID from our mock
+			SeriesMetadataID: int32(seriesMetadataID), // Should reference the series metadata ID, not storage series ID
+			Title:            "Season 1",
+			Number:           1,
+			TmdbID:           1001, // Match the TMDB ID from our mock
 		})
 		require.NoError(t, err)
 
@@ -1311,11 +1311,11 @@ func TestMediaManager_ReconcileContinuingSeries(t *testing.T) {
 			airDate := &pastDate
 
 			episodeMetadataID, err := store.CreateEpisodeMetadata(ctx, model.EpisodeMetadata{
-				TmdbID:   int32(1001000 + i), // Match the TMDB IDs from our mock (1001001, 1001002)
-				Title:    fmt.Sprintf("Episode %d", i),
-				Number:   int32(i),
-				SeasonID: int32(seasonMetadataID), // This should be the season metadata ID
-				AirDate:  airDate,
+				TmdbID:           int32(1001000 + i), // Match the TMDB IDs from our mock (1001001, 1001002)
+				Title:            fmt.Sprintf("Episode %d", i),
+				Number:           int32(i),
+				SeasonMetadataID: int32(seasonMetadataID), // This should be the season metadata ID
+				AirDate:          airDate,
 			})
 			require.NoError(t, err)
 
@@ -1712,9 +1712,9 @@ func TestMediaManager_ReconcileDiscoveredEpisodes(t *testing.T) {
 
 		// Create season metadata
 		seasonMetadataID, err := store.CreateSeasonMetadata(ctx, model.SeasonMetadata{
-			SeriesID: int32(seriesMetadataID),
-			Title:    "Season 1",
-			Number:   1,
+			SeriesMetadataID: int32(seriesMetadataID),
+			Title:            "Season 1",
+			Number:           1,
 		})
 		require.NoError(t, err)
 
@@ -1730,9 +1730,9 @@ func TestMediaManager_ReconcileDiscoveredEpisodes(t *testing.T) {
 
 		// Create episode metadata
 		episodeMetadataID, err := store.CreateEpisodeMetadata(ctx, model.EpisodeMetadata{
-			SeasonID: int32(seasonMetadataID),
-			Title:    "Episode 1",
-			Number:   1,
+			SeasonMetadataID: int32(seasonMetadataID),
+			Title:            "Episode 1",
+			Number:           1,
 		})
 		require.NoError(t, err)
 
@@ -1824,11 +1824,11 @@ func TestMediaManager_matchEpisodeFileToEpisode(t *testing.T) {
 		require.NoError(t, err)
 
 		// Create episode metadata for episodes 1,2,3
-		episodeMetadataID1, err := store.CreateEpisodeMetadata(ctx, model.EpisodeMetadata{TmdbID: 1, Title: "Episode 1", Number: 1, SeasonID: int32(seasonMetadataID)})
+		episodeMetadataID1, err := store.CreateEpisodeMetadata(ctx, model.EpisodeMetadata{TmdbID: 1, Title: "Episode 1", Number: 1, SeasonMetadataID: int32(seasonMetadataID)})
 		require.NoError(t, err)
-		episodeMetadataID2, err := store.CreateEpisodeMetadata(ctx, model.EpisodeMetadata{TmdbID: 2, Title: "Episode 2", Number: 2, SeasonID: int32(seasonMetadataID)})
+		episodeMetadataID2, err := store.CreateEpisodeMetadata(ctx, model.EpisodeMetadata{TmdbID: 2, Title: "Episode 2", Number: 2, SeasonMetadataID: int32(seasonMetadataID)})
 		require.NoError(t, err)
-		episodeMetadataID3, err := store.CreateEpisodeMetadata(ctx, model.EpisodeMetadata{TmdbID: 3, Title: "Episode 3", Number: 3, SeasonID: int32(seasonMetadataID)})
+		episodeMetadataID3, err := store.CreateEpisodeMetadata(ctx, model.EpisodeMetadata{TmdbID: 3, Title: "Episode 3", Number: 3, SeasonMetadataID: int32(seasonMetadataID)})
 		require.NoError(t, err)
 
 		// Create episodes
@@ -1851,9 +1851,9 @@ func TestMediaManager_matchEpisodeFileToEpisode(t *testing.T) {
 		seasonMetadataID, err := store.CreateSeasonMetadata(ctx, model.SeasonMetadata{TmdbID: 2, Title: "Season 1", Number: 1})
 		require.NoError(t, err)
 
-		episodeMetadataID4, err := store.CreateEpisodeMetadata(ctx, model.EpisodeMetadata{TmdbID: 4, Title: "Episode 4", Number: 4, SeasonID: int32(seasonMetadataID)})
+		episodeMetadataID4, err := store.CreateEpisodeMetadata(ctx, model.EpisodeMetadata{TmdbID: 4, Title: "Episode 4", Number: 4, SeasonMetadataID: int32(seasonMetadataID)})
 		require.NoError(t, err)
-		episodeMetadataID5, err := store.CreateEpisodeMetadata(ctx, model.EpisodeMetadata{TmdbID: 5, Title: "Episode 5", Number: 5, SeasonID: int32(seasonMetadataID)})
+		episodeMetadataID5, err := store.CreateEpisodeMetadata(ctx, model.EpisodeMetadata{TmdbID: 5, Title: "Episode 5", Number: 5, SeasonMetadataID: int32(seasonMetadataID)})
 		require.NoError(t, err)
 
 		episodes := []*storage.Episode{
@@ -1871,7 +1871,7 @@ func TestMediaManager_matchEpisodeFileToEpisode(t *testing.T) {
 		ctx := context.Background()
 		store := newStore(t, ctx)
 
-		episodeMetadataID6, err := store.CreateEpisodeMetadata(ctx, model.EpisodeMetadata{TmdbID: 6, Title: "Episode 1", Number: 1, SeasonID: 1})
+		episodeMetadataID6, err := store.CreateEpisodeMetadata(ctx, model.EpisodeMetadata{TmdbID: 6, Title: "Episode 1", Number: 1, SeasonMetadataID: 1})
 		require.NoError(t, err)
 
 		episodes := []*storage.Episode{{Episode: model.Episode{ID: 6, EpisodeMetadataID: ptr(int32(episodeMetadataID6))}}}
@@ -1885,9 +1885,9 @@ func TestMediaManager_matchEpisodeFileToEpisode(t *testing.T) {
 		ctx := context.Background()
 		store := newStore(t, ctx)
 
-		episodeMetadataID7, err := store.CreateEpisodeMetadata(ctx, model.EpisodeMetadata{TmdbID: 7, Title: "Episode 1", Number: 1, SeasonID: 1})
+		episodeMetadataID7, err := store.CreateEpisodeMetadata(ctx, model.EpisodeMetadata{TmdbID: 7, Title: "Episode 1", Number: 1, SeasonMetadataID: 1})
 		require.NoError(t, err)
-		episodeMetadataID8, err := store.CreateEpisodeMetadata(ctx, model.EpisodeMetadata{TmdbID: 8, Title: "Episode 2", Number: 2, SeasonID: 1})
+		episodeMetadataID8, err := store.CreateEpisodeMetadata(ctx, model.EpisodeMetadata{TmdbID: 8, Title: "Episode 2", Number: 2, SeasonMetadataID: 1})
 		require.NoError(t, err)
 
 		episodes := []*storage.Episode{

@@ -821,7 +821,14 @@ func (m MediaManager) AddSeriesToLibrary(ctx context.Context, request AddSeriesR
 
 	log.Debug("created new missing series", zap.Any("series", series))
 
-	where := table.SeasonMetadata.SeriesID.EQ(sqlite.Int(seriesID))
+	// Get series to access its metadata ID  
+	seriesEntity, err := m.storage.GetSeries(ctx, table.Series.ID.EQ(sqlite.Int(seriesID)))
+	if err != nil || seriesEntity.SeriesMetadataID == nil {
+		log.Error("failed to get series or series has no metadata")
+		return nil, fmt.Errorf("series has no metadata")
+	}
+	
+	where := table.SeasonMetadata.SeriesMetadataID.EQ(sqlite.Int32(*seriesEntity.SeriesMetadataID))
 	seasonMetadata, err := m.storage.ListSeasonMetadata(ctx, where)
 	if err != nil {
 		return nil, err
@@ -844,7 +851,14 @@ func (m MediaManager) AddSeriesToLibrary(ctx context.Context, request AddSeriesR
 
 		log.Debug("created new missing season", zap.Any("season", season))
 
-		where := table.EpisodeMetadata.SeasonID.EQ(sqlite.Int64(seasonID))
+		// Get the season to access its metadata ID for proper episode metadata querying
+		seasonEntity, err := m.storage.GetSeason(ctx, table.Season.ID.EQ(sqlite.Int64(seasonID)))
+		if err != nil || seasonEntity.SeasonMetadataID == nil {
+			log.Error("failed to get season or season has no metadata linked")
+			return nil, fmt.Errorf("season has no metadata")
+		}
+		
+		where := table.EpisodeMetadata.SeasonMetadataID.EQ(sqlite.Int32(*seasonEntity.SeasonMetadataID))
 
 		episodesMetadata, err := m.storage.ListEpisodeMetadata(ctx, where)
 		if err != nil {
