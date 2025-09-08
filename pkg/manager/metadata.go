@@ -58,15 +58,15 @@ func (m MediaManager) GetSeriesMetadata(ctx context.Context, tmdbID int) (*model
 	}
 
 	// Load full metadata hierarchy - metadata can exist before entities
-	return m.loadSeriesMetadata(ctx, tmdbID, nil)
+	return m.loadSeriesMetadata(ctx, tmdbID)
 }
 
 // RefreshSeriesMetadataFromTMDB refreshes series metadata with proper entity linking
 func (m MediaManager) RefreshSeriesMetadataFromTMDB(ctx context.Context, series *storage.Series, tmdbID int) (*model.SeriesMetadata, error) {
-	return m.loadSeriesMetadata(ctx, tmdbID, &series.ID)
+	return m.loadSeriesMetadata(ctx, tmdbID)
 }
 
-func (m MediaManager) loadSeriesMetadata(ctx context.Context, tmdbID int, _ *int32) (*model.SeriesMetadata, error) {
+func (m MediaManager) loadSeriesMetadata(ctx context.Context, tmdbID int) (*model.SeriesMetadata, error) {
 	log := logger.FromCtx(ctx)
 	details, err := m.tmdb.GetSeriesDetails(ctx, tmdbID)
 	if err != nil {
