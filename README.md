@@ -39,6 +39,7 @@ $ mediaz search indexer <query>  # Search indexers for content
 ### System Management
 ```
 $ mediaz generate schema  # Create DB schema
+$ mediaz generate testlib [path]  # Generate test library from database
 $ mediaz --config <path>  # Specify config file
 ```
 
@@ -75,6 +76,39 @@ $ mediaz --config <path>  # Specify config file
 
 ### System API  
 - `GET /healthz` - Service status
+
+## Test Library Generation
+
+The `generate testlib` command creates a test media library with empty files based on your current database state. This is useful for testing reconciliation logic without large media files.
+
+```bash
+# Generate test library using actual filenames from configured library paths
+$ mediaz generate testlib ./testlib
+
+# Use specific config file  
+$ mediaz --config=local.yaml generate testlib ./testlib
+
+# Available options
+$ mediaz generate testlib --help
+  --overwrite      Overwrite existing test library directory
+  --movies-only    Generate only movies
+  --tv-only        Generate only TV shows
+  --db-path        Path to database file (default: from config)
+```
+
+**Features:**
+- Uses actual filenames and directory structure from your configured library paths
+- Creates empty media files with valid headers (MP4/MKV)
+- Preserves folder organization (e.g., "Movie Title/movie.mp4")
+- Falls back to generated names if library paths aren't configured
+- Generates README with library statistics
+
+**Setup:**
+```bash
+export MEDIAZ_LIBRARY_MOVIE="/path/to/movies"
+export MEDIAZ_LIBRARY_TV="/path/to/tv"
+./mediaz generate testlib ./test-output
+```
 
 ## Configuration
 
