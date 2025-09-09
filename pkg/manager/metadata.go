@@ -57,11 +57,11 @@ func (m MediaManager) GetSeriesMetadata(ctx context.Context, tmdbID int) (*model
 		return nil, err
 	}
 
+	// Load full metadata hierarchy - metadata can exist before entities
 	return m.loadSeriesMetadata(ctx, tmdbID)
 }
 
-// RefreshSeriesMetadataFromTMDB always fetches fresh series metadata, regardless of whether cached data exists.
-// This is useful for discovering new episodes and seasons for continuing series.
+// RefreshSeriesMetadataFromTMDB refreshes series metadata with proper entity linking
 func (m MediaManager) RefreshSeriesMetadataFromTMDB(ctx context.Context, tmdbID int) (*model.SeriesMetadata, error) {
 	return m.loadSeriesMetadata(ctx, tmdbID)
 }
@@ -88,7 +88,8 @@ func (m MediaManager) loadSeriesMetadata(ctx context.Context, tmdbID int) (*mode
 
 	for _, s := range details.Seasons {
 		season := FromSeriesSeasons(s)
-		season.SeriesID = int32(seriesMetadataID)
+		// Season metadata should reference series metadata ID
+		season.SeriesMetadataID = int32(seriesMetadataID)
 
 		existingSeason, err := m.storage.GetSeasonMetadata(ctx, table.SeasonMetadata.TmdbID.EQ(sqlite.Int(int64(season.TmdbID))))
 		if err != nil && !errors.Is(err, storage.ErrNotFound) {
@@ -110,9 +111,10 @@ func (m MediaManager) loadSeriesMetadata(ctx context.Context, tmdbID int) (*mode
 
 		for _, episode := range s.Episodes {
 			episodeMetadata := FromSeriesEpisodes(episode)
-			episodeMetadata.SeasonID = int32(seasonMetadataID)
+			// Episode metadata should reference season metadata ID
+			episodeMetadata.SeasonMetadataID = int32(seasonMetadataID)
 
-			_, err := m.storage.GetEpisodeMetadata(ctx, table.EpisodeMetadata.TmdbID.EQ(sqlite.Int(int64(episodeMetadata.TmdbID))))
+			_, err = m.storage.GetEpisodeMetadata(ctx, table.EpisodeMetadata.TmdbID.EQ(sqlite.Int(int64(episodeMetadata.TmdbID))))
 			if err == nil {
 				continue
 			}
@@ -216,6 +218,7 @@ func FromSeriesDetails(series tmdb.SeriesDetails) (model.SeriesMetadata, error) 
 		EpisodeCount: int32(series.NumberOfEpisodes),
 		FirstAirDate: airDate,
 		PosterPath:   poster,
+		Overview:     &series.Overview,
 	}, nil
 
 }

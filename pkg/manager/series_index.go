@@ -16,7 +16,7 @@ import (
 
 // IndexSeriesLibrary indexes the tv library directory for new files that are not yet monitored. The episodes are then stored with a state of discovered.
 func (m MediaManager) IndexSeriesLibrary(ctx context.Context) error {
-	log := logger.FromCtx(ctx)
+	log := logger.FromCtx(ctx).With("series indexer")
 
 	discoveredFiles, err := m.library.FindEpisodes(ctx)
 	if err != nil {
@@ -109,7 +109,7 @@ func (m MediaManager) IndexSeriesLibrary(ctx context.Context) error {
 			continue
 		}
 
-		seasonID, err := m.ensureSeason(ctx, seriesID, df.SeasonNumber)
+		seasonID, err := m.getOrCreateSeason(ctx, seriesID, int32(df.SeasonNumber), nil, storage.SeasonStateDiscovered)
 		if err != nil {
 			log.Errorf("couldn't ensure season for discovered file: %w", err)
 			continue
@@ -123,7 +123,13 @@ func (m MediaManager) IndexSeriesLibrary(ctx context.Context) error {
 			EpisodeFileID: &f.ID,
 			EpisodeNumber: int32(df.EpisodeNumber),
 		}}
-		_, _ = m.storage.CreateEpisode(ctx, episode, storage.EpisodeStateDiscovered)
+		_, err = m.storage.CreateEpisode(ctx, episode, storage.EpisodeStateDiscovered)
+		if err != nil {
+			log.Warnf("failed to create new episode", zap.Error(err))
+			continue
+		}
+
+		log.Debug("successfully indexed new episode", zap.Int32("ID", episode.ID), zap.Int("number", df.EpisodeNumber), zap.Int64("Season ID", seasonID))
 	}
 
 	return nil
@@ -152,28 +158,61 @@ func (m MediaManager) ensureSeries(ctx context.Context, seriesName string) (int6
 	return seriesID, nil
 }
 
-func (m MediaManager) ensureSeason(ctx context.Context, seriesID int64, seasonNumber int) (int64, error) {
-	log := logger.FromCtx(ctx)
+// getOrCreateSeason unified function to get or create a season, with optional metadata linking
+// This prevents the duplicate creation issues between discovery and metadata refresh phases
+func (m MediaManager) getOrCreateSeason(ctx context.Context, seriesID int64, seasonNumber int32, seasonMetadataID *int32, initialState storage.SeasonState) (int64, error) {
+	log := logger.FromCtx(ctx).With(
+		zap.Int64("series_id", seriesID),
+		zap.Int32("season_number", seasonNumber),
+	)
 
-	season, err := m.storage.GetSeason(ctx, table.Season.SeriesID.EQ(sqlite.Int64(seriesID)).AND(table.Season.SeasonNumber.EQ(sqlite.Int32(int32(seasonNumber)))))
+	// First try to find existing season by series_id + season_number (our unique constraint)
+	season, err := m.storage.GetSeason(ctx,
+		table.Season.SeriesID.EQ(sqlite.Int64(seriesID)).
+			AND(table.Season.SeasonNumber.EQ(sqlite.Int32(seasonNumber))))
+
 	if err != nil && !errors.Is(err, storage.ErrNotFound) {
 		return 0, err
 	}
 
-	if season == nil || errors.Is(err, storage.ErrNotFound) {
-		seasonID, err := m.storage.CreateSeason(ctx, storage.Season{Season: model.Season{SeriesID: int32(seriesID), SeasonNumber: int32(seasonNumber), Monitored: 1}}, storage.SeasonStateDiscovered)
-		if err != nil {
-			return 0, err
+	if season != nil {
+		// Season exists, update metadata link if provided and missing
+		if seasonMetadataID != nil && season.SeasonMetadataID == nil {
+			err = m.storage.LinkSeasonMetadata(ctx, int64(season.ID), *seasonMetadataID)
+			if err != nil {
+				log.Error("failed to link season metadata", zap.Error(err))
+				return 0, err
+			}
+			log.Debug("linked existing season to metadata",
+				zap.Int64("season_id", int64(season.ID)),
+				zap.Int32("season_metadata_id", *seasonMetadataID))
 		}
-		log.Debug("created new season with parsed season number",
-			zap.Int64("series_id", seriesID),
-			zap.Int("season_number", seasonNumber),
-			zap.Int64("season_id", seasonID))
-		return seasonID, nil
+		return int64(season.ID), nil
 	}
 
-	return int64(season.ID), nil
+	// Season doesn't exist, create new one with metadata link if available
+	newSeason := storage.Season{
+		Season: model.Season{
+			SeriesID:         int32(seriesID),
+			SeasonNumber:     seasonNumber,
+			SeasonMetadataID: seasonMetadataID,
+			Monitored:        1,
+		},
+	}
+
+	seasonID, err := m.storage.CreateSeason(ctx, newSeason, initialState)
+	if err != nil {
+		return 0, err
+	}
+
+	log.Debug("created new season",
+		zap.Int64("season_id", seasonID),
+		zap.String("initial_state", string(initialState)),
+		zap.Any("season_metadata_id", seasonMetadataID))
+
+	return seasonID, nil
 }
+
 
 func modelEpisodeFile(df library.EpisodeFile) model.EpisodeFile {
 	return model.EpisodeFile{

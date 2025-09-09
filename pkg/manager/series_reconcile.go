@@ -63,7 +63,7 @@ func (m MediaManager) ReconcileSeries(ctx context.Context) error {
 		log.Error("failed to reconcile completed series", zap.Error(err))
 	}
 
-	err = m.ReconcileDiscoveredEpisodes(ctx)
+	err = m.ReconcileDiscoveredEpisodes(ctx, snapshot)
 	if err != nil {
 		log.Error("failed to reconcile discovered episodes", zap.Error(err))
 	}
@@ -212,7 +212,7 @@ func (m MediaManager) refreshSeriesEpisodes(ctx context.Context, series *storage
 		existingSeasonNumbers[seasonMetadata.Number] = int64(season.ID)
 	}
 
-	seasonMetadataWhere := table.SeasonMetadata.SeriesID.EQ(sqlite.Int64(int64(seriesMetadata.ID)))
+	seasonMetadataWhere := table.SeasonMetadata.SeriesMetadataID.EQ(sqlite.Int32(seriesMetadata.ID))
 	allSeasonMetadata, err := m.storage.ListSeasonMetadata(ctx, seasonMetadataWhere)
 	if err != nil {
 		log.Error("failed to list season metadata", zap.Error(err))
@@ -224,15 +224,8 @@ func (m MediaManager) refreshSeriesEpisodes(ctx context.Context, series *storage
 		var exists bool
 
 		if seasonID, exists = existingSeasonNumbers[seasonMeta.Number]; !exists {
-			season := storage.Season{
-				Season: model.Season{
-					SeriesID:         int32(series.ID),
-					SeasonMetadataID: ptr(seasonMeta.ID),
-					Monitored:        1,
-				},
-			}
-
-			seasonID, err = m.storage.CreateSeason(ctx, season, storage.SeasonStateMissing)
+			// Use unified season creation to prevent duplicates
+			seasonID, err = m.getOrCreateSeason(ctx, int64(series.ID), seasonMeta.Number, ptr(seasonMeta.ID), storage.SeasonStateMissing)
 			if err != nil {
 				log.Error("failed to create new season", zap.Error(err))
 				continue
@@ -255,7 +248,14 @@ func (m MediaManager) refreshSeriesEpisodes(ctx context.Context, series *storage
 			existingEpisodeNumbers[episode.EpisodeNumber] = true
 		}
 
-		episodeMetadataWhere := table.EpisodeMetadata.SeasonID.EQ(sqlite.Int64(int64(seasonID)))
+		// Get season to access its metadata ID
+		seasonEntity, err := m.storage.GetSeason(ctx, table.Season.ID.EQ(sqlite.Int32(int32(seasonID))))
+		if err != nil || seasonEntity.SeasonMetadataID == nil {
+			log.Error("failed to get season or season has no metadata", zap.Error(err))
+			continue
+		}
+
+		episodeMetadataWhere := table.EpisodeMetadata.SeasonMetadataID.EQ(sqlite.Int32(*seasonEntity.SeasonMetadataID))
 		episodeMetadataList, err := m.storage.ListEpisodeMetadata(ctx, episodeMetadataWhere)
 		if err != nil {
 			log.Error("failed to list episode metadata", zap.Error(err))
@@ -906,7 +906,7 @@ func (m MediaManager) evaluateAndUpdateSeriesState(ctx context.Context, seriesID
 // ReconcileDiscoveredEpisodes processes episodes in the "discovered" state by linking them to their
 // corresponding TMDB metadata hierarchy (series -> season -> episode). Discovered episodes have video
 // files on disk that need to be associated with the proper metadata before transitioning to "completed" state.
-func (m MediaManager) ReconcileDiscoveredEpisodes(ctx context.Context) error {
+func (m MediaManager) ReconcileDiscoveredEpisodes(ctx context.Context, snapshot *ReconcileSnapshot) error {
 	log := logger.FromCtx(ctx)
 
 	where := table.EpisodeTransition.ToState.EQ(sqlite.String(string(storage.EpisodeStateDiscovered))).
@@ -925,7 +925,7 @@ func (m MediaManager) ReconcileDiscoveredEpisodes(ctx context.Context) error {
 
 	for _, episode := range episodes {
 		log.Debug("reconciling discovered episode", zap.Any("episode", episode.ID))
-		err = m.reconcileDiscoveredEpisode(ctx, episode)
+		err = m.reconcileDiscoveredEpisode(ctx, snapshot, episode)
 		if err != nil {
 			log.Error("failed to reconcile discovered episode", zap.Error(err))
 			continue
@@ -936,15 +936,13 @@ func (m MediaManager) ReconcileDiscoveredEpisodes(ctx context.Context) error {
 	return nil
 }
 
-func (m MediaManager) reconcileDiscoveredEpisode(ctx context.Context, episode *storage.Episode) error {
-	log := logger.FromCtx(ctx)
+func (m MediaManager) reconcileDiscoveredEpisode(ctx context.Context, snapshot *ReconcileSnapshot, episode *storage.Episode) error {
+	log := logger.FromCtx(ctx).With("reconcile loop", "discovered", "episode id", episode.ID)
 
 	if episode == nil {
 		log.Warn("episode is nil, skipping reconcile")
 		return nil
 	}
-
-	log = log.With("reconcile loop", "discovered", "episode id", episode.ID)
 	log.Debug("starting episode reconciliation", zap.Int32("episode_id", episode.ID))
 
 	season, err := m.storage.GetSeason(ctx, table.Season.ID.EQ(sqlite.Int32(episode.SeasonID)))
@@ -986,9 +984,6 @@ func (m MediaManager) reconcileDiscoveredEpisode(ctx context.Context, episode *s
 		return fmt.Errorf("failed to get series metadata: %w", err)
 	}
 
-	// Create a dummy snapshot for refreshSeriesEpisodes (it only needs time)
-	snapshot := &ReconcileSnapshot{time: now()}
-
 	// Check if we need to refresh series metadata from TMDB
 	// Only refresh if we don't have adequate season/episode metadata
 	log.Debug("checking if series has adequate metadata for episode reconciliation",
@@ -996,23 +991,31 @@ func (m MediaManager) reconcileDiscoveredEpisode(ctx context.Context, episode *s
 
 	// Check if we have season metadata for the discovered file's season
 	allSeasonMetadata, err := m.storage.ListSeasonMetadata(ctx,
-		table.SeasonMetadata.SeriesID.EQ(sqlite.Int32(*series.SeriesMetadataID)))
+		table.SeasonMetadata.SeriesMetadataID.EQ(sqlite.Int32(*series.SeriesMetadataID)))
 	if err != nil {
 		log.Warn("failed to check existing season metadata", zap.Error(err))
 		return fmt.Errorf("failed to check season metadata: %w", err)
 	}
 
-	// Check if we need to refresh - either no season metadata exists, or current season lacks metadata link
-	shouldRefresh := len(allSeasonMetadata) == 0 || season.SeasonMetadataID == nil
+	// Check if we need to refresh - either no season metadata exists for this specific season, or current season lacks metadata link
+	var seasonMetadataExists bool
+	for _, seasonMeta := range allSeasonMetadata {
+		if seasonMeta.Number == season.SeasonNumber {
+			seasonMetadataExists = true
+			break
+		}
+	}
+	shouldRefresh := !seasonMetadataExists || season.SeasonMetadataID == nil
 
 	log.Debug("refresh decision",
 		zap.Int("season_metadata_count", len(allSeasonMetadata)),
+		zap.Bool("season_metadata_exists_for_season_number", seasonMetadataExists),
 		zap.Bool("season_has_metadata_id", season.SeasonMetadataID != nil),
 		zap.Bool("should_refresh", shouldRefresh))
 
 	if shouldRefresh {
-		if len(allSeasonMetadata) == 0 {
-			log.Debug("no season metadata found, refreshing from TMDB")
+		if !seasonMetadataExists {
+			log.Debug("no season metadata found for this season number, refreshing from TMDB")
 		} else {
 			log.Debug("season lacks metadata link, refreshing to link existing metadata")
 		}
@@ -1162,14 +1165,27 @@ func (m MediaManager) matchDiscoveredEpisodeToTMDBMetadataFromDB(ctx context.Con
 		return fmt.Errorf("episode number is 0 for episode %d", episode.ID)
 	}
 
-	// Find episode metadata that matches the episode number
+	// Find episode metadata that matches the episode number for this specific season
+	// After our migration, episode_metadata.season_id correctly references season entity IDs
+	// Get season metadata ID first
+	season, err := m.storage.GetSeason(ctx, table.Season.ID.EQ(sqlite.Int32(seasonID)))
+	if err != nil {
+		return fmt.Errorf("failed to get season: %w", err)
+	}
+
+	if season.SeasonMetadataID == nil {
+		return fmt.Errorf("season has no metadata linked")
+	}
+
 	episodeMeta, err := m.storage.GetEpisodeMetadata(ctx,
-		table.EpisodeMetadata.SeasonID.EQ(sqlite.Int32(seasonID)).
+		table.EpisodeMetadata.SeasonMetadataID.EQ(sqlite.Int32(*season.SeasonMetadataID)).
 			AND(table.EpisodeMetadata.Number.EQ(sqlite.Int32(int32(episodeNumber)))))
 
 	if err != nil {
 		if errors.Is(err, storage.ErrNotFound) {
-			logger.Warn("no TMDB episode metadata found for episode number")
+			logger.Debug("no TMDB episode metadata found for episode number in season",
+				zap.Int("season_id", int(seasonID)),
+				zap.Int("episode_number", episodeNumber))
 			return fmt.Errorf("no TMDB episode metadata found")
 		}
 		return fmt.Errorf("failed to get episode metadata: %w", err)
@@ -1185,7 +1201,7 @@ func (m MediaManager) matchDiscoveredEpisodeToTMDBMetadataFromDB(ctx context.Con
 	}
 
 	// Update the episode's episode metadata ID in the database
-	err = m.storage.LinkEpisodeMetadata(ctx, int64(episode.ID), episode.SeasonID, episodeMeta.ID)
+	err = m.storage.LinkEpisodeMetadata(ctx, int64(episode.ID), seasonID, episodeMeta.ID)
 	if err != nil {
 		return fmt.Errorf("failed to link episode metadata: %w", err)
 	}

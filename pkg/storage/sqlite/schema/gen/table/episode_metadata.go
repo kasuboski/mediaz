@@ -17,14 +17,14 @@ type episodeMetadataTable struct {
 	sqlite.Table
 
 	// Columns
-	ID       sqlite.ColumnInteger
-	SeasonID sqlite.ColumnInteger
-	Number   sqlite.ColumnInteger
-	TmdbID   sqlite.ColumnInteger
-	Title    sqlite.ColumnString
-	Overview sqlite.ColumnString
-	AirDate  sqlite.ColumnTimestamp
-	Runtime  sqlite.ColumnInteger
+	ID               sqlite.ColumnInteger
+	SeasonMetadataID sqlite.ColumnInteger
+	Number           sqlite.ColumnInteger
+	TmdbID           sqlite.ColumnInteger
+	Title            sqlite.ColumnString
+	Overview         sqlite.ColumnString
+	AirDate          sqlite.ColumnTimestamp
+	Runtime          sqlite.ColumnInteger
 
 	AllColumns     sqlite.ColumnList
 	MutableColumns sqlite.ColumnList
@@ -65,30 +65,30 @@ func newEpisodeMetadataTable(schemaName, tableName, alias string) *EpisodeMetada
 
 func newEpisodeMetadataTableImpl(schemaName, tableName, alias string) episodeMetadataTable {
 	var (
-		IDColumn       = sqlite.IntegerColumn("id")
-		SeasonIDColumn = sqlite.IntegerColumn("season_id")
-		NumberColumn   = sqlite.IntegerColumn("number")
-		TmdbIDColumn   = sqlite.IntegerColumn("tmdb_id")
-		TitleColumn    = sqlite.StringColumn("title")
-		OverviewColumn = sqlite.StringColumn("overview")
-		AirDateColumn  = sqlite.TimestampColumn("air_date")
-		RuntimeColumn  = sqlite.IntegerColumn("runtime")
-		allColumns     = sqlite.ColumnList{IDColumn, SeasonIDColumn, NumberColumn, TmdbIDColumn, TitleColumn, OverviewColumn, AirDateColumn, RuntimeColumn}
-		mutableColumns = sqlite.ColumnList{SeasonIDColumn, NumberColumn, TmdbIDColumn, TitleColumn, OverviewColumn, AirDateColumn, RuntimeColumn}
+		IDColumn               = sqlite.IntegerColumn("id")
+		SeasonMetadataIDColumn = sqlite.IntegerColumn("season_metadata_id")
+		NumberColumn           = sqlite.IntegerColumn("number")
+		TmdbIDColumn           = sqlite.IntegerColumn("tmdb_id")
+		TitleColumn            = sqlite.StringColumn("title")
+		OverviewColumn         = sqlite.StringColumn("overview")
+		AirDateColumn          = sqlite.TimestampColumn("air_date")
+		RuntimeColumn          = sqlite.IntegerColumn("runtime")
+		allColumns             = sqlite.ColumnList{IDColumn, SeasonMetadataIDColumn, NumberColumn, TmdbIDColumn, TitleColumn, OverviewColumn, AirDateColumn, RuntimeColumn}
+		mutableColumns         = sqlite.ColumnList{SeasonMetadataIDColumn, NumberColumn, TmdbIDColumn, TitleColumn, OverviewColumn, AirDateColumn, RuntimeColumn}
 	)
 
 	return episodeMetadataTable{
 		Table: sqlite.NewTable(schemaName, tableName, alias, allColumns...),
 
 		//Columns
-		ID:       IDColumn,
-		SeasonID: SeasonIDColumn,
-		Number:   NumberColumn,
-		TmdbID:   TmdbIDColumn,
-		Title:    TitleColumn,
-		Overview: OverviewColumn,
-		AirDate:  AirDateColumn,
-		Runtime:  RuntimeColumn,
+		ID:               IDColumn,
+		SeasonMetadataID: SeasonMetadataIDColumn,
+		Number:           NumberColumn,
+		TmdbID:           TmdbIDColumn,
+		Title:            TitleColumn,
+		Overview:         OverviewColumn,
+		AirDate:          AirDateColumn,
+		Runtime:          RuntimeColumn,
 
 		AllColumns:     allColumns,
 		MutableColumns: mutableColumns,

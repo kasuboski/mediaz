@@ -198,6 +198,7 @@ func TestFromSeriesDetails(t *testing.T) {
 				NumberOfEpisodes: 20,
 				FirstAirDate:     "2023-01-01",
 				PosterPath:       "poster.jpg",
+				Overview:         "Test Overview",
 			},
 			want: model.SeriesMetadata{
 				TmdbID:       123,
@@ -209,6 +210,7 @@ func TestFromSeriesDetails(t *testing.T) {
 					return &t
 				}(),
 				PosterPath: ptr("poster.jpg"),
+				Overview:   ptr("Test Overview"),
 			},
 			wantErr: false,
 		},
@@ -216,6 +218,7 @@ func TestFromSeriesDetails(t *testing.T) {
 			name: "valid series details without poster",
 			input: tmdb.SeriesDetails{
 				ID:               124,
+				Overview:         "Test Overview",
 				Name:             "No Poster",
 				NumberOfSeasons:  1,
 				NumberOfEpisodes: 10,
@@ -232,6 +235,7 @@ func TestFromSeriesDetails(t *testing.T) {
 					return &t
 				}(),
 				PosterPath: nil,
+				Overview:   ptr("Test Overview"),
 			},
 			wantErr: false,
 		},
