@@ -257,6 +257,15 @@ func (m MediaManager) buildTVDetailResult(metadata *model.SeriesMetadata, detail
 		pop := float64(details.Popularity)
 		result.Popularity = &pop
 	}
+	// Map ratings when available
+	if details.VoteAverage > 0 {
+		va := float32(details.VoteAverage)
+		result.VoteAverage = &va
+	}
+	if details.VoteCount > 0 {
+		vc := int(details.VoteCount)
+		result.VoteCount = &vc
+	}
 
 	// Set library status information if series exists
 	if series != nil {

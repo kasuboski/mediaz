@@ -14,37 +14,63 @@ import { type SeasonResult, type EpisodeResult } from "@/lib/api";
 
 const EpisodeItem = ({ episode }: { episode: EpisodeResult }) => (
   <div className="bg-background/50 dark:bg-gray-800/50 rounded-lg p-4 border border-border/50 hover:border-border transition-colors">
-    <div className="flex items-start justify-between mb-3">
-      <div className="flex-1">
-        <h4 className="font-bold text-lg text-foreground mb-1">
-          {episode.episodeNumber} - {episode.title}
-        </h4>
-        <div className="flex items-center gap-2 mb-2">
-          {episode.airDate && (
-            <Badge variant="secondary" className="text-xs px-2 py-1 bg-muted/80 text-muted-foreground">
-              {new Date(episode.airDate).toLocaleDateString('en-US', { 
-                month: 'short', 
-                day: 'numeric', 
-                year: 'numeric' 
-              })}
-            </Badge>
-          )}
-          {episode.runtime && (
-            <Badge variant="secondary" className="text-xs px-2 py-1 bg-muted/80 text-muted-foreground">
-              {episode.runtime}m
-            </Badge>
-          )}
-          {episode.downloaded && (
-            <Badge variant="default" className="text-xs px-2 py-1">
-              Downloaded
-            </Badge>
+    <div className="flex items-start gap-4">
+      <div className="aspect-video w-32 bg-muted rounded-lg overflow-hidden flex-shrink-0">
+        {episode.stillPath ? (
+          <img
+            src={`https://image.tmdb.org/t/p/w300${episode.stillPath}`}
+            alt=""
+            className="w-full h-full object-cover"
+            loading="lazy"
+          />
+        ) : (
+          <div className="w-full h-full grid place-items-center">
+            <Play className="h-5 w-5 text-muted-foreground" />
+          </div>
+        )}
+      </div>
+
+      <div className="flex-1 min-w-0">
+        <div className="flex items-start justify-between mb-3">
+          <div className="flex-1 min-w-0">
+            <h4 className="font-bold text-lg text-foreground mb-1 line-clamp-1">
+              {episode.episodeNumber} - {episode.title}
+            </h4>
+            <div className="flex items-center gap-2 mb-2 text-xs">
+              {episode.airDate && (
+                <Badge variant="secondary" className="px-2 py-1 bg-muted/80 text-muted-foreground">
+                  {new Date(episode.airDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                </Badge>
+              )}
+              {episode.runtime && (
+                <Badge variant="secondary" className="px-2 py-1 bg-muted/80 text-muted-foreground">
+                  {episode.runtime}m
+                </Badge>
+              )}
+              {episode.downloaded && (
+                <Badge variant="default" className="px-2 py-1">
+                  Downloaded
+                </Badge>
+              )}
+            </div>
+          </div>
+
+          {episode.voteAverage && episode.voteAverage > 0 && (
+            <span
+              className="text-xs rounded border px-2 py-0.5"
+              aria-label={`TMDB episode rating ${episode.voteAverage.toFixed(1)} of 10`}
+              title={`TMDB rating ${episode.voteAverage.toFixed(1)}/10`}
+            >
+              ⭐ {episode.voteAverage.toFixed(1)}
+            </span>
           )}
         </div>
+
+        <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3">
+          {episode.overview || 'No episode overview available.'}
+        </p>
       </div>
     </div>
-    <p className="text-sm text-muted-foreground leading-relaxed">
-      {episode.overview || 'No episode overview available.'}
-    </p>
   </div>
 );
 
@@ -122,6 +148,8 @@ export default function TVDetail() {
   return (
     <div className="min-h-screen">
       <div 
+        role="banner"
+        aria-label={`${show.title} hero backdrop`}
         className="relative h-96 bg-cover bg-center"
         style={{ 
           backgroundImage: backdropUrl ? `url(${backdropUrl})` : 'none',
@@ -129,6 +157,25 @@ export default function TVDetail() {
         }}
       >
         <div className="absolute inset-0 bg-gradient-hero" />
+        <div className="absolute top-6 right-6 flex gap-2">
+          {show.voteAverage != null ? (
+            <span
+              className="rating-badge bg-white/15 text-white border-white/20"
+              aria-label={`TMDB rating ${show.voteAverage.toFixed(1)} of 10`}
+              title={`TMDB rating ${show.voteAverage.toFixed(1)}/10`}
+            >
+              {Math.round(show.voteAverage * 10)}%
+            </span>
+          ) : (
+            <span
+              className="rating-badge bg-white/10 text-white/90 border-white/15"
+              aria-label="Not rated"
+              title="Not rated"
+            >
+              NR
+            </span>
+          )}
+        </div>
         <div className="absolute bottom-0 left-0 right-0 p-8">
           <div className="container mx-auto">
             <div className="flex items-end gap-6">
@@ -144,7 +191,7 @@ export default function TVDetail() {
                 }}
               />
               <div className="flex-1 text-white">
-                <h1 className="text-4xl font-bold mb-2">{show.title}</h1>
+                <h1 className="hero-title">{show.title}</h1>
                 <div className="flex items-center gap-4 text-sm opacity-90 mb-4">
                   {show.firstAirDate && (
                     <div className="flex items-center gap-1">

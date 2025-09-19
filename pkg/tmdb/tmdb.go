@@ -287,6 +287,9 @@ type SeriesDetailsResponse struct {
 	Overview            string                        `json:"overview,omitempty"`
 	Popularity          float64                       `json:"popularity,omitempty"`
 	PosterPath          string                        `json:"poster_path,omitempty"`
+	// Add series-level rating fields
+	VoteAverage         float64                       `json:"vote_average,omitempty"`
+	VoteCount           int                           `json:"vote_count,omitempty"`
 	ProductionCompanies []ProductionCompany           `json:"production_companies,omitempty"`
 	ProductionCountries []ProductionCountry           `json:"production_countries,omitempty"`
 	Seasons             []SeriesDetailsResponseSeason `json:"seasons,omitempty"`
