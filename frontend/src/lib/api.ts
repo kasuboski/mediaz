@@ -108,6 +108,22 @@ export interface MovieDetail {
   monitored: boolean;
 }
 
+export interface NetworkInfo {
+  name: string;
+  logoPath?: string;
+}
+
+export interface WatchProvider {
+  providerId: number;
+  name: string;
+  logoPath?: string;
+}
+
+export interface ExternalIDs {
+  imdbId?: string;
+  tvdbId?: number;
+}
+
 export interface TVDetailResult {
   tmdbID: number;
   title: string;
@@ -117,7 +133,11 @@ export interface TVDetailResult {
   backdropPath?: string;
   firstAirDate?: string;
   lastAirDate?: string;
-  networks?: string[];
+  status?: string;
+  nextAirDate?: string;
+  originalLanguage?: string;
+  productionCountries?: string[];
+  networks?: NetworkInfo[];
   seasonCount: number;
   episodeCount: number;
   adult?: boolean;
@@ -130,6 +150,8 @@ export interface TVDetailResult {
   qualityProfileID?: number;
   monitored?: boolean;
   seasons?: SeasonResult[];
+  externalIds?: ExternalIDs;
+  watchProviders?: WatchProvider[];
 }
 
 export interface TVDetail {
@@ -141,7 +163,11 @@ export interface TVDetail {
   backdropPath?: string;
   firstAirDate?: string;
   lastAirDate?: string;
-  networks: string[];
+  status?: string;
+  nextAirDate?: string;
+  originalLanguage?: string;
+  productionCountries: string[];
+  networks: NetworkInfo[];
   seasonCount: number;
   episodeCount: number;
   adult?: boolean;
@@ -154,6 +180,8 @@ export interface TVDetail {
   qualityProfileID?: number;
   monitored: boolean;
   seasons: SeasonResult[];
+  externalIds?: ExternalIDs;
+  watchProviders: WatchProvider[];
 }
 
 /**
@@ -219,10 +247,12 @@ function transformTVDetailResult(result: TVDetailResult): TVDetail {
   return {
     ...result,
     genres: result.genres ?? [],
+    productionCountries: result.productionCountries ?? [],
     networks: result.networks ?? [],
     libraryStatus: result.libraryStatus === 'InLibrary',
     monitored: result.monitored ?? false,
     seasons: result.seasons ?? [],
+    watchProviders: result.watchProviders ?? [],
   };
 }
 

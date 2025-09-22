@@ -88,9 +88,17 @@ func TestGetTVDetailByTMDBID_WithSeasonsAndEpisodes(t *testing.T) {
 			StatusCode: 200,
 			Body:       io.NopCloser(strings.NewReader(`{"poster_path": "poster.jpg", "backdrop_path": "backdrop.jpg"}`)),
 		}
-		tmdbClient.EXPECT().TvSeriesDetails(gomock.Any(), int32(tmdbID), nil).Return(mockResponse, nil)
+tmdbClient.EXPECT().TvSeriesDetails(gomock.Any(), int32(tmdbID), nil).Return(mockResponse, nil)
+// External IDs
+extBody := `{"imdb_id":"tt9999999","tvdb_id":99999}`
+extResp := &http.Response{StatusCode:200, Body: io.NopCloser(strings.NewReader(extBody))}
+tmdbClient.EXPECT().TvSeriesExternalIds(gomock.Any(), int32(tmdbID)).Return(extResp, nil)
+// Watch Providers
+wpBody := `{"results":{"US":{"flatrate":[{"provider_id":8,"provider_name":"Netflix","logo_path":"/net.png"}]}}}`
+wpResp := &http.Response{StatusCode:200, Body: io.NopCloser(strings.NewReader(wpBody))}
+tmdbClient.EXPECT().TvSeriesWatchProviders(gomock.Any(), int32(tmdbID)).Return(wpResp, nil)
 		
-		// Mock storage calls for main TV detail
+// Mock storage calls for main TV detail
 		store.EXPECT().GetSeries(ctx, gomock.Any()).Return(series, nil)
 		
 		// Mock storage calls for seasons and episodes
@@ -149,9 +157,17 @@ func TestGetTVDetailByTMDBID_WithSeasonsAndEpisodes(t *testing.T) {
 			StatusCode: 200,
 			Body:       io.NopCloser(strings.NewReader(`{"poster_path": "poster.jpg"}`)),
 		}
-		tmdbClient.EXPECT().TvSeriesDetails(gomock.Any(), int32(tmdbID), nil).Return(mockResponse, nil)
+tmdbClient.EXPECT().TvSeriesDetails(gomock.Any(), int32(tmdbID), nil).Return(mockResponse, nil)
+// External IDs
+extBody := `{"imdb_id":null,"tvdb_id":null}`
+extResp := &http.Response{StatusCode:200, Body: io.NopCloser(strings.NewReader(extBody))}
+tmdbClient.EXPECT().TvSeriesExternalIds(gomock.Any(), int32(tmdbID)).Return(extResp, nil)
+// Watch Providers
+wpBody := `{"results":{"US":{"flatrate":[]}}}`
+wpResp := &http.Response{StatusCode:200, Body: io.NopCloser(strings.NewReader(wpBody))}
+tmdbClient.EXPECT().TvSeriesWatchProviders(gomock.Any(), int32(tmdbID)).Return(wpResp, nil)
 		
-		// Mock storage calls - series not found
+// Mock storage calls - series not found
 		store.EXPECT().GetSeries(ctx, gomock.Any()).Return(nil, storage.ErrNotFound)
 
 		result, err := m.GetTVDetailByTMDBID(ctx, tmdbID)
@@ -195,9 +211,17 @@ func TestGetTVDetailByTMDBID_WithSeasonsAndEpisodes(t *testing.T) {
 			StatusCode: 200,
 			Body:       io.NopCloser(strings.NewReader(`{"poster_path": "poster.jpg"}`)),
 		}
-		tmdbClient.EXPECT().TvSeriesDetails(gomock.Any(), int32(tmdbID), nil).Return(mockResponse, nil)
+tmdbClient.EXPECT().TvSeriesDetails(gomock.Any(), int32(tmdbID), nil).Return(mockResponse, nil)
+// External IDs
+extBody := `{"imdb_id":null,"tvdb_id":null}`
+extResp := &http.Response{StatusCode:200, Body: io.NopCloser(strings.NewReader(extBody))}
+tmdbClient.EXPECT().TvSeriesExternalIds(gomock.Any(), int32(tmdbID)).Return(extResp, nil)
+// Watch Providers
+wpBody := `{"results":{"US":{"flatrate":[]}}}`
+wpResp := &http.Response{StatusCode:200, Body: io.NopCloser(strings.NewReader(wpBody))}
+tmdbClient.EXPECT().TvSeriesWatchProviders(gomock.Any(), int32(tmdbID)).Return(wpResp, nil)
 		
-		// Mock storage calls
+// Mock storage calls
 		store.EXPECT().GetSeries(ctx, gomock.Any()).Return(series, nil)
 		store.EXPECT().ListSeasons(ctx, gomock.Any()).Return([]*storage.Season{}, nil)
 

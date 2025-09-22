@@ -161,38 +161,55 @@ func (m MediaManager) GetTVDetailByTMDBID(ctx context.Context, tmdbID int) (*TVD
 	}
 
 	// Transform data into result
-	result := m.buildTVDetailResult(metadata, seriesDetailsResponse, series, seasons)
+result := m.buildTVDetailResult(metadata, seriesDetailsResponse, series, seasons)
 
-	return result, nil
+// Enrich with external IDs
+if resp, err := m.tmdb.TvSeriesExternalIds(ctx, int32(metadata.TmdbID)); err == nil {
+	defer resp.Body.Close()
+	b, _ := io.ReadAll(resp.Body)
+	var ext struct {
+		ImdbID *string `json:"imdb_id"`
+		TvdbID *int    `json:"tvdb_id"`
+	}
+	if err := json.Unmarshal(b, &ext); err == nil {
+		result.ExternalIDs = &ExternalIDs{ImdbID: ext.ImdbID, TvdbID: ext.TvdbID}
+	}
+}
+// Watch providers (US only, flatrate)
+if resp, err := m.tmdb.TvSeriesWatchProviders(ctx, int32(metadata.TmdbID)); err == nil {
+	defer resp.Body.Close()
+	b, _ := io.ReadAll(resp.Body)
+	type provider struct {
+		ProviderID   *int    `json:"provider_id"`
+		ProviderName *string `json:"provider_name"`
+		LogoPath     *string `json:"logo_path"`
+	}
+	type region struct {
+		Flatrate []provider `json:"flatrate"`
+		Link     *string    `json:"link"`
+	}
+	var root struct {
+		Results map[string]region `json:"results"`
+	}
+	if err := json.Unmarshal(b, &root); err == nil {
+		if us, ok := root.Results["US"]; ok {
+			providers := make([]WatchProvider, 0)
+			for _, p := range us.Flatrate {
+				if p.ProviderID == nil || p.ProviderName == nil {
+					continue
+				}
+				providers = append(providers, WatchProvider{
+					ProviderID: *p.ProviderID,
+					Name:       *p.ProviderName,
+					LogoPath:   p.LogoPath,
+				})
+			}
+			result.WatchProviders = providers
+		}
+	}
 }
 
-// getTVMetadataAndDetails retrieves both series metadata and full TMDB details
-func (m MediaManager) getTVMetadataAndDetails(ctx context.Context, tmdbID int) (*model.SeriesMetadata, *tmdb.SeriesDetailsResponse, error) {
-	// Get series metadata (creates if not exists)
-	metadata, err := m.GetSeriesMetadata(ctx, tmdbID)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	// Get the full series details response from TMDB to access networks and status
-	res, err := m.tmdb.TvSeriesDetails(ctx, int32(tmdbID), nil)
-	if err != nil {
-		return nil, nil, err
-	}
-	defer res.Body.Close()
-
-	b, err := io.ReadAll(res.Body)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	var seriesDetailsResponse tmdb.SeriesDetailsResponse
-	err = json.Unmarshal(b, &seriesDetailsResponse)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return metadata, &seriesDetailsResponse, nil
+return result, nil
 }
 
 // buildTVDetailResult transforms metadata and TMDB details into TVDetailResult
@@ -230,12 +247,47 @@ func (m MediaManager) buildTVDetailResult(metadata *model.SeriesMetadata, detail
 		lastAirDateStr := metadata.LastAirDate.Format("2006-01-02")
 		result.LastAirDate = &lastAirDateStr
 	}
+	// Next air date from TMDB next episode
+	if details.NextEpisodeToAir.AirDate != "" {
+		nextAir := details.NextEpisodeToAir.AirDate
+		result.NextAirDate = &nextAir
+	}
 
-	// Extract network names
+	// Status when available
+	if details.Status != "" {
+		status := details.Status
+		result.Status = &status
+	}
+
+	// Original language
+	if details.OriginalLanguage != "" {
+		ol := details.OriginalLanguage
+		result.OriginalLanguage = &ol
+	}
+
+	// Production countries (names when available)
+	if len(details.ProductionCountries) > 0 {
+		pcs := make([]string, 0, len(details.ProductionCountries))
+		for _, pc := range details.ProductionCountries {
+			if pc.Name != nil && *pc.Name != "" {
+				pcs = append(pcs, *pc.Name)
+			} else if pc.Iso31661 != nil && *pc.Iso31661 != "" {
+				pcs = append(pcs, *pc.Iso31661)
+			}
+		}
+		result.ProductionCountries = pcs
+	}
+
+	// Networks with optional logos
 	if len(details.Networks) > 0 {
-		var networks []string
-		for _, network := range details.Networks {
-			networks = append(networks, network.Name)
+		networks := make([]NetworkInfo, 0, len(details.Networks))
+		for _, n := range details.Networks {
+			ni := NetworkInfo{Name: n.Name}
+			if n.LogoPath != "" {
+				lp := n.LogoPath
+				ni.LogoPath = &lp
+			}
+			networks = append(networks, ni)
 		}
 		result.Networks = networks
 	}
@@ -266,6 +318,7 @@ func (m MediaManager) buildTVDetailResult(metadata *model.SeriesMetadata, detail
 		vc := int(details.VoteCount)
 		result.VoteCount = &vc
 	}
+
 
 	// Set library status information if series exists
 	if series != nil {

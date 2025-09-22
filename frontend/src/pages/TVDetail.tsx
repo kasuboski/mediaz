@@ -234,12 +234,17 @@ export default function TVDetail() {
                 : "No overview available for this series."}
             </p>
 
-            {show.networks && show.networks.length > 0 && (
+{show.networks && show.networks.length > 0 && (
               <div className="mb-6">
                 <h3 className="font-semibold mb-2">Networks</h3>
-                <div className="flex gap-2">
+                <div className="flex gap-3 flex-wrap items-center">
                   {show.networks.map((network) => (
-                    <Badge key={network} variant="outline">{network}</Badge>
+                    <div key={network.name} className="flex items-center gap-2">
+                      {network.logoPath ? (
+                        <img src={`https://image.tmdb.org/t/p/w45${network.logoPath}`} alt="" className="h-6 w-6 rounded" loading="lazy" />
+                      ) : null}
+                      <Badge variant="outline">{network.name}</Badge>
+                    </div>
                   ))}
                 </div>
               </div>
@@ -321,22 +326,46 @@ export default function TVDetail() {
                 </Button>
               )}
 
-              <Card>
+<Card>
                 <CardHeader>
                   <CardTitle className="text-lg">Details</CardTitle>
                 </CardHeader>
                 <CardContent className="pt-0">
                   <div className="space-y-3 text-sm">
+                    {show.status && (
+                      <div className="flex justify-between items-center py-2 border-b border-border/50">
+                        <span className="text-muted-foreground">Status</span>
+                        <span className="font-medium">{show.status}</span>
+                      </div>
+                    )}
                     {show.firstAirDate && (
                       <div className="flex justify-between items-center py-2 border-b border-border/50">
                         <span className="text-muted-foreground">First Air Date</span>
                         <span className="font-medium">{new Date(show.firstAirDate).toLocaleDateString()}</span>
                       </div>
                     )}
+                    {show.nextAirDate && (
+                      <div className="flex justify-between items-center py-2 border-b border-border/50">
+                        <span className="text-muted-foreground">Next Air Date</span>
+                        <span className="font-medium">{new Date(show.nextAirDate).toLocaleDateString()}</span>
+                      </div>
+                    )}
                     {show.lastAirDate && (
                       <div className="flex justify-between items-center py-2 border-b border-border/50">
                         <span className="text-muted-foreground">Last Air Date</span>
                         <span className="font-medium">{new Date(show.lastAirDate).toLocaleDateString()}</span>
+                      </div>
+                    )}
+                    {show.originalLanguage && (
+                      <div className="flex justify-between items-center py-2 border-b border-border/50">
+                        <span className="text-muted-foreground">Original Language</span>
+                        <span className="font-medium">{show.originalLanguage.toUpperCase()}</span>
+                      </div>
+                    )}
+                    {show.productionCountries && show.productionCountries.length > 0 && (
+                      <div className="flex justify-between items-center py-2 border-b border-border/50">
+                        <span className="text-muted-foreground">Production Country</span>
+                        <span className="font-medium">{show.productionCountries.join(', ')}</span>
                       </div>
                     )}
                     <div className="flex justify-between items-center py-2 border-b border-border/50">
@@ -367,6 +396,26 @@ export default function TVDetail() {
                 </CardContent>
               </Card>
 
+              {show.watchProviders && show.watchProviders.length > 0 && (
+                <Card className="mt-4">
+                  <CardHeader>
+                    <CardTitle className="text-lg">Currently Streaming On</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex flex-wrap gap-3">
+                      {show.watchProviders.map((p) => (
+                        <div key={p.providerId} className="platform-card flex items-center gap-2">
+                          {p.logoPath ? (
+                            <img src={`https://image.tmdb.org/t/p/w45${p.logoPath}`} alt="" className="h-8 w-8 rounded" loading="lazy" />
+                          ) : null}
+                          <span className="text-sm">{p.name}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
               {/* External Links */}
               <div className="flex gap-2 mt-4">
                 <Button
@@ -377,6 +426,26 @@ export default function TVDetail() {
                 >
                   <Film className="h-4 w-4" />
                 </Button>
+                {show.externalIds?.imdbId && (
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => window.open(`https://www.imdb.com/title/${show.externalIds!.imdbId}`, '_blank')}
+                    title="View on IMDb"
+                  >
+                    IMDB
+                  </Button>
+                )}
+                {show.externalIds?.tvdbId && (
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => window.open(`https://thetvdb.com/?id=${show.externalIds!.tvdbId}&tab=series`, '_blank')}
+                    title="View on TVDB"
+                  >
+                    TVDB
+                  </Button>
+                )}
               </div>
             </div>
           </div>

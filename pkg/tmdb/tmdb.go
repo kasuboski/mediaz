@@ -293,6 +293,7 @@ type SeriesDetailsResponse struct {
 	ProductionCompanies []ProductionCompany           `json:"production_companies,omitempty"`
 	ProductionCountries []ProductionCountry           `json:"production_countries,omitempty"`
 	Seasons             []SeriesDetailsResponseSeason `json:"seasons,omitempty"`
+	Status              string                        `json:"status,omitempty"`
 }
 
 type SeriesDetails struct {
