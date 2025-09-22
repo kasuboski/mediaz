@@ -77,30 +77,22 @@ const EpisodeItem = ({ episode }: { episode: EpisodeResult }) => (
 // Component for rendering season content with episodes
 const SeasonContent = ({ season }: { season: SeasonResult }) => {
   const episodes = season.episodes || [];
-  const episodesToShow = episodes.slice(0, 8);
-  const remainingCount = episodes.length - 8;
+  const sortedEpisodes = [...episodes].sort((a, b) => a.episodeNumber - b.episodeNumber);
 
   return (
     <div className="pl-15 space-y-6">
       <p className="text-sm text-muted-foreground">
         {season.overview || "Season overview is not available."}
       </p>
-      {episodes.length === 0 ? (
+      {sortedEpisodes.length === 0 ? (
         <div className="text-center py-4">
           <p className="text-sm text-muted-foreground">No episodes available</p>
         </div>
       ) : (
         <div className="space-y-4">
-          {episodesToShow.map((episode) => (
+          {sortedEpisodes.map((episode) => (
             <EpisodeItem key={episode.episodeNumber} episode={episode} />
           ))}
-          {remainingCount > 0 && (
-            <div className="text-center py-4">
-              <p className="text-sm text-muted-foreground">
-                ... and {remainingCount} more episodes
-              </p>
-            </div>
-          )}
         </div>
       )}
     </div>
