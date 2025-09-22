@@ -356,7 +356,7 @@ export default function TVDetail() {
                     )}
                     {show.productionCountries && show.productionCountries.length > 0 && (
                       <div className="flex justify-between items-center py-2 border-b border-border/50">
-                        <span className="text-muted-foreground">Production Country</span>
+                        <span className="text-muted-foreground">Production Countries</span>
                         <span className="font-medium">{show.productionCountries.join(', ')}</span>
                       </div>
                     )}
