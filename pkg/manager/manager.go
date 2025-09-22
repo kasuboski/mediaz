@@ -452,6 +452,10 @@ func (m MediaManager) getEpisodesForSeason(ctx context.Context, seasonID int32, 
 			if episodeMeta.Runtime != nil {
 				result.Runtime = episodeMeta.Runtime
 			}
+			if episodeMeta.StillPath != nil {
+				result.StillPath = episodeMeta.StillPath
+			}
+
 		} else {
 			// Fallback values for episodes without metadata
 			result.TMDBID = 0
@@ -1256,6 +1260,10 @@ func (m MediaManager) ListEpisodesForSeason(ctx context.Context, tmdbID int, sea
 			if episodeMeta.Runtime != nil {
 				result.Runtime = episodeMeta.Runtime
 			}
+			if episodeMeta.StillPath != nil {
+				result.StillPath = episodeMeta.StillPath
+			}
+
 		} else {
 			// Fallback values for episodes without metadata
 			result.TMDBID = 0

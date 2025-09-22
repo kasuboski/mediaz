@@ -254,6 +254,10 @@ func FromSeriesEpisodes(episode tmdb.Episode) model.EpisodeMetadata {
 		model.AirDate = airDate
 	}
 
+	if episode.StillPath != "" {
+		model.StillPath = &episode.StillPath
+	}
+
 	return model
 }
 

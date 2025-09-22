@@ -25,6 +25,7 @@ type episodeMetadataTable struct {
 	Overview         sqlite.ColumnString
 	AirDate          sqlite.ColumnTimestamp
 	Runtime          sqlite.ColumnInteger
+	StillPath        sqlite.ColumnString
 
 	AllColumns     sqlite.ColumnList
 	MutableColumns sqlite.ColumnList
@@ -73,8 +74,9 @@ func newEpisodeMetadataTableImpl(schemaName, tableName, alias string) episodeMet
 		OverviewColumn         = sqlite.StringColumn("overview")
 		AirDateColumn          = sqlite.TimestampColumn("air_date")
 		RuntimeColumn          = sqlite.IntegerColumn("runtime")
-		allColumns             = sqlite.ColumnList{IDColumn, SeasonMetadataIDColumn, NumberColumn, TmdbIDColumn, TitleColumn, OverviewColumn, AirDateColumn, RuntimeColumn}
-		mutableColumns         = sqlite.ColumnList{SeasonMetadataIDColumn, NumberColumn, TmdbIDColumn, TitleColumn, OverviewColumn, AirDateColumn, RuntimeColumn}
+		StillPathColumn        = sqlite.StringColumn("still_path")
+		allColumns             = sqlite.ColumnList{IDColumn, SeasonMetadataIDColumn, NumberColumn, TmdbIDColumn, TitleColumn, OverviewColumn, AirDateColumn, RuntimeColumn, StillPathColumn}
+		mutableColumns         = sqlite.ColumnList{SeasonMetadataIDColumn, NumberColumn, TmdbIDColumn, TitleColumn, OverviewColumn, AirDateColumn, RuntimeColumn, StillPathColumn}
 	)
 
 	return episodeMetadataTable{
@@ -89,6 +91,7 @@ func newEpisodeMetadataTableImpl(schemaName, tableName, alias string) episodeMet
 		Overview:         OverviewColumn,
 		AirDate:          AirDateColumn,
 		Runtime:          RuntimeColumn,
+		StillPath:        StillPathColumn,
 
 		AllColumns:     allColumns,
 		MutableColumns: mutableColumns,
