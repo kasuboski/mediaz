@@ -161,55 +161,27 @@ func (m MediaManager) GetTVDetailByTMDBID(ctx context.Context, tmdbID int) (*TVD
 	}
 
 	// Transform data into result
-result := m.buildTVDetailResult(metadata, seriesDetailsResponse, series, seasons)
+	result := m.buildTVDetailResult(metadata, seriesDetailsResponse, series, seasons)
 
-// Enrich with external IDs
-if resp, err := m.tmdb.TvSeriesExternalIds(ctx, int32(metadata.TmdbID)); err == nil {
-	defer resp.Body.Close()
-	b, _ := io.ReadAll(resp.Body)
-	var ext struct {
-		ImdbID *string `json:"imdb_id"`
-		TvdbID *int    `json:"tvdb_id"`
-	}
-	if err := json.Unmarshal(b, &ext); err == nil {
-		result.ExternalIDs = &ExternalIDs{ImdbID: ext.ImdbID, TvdbID: ext.TvdbID}
-	}
-}
-// Watch providers (US only, flatrate)
-if resp, err := m.tmdb.TvSeriesWatchProviders(ctx, int32(metadata.TmdbID)); err == nil {
-	defer resp.Body.Close()
-	b, _ := io.ReadAll(resp.Body)
-	type provider struct {
-		ProviderID   *int    `json:"provider_id"`
-		ProviderName *string `json:"provider_name"`
-		LogoPath     *string `json:"logo_path"`
-	}
-	type region struct {
-		Flatrate []provider `json:"flatrate"`
-		Link     *string    `json:"link"`
-	}
-	var root struct {
-		Results map[string]region `json:"results"`
-	}
-	if err := json.Unmarshal(b, &root); err == nil {
-		if us, ok := root.Results["US"]; ok {
-			providers := make([]WatchProvider, 0)
-			for _, p := range us.Flatrate {
-				if p.ProviderID == nil || p.ProviderName == nil {
-					continue
-				}
-				providers = append(providers, WatchProvider{
-					ProviderID: *p.ProviderID,
-					Name:       *p.ProviderName,
-					LogoPath:   p.LogoPath,
-				})
-			}
-			result.WatchProviders = providers
-		}
-	}
+// Add stored external IDs from database
+if extIDs, err := DeserializeExternalIDs(metadata.ExternalIds); err == nil && extIDs != nil {
+	result.ExternalIDs = &ExternalIDs{ImdbID: extIDs.ImdbID, TvdbID: extIDs.TvdbID}
 }
 
-return result, nil
+// Add stored watch providers from database
+if wpData, err := DeserializeWatchProviders(metadata.WatchProviders); err == nil && wpData != nil {
+	providers := make([]WatchProvider, 0, len(wpData.US.Flatrate))
+	for _, p := range wpData.US.Flatrate {
+		providers = append(providers, WatchProvider{
+			ProviderID: p.ProviderID,
+			Name:       p.Name,
+			LogoPath:   p.LogoPath,
+		})
+	}
+	result.WatchProviders = providers
+}
+
+	return result, nil
 }
 
 // buildTVDetailResult transforms metadata and TMDB details into TVDetailResult
@@ -318,7 +290,6 @@ func (m MediaManager) buildTVDetailResult(metadata *model.SeriesMetadata, detail
 		vc := int(details.VoteCount)
 		result.VoteCount = &vc
 	}
-
 
 	// Set library status information if series exists
 	if series != nil {
@@ -887,13 +858,13 @@ func (m MediaManager) AddSeriesToLibrary(ctx context.Context, request AddSeriesR
 
 	log.Debug("created new missing series", zap.Any("series", series))
 
-	// Get series to access its metadata ID  
+	// Get series to access its metadata ID
 	seriesEntity, err := m.storage.GetSeries(ctx, table.Series.ID.EQ(sqlite.Int(seriesID)))
 	if err != nil || seriesEntity.SeriesMetadataID == nil {
 		log.Error("failed to get series or series has no metadata")
 		return nil, fmt.Errorf("series has no metadata")
 	}
-	
+
 	where := table.SeasonMetadata.SeriesMetadataID.EQ(sqlite.Int32(*seriesEntity.SeriesMetadataID))
 	seasonMetadata, err := m.storage.ListSeasonMetadata(ctx, where)
 	if err != nil {
@@ -923,7 +894,7 @@ func (m MediaManager) AddSeriesToLibrary(ctx context.Context, request AddSeriesR
 			log.Error("failed to get season or season has no metadata linked")
 			return nil, fmt.Errorf("season has no metadata")
 		}
-		
+
 		where := table.EpisodeMetadata.SeasonMetadataID.EQ(sqlite.Int32(*seasonEntity.SeasonMetadataID))
 
 		episodesMetadata, err := m.storage.ListEpisodeMetadata(ctx, where)

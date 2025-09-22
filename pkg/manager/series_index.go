@@ -213,7 +213,6 @@ func (m MediaManager) getOrCreateSeason(ctx context.Context, seriesID int64, sea
 	return seasonID, nil
 }
 
-
 func modelEpisodeFile(df library.EpisodeFile) model.EpisodeFile {
 	return model.EpisodeFile{
 		OriginalFilePath: &df.AbsolutePath,

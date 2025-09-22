@@ -1,9 +1,12 @@
 package manager
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"net/http"
 	"slices"
 	"testing"
 	"time"
@@ -530,11 +533,14 @@ func TestMediaManager_reconcileMissingSeason(t *testing.T) {
 			Name: "test download",
 		}, nil)
 
-		seriesMetadataID, err := store.CreateSeriesMetadata(ctx, model.SeriesMetadata{
-			TmdbID:       1,
-			Title:        "Series",
-			EpisodeCount: 10,
-		})
+	seriesMetadataID, err := store.CreateSeriesMetadata(ctx, model.SeriesMetadata{
+		TmdbID:         1,
+		Title:          "Series",
+		Status:         "Continuing",
+		EpisodeCount:   10,
+		ExternalIds:    nil,
+		WatchProviders: nil,
+	})
 		require.NoError(t, err)
 
 		seriesID, err := store.CreateSeries(ctx, storage.Series{
@@ -683,11 +689,14 @@ func TestMediaManager_reconcileMissingSeason(t *testing.T) {
 			Name: "test download 2",
 		}, nil)
 
-		seriesMetadataID, err := store.CreateSeriesMetadata(ctx, model.SeriesMetadata{
-			TmdbID:       1,
-			Title:        "Series",
-			EpisodeCount: 10,
-		})
+	seriesMetadataID, err := store.CreateSeriesMetadata(ctx, model.SeriesMetadata{
+		TmdbID:         1,
+		Title:          "Series",
+		Status:         "Continuing",
+		EpisodeCount:   10,
+		ExternalIds:    nil,
+		WatchProviders: nil,
+	})
 		require.NoError(t, err)
 
 		seriesID, err := store.CreateSeries(ctx, storage.Series{
@@ -1125,10 +1134,16 @@ func TestMediaManager_ReconcileContinuingSeries(t *testing.T) {
 
 		// Add TMDB mock for the refresh functionality
 		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
-		tmdbMock.EXPECT().GetSeriesDetails(ctx, 1).Return(&tmdb.SeriesDetails{
-			ID:   1,
-			Name: "Continuing Series",
-		}, nil).AnyTimes()
+	tmdbMock.EXPECT().GetSeriesDetails(ctx, 1).Return(&tmdb.SeriesDetails{
+		ID:   1,
+		Name: "Continuing Series",
+	}, nil).AnyTimes()
+
+	// Mock external IDs and watch providers calls during metadata creation
+	extIDsResp := &http.Response{StatusCode: 200, Body: io.NopCloser(bytes.NewBufferString(`{"imdb_id":null,"tvdb_id":null}`))}
+	tmdbMock.EXPECT().TvSeriesExternalIds(gomock.Any(), int32(1)).Return(extIDsResp, nil).AnyTimes()
+	wpResp := &http.Response{StatusCode: 200, Body: io.NopCloser(bytes.NewBufferString(`{"results":{"US":{"flatrate":[]}}}`))}
+	tmdbMock.EXPECT().TvSeriesWatchProviders(gomock.Any(), int32(1)).Return(wpResp, nil).AnyTimes()
 
 		mockDownloadClient := downloadMock.NewMockDownloadClient(ctrl)
 		mockFactory := downloadMock.NewMockFactory(ctrl)
@@ -1150,11 +1165,14 @@ func TestMediaManager_ReconcileContinuingSeries(t *testing.T) {
 			Name: "test download continuing",
 		}, nil).AnyTimes()
 
-		seriesMetadataID, err := store.CreateSeriesMetadata(ctx, model.SeriesMetadata{
-			TmdbID:       1,
-			Title:        "Continuing Series",
-			EpisodeCount: 10,
-		})
+	seriesMetadataID, err := store.CreateSeriesMetadata(ctx, model.SeriesMetadata{
+		TmdbID:         1,
+		Title:          "Continuing Series",
+		Status:         "Continuing",
+		EpisodeCount:   10,
+		ExternalIds:    nil,
+		WatchProviders: nil,
+	})
 		require.NoError(t, err)
 
 		seriesID, err := store.CreateSeries(ctx, storage.Series{
@@ -1253,12 +1271,14 @@ func TestMediaManager_ReconcileContinuingSeries(t *testing.T) {
 		store := newStore(t, ctx)
 
 		// Set up series and season data
-		seriesMetadataID, err := store.CreateSeriesMetadata(ctx, model.SeriesMetadata{
-			TmdbID:       100,
-			Title:        "Weekly Series",
-			SeasonCount:  1,
-			EpisodeCount: 3,
-			Status:       "Returning Series", // Add required status field
+	seriesMetadataID, err := store.CreateSeriesMetadata(ctx, model.SeriesMetadata{
+		TmdbID:         100,
+		Title:          "Weekly Series",
+		SeasonCount:    1,
+		EpisodeCount:   3,
+		Status:         "Returning Series",
+		ExternalIds:    nil,
+		WatchProviders: nil,
 		})
 		require.NoError(t, err)
 
@@ -1361,6 +1381,12 @@ func TestMediaManager_ReconcileContinuingSeries(t *testing.T) {
 				},
 			},
 		}, nil).AnyTimes()
+
+		// Mock external IDs and watch providers calls during metadata creation
+		extIDsResp := &http.Response{StatusCode: 200, Body: io.NopCloser(bytes.NewBufferString(`{"imdb_id":null,"tvdb_id":null}`))}
+		tmdbMock.EXPECT().TvSeriesExternalIds(gomock.Any(), int32(100)).Return(extIDsResp, nil).AnyTimes()
+		wpResp := &http.Response{StatusCode: 200, Body: io.NopCloser(bytes.NewBufferString(`{"results":{"US":{"flatrate":[]}}}`))}
+		tmdbMock.EXPECT().TvSeriesWatchProviders(gomock.Any(), int32(100)).Return(wpResp, nil).AnyTimes()
 
 		// Set up prowlarr mock for any searches that might happen
 		prowlarrMock := prowlMock.NewMockClientInterface(ctrl)

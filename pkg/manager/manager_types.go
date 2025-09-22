@@ -77,57 +77,57 @@ type MovieDetailResult struct {
 // LibraryStatus is storage-derived; Path may be empty; QualityProfileID/Monitored are only present when tracked.
 // Seasons array contains detailed season and episode information.
 // NetworkInfo represents a TV network with an optional logo path
- type NetworkInfo struct {
- 	Name     string  `json:"name"`
- 	LogoPath *string `json:"logoPath,omitempty"`
- }
+type NetworkInfo struct {
+	Name     string  `json:"name"`
+	LogoPath *string `json:"logoPath,omitempty"`
+}
 
- // WatchProvider represents a streaming provider entry (US region only for now)
- type WatchProvider struct {
- 	ProviderID int     `json:"providerId"`
- 	Name       string  `json:"name"`
- 	LogoPath   *string `json:"logoPath,omitempty"`
- }
+// WatchProvider represents a streaming provider entry (US region only for now)
+type WatchProvider struct {
+	ProviderID int     `json:"providerId"`
+	Name       string  `json:"name"`
+	LogoPath   *string `json:"logoPath,omitempty"`
+}
 
- // ExternalIDs represents external identifiers for a series
- type ExternalIDs struct {
- 	ImdbID *string `json:"imdbId,omitempty"`
- 	TvdbID *int    `json:"tvdbId,omitempty"`
- }
+// ExternalIDs represents external identifiers for a series
+type ExternalIDs struct {
+	ImdbID *string `json:"imdbId,omitempty"`
+	TvdbID *int    `json:"tvdbId,omitempty"`
+}
 
- // TVDetailResult is a consolidated TV series view combining metadata and library status.
- // BackdropPath, FirstAirDate, LastAirDate, Networks, Genres, and ratings may be absent; counts are from metadata and can be zero.
- // LibraryStatus is storage-derived; Path may be empty; QualityProfileID/Monitored are only present when tracked.
- // Seasons array contains detailed season and episode information.
- type TVDetailResult struct {
- 	TMDBID             int32          `json:"tmdbID"`
- 	Title              string         `json:"title"`
- 	OriginalTitle      *string        `json:"originalTitle,omitempty"`
- 	Overview           string         `json:"overview,omitempty"`
- 	PosterPath         string         `json:"posterPath,omitempty"`
- 	BackdropPath       *string        `json:"backdropPath,omitempty"`
- 	FirstAirDate       *string        `json:"firstAirDate,omitempty"`
- 	LastAirDate        *string        `json:"lastAirDate,omitempty"`
- 	Status             *string        `json:"status,omitempty"`
- 	NextAirDate        *string        `json:"nextAirDate,omitempty"`
- 	OriginalLanguage   *string        `json:"originalLanguage,omitempty"`
- 	ProductionCountries []string      `json:"productionCountries,omitempty"`
- 	Networks           []NetworkInfo  `json:"networks,omitempty"`
- 	SeasonCount        int32          `json:"seasonCount"`
- 	EpisodeCount       int32          `json:"episodeCount"`
- 	Adult              *bool          `json:"adult,omitempty"`
- 	VoteAverage        *float32       `json:"voteAverage,omitempty"`
- 	VoteCount          *int           `json:"voteCount,omitempty"`
- 	Popularity         *float64       `json:"popularity,omitempty"`
- 	Genres             []string       `json:"genres,omitempty"`
- 	LibraryStatus      string         `json:"libraryStatus"`
- 	Path               *string        `json:"path,omitempty"`
- 	QualityProfileID   *int32         `json:"qualityProfileID,omitempty"`
- 	Monitored          *bool          `json:"monitored,omitempty"`
- 	Seasons            []SeasonResult `json:"seasons,omitempty"`
- 	ExternalIDs        *ExternalIDs   `json:"externalIds,omitempty"`
- 	WatchProviders     []WatchProvider `json:"watchProviders,omitempty"`
- }
+// TVDetailResult is a consolidated TV series view combining metadata and library status.
+// BackdropPath, FirstAirDate, LastAirDate, Networks, Genres, and ratings may be absent; counts are from metadata and can be zero.
+// LibraryStatus is storage-derived; Path may be empty; QualityProfileID/Monitored are only present when tracked.
+// Seasons array contains detailed season and episode information.
+type TVDetailResult struct {
+	TMDBID              int32           `json:"tmdbID"`
+	Title               string          `json:"title"`
+	OriginalTitle       *string         `json:"originalTitle,omitempty"`
+	Overview            string          `json:"overview,omitempty"`
+	PosterPath          string          `json:"posterPath,omitempty"`
+	BackdropPath        *string         `json:"backdropPath,omitempty"`
+	FirstAirDate        *string         `json:"firstAirDate,omitempty"`
+	LastAirDate         *string         `json:"lastAirDate,omitempty"`
+	Status              *string         `json:"status,omitempty"`
+	NextAirDate         *string         `json:"nextAirDate,omitempty"`
+	OriginalLanguage    *string         `json:"originalLanguage,omitempty"`
+	ProductionCountries []string        `json:"productionCountries,omitempty"`
+	Networks            []NetworkInfo   `json:"networks,omitempty"`
+	SeasonCount         int32           `json:"seasonCount"`
+	EpisodeCount        int32           `json:"episodeCount"`
+	Adult               *bool           `json:"adult,omitempty"`
+	VoteAverage         *float32        `json:"voteAverage,omitempty"`
+	VoteCount           *int            `json:"voteCount,omitempty"`
+	Popularity          *float64        `json:"popularity,omitempty"`
+	Genres              []string        `json:"genres,omitempty"`
+	LibraryStatus       string          `json:"libraryStatus"`
+	Path                *string         `json:"path,omitempty"`
+	QualityProfileID    *int32          `json:"qualityProfileID,omitempty"`
+	Monitored           *bool           `json:"monitored,omitempty"`
+	Seasons             []SeasonResult  `json:"seasons,omitempty"`
+	ExternalIDs         *ExternalIDs    `json:"externalIds,omitempty"`
+	WatchProviders      []WatchProvider `json:"watchProviders,omitempty"`
+}
 
 // LibraryMovie summarizes a tracked movie in the local library.
 // Path may be empty prior to import; Year is optional; PosterPath can be empty; State reflects storage state.

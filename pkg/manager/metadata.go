@@ -2,7 +2,10 @@ package manager
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"io"
+	"net/http"
 	"strings"
 	"time"
 
@@ -78,6 +81,42 @@ func (m MediaManager) loadSeriesMetadata(ctx context.Context, tmdbID int) (*mode
 	if err != nil {
 		log.Error("failed to parse series details", zap.Error(err))
 		return nil, err
+	}
+
+	// Fetch external IDs from TMDB
+	if extIDsResp, err := m.tmdb.TvSeriesExternalIds(ctx, int32(tmdbID)); err == nil {
+		defer extIDsResp.Body.Close()
+		if extIDsResp.StatusCode == 200 {
+			if extIDsData, err := parseExternalIDs(extIDsResp); err == nil {
+				if serialized, err := SerializeExternalIDs(extIDsData); err == nil {
+					series.ExternalIds = serialized
+				} else {
+					log.Debug("failed to serialize external IDs", zap.Error(err))
+				}
+			} else {
+				log.Debug("failed to parse external IDs", zap.Error(err))
+			}
+		}
+	} else {
+		log.Debug("failed to fetch external IDs", zap.Error(err))
+	}
+
+	// Fetch watch providers from TMDB
+	if wpResp, err := m.tmdb.TvSeriesWatchProviders(ctx, int32(tmdbID)); err == nil {
+		defer wpResp.Body.Close()
+		if wpResp.StatusCode == 200 {
+			if wpData, err := parseWatchProviders(wpResp); err == nil {
+				if serialized, err := SerializeWatchProviders(wpData); err == nil {
+					series.WatchProviders = serialized
+				} else {
+					log.Debug("failed to serialize watch providers", zap.Error(err))
+				}
+			} else {
+				log.Debug("failed to parse watch providers", zap.Error(err))
+			}
+		}
+	} else {
+		log.Debug("failed to fetch watch providers", zap.Error(err))
 	}
 
 	seriesMetadataID, err := m.storage.CreateSeriesMetadata(ctx, series)
@@ -270,4 +309,66 @@ func parseTMDBDate(date string) (*time.Time, error) {
 		return nil, err
 	}
 	return &t, nil
+}
+
+// parseExternalIDs parses TMDB external IDs response
+func parseExternalIDs(resp *http.Response) (*ExternalIDsData, error) {
+	defer resp.Body.Close()
+	b, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var result ExternalIDsData
+	if err := json.Unmarshal(b, &result); err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
+// parseWatchProviders parses TMDB watch providers response
+func parseWatchProviders(resp *http.Response) (*WatchProvidersData, error) {
+	defer resp.Body.Close()
+	b, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	type tmdbProvider struct {
+		ProviderID   *int    `json:"provider_id"`
+		ProviderName *string `json:"provider_name"`
+		LogoPath     *string `json:"logo_path"`
+	}
+	type tmdbRegion struct {
+		Flatrate []tmdbProvider `json:"flatrate"`
+		Link     *string        `json:"link"`
+	}
+	type tmdbRoot struct {
+		Results map[string]tmdbRegion `json:"results"`
+	}
+
+	var tmdbData tmdbRoot
+	if err := json.Unmarshal(b, &tmdbData); err != nil {
+		return nil, err
+	}
+
+	// Convert TMDB format to our format
+	result := &WatchProvidersData{}
+	if us, ok := tmdbData.Results["US"]; ok {
+		providers := make([]WatchProviderData, 0, len(us.Flatrate))
+		for _, p := range us.Flatrate {
+			if p.ProviderID != nil && p.ProviderName != nil {
+				providers = append(providers, WatchProviderData{
+					ProviderID: *p.ProviderID,
+					Name:       *p.ProviderName,
+					LogoPath:   p.LogoPath,
+				})
+			}
+		}
+		result.US = WatchProviderRegionData{
+			Flatrate: providers,
+			Link:     us.Link,
+		}
+	}
+	return result, nil
 }

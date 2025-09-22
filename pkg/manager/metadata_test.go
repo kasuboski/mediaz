@@ -1,8 +1,11 @@
 package manager
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"io"
+	"net/http"
 	"testing"
 	"time"
 
@@ -47,12 +50,15 @@ func TestMediaManager_GetSeriesMetadata(t *testing.T) {
 
 		store := newStore(t, ctx)
 
-		_, err := store.CreateSeriesMetadata(ctx, model.SeriesMetadata{
-			ID:           1,
-			TmdbID:       1234,
-			Title:        "Test Series",
-			FirstAirDate: ptr(time.Now().Add(-time.Hour * 2)),
-		})
+	_, err := store.CreateSeriesMetadata(ctx, model.SeriesMetadata{
+		ID:             1,
+		TmdbID:         1234,
+		Title:          "Test Series",
+		Status:         "Continuing",
+		FirstAirDate:   ptr(time.Now().Add(-time.Hour * 2)),
+		ExternalIds:    nil,
+		WatchProviders: nil,
+	})
 		require.NoError(t, err)
 
 		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
@@ -132,6 +138,12 @@ func TestMediaManager_GetSeriesMetadata(t *testing.T) {
 				},
 			},
 		}, nil)
+
+		// Mock external IDs and watch providers calls during metadata creation
+		extIDsResp := &http.Response{StatusCode: 200, Body: io.NopCloser(bytes.NewBufferString(`{"imdb_id":null,"tvdb_id":null}`))}
+		tmdbMock.EXPECT().TvSeriesExternalIds(ctx, int32(1234)).Return(extIDsResp, nil)
+		wpResp := &http.Response{StatusCode: 200, Body: io.NopCloser(bytes.NewBufferString(`{"results":{"US":{"flatrate":[]}}}`))}
+		tmdbMock.EXPECT().TvSeriesWatchProviders(ctx, int32(1234)).Return(wpResp, nil)
 
 		m := MediaManager{
 			tmdb:    tmdbMock,

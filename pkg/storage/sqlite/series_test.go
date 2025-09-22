@@ -251,11 +251,13 @@ func TestSeriesMetadataStorage(t *testing.T) {
 
 	// Test creating Series metadata
 	metadata := model.SeriesMetadata{
-		TmdbID:       12345,
-		Title:        "Test Series",
-		SeasonCount:  1,
-		EpisodeCount: 1,
-		Status:       "Continuing",
+		TmdbID:         12345,
+		Title:          "Test Series",
+		SeasonCount:    1,
+		EpisodeCount:   1,
+		Status:         "Continuing",
+		ExternalIds:    nil, // Optional field
+		WatchProviders: nil, // Optional field
 	}
 
 	id, err := store.CreateSeriesMetadata(ctx, metadata)
