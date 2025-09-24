@@ -389,6 +389,113 @@ func TestFromSeriesEpisodes(t *testing.T) {
 	}
 }
 
+func TestMediaManager_fetchExternalIDs(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		ctx := context.Background()
+		ctrl := gomock.NewController(t)
+
+		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
+		extIDsResp := &http.Response{StatusCode: 200, Body: io.NopCloser(bytes.NewBufferString(`{"imdb_id":"tt1234567","tvdb_id":12345}`))}
+		tmdbMock.EXPECT().TvSeriesExternalIds(ctx, int32(1234)).Return(extIDsResp, nil)
+
+		m := MediaManager{
+			tmdb: tmdbMock,
+		}
+
+		result, err := m.fetchExternalIDs(ctx, 1234)
+		require.NoError(t, err)
+		require.NotNil(t, result)
+		assert.Contains(t, *result, "imdb_id")
+		assert.Contains(t, *result, "tvdb_id")
+	})
+
+	t.Run("api error", func(t *testing.T) {
+		ctx := context.Background()
+		ctrl := gomock.NewController(t)
+
+		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
+		tmdbMock.EXPECT().TvSeriesExternalIds(ctx, int32(1234)).Return(nil, errors.New("api error"))
+
+		m := MediaManager{
+			tmdb: tmdbMock,
+		}
+
+		result, err := m.fetchExternalIDs(ctx, 1234)
+		require.NoError(t, err)
+		assert.Nil(t, result)
+	})
+
+	t.Run("non-200 status", func(t *testing.T) {
+		ctx := context.Background()
+		ctrl := gomock.NewController(t)
+
+		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
+		extIDsResp := &http.Response{StatusCode: 404, Body: io.NopCloser(bytes.NewBufferString(`{"error":"not found"}`))}
+		tmdbMock.EXPECT().TvSeriesExternalIds(ctx, int32(1234)).Return(extIDsResp, nil)
+
+		m := MediaManager{
+			tmdb: tmdbMock,
+		}
+
+		result, err := m.fetchExternalIDs(ctx, 1234)
+		require.NoError(t, err)
+		assert.Nil(t, result)
+	})
+}
+
+func TestMediaManager_fetchWatchProviders(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		ctx := context.Background()
+		ctrl := gomock.NewController(t)
+
+		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
+		wpResp := &http.Response{StatusCode: 200, Body: io.NopCloser(bytes.NewBufferString(`{"results":{"US":{"flatrate":[{"provider_id":8,"provider_name":"Netflix","logo_path":"/netflix.png"}]}}}`))}
+		tmdbMock.EXPECT().TvSeriesWatchProviders(ctx, int32(1234)).Return(wpResp, nil)
+
+		m := MediaManager{
+			tmdb: tmdbMock,
+		}
+
+		result, err := m.fetchWatchProviders(ctx, 1234)
+		require.NoError(t, err)
+		require.NotNil(t, result)
+		assert.Contains(t, *result, "Netflix")
+	})
+
+	t.Run("api error", func(t *testing.T) {
+		ctx := context.Background()
+		ctrl := gomock.NewController(t)
+
+		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
+		tmdbMock.EXPECT().TvSeriesWatchProviders(ctx, int32(1234)).Return(nil, errors.New("api error"))
+
+		m := MediaManager{
+			tmdb: tmdbMock,
+		}
+
+		result, err := m.fetchWatchProviders(ctx, 1234)
+		require.NoError(t, err)
+		assert.Nil(t, result)
+	})
+
+	t.Run("non-200 status", func(t *testing.T) {
+		ctx := context.Background()
+		ctrl := gomock.NewController(t)
+
+		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
+		wpResp := &http.Response{StatusCode: 500, Body: io.NopCloser(bytes.NewBufferString(`{"error":"internal server error"}`))}
+		tmdbMock.EXPECT().TvSeriesWatchProviders(ctx, int32(1234)).Return(wpResp, nil)
+
+		m := MediaManager{
+			tmdb: tmdbMock,
+		}
+
+		result, err := m.fetchWatchProviders(ctx, 1234)
+		require.NoError(t, err)
+		assert.Nil(t, result)
+	})
+}
+
 func TestFromMediaDetails(t *testing.T) {
 	tests := []struct {
 		name string
