@@ -163,36 +163,25 @@ func (m MediaManager) GetTVDetailByTMDBID(ctx context.Context, tmdbID int) (*TVD
 	// Transform data into result
 	result := m.buildTVDetailResult(metadata, seriesDetailsResponse, series, seasons)
 
-	return result, nil
+// Add stored external IDs from database
+if extIDs, err := DeserializeExternalIDs(metadata.ExternalIds); err == nil && extIDs != nil {
+	result.ExternalIDs = &ExternalIDs{ImdbID: extIDs.ImdbID, TvdbID: extIDs.TvdbID}
 }
 
-// getTVMetadataAndDetails retrieves both series metadata and full TMDB details
-func (m MediaManager) getTVMetadataAndDetails(ctx context.Context, tmdbID int) (*model.SeriesMetadata, *tmdb.SeriesDetailsResponse, error) {
-	// Get series metadata (creates if not exists)
-	metadata, err := m.GetSeriesMetadata(ctx, tmdbID)
-	if err != nil {
-		return nil, nil, err
+// Add stored watch providers from database
+if wpData, err := DeserializeWatchProviders(metadata.WatchProviders); err == nil && wpData != nil {
+	providers := make([]WatchProvider, 0, len(wpData.US.Flatrate))
+	for _, p := range wpData.US.Flatrate {
+		providers = append(providers, WatchProvider{
+			ProviderID: p.ProviderID,
+			Name:       p.Name,
+			LogoPath:   p.LogoPath,
+		})
 	}
+	result.WatchProviders = providers
+}
 
-	// Get the full series details response from TMDB to access networks and status
-	res, err := m.tmdb.TvSeriesDetails(ctx, int32(tmdbID), nil)
-	if err != nil {
-		return nil, nil, err
-	}
-	defer res.Body.Close()
-
-	b, err := io.ReadAll(res.Body)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	var seriesDetailsResponse tmdb.SeriesDetailsResponse
-	err = json.Unmarshal(b, &seriesDetailsResponse)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return metadata, &seriesDetailsResponse, nil
+	return result, nil
 }
 
 // buildTVDetailResult transforms metadata and TMDB details into TVDetailResult
@@ -230,12 +219,47 @@ func (m MediaManager) buildTVDetailResult(metadata *model.SeriesMetadata, detail
 		lastAirDateStr := metadata.LastAirDate.Format("2006-01-02")
 		result.LastAirDate = &lastAirDateStr
 	}
+	// Next air date from TMDB next episode
+	if details.NextEpisodeToAir.AirDate != "" {
+		nextAir := details.NextEpisodeToAir.AirDate
+		result.NextAirDate = &nextAir
+	}
 
-	// Extract network names
+	// Status when available
+	if details.Status != "" {
+		status := details.Status
+		result.Status = &status
+	}
+
+	// Original language
+	if details.OriginalLanguage != "" {
+		ol := details.OriginalLanguage
+		result.OriginalLanguage = &ol
+	}
+
+	// Production countries (names when available)
+	if len(details.ProductionCountries) > 0 {
+		pcs := make([]string, 0, len(details.ProductionCountries))
+		for _, pc := range details.ProductionCountries {
+			if pc.Name != nil && *pc.Name != "" {
+				pcs = append(pcs, *pc.Name)
+			} else if pc.Iso31661 != nil && *pc.Iso31661 != "" {
+				pcs = append(pcs, *pc.Iso31661)
+			}
+		}
+		result.ProductionCountries = pcs
+	}
+
+	// Networks with optional logos
 	if len(details.Networks) > 0 {
-		var networks []string
-		for _, network := range details.Networks {
-			networks = append(networks, network.Name)
+		networks := make([]NetworkInfo, 0, len(details.Networks))
+		for _, n := range details.Networks {
+			ni := NetworkInfo{Name: n.Name}
+			if n.LogoPath != "" {
+				lp := n.LogoPath
+				ni.LogoPath = &lp
+			}
+			networks = append(networks, ni)
 		}
 		result.Networks = networks
 	}
@@ -256,6 +280,15 @@ func (m MediaManager) buildTVDetailResult(metadata *model.SeriesMetadata, detail
 	if details.Popularity > 0 {
 		pop := float64(details.Popularity)
 		result.Popularity = &pop
+	}
+	// Map ratings when available
+	if details.VoteAverage > 0 {
+		va := float32(details.VoteAverage)
+		result.VoteAverage = &va
+	}
+	if details.VoteCount > 0 {
+		vc := int(details.VoteCount)
+		result.VoteCount = &vc
 	}
 
 	// Set library status information if series exists
@@ -390,6 +423,10 @@ func (m MediaManager) getEpisodesForSeason(ctx context.Context, seasonID int32, 
 			if episodeMeta.Runtime != nil {
 				result.Runtime = episodeMeta.Runtime
 			}
+			if episodeMeta.StillPath != nil {
+				result.StillPath = episodeMeta.StillPath
+			}
+
 		} else {
 			// Fallback values for episodes without metadata
 			result.TMDBID = 0
@@ -821,13 +858,13 @@ func (m MediaManager) AddSeriesToLibrary(ctx context.Context, request AddSeriesR
 
 	log.Debug("created new missing series", zap.Any("series", series))
 
-	// Get series to access its metadata ID  
+	// Get series to access its metadata ID
 	seriesEntity, err := m.storage.GetSeries(ctx, table.Series.ID.EQ(sqlite.Int(seriesID)))
 	if err != nil || seriesEntity.SeriesMetadataID == nil {
 		log.Error("failed to get series or series has no metadata")
 		return nil, fmt.Errorf("series has no metadata")
 	}
-	
+
 	where := table.SeasonMetadata.SeriesMetadataID.EQ(sqlite.Int32(*seriesEntity.SeriesMetadataID))
 	seasonMetadata, err := m.storage.ListSeasonMetadata(ctx, where)
 	if err != nil {
@@ -857,7 +894,7 @@ func (m MediaManager) AddSeriesToLibrary(ctx context.Context, request AddSeriesR
 			log.Error("failed to get season or season has no metadata linked")
 			return nil, fmt.Errorf("season has no metadata")
 		}
-		
+
 		where := table.EpisodeMetadata.SeasonMetadataID.EQ(sqlite.Int32(*seasonEntity.SeasonMetadataID))
 
 		episodesMetadata, err := m.storage.ListEpisodeMetadata(ctx, where)
@@ -1194,6 +1231,10 @@ func (m MediaManager) ListEpisodesForSeason(ctx context.Context, tmdbID int, sea
 			if episodeMeta.Runtime != nil {
 				result.Runtime = episodeMeta.Runtime
 			}
+			if episodeMeta.StillPath != nil {
+				result.StillPath = episodeMeta.StillPath
+			}
+
 		} else {
 			// Fallback values for episodes without metadata
 			result.TMDBID = 0

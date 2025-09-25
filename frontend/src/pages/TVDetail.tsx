@@ -14,67 +14,85 @@ import { type SeasonResult, type EpisodeResult } from "@/lib/api";
 
 const EpisodeItem = ({ episode }: { episode: EpisodeResult }) => (
   <div className="bg-background/50 dark:bg-gray-800/50 rounded-lg p-4 border border-border/50 hover:border-border transition-colors">
-    <div className="flex items-start justify-between mb-3">
-      <div className="flex-1">
-        <h4 className="font-bold text-lg text-foreground mb-1">
-          {episode.episodeNumber} - {episode.title}
-        </h4>
-        <div className="flex items-center gap-2 mb-2">
-          {episode.airDate && (
-            <Badge variant="secondary" className="text-xs px-2 py-1 bg-muted/80 text-muted-foreground">
-              {new Date(episode.airDate).toLocaleDateString('en-US', { 
-                month: 'short', 
-                day: 'numeric', 
-                year: 'numeric' 
-              })}
-            </Badge>
-          )}
-          {episode.runtime && (
-            <Badge variant="secondary" className="text-xs px-2 py-1 bg-muted/80 text-muted-foreground">
-              {episode.runtime}m
-            </Badge>
-          )}
-          {episode.downloaded && (
-            <Badge variant="default" className="text-xs px-2 py-1">
-              Downloaded
-            </Badge>
+    <div className="flex items-start gap-4">
+      <div className="aspect-video w-32 bg-muted rounded-lg overflow-hidden flex-shrink-0">
+        {episode.stillPath ? (
+          <img
+            src={`https://image.tmdb.org/t/p/w300${episode.stillPath}`}
+            alt=""
+            className="w-full h-full object-cover"
+            loading="lazy"
+          />
+        ) : (
+          <div className="w-full h-full grid place-items-center">
+            <Play className="h-5 w-5 text-muted-foreground" />
+          </div>
+        )}
+      </div>
+
+      <div className="flex-1 min-w-0">
+        <div className="flex items-start justify-between mb-3">
+          <div className="flex-1 min-w-0">
+            <h4 className="font-bold text-lg text-foreground mb-1 line-clamp-1">
+              {episode.episodeNumber} - {episode.title}
+            </h4>
+            <div className="flex items-center gap-2 mb-2 text-xs">
+              {episode.airDate && (
+                <Badge variant="secondary" className="px-2 py-1 bg-muted/80 text-muted-foreground">
+                  {new Date(episode.airDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                </Badge>
+              )}
+              {episode.runtime && (
+                <Badge variant="secondary" className="px-2 py-1 bg-muted/80 text-muted-foreground">
+                  {episode.runtime}m
+                </Badge>
+              )}
+              {episode.downloaded && (
+                <Badge variant="default" className="px-2 py-1">
+                  Downloaded
+                </Badge>
+              )}
+            </div>
+          </div>
+
+          {episode.voteAverage && episode.voteAverage > 0 && (
+            <span
+              className="text-xs rounded border px-2 py-0.5"
+              aria-label={`TMDB episode rating ${episode.voteAverage.toFixed(1)} of 10`}
+              title={`TMDB rating ${episode.voteAverage.toFixed(1)}/10`}
+            >
+              ⭐ {episode.voteAverage.toFixed(1)}
+            </span>
           )}
         </div>
+
+        <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3">
+          {episode.overview || 'No episode overview available.'}
+        </p>
       </div>
     </div>
-    <p className="text-sm text-muted-foreground leading-relaxed">
-      {episode.overview || 'No episode overview available.'}
-    </p>
   </div>
 );
 
 // Component for rendering season content with episodes
 const SeasonContent = ({ season }: { season: SeasonResult }) => {
   const episodes = season.episodes || [];
-  const episodesToShow = episodes.slice(0, 8);
-  const remainingCount = episodes.length - 8;
+  const sortedEpisodes = [...episodes].sort((a, b) => a.episodeNumber - b.episodeNumber);
 
   return (
     <div className="pl-15 space-y-6">
       <p className="text-sm text-muted-foreground">
         {season.overview || "Season overview is not available."}
       </p>
-      {episodes.length === 0 ? (
+      {sortedEpisodes.length === 0 ? (
         <div className="text-center py-4">
           <p className="text-sm text-muted-foreground">No episodes available</p>
         </div>
       ) : (
         <div className="space-y-4">
-          {episodesToShow.map((episode) => (
+          {sortedEpisodes.map((episode) => (
             <EpisodeItem key={episode.episodeNumber} episode={episode} />
           ))}
-          {remainingCount > 0 && (
-            <div className="text-center py-4">
-              <p className="text-sm text-muted-foreground">
-                ... and {remainingCount} more episodes
-              </p>
-            </div>
-          )}
         </div>
       )}
     </div>
@@ -122,6 +140,8 @@ export default function TVDetail() {
   return (
     <div className="min-h-screen">
       <div 
+        role="banner"
+        aria-label={`${show.title} hero backdrop`}
         className="relative h-96 bg-cover bg-center"
         style={{ 
           backgroundImage: backdropUrl ? `url(${backdropUrl})` : 'none',
@@ -129,6 +149,25 @@ export default function TVDetail() {
         }}
       >
         <div className="absolute inset-0 bg-gradient-hero" />
+        <div className="absolute top-6 right-6 flex gap-2">
+          {show.voteAverage != null ? (
+            <span
+              className="rating-badge bg-white/15 text-white border-white/20"
+              aria-label={`TMDB rating ${show.voteAverage.toFixed(1)} of 10`}
+              title={`TMDB rating ${show.voteAverage.toFixed(1)}/10`}
+            >
+              {Math.round(show.voteAverage * 10)}%
+            </span>
+          ) : (
+            <span
+              className="rating-badge bg-white/10 text-white/90 border-white/15"
+              aria-label="Not rated"
+              title="Not rated"
+            >
+              NR
+            </span>
+          )}
+        </div>
         <div className="absolute bottom-0 left-0 right-0 p-8">
           <div className="container mx-auto">
             <div className="flex items-end gap-6">
@@ -144,7 +183,7 @@ export default function TVDetail() {
                 }}
               />
               <div className="flex-1 text-white">
-                <h1 className="text-4xl font-bold mb-2">{show.title}</h1>
+                <h1 className="hero-title">{show.title}</h1>
                 <div className="flex items-center gap-4 text-sm opacity-90 mb-4">
                   {show.firstAirDate && (
                     <div className="flex items-center gap-1">
@@ -187,12 +226,17 @@ export default function TVDetail() {
                 : "No overview available for this series."}
             </p>
 
-            {show.networks && show.networks.length > 0 && (
+{show.networks && show.networks.length > 0 && (
               <div className="mb-6">
                 <h3 className="font-semibold mb-2">Networks</h3>
-                <div className="flex gap-2">
+                <div className="flex gap-3 flex-wrap items-center">
                   {show.networks.map((network) => (
-                    <Badge key={network} variant="outline">{network}</Badge>
+                    <div key={network.name} className="flex items-center gap-2">
+                      {network.logoPath ? (
+                        <img src={`https://image.tmdb.org/t/p/w45${network.logoPath}`} alt="" className="h-6 w-6 rounded" loading="lazy" />
+                      ) : null}
+                      <Badge variant="outline">{network.name}</Badge>
+                    </div>
                   ))}
                 </div>
               </div>
@@ -274,22 +318,46 @@ export default function TVDetail() {
                 </Button>
               )}
 
-              <Card>
+<Card>
                 <CardHeader>
                   <CardTitle className="text-lg">Details</CardTitle>
                 </CardHeader>
                 <CardContent className="pt-0">
                   <div className="space-y-3 text-sm">
+                    {show.status && (
+                      <div className="flex justify-between items-center py-2 border-b border-border/50">
+                        <span className="text-muted-foreground">Status</span>
+                        <span className="font-medium">{show.status}</span>
+                      </div>
+                    )}
                     {show.firstAirDate && (
                       <div className="flex justify-between items-center py-2 border-b border-border/50">
                         <span className="text-muted-foreground">First Air Date</span>
                         <span className="font-medium">{new Date(show.firstAirDate).toLocaleDateString()}</span>
                       </div>
                     )}
+                    {show.nextAirDate && (
+                      <div className="flex justify-between items-center py-2 border-b border-border/50">
+                        <span className="text-muted-foreground">Next Air Date</span>
+                        <span className="font-medium">{new Date(show.nextAirDate).toLocaleDateString()}</span>
+                      </div>
+                    )}
                     {show.lastAirDate && (
                       <div className="flex justify-between items-center py-2 border-b border-border/50">
                         <span className="text-muted-foreground">Last Air Date</span>
                         <span className="font-medium">{new Date(show.lastAirDate).toLocaleDateString()}</span>
+                      </div>
+                    )}
+                    {show.originalLanguage && (
+                      <div className="flex justify-between items-center py-2 border-b border-border/50">
+                        <span className="text-muted-foreground">Original Language</span>
+                        <span className="font-medium">{show.originalLanguage.toUpperCase()}</span>
+                      </div>
+                    )}
+                    {show.productionCountries && show.productionCountries.length > 0 && (
+                      <div className="flex justify-between items-center py-2 border-b border-border/50">
+                        <span className="text-muted-foreground">Production Countries</span>
+                        <span className="font-medium">{show.productionCountries.join(', ')}</span>
                       </div>
                     )}
                     <div className="flex justify-between items-center py-2 border-b border-border/50">
@@ -320,6 +388,26 @@ export default function TVDetail() {
                 </CardContent>
               </Card>
 
+              {show.watchProviders && show.watchProviders.length > 0 && (
+                <Card className="mt-4">
+                  <CardHeader>
+                    <CardTitle className="text-lg">Currently Streaming On</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex flex-wrap gap-3">
+                      {show.watchProviders.map((p) => (
+                        <div key={p.providerId} className="platform-card flex items-center gap-2">
+                          {p.logoPath ? (
+                            <img src={`https://image.tmdb.org/t/p/w45${p.logoPath}`} alt="" className="h-8 w-8 rounded" loading="lazy" />
+                          ) : null}
+                          <span className="text-sm">{p.name}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
               {/* External Links */}
               <div className="flex gap-2 mt-4">
                 <Button
@@ -330,6 +418,26 @@ export default function TVDetail() {
                 >
                   <Film className="h-4 w-4" />
                 </Button>
+                {show.externalIds?.imdbId && (
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => window.open(`https://www.imdb.com/title/${show.externalIds!.imdbId}`, '_blank')}
+                    title="View on IMDb"
+                  >
+                    IMDB
+                  </Button>
+                )}
+                {show.externalIds?.tvdbId && (
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => window.open(`https://thetvdb.com/?id=${show.externalIds!.tvdbId}&tab=series`, '_blank')}
+                    title="View on TVDB"
+                  >
+                    TVDB
+                  </Button>
+                )}
               </div>
             </div>
           </div>

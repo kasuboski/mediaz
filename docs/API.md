@@ -207,7 +207,11 @@ Base path: `/api/v1`
 - `backdropPath?`: string
 - `firstAirDate?`: string
 - `lastAirDate?`: string
-- `networks?`: [string]
+- `status?`: string
+- `nextAirDate?`: string
+- `originalLanguage?`: string
+- `productionCountries?`: [string]
+- `networks?`: [ `NetworkInfo` ]
 - `seasonCount`: int
 - `episodeCount`: int
 - `adult?`: bool
@@ -220,6 +224,21 @@ Base path: `/api/v1`
 - `qualityProfileID?`: int
 - `monitored?`: bool
 - `seasons?`: [ `SeasonResult` ]
+- `externalIds?`: `ExternalIDs`
+- `watchProviders?`: [ `WatchProvider` ]
+
+### NetworkInfo
+- `name`: string
+- `logoPath?`: string
+
+### ExternalIDs
+- `imdbId?`: string
+- `tvdbId?`: int
+
+### WatchProvider
+- `providerId`: int
+- `name`: string
+- `logoPath?`: string
 
 ### SearchMediaResponse
 - `page?`: int

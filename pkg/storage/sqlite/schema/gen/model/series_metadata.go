@@ -12,15 +12,17 @@ import (
 )
 
 type SeriesMetadata struct {
-	ID           int32 `sql:"primary_key"`
-	TmdbID       int32
-	Title        string
-	Overview     *string
-	LastInfoSync *time.Time
-	FirstAirDate *time.Time
-	LastAirDate  *time.Time
-	SeasonCount  int32
-	EpisodeCount int32
-	Status       string
-	PosterPath   *string
+	ID             int32 `sql:"primary_key"`
+	TmdbID         int32
+	Title          string
+	Overview       *string
+	LastInfoSync   *time.Time
+	FirstAirDate   *time.Time
+	LastAirDate    *time.Time
+	SeasonCount    int32
+	EpisodeCount   int32
+	Status         string
+	PosterPath     *string
+	ExternalIds    *string
+	WatchProviders *string
 }

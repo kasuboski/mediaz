@@ -278,10 +278,13 @@ func TestListShowsInLibrary(t *testing.T) {
 		}
 
 		seriesMetadata := &model.SeriesMetadata{
-			ID:         1,
-			TmdbID:     321,
-			Title:      "Test Series",
-			PosterPath: ptr("poster.jpg"),
+			ID:             1,
+			TmdbID:         321,
+			Title:          "Test Series",
+			Status:         "Continuing",
+			PosterPath:     ptr("poster.jpg"),
+			ExternalIds:    nil,
+			WatchProviders: nil,
 		}
 
 		store.EXPECT().ListSeries(ctx).Return([]*storage.Series{series}, nil)
@@ -890,14 +893,17 @@ func TestBuildTVDetailResult(t *testing.T) {
 		firstAirDate := time.Date(2023, 1, 15, 0, 0, 0, 0, time.UTC)
 		lastAirDate := time.Date(2023, 12, 15, 0, 0, 0, 0, time.UTC)
 		metadata := &model.SeriesMetadata{
-			ID:           1,
-			TmdbID:       123,
-			Title:        "Test Series",
-			Overview:     ptr("Test series overview"),
-			FirstAirDate: &firstAirDate,
-			LastAirDate:  &lastAirDate,
-			SeasonCount:  2,
-			EpisodeCount: 20,
+			ID:             1,
+			TmdbID:         123,
+			Title:          "Test Series",
+			Status:         "Continuing",
+			Overview:       ptr("Test series overview"),
+			FirstAirDate:   &firstAirDate,
+			LastAirDate:    &lastAirDate,
+			SeasonCount:    2,
+			EpisodeCount:   20,
+			ExternalIds:    nil,
+			WatchProviders: nil,
 		}
 
 		// Mock TMDB details response
@@ -941,7 +947,9 @@ func TestBuildTVDetailResult(t *testing.T) {
 		assert.Equal(t, ptr("2023-12-15"), result.LastAirDate)
 		assert.Equal(t, int32(2), result.SeasonCount)
 		assert.Equal(t, int32(20), result.EpisodeCount)
-		assert.Equal(t, []string{"HBO", "Netflix"}, result.Networks)
+		require.Len(t, result.Networks, 2)
+		assert.Equal(t, "HBO", result.Networks[0].Name)
+		assert.Equal(t, "Netflix", result.Networks[1].Name)
 		assert.Equal(t, []string{"Drama", "Thriller"}, result.Genres)
 		assert.Equal(t, ptr(true), result.Adult)
 		pop := float64(8.5)
@@ -957,11 +965,14 @@ func TestBuildTVDetailResult(t *testing.T) {
 		m := New(nil, nil, nil, nil, nil, config.Manager{})
 
 		metadata := &model.SeriesMetadata{
-			ID:           1,
-			TmdbID:       123,
-			Title:        "Test Series",
-			SeasonCount:  1,
-			EpisodeCount: 10,
+			ID:             1,
+			TmdbID:         123,
+			Title:          "Test Series",
+			Status:         "Continuing",
+			SeasonCount:    1,
+			EpisodeCount:   10,
+			ExternalIds:    nil,
+			WatchProviders: nil,
 		}
 
 		details := &tmdb.SeriesDetailsResponse{
@@ -984,11 +995,14 @@ func TestBuildTVDetailResult(t *testing.T) {
 		m := New(nil, nil, nil, nil, nil, config.Manager{})
 
 		metadata := &model.SeriesMetadata{
-			ID:           1,
-			TmdbID:       123,
-			Title:        "Test Series",
-			SeasonCount:  1,
-			EpisodeCount: 5,
+			ID:             1,
+			TmdbID:         123,
+			Title:          "Test Series",
+			Status:         "Continuing",
+			SeasonCount:    1,
+			EpisodeCount:   5,
+			ExternalIds:    nil,
+			WatchProviders: nil,
 		}
 
 		details := &tmdb.SeriesDetailsResponse{
@@ -1015,11 +1029,14 @@ func TestBuildTVDetailResult(t *testing.T) {
 		m := New(nil, nil, nil, nil, nil, config.Manager{})
 
 		metadata := &model.SeriesMetadata{
-			ID:           1,
-			TmdbID:       123,
-			Title:        "Test Series",
-			SeasonCount:  1,
-			EpisodeCount: 5,
+			ID:             1,
+			TmdbID:         123,
+			Title:          "Test Series",
+			Status:         "Continuing",
+			SeasonCount:    1,
+			EpisodeCount:   5,
+			ExternalIds:    nil,
+			WatchProviders: nil,
 		}
 
 		details := &tmdb.SeriesDetailsResponse{
@@ -1056,14 +1073,19 @@ func TestGetTVDetailByTMDBID(t *testing.T) {
 		m := New(tmdbMock, nil, nil, store, nil, config.Manager{})
 
 		firstAirDate := time.Date(2023, 1, 15, 0, 0, 0, 0, time.UTC)
+		externalIDsJSON := `{"imdb_id":"tt7654321","tvdb_id":54321}`
+		watchProvidersJSON := `{"US":{"flatrate":[{"provider_id":8,"provider_name":"Netflix","logo_path":"/net.png"}]}}`
 		metadata := &model.SeriesMetadata{
-			ID:           1,
-			TmdbID:       123,
-			Title:        "Test Series",
-			Overview:     ptr("Test series overview"),
-			FirstAirDate: &firstAirDate,
-			SeasonCount:  2,
-			EpisodeCount: 20,
+		ID:             1,
+		TmdbID:         123,
+		Title:          "Test Series",
+		Overview:       ptr("Test series overview"),
+		FirstAirDate:   &firstAirDate,
+		SeasonCount:    2,
+		EpisodeCount:   20,
+		Status:         "Continuing",
+		ExternalIds:    &externalIDsJSON,
+		WatchProviders: &watchProvidersJSON,
 		}
 
 		// Mock series details response will be returned via HTTP response
@@ -1094,12 +1116,23 @@ func TestGetTVDetailByTMDBID(t *testing.T) {
 		assert.Equal(t, ptr("2023-01-15"), result.FirstAirDate)
 		assert.Equal(t, int32(2), result.SeasonCount)
 		assert.Equal(t, int32(20), result.EpisodeCount)
-		assert.Equal(t, []string{"HBO"}, result.Networks)
+		require.Len(t, result.Networks, 1)
+		assert.Equal(t, "HBO", result.Networks[0].Name)
 		assert.Equal(t, []string{"Drama"}, result.Genres)
 		assert.Equal(t, "Not In Library", result.LibraryStatus)
 		assert.Nil(t, result.Path)
 		assert.Nil(t, result.QualityProfileID)
 		assert.Nil(t, result.Monitored)
+		// Check external IDs from stored data
+		require.NotNil(t, result.ExternalIDs)
+		assert.Equal(t, ptr("tt7654321"), result.ExternalIDs.ImdbID)
+		tvdbID := 54321
+		assert.Equal(t, &tvdbID, result.ExternalIDs.TvdbID)
+		// Check watch providers from stored data
+		require.Len(t, result.WatchProviders, 1)
+		assert.Equal(t, 8, result.WatchProviders[0].ProviderID)
+		assert.Equal(t, "Netflix", result.WatchProviders[0].Name)
+		assert.Equal(t, ptr("/net.png"), result.WatchProviders[0].LogoPath)
 	})
 
 	t.Run("success - TV show in library", func(t *testing.T) {
@@ -1109,12 +1142,17 @@ func TestGetTVDetailByTMDBID(t *testing.T) {
 
 		m := New(tmdbMock, nil, nil, store, nil, config.Manager{})
 
+		emptyExternalIDsJSON := `{"imdb_id":null,"tvdb_id":null}`
+		emptyWatchProvidersJSON := `{"US":{"flatrate":[]}}`
 		metadata := &model.SeriesMetadata{
-			ID:           1,
-			TmdbID:       123,
-			Title:        "Test Series",
-			SeasonCount:  1,
-			EpisodeCount: 10,
+		ID:             1,
+		TmdbID:         123,
+		Title:          "Test Series",
+		SeasonCount:    1,
+		EpisodeCount:   10,
+		Status:         "Continuing",
+		ExternalIds:    &emptyExternalIDsJSON,
+		WatchProviders: &emptyWatchProvidersJSON,
 		}
 
 		// Mock series details response will be returned via HTTP response
@@ -1183,9 +1221,12 @@ func TestGetTVDetailByTMDBID(t *testing.T) {
 		m := New(tmdbMock, nil, nil, store, nil, config.Manager{})
 
 		metadata := &model.SeriesMetadata{
-			ID:     1,
-			TmdbID: 123,
-			Title:  "Test Series",
+			ID:             1,
+			TmdbID:         123,
+			Title:          "Test Series",
+			Status:         "Continuing",
+			ExternalIds:    nil,
+			WatchProviders: nil,
 		}
 
 		store.EXPECT().GetSeriesMetadata(ctx, gomock.Any()).Return(metadata, nil)
@@ -1207,9 +1248,12 @@ func TestGetTVDetailByTMDBID(t *testing.T) {
 		m := New(tmdbMock, nil, nil, store, nil, config.Manager{})
 
 		metadata := &model.SeriesMetadata{
-			ID:     1,
-			TmdbID: 123,
-			Title:  "Test Series",
+			ID:             1,
+			TmdbID:         123,
+			Title:          "Test Series",
+			Status:         "Continuing",
+			ExternalIds:    nil,
+			WatchProviders: nil,
 		}
 
 		// Mock series details response will be returned via HTTP response
@@ -1257,17 +1301,26 @@ func TestGetTVDetailByTMDBID(t *testing.T) {
 			Seasons:          []tmdb.Season{}, // Empty to avoid creating season metadata
 		}, nil)
 
+		// Mock external IDs and watch providers calls during metadata creation
+		extIDsResp := &http.Response{StatusCode: 200, Body: io.NopCloser(bytes.NewBufferString(`{"imdb_id":null,"tvdb_id":null}`))}
+		tmdbMock.EXPECT().TvSeriesExternalIds(ctx, int32(123)).Return(extIDsResp, nil)
+		wpResp := &http.Response{StatusCode: 200, Body: io.NopCloser(bytes.NewBufferString(`{"results":{"US":{"flatrate":[]}}}`))}
+		tmdbMock.EXPECT().TvSeriesWatchProviders(ctx, int32(123)).Return(wpResp, nil)
+
 		// Mock CreateSeriesMetadata call
 		store.EXPECT().CreateSeriesMetadata(ctx, gomock.Any()).Return(int64(1), nil)
 
 		// Mock GetSeriesMetadata call after creation
 		createdMetadata := &model.SeriesMetadata{
-			ID:           1,
-			TmdbID:       123,
-			Title:        "Test Series",
-			FirstAirDate: nil, // Should be nil due to empty date
-			SeasonCount:  1,
-			EpisodeCount: 10,
+			ID:             1,
+			TmdbID:         123,
+			Title:          "Test Series",
+			Status:         "Continuing",
+			FirstAirDate:   nil, // Should be nil due to empty date
+			SeasonCount:    1,
+			EpisodeCount:   10,
+			ExternalIds:    nil,
+			WatchProviders: nil,
 		}
 		store.EXPECT().GetSeriesMetadata(ctx, gomock.Any()).Return(createdMetadata, nil)
 
@@ -1374,10 +1427,16 @@ func TestMediaManager_AddSeriesToLibrary(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		metadataID, err := store.CreateSeriesMetadata(ctx, model.SeriesMetadata{
-			ID:     1,
-			TmdbID: 1234,
-		})
+	metadataID, err := store.CreateSeriesMetadata(ctx, model.SeriesMetadata{
+		ID:             1,
+		TmdbID:         1234,
+		Title:          "Test Series",
+		SeasonCount:    1,
+		EpisodeCount:   1,
+		Status:         "Continuing",
+		ExternalIds:    nil, // Optional field
+		WatchProviders: nil, // Optional field
+	})
 		require.NoError(t, err)
 
 		seriesID, err := store.CreateSeries(ctx, storage.Series{
@@ -1422,11 +1481,17 @@ func TestMediaManager_AddSeriesToLibrary(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		metadataID, err := store.CreateSeriesMetadata(ctx, model.SeriesMetadata{
-			ID:           1,
-			TmdbID:       1234,
-			FirstAirDate: ptr(time.Now().Add(time.Hour * 24 * 7)),
-		})
+	metadataID, err := store.CreateSeriesMetadata(ctx, model.SeriesMetadata{
+		ID:             1,
+		TmdbID:         1234,
+		Title:          "Test Series",
+		SeasonCount:    1,
+		EpisodeCount:   1,
+		Status:         "Continuing",
+		FirstAirDate:   ptr(time.Now().Add(time.Hour * 24 * 7)),
+		ExternalIds:    nil, // Optional field
+		WatchProviders: nil, // Optional field
+	})
 		require.NoError(t, err)
 
 		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
@@ -1484,6 +1549,12 @@ func TestMediaManager_AddSeriesToLibrary(t *testing.T) {
 		}
 
 		tmdbMock.EXPECT().GetSeriesDetails(gomock.Any(), gomock.Any()).Return(details, nil)
+
+		// Mock external IDs and watch providers calls during metadata creation
+		extIDsResp := &http.Response{StatusCode: 200, Body: io.NopCloser(bytes.NewBufferString(`{"imdb_id":null,"tvdb_id":null}`))}
+		tmdbMock.EXPECT().TvSeriesExternalIds(gomock.Any(), int32(1234)).Return(extIDsResp, nil)
+		wpResp := &http.Response{StatusCode: 200, Body: io.NopCloser(bytes.NewBufferString(`{"results":{"US":{"flatrate":[]}}}`))}
+		tmdbMock.EXPECT().TvSeriesWatchProviders(gomock.Any(), int32(1234)).Return(wpResp, nil)
 
 		m := New(tmdbMock, nil, nil, store, nil, config.Manager{})
 		require.NotNil(t, m)

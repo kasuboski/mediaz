@@ -17,17 +17,19 @@ type seriesMetadataTable struct {
 	sqlite.Table
 
 	// Columns
-	ID           sqlite.ColumnInteger
-	TmdbID       sqlite.ColumnInteger
-	Title        sqlite.ColumnString
-	Overview     sqlite.ColumnString
-	LastInfoSync sqlite.ColumnTimestamp
-	FirstAirDate sqlite.ColumnTimestamp
-	LastAirDate  sqlite.ColumnTimestamp
-	SeasonCount  sqlite.ColumnInteger
-	EpisodeCount sqlite.ColumnInteger
-	Status       sqlite.ColumnString
-	PosterPath   sqlite.ColumnString
+	ID             sqlite.ColumnInteger
+	TmdbID         sqlite.ColumnInteger
+	Title          sqlite.ColumnString
+	Overview       sqlite.ColumnString
+	LastInfoSync   sqlite.ColumnTimestamp
+	FirstAirDate   sqlite.ColumnTimestamp
+	LastAirDate    sqlite.ColumnTimestamp
+	SeasonCount    sqlite.ColumnInteger
+	EpisodeCount   sqlite.ColumnInteger
+	Status         sqlite.ColumnString
+	PosterPath     sqlite.ColumnString
+	ExternalIds    sqlite.ColumnString
+	WatchProviders sqlite.ColumnString
 
 	AllColumns     sqlite.ColumnList
 	MutableColumns sqlite.ColumnList
@@ -68,36 +70,40 @@ func newSeriesMetadataTable(schemaName, tableName, alias string) *SeriesMetadata
 
 func newSeriesMetadataTableImpl(schemaName, tableName, alias string) seriesMetadataTable {
 	var (
-		IDColumn           = sqlite.IntegerColumn("id")
-		TmdbIDColumn       = sqlite.IntegerColumn("tmdb_id")
-		TitleColumn        = sqlite.StringColumn("title")
-		OverviewColumn     = sqlite.StringColumn("overview")
-		LastInfoSyncColumn = sqlite.TimestampColumn("last_info_sync")
-		FirstAirDateColumn = sqlite.TimestampColumn("first_air_date")
-		LastAirDateColumn  = sqlite.TimestampColumn("last_air_date")
-		SeasonCountColumn  = sqlite.IntegerColumn("season_count")
-		EpisodeCountColumn = sqlite.IntegerColumn("episode_count")
-		StatusColumn       = sqlite.StringColumn("status")
-		PosterPathColumn   = sqlite.StringColumn("poster_path")
-		allColumns         = sqlite.ColumnList{IDColumn, TmdbIDColumn, TitleColumn, OverviewColumn, LastInfoSyncColumn, FirstAirDateColumn, LastAirDateColumn, SeasonCountColumn, EpisodeCountColumn, StatusColumn, PosterPathColumn}
-		mutableColumns     = sqlite.ColumnList{TmdbIDColumn, TitleColumn, OverviewColumn, LastInfoSyncColumn, FirstAirDateColumn, LastAirDateColumn, SeasonCountColumn, EpisodeCountColumn, StatusColumn, PosterPathColumn}
+		IDColumn             = sqlite.IntegerColumn("id")
+		TmdbIDColumn         = sqlite.IntegerColumn("tmdb_id")
+		TitleColumn          = sqlite.StringColumn("title")
+		OverviewColumn       = sqlite.StringColumn("overview")
+		LastInfoSyncColumn   = sqlite.TimestampColumn("last_info_sync")
+		FirstAirDateColumn   = sqlite.TimestampColumn("first_air_date")
+		LastAirDateColumn    = sqlite.TimestampColumn("last_air_date")
+		SeasonCountColumn    = sqlite.IntegerColumn("season_count")
+		EpisodeCountColumn   = sqlite.IntegerColumn("episode_count")
+		StatusColumn         = sqlite.StringColumn("status")
+		PosterPathColumn     = sqlite.StringColumn("poster_path")
+		ExternalIdsColumn    = sqlite.StringColumn("external_ids")
+		WatchProvidersColumn = sqlite.StringColumn("watch_providers")
+		allColumns           = sqlite.ColumnList{IDColumn, TmdbIDColumn, TitleColumn, OverviewColumn, LastInfoSyncColumn, FirstAirDateColumn, LastAirDateColumn, SeasonCountColumn, EpisodeCountColumn, StatusColumn, PosterPathColumn, ExternalIdsColumn, WatchProvidersColumn}
+		mutableColumns       = sqlite.ColumnList{TmdbIDColumn, TitleColumn, OverviewColumn, LastInfoSyncColumn, FirstAirDateColumn, LastAirDateColumn, SeasonCountColumn, EpisodeCountColumn, StatusColumn, PosterPathColumn, ExternalIdsColumn, WatchProvidersColumn}
 	)
 
 	return seriesMetadataTable{
 		Table: sqlite.NewTable(schemaName, tableName, alias, allColumns...),
 
 		//Columns
-		ID:           IDColumn,
-		TmdbID:       TmdbIDColumn,
-		Title:        TitleColumn,
-		Overview:     OverviewColumn,
-		LastInfoSync: LastInfoSyncColumn,
-		FirstAirDate: FirstAirDateColumn,
-		LastAirDate:  LastAirDateColumn,
-		SeasonCount:  SeasonCountColumn,
-		EpisodeCount: EpisodeCountColumn,
-		Status:       StatusColumn,
-		PosterPath:   PosterPathColumn,
+		ID:             IDColumn,
+		TmdbID:         TmdbIDColumn,
+		Title:          TitleColumn,
+		Overview:       OverviewColumn,
+		LastInfoSync:   LastInfoSyncColumn,
+		FirstAirDate:   FirstAirDateColumn,
+		LastAirDate:    LastAirDateColumn,
+		SeasonCount:    SeasonCountColumn,
+		EpisodeCount:   EpisodeCountColumn,
+		Status:         StatusColumn,
+		PosterPath:     PosterPathColumn,
+		ExternalIds:    ExternalIdsColumn,
+		WatchProviders: WatchProvidersColumn,
 
 		AllColumns:     allColumns,
 		MutableColumns: mutableColumns,

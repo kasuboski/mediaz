@@ -244,15 +244,20 @@ func TestServer_GetTVDetailByTMDBID(t *testing.T) {
 		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
 
 		// Setup expectations for GetSeriesMetadata call
+		externalIDsJSON := `{"imdb_id":"tt1234567","tvdb_id":12345}`
+		watchProvidersJSON := `{"US":{"flatrate":[{"provider_id":8,"provider_name":"Netflix","logo_path":"/net.png"}]}}`
 		expectedMetadata := &model.SeriesMetadata{
-			ID:           1,
-			TmdbID:       12345,
-			Title:        "Test TV Show",
-			Overview:     ptr("A test TV show overview"),
-			FirstAirDate: ptr(time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC)),
-			LastAirDate:  ptr(time.Date(2023, 12, 31, 0, 0, 0, 0, time.UTC)),
-			SeasonCount:  3,
-			EpisodeCount: 30,
+		ID:             1,
+		TmdbID:         12345,
+		Title:          "Test TV Show",
+		Overview:       ptr("A test TV show overview"),
+		FirstAirDate:   ptr(time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC)),
+		LastAirDate:    ptr(time.Date(2023, 12, 31, 0, 0, 0, 0, time.UTC)),
+		SeasonCount:    3,
+		EpisodeCount:   30,
+		Status:         "Continuing",
+		ExternalIds:    &externalIDsJSON,
+		WatchProviders: &watchProvidersJSON,
 		}
 
 		store.EXPECT().GetSeriesMetadata(gomock.Any(), gomock.Any()).Return(expectedMetadata, nil)
@@ -270,9 +275,9 @@ func TestServer_GetTVDetailByTMDBID(t *testing.T) {
 			StatusCode: 200,
 			Body:       io.NopCloser(strings.NewReader(responseBody)),
 		}
-		tmdbMock.EXPECT().TvSeriesDetails(gomock.Any(), int32(12345), nil).Return(resp, nil)
+tmdbMock.EXPECT().TvSeriesDetails(gomock.Any(), int32(12345), nil).Return(resp, nil)
 
-		// Setup expectations for GetSeries call
+// Setup expectations for GetSeries call
 		expectedSeries := &storage.Series{
 			Series: model.Series{
 				ID:               1,
@@ -362,10 +367,14 @@ func TestServer_GetTVDetailByTMDBID(t *testing.T) {
 		assert.Equal(t, float64(3), tvDetail["seasonCount"])
 		assert.Equal(t, float64(30), tvDetail["episodeCount"])
 
-		// Check networks array
+		// Check networks array (objects with name/logoPath)
 		networks, ok := tvDetail["networks"].([]any)
 		require.True(t, ok)
-		assert.Equal(t, []any{"HBO", "Netflix"}, networks)
+		require.Len(t, networks, 2)
+		first := networks[0].(map[string]any)
+		second := networks[1].(map[string]any)
+		assert.Equal(t, "HBO", first["name"])
+		assert.Equal(t, "Netflix", second["name"])
 
 		// Check genres array
 		genres, ok := tvDetail["genres"].([]any)
@@ -411,12 +420,17 @@ func TestServer_GetTVDetailByTMDBID(t *testing.T) {
 		store := storeMocks.NewMockStorage(ctrl)
 		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
 
+		emptyExternalIDsJSON := `{"imdb_id":null,"tvdb_id":null}`
+		emptyWatchProvidersJSON := `{"US":{"flatrate":[]}}`
 		expectedMetadata := &model.SeriesMetadata{
-			ID:           1,
-			TmdbID:       12345,
-			Title:        "Test TV Show",
-			SeasonCount:  2,
-			EpisodeCount: 20,
+		ID:             1,
+		TmdbID:         12345,
+		Title:          "Test TV Show",
+		SeasonCount:    2,
+		EpisodeCount:   20,
+		Status:         "Continuing",
+		ExternalIds:    &emptyExternalIDsJSON,
+		WatchProviders: &emptyWatchProvidersJSON,
 		}
 
 		store.EXPECT().GetSeriesMetadata(gomock.Any(), gomock.Any()).Return(expectedMetadata, nil)
@@ -426,9 +440,9 @@ func TestServer_GetTVDetailByTMDBID(t *testing.T) {
 			StatusCode: 200,
 			Body:       io.NopCloser(strings.NewReader(responseBody)),
 		}
-		tmdbMock.EXPECT().TvSeriesDetails(gomock.Any(), int32(12345), nil).Return(resp, nil)
+tmdbMock.EXPECT().TvSeriesDetails(gomock.Any(), int32(12345), nil).Return(resp, nil)
 
-		store.EXPECT().GetSeries(gomock.Any(), gomock.Any()).Return(nil, storage.ErrNotFound)
+store.EXPECT().GetSeries(gomock.Any(), gomock.Any()).Return(nil, storage.ErrNotFound)
 
 		mgr := manager.New(tmdbMock, nil, nil, store, nil, config.Manager{})
 

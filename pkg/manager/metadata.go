@@ -2,7 +2,10 @@ package manager
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"io"
+	"net/http"
 	"strings"
 	"time"
 
@@ -78,6 +81,16 @@ func (m MediaManager) loadSeriesMetadata(ctx context.Context, tmdbID int) (*mode
 	if err != nil {
 		log.Error("failed to parse series details", zap.Error(err))
 		return nil, err
+	}
+
+	// Fetch external IDs from TMDB
+	if extIDs, err := m.fetchExternalIDs(ctx, tmdbID); err == nil && extIDs != nil {
+		series.ExternalIds = extIDs
+	}
+
+	// Fetch watch providers from TMDB
+	if watchProviders, err := m.fetchWatchProviders(ctx, tmdbID); err == nil && watchProviders != nil {
+		series.WatchProviders = watchProviders
 	}
 
 	seriesMetadataID, err := m.storage.CreateSeriesMetadata(ctx, series)
@@ -254,6 +267,10 @@ func FromSeriesEpisodes(episode tmdb.Episode) model.EpisodeMetadata {
 		model.AirDate = airDate
 	}
 
+	if episode.StillPath != "" {
+		model.StillPath = &episode.StillPath
+	}
+
 	return model
 }
 
@@ -266,4 +283,128 @@ func parseTMDBDate(date string) (*time.Time, error) {
 		return nil, err
 	}
 	return &t, nil
+}
+
+// fetchExternalIDs fetches and serializes external IDs for a TV series from TMDB.
+// Returns nil with no error if the data could not be fetched or parsed.
+func (m MediaManager) fetchExternalIDs(ctx context.Context, tmdbID int) (*string, error) {
+	log := logger.FromCtx(ctx)
+	
+	extIDsResp, err := m.tmdb.TvSeriesExternalIds(ctx, int32(tmdbID))
+	if err != nil {
+		log.Debug("failed to fetch external IDs", zap.Error(err))
+		return nil, nil
+	}
+	defer extIDsResp.Body.Close()
+	
+	if extIDsResp.StatusCode != 200 {
+		return nil, nil
+	}
+	
+	extIDsData, err := parseExternalIDs(extIDsResp)
+	if err != nil {
+		log.Debug("failed to parse external IDs", zap.Error(err))
+		return nil, nil
+	}
+	
+	serialized, err := SerializeExternalIDs(extIDsData)
+	if err != nil {
+		log.Debug("failed to serialize external IDs", zap.Error(err))
+		return nil, nil
+	}
+	
+	return serialized, nil
+}
+
+// fetchWatchProviders fetches and serializes watch providers for a TV series from TMDB.
+// Returns nil with no error if the data could not be fetched or parsed.
+func (m MediaManager) fetchWatchProviders(ctx context.Context, tmdbID int) (*string, error) {
+	log := logger.FromCtx(ctx)
+	
+	wpResp, err := m.tmdb.TvSeriesWatchProviders(ctx, int32(tmdbID))
+	if err != nil {
+		log.Debug("failed to fetch watch providers", zap.Error(err))
+		return nil, nil
+	}
+	defer wpResp.Body.Close()
+	
+	if wpResp.StatusCode != 200 {
+		return nil, nil
+	}
+	
+	wpData, err := parseWatchProviders(wpResp)
+	if err != nil {
+		log.Debug("failed to parse watch providers", zap.Error(err))
+		return nil, nil
+	}
+	
+	serialized, err := SerializeWatchProviders(wpData)
+	if err != nil {
+		log.Debug("failed to serialize watch providers", zap.Error(err))
+		return nil, nil
+	}
+	
+	return serialized, nil
+}
+
+// parseExternalIDs parses TMDB external IDs response
+func parseExternalIDs(resp *http.Response) (*ExternalIDsData, error) {
+	defer resp.Body.Close()
+	b, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var result ExternalIDsData
+	if err := json.Unmarshal(b, &result); err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
+// parseWatchProviders parses TMDB watch providers response
+func parseWatchProviders(resp *http.Response) (*WatchProvidersData, error) {
+	defer resp.Body.Close()
+	b, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	type tmdbProvider struct {
+		ProviderID   *int    `json:"provider_id"`
+		ProviderName *string `json:"provider_name"`
+		LogoPath     *string `json:"logo_path"`
+	}
+	type tmdbRegion struct {
+		Flatrate []tmdbProvider `json:"flatrate"`
+		Link     *string        `json:"link"`
+	}
+	type tmdbRoot struct {
+		Results map[string]tmdbRegion `json:"results"`
+	}
+
+	var tmdbData tmdbRoot
+	if err := json.Unmarshal(b, &tmdbData); err != nil {
+		return nil, err
+	}
+
+	// Convert TMDB format to our format
+	result := &WatchProvidersData{}
+	if us, ok := tmdbData.Results["US"]; ok {
+		providers := make([]WatchProviderData, 0, len(us.Flatrate))
+		for _, p := range us.Flatrate {
+			if p.ProviderID != nil && p.ProviderName != nil {
+				providers = append(providers, WatchProviderData{
+					ProviderID: *p.ProviderID,
+					Name:       *p.ProviderName,
+					LogoPath:   p.LogoPath,
+				})
+			}
+		}
+		result.US = WatchProviderRegionData{
+			Flatrate: providers,
+			Link:     us.Link,
+		}
+	}
+	return result, nil
 }

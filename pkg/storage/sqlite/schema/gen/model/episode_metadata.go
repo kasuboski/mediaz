@@ -20,4 +20,5 @@ type EpisodeMetadata struct {
 	Overview         *string
 	AirDate          *time.Time
 	Runtime          *int32
+	StillPath        *string
 }
