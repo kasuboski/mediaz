@@ -16,6 +16,7 @@ func UseSchema(schema string) {
 	EpisodeMetadata = EpisodeMetadata.FromSchema(schema)
 	EpisodeTransition = EpisodeTransition.FromSchema(schema)
 	Indexer = Indexer.FromSchema(schema)
+	Job = Job.FromSchema(schema)
 	Movie = Movie.FromSchema(schema)
 	MovieFile = MovieFile.FromSchema(schema)
 	MovieMetadata = MovieMetadata.FromSchema(schema)
