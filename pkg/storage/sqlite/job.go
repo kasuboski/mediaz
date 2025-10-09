@@ -13,6 +13,29 @@ import (
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/table"
 )
 
+// getJobByTypeAndState retrieves a job by type and state
+func (s *SQLite) getJobByTypeAndState(ctx context.Context, jobType string, state storage.JobState) (*storage.Job, error) {
+	stmt := table.Job.
+		SELECT(table.Job.AllColumns).
+		FROM(table.Job).
+		WHERE(
+			table.Job.Type.EQ(sqlite.String(jobType)).
+				AND(table.Job.ToState.EQ(sqlite.String(string(state)))).
+				AND(table.Job.MostRecent.EQ(sqlite.Bool(true))),
+		)
+
+	job := new(storage.Job)
+	err := stmt.QueryContext(ctx, s.db, job)
+	if err != nil {
+		if errors.Is(err, qrm.ErrNoRows) {
+			return nil, storage.ErrNotFound
+		}
+		return nil, fmt.Errorf("failed to get job by type and state: %w", err)
+	}
+
+	return job, nil
+}
+
 // CreateJob stores a job and creates an initial state
 func (s *SQLite) CreateJob(ctx context.Context, job storage.Job, initialState storage.JobState) (int64, error) {
 	if job.State == "" {
@@ -22,6 +45,17 @@ func (s *SQLite) CreateJob(ctx context.Context, job storage.Job, initialState st
 	err := job.Machine().ToState(initialState)
 	if err != nil {
 		return 0, err
+	}
+
+	// Check for duplicate pending jobs
+	if initialState == storage.JobStatePending {
+		existing, err := s.getJobByTypeAndState(ctx, job.Type, storage.JobStatePending)
+		if err == nil && existing != nil {
+			return 0, storage.ErrJobAlreadyPending
+		}
+		if err != nil && !errors.Is(err, storage.ErrNotFound) {
+			return 0, err
+		}
 	}
 
 	s.mu.Lock()

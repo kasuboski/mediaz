@@ -13,6 +13,7 @@ import (
 )
 
 var ErrNotFound = errors.New("not found in storage")
+var ErrJobAlreadyPending = errors.New("job of this type already pending")
 
 //go:embed sqlite/schema/*.sql
 var schemaFiles embed.FS

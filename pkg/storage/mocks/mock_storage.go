@@ -117,6 +117,21 @@ func (mr *MockStorageMockRecorder) CreateIndexer(ctx, indexer any) *gomock.Call 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateIndexer", reflect.TypeOf((*MockStorage)(nil).CreateIndexer), ctx, indexer)
 }
 
+// CreateJob mocks base method.
+func (m *MockStorage) CreateJob(ctx context.Context, job storage.Job, initialState storage.JobState) (int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateJob", ctx, job, initialState)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CreateJob indicates an expected call of CreateJob.
+func (mr *MockStorageMockRecorder) CreateJob(ctx, job, initialState any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateJob", reflect.TypeOf((*MockStorage)(nil).CreateJob), ctx, job, initialState)
+}
+
 // CreateMovie mocks base method.
 func (m *MockStorage) CreateMovie(ctx context.Context, movie storage.Movie, state storage.MovieState) (int64, error) {
 	m.ctrl.T.Helper()
@@ -337,6 +352,20 @@ func (mr *MockStorageMockRecorder) DeleteIndexer(ctx, id any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteIndexer", reflect.TypeOf((*MockStorage)(nil).DeleteIndexer), ctx, id)
 }
 
+// DeleteJob mocks base method.
+func (m *MockStorage) DeleteJob(ctx context.Context, id int64) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteJob", ctx, id)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteJob indicates an expected call of DeleteJob.
+func (mr *MockStorageMockRecorder) DeleteJob(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteJob", reflect.TypeOf((*MockStorage)(nil).DeleteJob), ctx, id)
+}
+
 // DeleteMovie mocks base method.
 func (m *MockStorage) DeleteMovie(ctx context.Context, id int64) error {
 	m.ctrl.T.Helper()
@@ -550,6 +579,21 @@ func (m *MockStorage) GetEpisodeMetadata(ctx context.Context, where sqlite.BoolE
 func (mr *MockStorageMockRecorder) GetEpisodeMetadata(ctx, where any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetEpisodeMetadata", reflect.TypeOf((*MockStorage)(nil).GetEpisodeMetadata), ctx, where)
+}
+
+// GetJob mocks base method.
+func (m *MockStorage) GetJob(ctx context.Context, id int64) (*storage.Job, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetJob", ctx, id)
+	ret0, _ := ret[0].(*storage.Job)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetJob indicates an expected call of GetJob.
+func (mr *MockStorageMockRecorder) GetJob(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetJob", reflect.TypeOf((*MockStorage)(nil).GetJob), ctx, id)
 }
 
 // GetMovie mocks base method.
@@ -907,6 +951,36 @@ func (mr *MockStorageMockRecorder) ListIndexers(ctx any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListIndexers", reflect.TypeOf((*MockStorage)(nil).ListIndexers), ctx)
 }
 
+// ListJobs mocks base method.
+func (m *MockStorage) ListJobs(ctx context.Context) ([]*storage.Job, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListJobs", ctx)
+	ret0, _ := ret[0].([]*storage.Job)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListJobs indicates an expected call of ListJobs.
+func (mr *MockStorageMockRecorder) ListJobs(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListJobs", reflect.TypeOf((*MockStorage)(nil).ListJobs), ctx)
+}
+
+// ListJobsByState mocks base method.
+func (m *MockStorage) ListJobsByState(ctx context.Context, state storage.JobState) ([]*storage.Job, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListJobsByState", ctx, state)
+	ret0, _ := ret[0].([]*storage.Job)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListJobsByState indicates an expected call of ListJobsByState.
+func (mr *MockStorageMockRecorder) ListJobsByState(ctx, state any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListJobsByState", reflect.TypeOf((*MockStorage)(nil).ListJobsByState), ctx, state)
+}
+
 // ListMovieFiles mocks base method.
 func (m *MockStorage) ListMovieFiles(ctx context.Context) ([]*model.MovieFile, error) {
 	m.ctrl.T.Helper()
@@ -1123,6 +1197,20 @@ func (m *MockStorage) UpdateEpisodeState(ctx context.Context, id int64, state st
 func (mr *MockStorageMockRecorder) UpdateEpisodeState(ctx, id, state, metadata any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateEpisodeState", reflect.TypeOf((*MockStorage)(nil).UpdateEpisodeState), ctx, id, state, metadata)
+}
+
+// UpdateJobState mocks base method.
+func (m *MockStorage) UpdateJobState(ctx context.Context, id int64, state storage.JobState, errorMsg *string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateJobState", ctx, id, state, errorMsg)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateJobState indicates an expected call of UpdateJobState.
+func (mr *MockStorageMockRecorder) UpdateJobState(ctx, id, state, errorMsg any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateJobState", reflect.TypeOf((*MockStorage)(nil).UpdateJobState), ctx, id, state, errorMsg)
 }
 
 // UpdateMovieMovieFileID mocks base method.
@@ -1858,6 +1946,117 @@ func (m *MockDownloadClientStorage) ListDownloadClients(ctx context.Context) ([]
 func (mr *MockDownloadClientStorageMockRecorder) ListDownloadClients(ctx any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListDownloadClients", reflect.TypeOf((*MockDownloadClientStorage)(nil).ListDownloadClients), ctx)
+}
+
+// MockJobStorage is a mock of JobStorage interface.
+type MockJobStorage struct {
+	ctrl     *gomock.Controller
+	recorder *MockJobStorageMockRecorder
+}
+
+// MockJobStorageMockRecorder is the mock recorder for MockJobStorage.
+type MockJobStorageMockRecorder struct {
+	mock *MockJobStorage
+}
+
+// NewMockJobStorage creates a new mock instance.
+func NewMockJobStorage(ctrl *gomock.Controller) *MockJobStorage {
+	mock := &MockJobStorage{ctrl: ctrl}
+	mock.recorder = &MockJobStorageMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockJobStorage) EXPECT() *MockJobStorageMockRecorder {
+	return m.recorder
+}
+
+// CreateJob mocks base method.
+func (m *MockJobStorage) CreateJob(ctx context.Context, job storage.Job, initialState storage.JobState) (int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateJob", ctx, job, initialState)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CreateJob indicates an expected call of CreateJob.
+func (mr *MockJobStorageMockRecorder) CreateJob(ctx, job, initialState any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateJob", reflect.TypeOf((*MockJobStorage)(nil).CreateJob), ctx, job, initialState)
+}
+
+// DeleteJob mocks base method.
+func (m *MockJobStorage) DeleteJob(ctx context.Context, id int64) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteJob", ctx, id)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteJob indicates an expected call of DeleteJob.
+func (mr *MockJobStorageMockRecorder) DeleteJob(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteJob", reflect.TypeOf((*MockJobStorage)(nil).DeleteJob), ctx, id)
+}
+
+// GetJob mocks base method.
+func (m *MockJobStorage) GetJob(ctx context.Context, id int64) (*storage.Job, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetJob", ctx, id)
+	ret0, _ := ret[0].(*storage.Job)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetJob indicates an expected call of GetJob.
+func (mr *MockJobStorageMockRecorder) GetJob(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetJob", reflect.TypeOf((*MockJobStorage)(nil).GetJob), ctx, id)
+}
+
+// ListJobs mocks base method.
+func (m *MockJobStorage) ListJobs(ctx context.Context) ([]*storage.Job, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListJobs", ctx)
+	ret0, _ := ret[0].([]*storage.Job)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListJobs indicates an expected call of ListJobs.
+func (mr *MockJobStorageMockRecorder) ListJobs(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListJobs", reflect.TypeOf((*MockJobStorage)(nil).ListJobs), ctx)
+}
+
+// ListJobsByState mocks base method.
+func (m *MockJobStorage) ListJobsByState(ctx context.Context, state storage.JobState) ([]*storage.Job, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListJobsByState", ctx, state)
+	ret0, _ := ret[0].([]*storage.Job)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListJobsByState indicates an expected call of ListJobsByState.
+func (mr *MockJobStorageMockRecorder) ListJobsByState(ctx, state any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListJobsByState", reflect.TypeOf((*MockJobStorage)(nil).ListJobsByState), ctx, state)
+}
+
+// UpdateJobState mocks base method.
+func (m *MockJobStorage) UpdateJobState(ctx context.Context, id int64, state storage.JobState, errorMsg *string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateJobState", ctx, id, state, errorMsg)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateJobState indicates an expected call of UpdateJobState.
+func (mr *MockJobStorageMockRecorder) UpdateJobState(ctx, id, state, errorMsg any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateJobState", reflect.TypeOf((*MockJobStorage)(nil).UpdateJobState), ctx, id, state, errorMsg)
 }
 
 // MockSeriesStorage is a mock of SeriesStorage interface.

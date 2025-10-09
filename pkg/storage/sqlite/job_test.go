@@ -71,6 +71,29 @@ func TestSQLite_CreateJob(t *testing.T) {
 		_, err := store.CreateJob(ctx, job, storage.JobStateDone)
 		assert.Error(t, err)
 	})
+
+	t.Run("prevent duplicate pending jobs", func(t *testing.T) {
+		ctx := context.Background()
+		store := initTestDB(t)
+
+		job := storage.Job{
+			Job: model.Job{
+				Type: "duplicate-test",
+			},
+		}
+
+		id1, err := store.CreateJob(ctx, job, storage.JobStatePending)
+		assert.NoError(t, err)
+		assert.NotZero(t, id1)
+
+		_, err = store.CreateJob(ctx, job, storage.JobStatePending)
+		assert.ErrorIs(t, err, storage.ErrJobAlreadyPending)
+
+		got, err := store.GetJob(ctx, id1)
+		assert.NoError(t, err)
+		assert.Equal(t, "duplicate-test", got.Type)
+		assert.Equal(t, storage.JobStatePending, got.State)
+	})
 }
 
 func TestSQLite_GetJob(t *testing.T) {
@@ -120,20 +143,12 @@ func TestSQLite_ListJobs(t *testing.T) {
 		ctx := context.Background()
 		store := initTestDB(t)
 
-		job1 := storage.Job{
+		job := storage.Job{
 			Job: model.Job{
-				Type: "job-1",
+				Type: "list-test",
 			},
 		}
-		id1, err := store.CreateJob(ctx, job1, storage.JobStatePending)
-		require.NoError(t, err)
-
-		job2 := storage.Job{
-			Job: model.Job{
-				Type: "job-2",
-			},
-		}
-		id2, err := store.CreateJob(ctx, job2, storage.JobStateRunning)
+		id, err := store.CreateJob(ctx, job, storage.JobStatePending)
 		require.NoError(t, err)
 
 		got, err := store.ListJobs(ctx)
@@ -142,23 +157,13 @@ func TestSQLite_ListJobs(t *testing.T) {
 		want := []*storage.Job{
 			{
 				Job: model.Job{
-					ID:         int32(id1),
-					Type:       "job-1",
+					ID:         int32(id),
+					Type:       "list-test",
 					ToState:    string(storage.JobStatePending),
 					MostRecent: true,
 					SortKey:    1,
 				},
 				State: storage.JobStatePending,
-			},
-			{
-				Job: model.Job{
-					ID:         int32(id2),
-					Type:       "job-2",
-					ToState:    string(storage.JobStateRunning),
-					MostRecent: true,
-					SortKey:    1,
-				},
-				State: storage.JobStateRunning,
 			},
 		}
 
@@ -194,14 +199,6 @@ func TestSQLite_ListJobsByState(t *testing.T) {
 		id, err := store.CreateJob(ctx, pendingJob, storage.JobStatePending)
 		require.NoError(t, err)
 
-		runningJob := storage.Job{
-			Job: model.Job{
-				Type: "running-job",
-			},
-		}
-		_, err = store.CreateJob(ctx, runningJob, storage.JobStateRunning)
-		require.NoError(t, err)
-
 		got, err := store.ListJobsByState(ctx, storage.JobStatePending)
 		assert.NoError(t, err)
 
@@ -229,25 +226,30 @@ func TestSQLite_ListJobsByState(t *testing.T) {
 		ctx := context.Background()
 		store := initTestDB(t)
 
-		runningJob := storage.Job{
+		job := storage.Job{
 			Job: model.Job{
 				Type: "running-job",
 			},
 		}
-		id, err := store.CreateJob(ctx, runningJob, storage.JobStateRunning)
+		id, err := store.CreateJob(ctx, job, storage.JobStatePending)
+		require.NoError(t, err)
+
+		err = store.UpdateJobState(ctx, id, storage.JobStateRunning, nil)
 		require.NoError(t, err)
 
 		got, err := store.ListJobsByState(ctx, storage.JobStateRunning)
 		assert.NoError(t, err)
 
+		fromState := string(storage.JobStatePending)
 		want := []*storage.Job{
 			{
 				Job: model.Job{
 					ID:         int32(id),
 					Type:       "running-job",
 					ToState:    string(storage.JobStateRunning),
+					FromState:  &fromState,
 					MostRecent: true,
-					SortKey:    1,
+					SortKey:    2,
 				},
 				State: storage.JobStateRunning,
 			},

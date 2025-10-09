@@ -284,3 +284,7 @@ WHERE
     "most_recent" = 1;
 
 CREATE UNIQUE INDEX IF NOT EXISTS "idx_job_sort_key" ON "job"("sort_key");
+
+CREATE UNIQUE INDEX IF NOT EXISTS "idx_job_type_pending" ON "job"("type", "to_state")
+WHERE
+    "to_state" = 'pending' AND "most_recent" = 1;
