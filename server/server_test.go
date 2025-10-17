@@ -94,7 +94,7 @@ func TestServer_GetMovieDetailByTMDBID(t *testing.T) {
 		store.EXPECT().GetMovieByMetadataID(gomock.Any(), 1).Return(expectedMovie, nil)
 
 		// Create manager with mocked dependencies
-		mgr := manager.New(tmdbMock, nil, nil, store, nil, config.Manager{})
+		mgr := manager.New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
 
 		s := Server{
 			baseLogger: zap.NewNop().Sugar(),
@@ -151,7 +151,7 @@ func TestServer_GetMovieDetailByTMDBID(t *testing.T) {
 		store.EXPECT().GetMovieMetadata(gomock.Any(), gomock.Any()).Return(expectedMetadata, nil)
 		store.EXPECT().GetMovieByMetadataID(gomock.Any(), 1).Return(nil, storage.ErrNotFound)
 
-		mgr := manager.New(tmdbMock, nil, nil, store, nil, config.Manager{})
+		mgr := manager.New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
 
 		s := Server{
 			baseLogger: zap.NewNop().Sugar(),
@@ -206,7 +206,7 @@ func TestServer_GetMovieDetailByTMDBID(t *testing.T) {
 
 		store.EXPECT().GetMovieMetadata(gomock.Any(), gomock.Any()).Return(nil, errors.New("metadata not found"))
 
-		mgr := manager.New(tmdbMock, nil, nil, store, nil, config.Manager{})
+		mgr := manager.New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
 
 		s := Server{
 			baseLogger: zap.NewNop().Sugar(),
@@ -247,17 +247,17 @@ func TestServer_GetTVDetailByTMDBID(t *testing.T) {
 		externalIDsJSON := `{"imdb_id":"tt1234567","tvdb_id":12345}`
 		watchProvidersJSON := `{"US":{"flatrate":[{"provider_id":8,"provider_name":"Netflix","logo_path":"/net.png"}]}}`
 		expectedMetadata := &model.SeriesMetadata{
-		ID:             1,
-		TmdbID:         12345,
-		Title:          "Test TV Show",
-		Overview:       ptr("A test TV show overview"),
-		FirstAirDate:   ptr(time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC)),
-		LastAirDate:    ptr(time.Date(2023, 12, 31, 0, 0, 0, 0, time.UTC)),
-		SeasonCount:    3,
-		EpisodeCount:   30,
-		Status:         "Continuing",
-		ExternalIds:    &externalIDsJSON,
-		WatchProviders: &watchProvidersJSON,
+			ID:             1,
+			TmdbID:         12345,
+			Title:          "Test TV Show",
+			Overview:       ptr("A test TV show overview"),
+			FirstAirDate:   ptr(time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC)),
+			LastAirDate:    ptr(time.Date(2023, 12, 31, 0, 0, 0, 0, time.UTC)),
+			SeasonCount:    3,
+			EpisodeCount:   30,
+			Status:         "Continuing",
+			ExternalIds:    &externalIDsJSON,
+			WatchProviders: &watchProvidersJSON,
 		}
 
 		store.EXPECT().GetSeriesMetadata(gomock.Any(), gomock.Any()).Return(expectedMetadata, nil)
@@ -275,9 +275,9 @@ func TestServer_GetTVDetailByTMDBID(t *testing.T) {
 			StatusCode: 200,
 			Body:       io.NopCloser(strings.NewReader(responseBody)),
 		}
-tmdbMock.EXPECT().TvSeriesDetails(gomock.Any(), int32(12345), nil).Return(resp, nil)
+		tmdbMock.EXPECT().TvSeriesDetails(gomock.Any(), int32(12345), nil).Return(resp, nil)
 
-// Setup expectations for GetSeries call
+		// Setup expectations for GetSeries call
 		expectedSeries := &storage.Series{
 			Series: model.Series{
 				ID:               1,
@@ -331,7 +331,7 @@ tmdbMock.EXPECT().TvSeriesDetails(gomock.Any(), int32(12345), nil).Return(resp, 
 		store.EXPECT().GetEpisodeMetadata(gomock.Any(), gomock.Any()).Return(episodeMetadata, nil)
 
 		// Create manager with mocked dependencies
-		mgr := manager.New(tmdbMock, nil, nil, store, nil, config.Manager{})
+		mgr := manager.New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
 
 		s := Server{
 			baseLogger: zap.NewNop().Sugar(),
@@ -423,14 +423,14 @@ tmdbMock.EXPECT().TvSeriesDetails(gomock.Any(), int32(12345), nil).Return(resp, 
 		emptyExternalIDsJSON := `{"imdb_id":null,"tvdb_id":null}`
 		emptyWatchProvidersJSON := `{"US":{"flatrate":[]}}`
 		expectedMetadata := &model.SeriesMetadata{
-		ID:             1,
-		TmdbID:         12345,
-		Title:          "Test TV Show",
-		SeasonCount:    2,
-		EpisodeCount:   20,
-		Status:         "Continuing",
-		ExternalIds:    &emptyExternalIDsJSON,
-		WatchProviders: &emptyWatchProvidersJSON,
+			ID:             1,
+			TmdbID:         12345,
+			Title:          "Test TV Show",
+			SeasonCount:    2,
+			EpisodeCount:   20,
+			Status:         "Continuing",
+			ExternalIds:    &emptyExternalIDsJSON,
+			WatchProviders: &emptyWatchProvidersJSON,
 		}
 
 		store.EXPECT().GetSeriesMetadata(gomock.Any(), gomock.Any()).Return(expectedMetadata, nil)
@@ -440,11 +440,11 @@ tmdbMock.EXPECT().TvSeriesDetails(gomock.Any(), int32(12345), nil).Return(resp, 
 			StatusCode: 200,
 			Body:       io.NopCloser(strings.NewReader(responseBody)),
 		}
-tmdbMock.EXPECT().TvSeriesDetails(gomock.Any(), int32(12345), nil).Return(resp, nil)
+		tmdbMock.EXPECT().TvSeriesDetails(gomock.Any(), int32(12345), nil).Return(resp, nil)
 
-store.EXPECT().GetSeries(gomock.Any(), gomock.Any()).Return(nil, storage.ErrNotFound)
+		store.EXPECT().GetSeries(gomock.Any(), gomock.Any()).Return(nil, storage.ErrNotFound)
 
-		mgr := manager.New(tmdbMock, nil, nil, store, nil, config.Manager{})
+		mgr := manager.New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
 
 		s := Server{
 			baseLogger: zap.NewNop().Sugar(),
@@ -499,7 +499,7 @@ store.EXPECT().GetSeries(gomock.Any(), gomock.Any()).Return(nil, storage.ErrNotF
 
 		store.EXPECT().GetSeriesMetadata(gomock.Any(), gomock.Any()).Return(nil, errors.New("metadata not found"))
 
-		mgr := manager.New(tmdbMock, nil, nil, store, nil, config.Manager{})
+		mgr := manager.New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
 
 		s := Server{
 			baseLogger: zap.NewNop().Sugar(),

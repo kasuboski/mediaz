@@ -21,7 +21,7 @@ func TestIndexSeriesLibrary(t *testing.T) {
 
 		library := mockLibrary.NewMockLibrary(ctrl)
 		library.EXPECT().FindEpisodes(ctx).Times(1).Return(nil, errors.New("expected tested error"))
-		m := New(nil, nil, library, nil, nil, config.Manager{})
+		m := New(nil, nil, library, nil, nil, config.Manager{}, config.Config{})
 		require.NotNil(t, m)
 
 		err := m.IndexSeriesLibrary(ctx)
@@ -35,7 +35,7 @@ func TestIndexSeriesLibrary(t *testing.T) {
 
 		mockLibrary := mockLibrary.NewMockLibrary(ctrl)
 		mockLibrary.EXPECT().FindEpisodes(ctx).Times(1).Return([]library.EpisodeFile{}, nil)
-		m := New(nil, nil, mockLibrary, nil, nil, config.Manager{})
+		m := New(nil, nil, mockLibrary, nil, nil, config.Manager{}, config.Config{})
 		require.NotNil(t, m)
 
 		err := m.IndexSeriesLibrary(ctx)
@@ -55,7 +55,7 @@ func TestIndexSeriesLibrary(t *testing.T) {
 
 		mockLibrary.EXPECT().FindEpisodes(ctx).Times(1).Return(discoveredFiles, nil)
 
-		m := New(nil, nil, mockLibrary, store, nil, config.Manager{})
+		m := New(nil, nil, mockLibrary, store, nil, config.Manager{}, config.Config{})
 		require.NotNil(t, m)
 
 		err := m.IndexSeriesLibrary(ctx)
@@ -76,7 +76,7 @@ func TestIndexSeriesLibrary(t *testing.T) {
 
 		mockLibrary.EXPECT().FindEpisodes(ctx).Times(1).Return(discoveredFiles, nil)
 
-		m := New(nil, nil, mockLibrary, store, nil, config.Manager{})
+		m := New(nil, nil, mockLibrary, store, nil, config.Manager{}, config.Config{})
 		require.NotNil(t, m)
 
 		err := m.IndexSeriesLibrary(ctx)
@@ -119,7 +119,7 @@ func TestIndexSeriesLibrary(t *testing.T) {
 
 		mockLibrary.EXPECT().FindEpisodes(ctx).Times(1).Return(discoveredFiles, nil)
 
-		m := New(nil, nil, mockLibrary, store, nil, config.Manager{})
+		m := New(nil, nil, mockLibrary, store, nil, config.Manager{}, config.Config{})
 		require.NotNil(t, m)
 
 		err = m.IndexSeriesLibrary(ctx)
@@ -156,7 +156,7 @@ func TestIndexSeriesLibrary(t *testing.T) {
 
 		mockLibrary.EXPECT().FindEpisodes(ctx).Times(1).Return(discoveredFiles, nil)
 
-		m := New(nil, nil, mockLibrary, store, nil, config.Manager{})
+		m := New(nil, nil, mockLibrary, store, nil, config.Manager{}, config.Config{})
 		require.NotNil(t, m)
 
 		err = m.IndexSeriesLibrary(ctx)

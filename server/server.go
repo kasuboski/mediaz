@@ -108,6 +108,9 @@ func (s *Server) Serve(port int) error {
 	v1.HandleFunc("/quality/profiles/{id}", s.GetQualityProfile()).Methods(http.MethodGet)
 	v1.HandleFunc("/quality/profiles", s.ListQualityProfiles()).Methods(http.MethodGet)
 
+	v1.HandleFunc("/config", s.GetConfig()).Methods(http.MethodGet)
+	v1.HandleFunc("/library/stats", s.GetLibraryStats()).Methods(http.MethodGet)
+
 	rtr.PathPrefix("/static/").Handler(s.FileHandler()).Methods(http.MethodGet)
 	rtr.PathPrefix("/").Handler(s.IndexHandler())
 
@@ -704,5 +707,26 @@ func (s Server) FileHandler() http.HandlerFunc {
 func (s Server) IndexHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, filepath.Join(s.config.DistDir, "index.html"))
+	}
+}
+
+// GetConfig returns the library configuration (non-sensitive data only)
+func (s Server) GetConfig() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		result := s.manager.GetConfigSummary()
+		writeResponse(w, http.StatusOK, GenericResponse{Response: result})
+	}
+}
+
+// GetLibraryStats returns library statistics
+func (s Server) GetLibraryStats() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		stats, err := s.manager.GetLibraryStats(ctx)
+		if err != nil {
+			writeErrorResponse(w, http.StatusInternalServerError, err)
+			return
+		}
+		writeResponse(w, http.StatusOK, GenericResponse{Response: stats})
 	}
 }

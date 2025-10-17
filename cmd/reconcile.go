@@ -91,7 +91,7 @@ var reconcileMoviesCmd = &cobra.Command{
 
 		// Create MediaManager
 		factory := download.NewDownloadClientFactory(cfg.Library.DownloadMountDir)
-		m := manager.New(tmdbClient, prowlarrClient, library, store, factory, cfg.Manager)
+		m := manager.New(tmdbClient, prowlarrClient, library, store, factory, cfg.Manager, cfg)
 
 		log.Info("Starting movie reconciliation")
 
@@ -164,7 +164,7 @@ var reconcileSeriesCmd = &cobra.Command{
 
 		// Create MediaManager
 		factory := download.NewDownloadClientFactory(cfg.Library.DownloadMountDir)
-		m := manager.New(tmdbClient, prowlarrClient, library, store, factory, cfg.Manager)
+		m := manager.New(tmdbClient, prowlarrClient, library, store, factory, cfg.Manager, cfg)
 
 		log.Debug("Starting series reconciliation")
 

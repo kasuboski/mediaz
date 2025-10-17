@@ -311,3 +311,52 @@ export const tvApi = {
     return transformTVDetailResult(result);
   },
 };
+
+// Library Configuration & Stats Types
+export interface LibraryConfig {
+  movieDir: string;
+  tvDir: string;
+  downloadMountDir: string;
+}
+
+export interface ServerConfig {
+  port: number;
+}
+
+export interface JobsConfig {
+  movieReconcile: string;
+  movieIndex: string;
+  seriesReconcile: string;
+  seriesIndex: string;
+}
+
+export interface ConfigSummary {
+  library: LibraryConfig;
+  server: ServerConfig;
+  jobs: JobsConfig;
+}
+
+export interface MovieStats {
+  total: number;
+  byState: Record<string, number>;
+}
+
+export interface TVStats {
+  total: number;
+  byState: Record<string, number>;
+}
+
+export interface LibraryStats {
+  movies: MovieStats;
+  tv: TVStats;
+}
+
+// Library API
+export const libraryApi = {
+  async getConfig(): Promise<ConfigSummary> {
+    return await apiRequest<ConfigSummary>('/config');
+  },
+  async getLibraryStats(): Promise<LibraryStats> {
+    return await apiRequest<LibraryStats>('/library/stats');
+  },
+};

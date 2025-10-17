@@ -73,7 +73,7 @@ var seriesDetailsCmd = &cobra.Command{
 			log.Fatal("failed to create tmdb client", zap.Error(err))
 		}
 
-		m := manager.New(tmdbClient, nil, &library.MediaLibrary{}, nil, nil, cfg.Manager)
+		m := manager.New(tmdbClient, nil, &library.MediaLibrary{}, nil, nil, cfg.Manager, cfg)
 
 		ctx := logger.WithCtx(context.Background(), log)
 		details, err := m.GetSeriesDetails(ctx, tmdbID)

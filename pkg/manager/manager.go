@@ -32,16 +32,18 @@ type MediaManager struct {
 	library library.Library
 	storage storage.Storage
 	factory download.Factory
+	config  config.Config
 	configs config.Manager
 }
 
-func New(tmbdClient tmdb.ITmdb, prowlarrClient prowlarr.IProwlarr, library library.Library, storage storage.Storage, factory download.Factory, managerConfigs config.Manager) MediaManager {
+func New(tmbdClient tmdb.ITmdb, prowlarrClient prowlarr.IProwlarr, library library.Library, storage storage.Storage, factory download.Factory, managerConfigs config.Manager, fullConfig config.Config) MediaManager {
 	return MediaManager{
 		tmdb:    tmbdClient,
 		indexer: NewIndexerStore(prowlarrClient, storage),
 		library: library,
 		storage: storage,
 		factory: factory,
+		config:  fullConfig,
 		configs: managerConfigs,
 	}
 }
@@ -163,23 +165,23 @@ func (m MediaManager) GetTVDetailByTMDBID(ctx context.Context, tmdbID int) (*TVD
 	// Transform data into result
 	result := m.buildTVDetailResult(metadata, seriesDetailsResponse, series, seasons)
 
-// Add stored external IDs from database
-if extIDs, err := DeserializeExternalIDs(metadata.ExternalIds); err == nil && extIDs != nil {
-	result.ExternalIDs = &ExternalIDs{ImdbID: extIDs.ImdbID, TvdbID: extIDs.TvdbID}
-}
-
-// Add stored watch providers from database
-if wpData, err := DeserializeWatchProviders(metadata.WatchProviders); err == nil && wpData != nil {
-	providers := make([]WatchProvider, 0, len(wpData.US.Flatrate))
-	for _, p := range wpData.US.Flatrate {
-		providers = append(providers, WatchProvider{
-			ProviderID: p.ProviderID,
-			Name:       p.Name,
-			LogoPath:   p.LogoPath,
-		})
+	// Add stored external IDs from database
+	if extIDs, err := DeserializeExternalIDs(metadata.ExternalIds); err == nil && extIDs != nil {
+		result.ExternalIDs = &ExternalIDs{ImdbID: extIDs.ImdbID, TvdbID: extIDs.TvdbID}
 	}
-	result.WatchProviders = providers
-}
+
+	// Add stored watch providers from database
+	if wpData, err := DeserializeWatchProviders(metadata.WatchProviders); err == nil && wpData != nil {
+		providers := make([]WatchProvider, 0, len(wpData.US.Flatrate))
+		for _, p := range wpData.US.Flatrate {
+			providers = append(providers, WatchProvider{
+				ProviderID: p.ProviderID,
+				Name:       p.Name,
+				LogoPath:   p.LogoPath,
+			})
+		}
+		result.WatchProviders = providers
+	}
 
 	return result, nil
 }
@@ -438,6 +440,90 @@ func (m MediaManager) getEpisodesForSeason(ctx context.Context, seasonID int32, 
 	}
 
 	return results, nil
+}
+
+// GetConfigSummary returns a readonly summary of the library configuration
+func (m MediaManager) GetConfigSummary() ConfigSummary {
+	return ConfigSummary{
+		Library: LibraryConfig{
+			MovieDir:         m.config.Library.MovieDir,
+			TVDir:            m.config.Library.TVDir,
+			DownloadMountDir: m.config.Library.DownloadMountDir,
+		},
+		Server: ServerConfig{
+			Port: m.config.Server.Port,
+		},
+		Jobs: JobsConfig{
+			MovieReconcile:  m.config.Manager.Jobs.MovieReconcile.String(),
+			MovieIndex:      m.config.Manager.Jobs.MovieIndex.String(),
+			SeriesReconcile: m.config.Manager.Jobs.SeriesReconcile.String(),
+			SeriesIndex:     m.config.Manager.Jobs.SeriesIndex.String(),
+		},
+	}
+}
+
+// GetLibraryStats returns aggregate statistics about the library
+func (m MediaManager) GetLibraryStats(ctx context.Context) (*LibraryStats, error) {
+	// Query database for aggregate statistics
+	movieStats, err := m.getMovieStats(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	tvStats, err := m.getTVStats(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return &LibraryStats{
+		Movies: movieStats,
+		TV:     tvStats,
+	}, nil
+}
+
+func (m MediaManager) getMovieStats(ctx context.Context) (MovieStats, error) {
+	stats := MovieStats{
+		ByState: make(map[string]int),
+	}
+
+	// Count movies by each state
+	for _, state := range []storage.MovieState{
+		storage.MovieStateMissing,
+		storage.MovieStateDiscovered,
+		storage.MovieStateUnreleased,
+		storage.MovieStateDownloading,
+		storage.MovieStateDownloaded,
+	} {
+		movies, err := m.storage.ListMoviesByState(ctx, state)
+		if err != nil {
+			return stats, err
+		}
+		stats.ByState[string(state)] = len(movies)
+		stats.Total += len(movies)
+	}
+
+	return stats, nil
+}
+
+func (m MediaManager) getTVStats(ctx context.Context) (TVStats, error) {
+	stats := TVStats{
+		ByState: make(map[string]int),
+	}
+
+	// Get all series and count by state
+	allSeries, err := m.storage.ListSeries(ctx)
+	if err != nil {
+		return stats, err
+	}
+
+	// Count series by each state
+	for _, series := range allSeries {
+		state := string(series.State)
+		stats.ByState[state]++
+		stats.Total++
+	}
+
+	return stats, nil
 }
 
 // SearchMovie query tmdb for tv shows
