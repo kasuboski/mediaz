@@ -462,68 +462,10 @@ func (m MediaManager) GetConfigSummary() ConfigSummary {
 	}
 }
 
-// GetLibraryStats returns aggregate statistics about the library
-func (m MediaManager) GetLibraryStats(ctx context.Context) (*LibraryStats, error) {
-	// Query database for aggregate statistics
-	movieStats, err := m.getMovieStats(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	tvStats, err := m.getTVStats(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	return &LibraryStats{
-		Movies: movieStats,
-		TV:     tvStats,
-	}, nil
-}
-
-func (m MediaManager) getMovieStats(ctx context.Context) (MovieStats, error) {
-	stats := MovieStats{
-		ByState: make(map[string]int),
-	}
-
-	// Count movies by each state
-	for _, state := range []storage.MovieState{
-		storage.MovieStateMissing,
-		storage.MovieStateDiscovered,
-		storage.MovieStateUnreleased,
-		storage.MovieStateDownloading,
-		storage.MovieStateDownloaded,
-	} {
-		movies, err := m.storage.ListMoviesByState(ctx, state)
-		if err != nil {
-			return stats, err
-		}
-		stats.ByState[string(state)] = len(movies)
-		stats.Total += len(movies)
-	}
-
-	return stats, nil
-}
-
-func (m MediaManager) getTVStats(ctx context.Context) (TVStats, error) {
-	stats := TVStats{
-		ByState: make(map[string]int),
-	}
-
-	// Get all series and count by state
-	allSeries, err := m.storage.ListSeries(ctx)
-	if err != nil {
-		return stats, err
-	}
-
-	// Count series by each state
-	for _, series := range allSeries {
-		state := string(series.State)
-		stats.ByState[state]++
-		stats.Total++
-	}
-
-	return stats, nil
+// GetLibraryStats returns aggregate statistics about the library using optimized queries
+func (m MediaManager) GetLibraryStats(ctx context.Context) (*storage.LibraryStats, error) {
+	// Use the new optimized storage method that aggregates in the database
+	return m.storage.GetLibraryStats(ctx)
 }
 
 // SearchMovie query tmdb for tv shows

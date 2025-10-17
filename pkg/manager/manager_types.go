@@ -222,19 +222,3 @@ type JobsConfig struct {
 	SeriesReconcile string `json:"seriesReconcile"`
 	SeriesIndex     string `json:"seriesIndex"`
 }
-
-// LibraryStats provides aggregate statistics about the library
-type LibraryStats struct {
-	Movies MovieStats `json:"movies"`
-	TV     TVStats    `json:"tv"`
-}
-
-type MovieStats struct {
-	Total   int            `json:"total"`
-	ByState map[string]int `json:"byState"`
-}
-
-type TVStats struct {
-	Total   int            `json:"total"`
-	ByState map[string]int `json:"byState"`
-}
