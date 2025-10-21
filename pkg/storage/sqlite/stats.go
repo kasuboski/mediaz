@@ -3,9 +3,7 @@ package sqlite
 import (
 	"context"
 
-	"github.com/go-jet/jet/v2/sqlite"
 	"github.com/kasuboski/mediaz/pkg/storage"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/table"
 )
 
 // MovieStatsByState represents the result of movie statistics aggregation
@@ -20,157 +18,86 @@ type TVStatsByState struct {
 	Count int    `json:"count"`
 }
 
-// GetMovieStatsByState returns movie counts aggregated by state in a single query using Jet ORM
+// GetMovieStatsByState returns movie counts aggregated by state in a single query
 func (s *SQLite) GetMovieStatsByState(ctx context.Context) ([]storage.MovieStatsByState, error) {
-	stmt := sqlite.SELECT(
-		table.MovieTransition.ToState.AS("state"),
-		sqlite.COUNT(table.Movie.ID).AS("count"),
-	).
-		FROM(table.Movie.LEFT_JOIN(table.MovieTransition, table.Movie.ID.EQ(table.MovieTransition.MovieID))).
-		GROUP_BY(table.MovieTransition.ToState).
-		ORDER_BY(table.MovieTransition.ToState)
+	// Use raw SQL since Jet ORM doesn't properly handle aggregate queries with custom structs
+	s.mu.Lock()
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT movie_transition.to_state AS state,
+		       COUNT(movie.id) AS count
+		FROM movie
+		INNER JOIN movie_transition ON (movie.id = movie_transition.movie_id AND movie_transition.most_recent = 1)
+		GROUP BY movie_transition.to_state
+		ORDER BY movie_transition.to_state
+	`)
+	s.mu.Unlock()
+
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
 
 	var dest []storage.MovieStatsByState
-	err := stmt.QueryContext(ctx, s.db, &dest)
-	if err != nil {
-		return nil, err
-	}
-
-	return dest, nil
-}
-
-// GetTVStatsByState returns TV series counts aggregated by state in a single query using Jet ORM
-func (s *SQLite) GetTVStatsByState(ctx context.Context) ([]storage.TVStatsByState, error) {
-	stmt := sqlite.SELECT(
-		table.SeriesTransition.ToState.AS("state"),
-		sqlite.COUNT(table.Series.ID).AS("count"),
-	).
-		FROM(table.Series.LEFT_JOIN(table.SeriesTransition, table.Series.ID.EQ(table.SeriesTransition.SeriesID))).
-		GROUP_BY(table.SeriesTransition.ToState).
-		ORDER_BY(table.SeriesTransition.ToState)
-
-	var dest []storage.TVStatsByState
-	err := stmt.QueryContext(ctx, s.db, &dest)
-	if err != nil {
-		return nil, err
-	}
-
-	return dest, nil
-}
-
-// GetMovieStatsByStateRaw executes the same query using raw SQL for maximum performance
-func (s *SQLite) GetMovieStatsByStateRaw(ctx context.Context) ([]storage.MovieStatsByState, error) {
-	query := `
-		SELECT 
-			COALESCE(mt.to_state, '') as state,
-			COUNT(m.id) as count
-		FROM movie m
-		LEFT JOIN movie_transition mt ON mt.movie_id = m.id
-		GROUP BY mt.to_state
-		ORDER BY mt.to_state
-	`
-
-	rows, err := s.db.QueryContext(ctx, query)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var results []storage.MovieStatsByState
 	for rows.Next() {
 		var stat storage.MovieStatsByState
-		err := rows.Scan(&stat.State, &stat.Count)
-		if err != nil {
+		if err := rows.Scan(&stat.State, &stat.Count); err != nil {
 			return nil, err
 		}
-		results = append(results, stat)
+		dest = append(dest, stat)
 	}
 
-	if err = rows.Err(); err != nil {
-		return nil, err
-	}
-
-	return results, nil
+	return dest, rows.Err()
 }
 
-// GetTVStatsByStateRaw executes the same query using raw SQL for maximum performance
-func (s *SQLite) GetTVStatsByStateRaw(ctx context.Context) ([]storage.TVStatsByState, error) {
-	query := `
-		SELECT 
-			COALESCE(st.to_state, '') as state,
-			COUNT(s.id) as count
-		FROM series s
-		LEFT JOIN series_transition st ON st.series_id = s.id
-		GROUP BY st.to_state
-		ORDER BY st.to_state
-	`
+// GetTVStatsByState returns TV series counts aggregated by state in a single query
+func (s *SQLite) GetTVStatsByState(ctx context.Context) ([]storage.TVStatsByState, error) {
+	// Use raw SQL since Jet ORM doesn't properly handle aggregate queries with custom structs
+	s.mu.Lock()
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT series_transition.to_state AS state,
+		       COUNT(series.id) AS count
+		FROM series
+		INNER JOIN series_transition ON (series.id = series_transition.series_id AND series_transition.most_recent = 1)
+		GROUP BY series_transition.to_state
+		ORDER BY series_transition.to_state
+	`)
+	s.mu.Unlock()
 
-	rows, err := s.db.QueryContext(ctx, query)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var results []storage.TVStatsByState
+	var dest []storage.TVStatsByState
 	for rows.Next() {
 		var stat storage.TVStatsByState
-		err := rows.Scan(&stat.State, &stat.Count)
-		if err != nil {
+		if err := rows.Scan(&stat.State, &stat.Count); err != nil {
 			return nil, err
 		}
-		results = append(results, stat)
+		dest = append(dest, stat)
 	}
 
-	if err = rows.Err(); err != nil {
-		return nil, err
-	}
-
-	return results, nil
+	return dest, rows.Err()
 }
 
 // GetLibraryStats returns comprehensive library statistics in minimal queries
 func (s *SQLite) GetLibraryStats(ctx context.Context) (*storage.LibraryStats, error) {
-	// Execute both queries in parallel for better performance
-	type movieResult struct {
-		stats []storage.MovieStatsByState
-		err   error
-	}
-	type tvResult struct {
-		stats []storage.TVStatsByState
-		err   error
+	// Execute queries sequentially to avoid SQLite connection pool issues with in-memory databases
+	movieRes, err := s.GetMovieStatsByState(ctx)
+	if err != nil {
+		return nil, err
 	}
 
-	movieCh := make(chan movieResult, 1)
-	tvCh := make(chan tvResult, 1)
-
-	// Get movie stats
-	go func() {
-		stats, err := s.GetMovieStatsByStateRaw(ctx)
-		movieCh <- movieResult{stats: stats, err: err}
-	}()
-
-	// Get TV stats
-	go func() {
-		stats, err := s.GetTVStatsByStateRaw(ctx)
-		tvCh <- tvResult{stats: stats, err: err}
-	}()
-
-	// Wait for both results
-	movieRes := <-movieCh
-	tvRes := <-tvCh
-
-	if movieRes.err != nil {
-		return nil, movieRes.err
-	}
-	if tvRes.err != nil {
-		return nil, tvRes.err
+	tvRes, err := s.GetTVStatsByState(ctx)
+	if err != nil {
+		return nil, err
 	}
 
 	// Transform movie stats
 	movieStats := storage.MovieStats{
 		ByState: make(map[storage.MovieState]int),
 	}
-	for _, stat := range movieRes.stats {
+	for _, stat := range movieRes {
 		movieStats.ByState[storage.MovieState(stat.State)] = stat.Count
 		movieStats.Total += stat.Count
 	}
@@ -179,7 +106,7 @@ func (s *SQLite) GetLibraryStats(ctx context.Context) (*storage.LibraryStats, er
 	tvStats := storage.TVStats{
 		ByState: make(map[storage.SeriesState]int),
 	}
-	for _, stat := range tvRes.stats {
+	for _, stat := range tvRes {
 		tvStats.ByState[storage.SeriesState(stat.State)] = stat.Count
 		tvStats.Total += stat.Count
 	}

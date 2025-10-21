@@ -50,15 +50,15 @@ func TestMediaManager_GetSeriesMetadata(t *testing.T) {
 
 		store := newStore(t, ctx)
 
-	_, err := store.CreateSeriesMetadata(ctx, model.SeriesMetadata{
-		ID:             1,
-		TmdbID:         1234,
-		Title:          "Test Series",
-		Status:         "Continuing",
-		FirstAirDate:   ptr(time.Now().Add(-time.Hour * 2)),
-		ExternalIds:    nil,
-		WatchProviders: nil,
-	})
+		_, err := store.CreateSeriesMetadata(ctx, model.SeriesMetadata{
+			ID:             1,
+			TmdbID:         1234,
+			Title:          "Test Series",
+			Status:         "Continuing",
+			FirstAirDate:   ptr(time.Now().Add(-time.Hour * 2)),
+			ExternalIds:    nil,
+			WatchProviders: nil,
+		})
 		require.NoError(t, err)
 
 		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)

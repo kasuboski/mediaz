@@ -264,29 +264,29 @@ type TvSeasonDetailsGuestStar struct {
 
 // SeriesDetailsResponse is the series response from the TMDB api.
 type SeriesDetailsResponse struct {
-	Adult               bool                          `json:"adult,omitempty"`
-	BackdropPath        string                        `json:"backdrop_path,omitempty"`
-	CreatedBy           []Creator                     `json:"created_by,omitempty"`
-	EpisodeRunTime      []int                         `json:"episode_run_time,omitempty"`
-	FirstAirDate        string                        `json:"first_air_date,omitempty"`
-	Genres              []Genre                       `json:"genres,omitempty"`
-	Homepage            string                        `json:"homepage,omitempty"`
-	ID                  int                           `json:"id,omitempty"`
-	InProduction        bool                          `json:"in_production,omitempty"`
-	Languages           []string                      `json:"languages,omitempty"`
-	LastAirDate         string                        `json:"last_air_date,omitempty"`
-	LastEpisodeToAir    SeriesDetailsResponseSeason   `json:"last_episode_to_air,omitempty"`
-	Name                string                        `json:"name,omitempty"`
-	NextEpisodeToAir    SeriesDetailsResponseSeason   `json:"next_episode_to_air,omitempty"`
-	Networks            []Network                     `json:"networks,omitempty"`
-	NumberOfEpisodes    int                           `json:"number_of_episodes,omitempty"`
-	NumberOfSeasons     int                           `json:"number_of_seasons,omitempty"`
-	OriginCountry       []string                      `json:"origin_country,omitempty"`
-	OriginalLanguage    string                        `json:"original_language,omitempty"`
-	OriginalName        string                        `json:"original_name,omitempty"`
-	Overview            string                        `json:"overview,omitempty"`
-	Popularity          float64                       `json:"popularity,omitempty"`
-	PosterPath          string                        `json:"poster_path,omitempty"`
+	Adult            bool                        `json:"adult,omitempty"`
+	BackdropPath     string                      `json:"backdrop_path,omitempty"`
+	CreatedBy        []Creator                   `json:"created_by,omitempty"`
+	EpisodeRunTime   []int                       `json:"episode_run_time,omitempty"`
+	FirstAirDate     string                      `json:"first_air_date,omitempty"`
+	Genres           []Genre                     `json:"genres,omitempty"`
+	Homepage         string                      `json:"homepage,omitempty"`
+	ID               int                         `json:"id,omitempty"`
+	InProduction     bool                        `json:"in_production,omitempty"`
+	Languages        []string                    `json:"languages,omitempty"`
+	LastAirDate      string                      `json:"last_air_date,omitempty"`
+	LastEpisodeToAir SeriesDetailsResponseSeason `json:"last_episode_to_air,omitempty"`
+	Name             string                      `json:"name,omitempty"`
+	NextEpisodeToAir SeriesDetailsResponseSeason `json:"next_episode_to_air,omitempty"`
+	Networks         []Network                   `json:"networks,omitempty"`
+	NumberOfEpisodes int                         `json:"number_of_episodes,omitempty"`
+	NumberOfSeasons  int                         `json:"number_of_seasons,omitempty"`
+	OriginCountry    []string                    `json:"origin_country,omitempty"`
+	OriginalLanguage string                      `json:"original_language,omitempty"`
+	OriginalName     string                      `json:"original_name,omitempty"`
+	Overview         string                      `json:"overview,omitempty"`
+	Popularity       float64                     `json:"popularity,omitempty"`
+	PosterPath       string                      `json:"poster_path,omitempty"`
 	// Add series-level rating fields
 	VoteAverage         float64                       `json:"vote_average,omitempty"`
 	VoteCount           int                           `json:"vote_count,omitempty"`
