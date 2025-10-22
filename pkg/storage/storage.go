@@ -26,6 +26,7 @@ type Storage interface {
 	DownloadClientStorage
 	SeriesStorage
 	SeriesMetadataStorage
+	StatisticsStorage
 }
 
 type IndexerStorage interface {

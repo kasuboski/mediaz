@@ -213,7 +213,7 @@ func TestMediaManager_reconcileMissingEpisodes(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, episodes, 3)
 
-		m := New(nil, nil, nil, store, mockFactory, config.Manager{})
+		m := New(nil, nil, nil, store, mockFactory, config.Manager{}, config.Config{})
 
 		err = m.reconcileMissingEpisodes(ctx, "Series", 1, 1, episodes, snapshot, qualityProfile, releases)
 		require.NoError(t, err)
@@ -362,7 +362,7 @@ func TestMediaManager_reconcileMissingEpisodes(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, episodes, 2)
 
-		m := New(nil, nil, nil, store, mockFactory, config.Manager{})
+		m := New(nil, nil, nil, store, mockFactory, config.Manager{}, config.Config{})
 
 		err = m.reconcileMissingEpisodes(ctx, "Series", int32(seasonID), 1, episodes, snapshot, qualityProfile, releases)
 		require.NoError(t, err)
@@ -396,13 +396,13 @@ func TestMediaManager_reconcileMissingEpisodes(t *testing.T) {
 	})
 
 	t.Run("nil episode", func(t *testing.T) {
-		m := New(nil, nil, nil, nil, nil, config.Manager{})
+		m := New(nil, nil, nil, nil, nil, config.Manager{}, config.Config{})
 		err := m.reconcileMissingEpisodes(context.Background(), "Series", 1, 1, []*storage.Episode{nil}, nil, storage.QualityProfile{}, nil)
 		require.NoError(t, err)
 	})
 
 	t.Run("nil snapshot", func(t *testing.T) {
-		m := New(nil, nil, nil, nil, nil, config.Manager{})
+		m := New(nil, nil, nil, nil, nil, config.Manager{}, config.Config{})
 		episode := &storage.Episode{}
 		err := m.reconcileMissingEpisodes(context.Background(), "Series", 1, 1, []*storage.Episode{episode}, nil, storage.QualityProfile{}, nil)
 		require.NoError(t, err)
@@ -428,7 +428,7 @@ func TestMediaManager_reconcileMissingEpisodes(t *testing.T) {
 			},
 		}
 
-		m := New(nil, nil, nil, store, nil, config.Manager{})
+		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
 		err = m.reconcileMissingEpisodes(ctx, "Series", 1, 1, []*storage.Episode{&episode}, &ReconcileSnapshot{}, storage.QualityProfile{}, nil)
 		require.NoError(t, err)
 	})
@@ -452,14 +452,14 @@ func TestMediaManager_reconcileMissingEpisodes(t *testing.T) {
 			},
 		}
 
-		m := New(nil, nil, nil, store, nil, config.Manager{})
+		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
 		err = m.reconcileMissingEpisodes(ctx, "Series", 1, 1, []*storage.Episode{&episode}, &ReconcileSnapshot{}, storage.QualityProfile{}, nil)
 		require.NoError(t, err)
 	})
 }
 func TestMediaManager_reconcileMissingSeason(t *testing.T) {
 	t.Run("nil season", func(t *testing.T) {
-		m := New(nil, nil, nil, nil, nil, config.Manager{})
+		m := New(nil, nil, nil, nil, nil, config.Manager{}, config.Config{})
 		err := m.reconcileMissingSeason(context.Background(), "Series", nil, nil, storage.QualityProfile{}, nil)
 		require.Error(t, err)
 		assert.Equal(t, "season is nil", err.Error())
@@ -477,7 +477,7 @@ func TestMediaManager_reconcileMissingSeason(t *testing.T) {
 			},
 		}
 
-		m := New(nil, nil, nil, store, nil, config.Manager{})
+		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
 		err := m.reconcileMissingSeason(ctx, "Series", season, nil, storage.QualityProfile{}, nil)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "not found in storage")
@@ -503,7 +503,7 @@ func TestMediaManager_reconcileMissingSeason(t *testing.T) {
 			},
 		}
 
-		m := New(nil, nil, nil, store, nil, config.Manager{})
+		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
 		err = m.reconcileMissingSeason(ctx, "Series", season, nil, storage.QualityProfile{}, nil)
 		require.NoError(t, err)
 	})
@@ -533,14 +533,14 @@ func TestMediaManager_reconcileMissingSeason(t *testing.T) {
 			Name: "test download",
 		}, nil)
 
-	seriesMetadataID, err := store.CreateSeriesMetadata(ctx, model.SeriesMetadata{
-		TmdbID:         1,
-		Title:          "Series",
-		Status:         "Continuing",
-		EpisodeCount:   10,
-		ExternalIds:    nil,
-		WatchProviders: nil,
-	})
+		seriesMetadataID, err := store.CreateSeriesMetadata(ctx, model.SeriesMetadata{
+			TmdbID:         1,
+			Title:          "Series",
+			Status:         "Continuing",
+			EpisodeCount:   10,
+			ExternalIds:    nil,
+			WatchProviders: nil,
+		})
 		require.NoError(t, err)
 
 		seriesID, err := store.CreateSeries(ctx, storage.Series{
@@ -639,7 +639,7 @@ func TestMediaManager_reconcileMissingSeason(t *testing.T) {
 
 		snapshot := newReconcileSnapshot([]Indexer{{ID: 1}}, []*model.DownloadClient{&downloadClientModel})
 
-		m := New(nil, nil, nil, store, mockFactory, config.Manager{})
+		m := New(nil, nil, nil, store, mockFactory, config.Manager{}, config.Config{})
 
 		err = m.reconcileMissingSeason(ctx, "Series", season, snapshot, qualityProfile, releases)
 		require.NoError(t, err)
@@ -689,14 +689,14 @@ func TestMediaManager_reconcileMissingSeason(t *testing.T) {
 			Name: "test download 2",
 		}, nil)
 
-	seriesMetadataID, err := store.CreateSeriesMetadata(ctx, model.SeriesMetadata{
-		TmdbID:         1,
-		Title:          "Series",
-		Status:         "Continuing",
-		EpisodeCount:   10,
-		ExternalIds:    nil,
-		WatchProviders: nil,
-	})
+		seriesMetadataID, err := store.CreateSeriesMetadata(ctx, model.SeriesMetadata{
+			TmdbID:         1,
+			Title:          "Series",
+			Status:         "Continuing",
+			EpisodeCount:   10,
+			ExternalIds:    nil,
+			WatchProviders: nil,
+		})
 		require.NoError(t, err)
 
 		seriesID, err := store.CreateSeries(ctx, storage.Series{
@@ -799,7 +799,7 @@ func TestMediaManager_reconcileMissingSeason(t *testing.T) {
 			},
 		}
 
-		m := New(nil, nil, nil, store, mockFactory, config.Manager{})
+		m := New(nil, nil, nil, store, mockFactory, config.Manager{}, config.Config{})
 
 		err = m.reconcileMissingSeason(ctx, "Series", season, snapshot, qualityProfile, releases)
 		require.NoError(t, err)
@@ -880,7 +880,7 @@ func Test_getSeasonRuntime(t *testing.T) {
 }
 func TestMediaManager_ReconcileMissingSeries(t *testing.T) {
 	t.Run("nil snapshot", func(t *testing.T) {
-		m := New(nil, nil, nil, nil, nil, config.Manager{})
+		m := New(nil, nil, nil, nil, nil, config.Manager{}, config.Config{})
 		err := m.ReconcileMissingSeries(context.Background(), nil)
 		require.NoError(t, err)
 	})
@@ -898,7 +898,7 @@ func TestMediaManager_ReconcileMissingSeries(t *testing.T) {
 
 		store.EXPECT().ListSeries(ctx, where).Return(nil, storage.ErrNotFound)
 
-		m := New(nil, nil, nil, store, nil, config.Manager{})
+		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
 		err := m.ReconcileMissingSeries(ctx, &ReconcileSnapshot{})
 		require.NoError(t, err)
 	})
@@ -917,7 +917,7 @@ func TestMediaManager_ReconcileMissingSeries(t *testing.T) {
 		expectedErr := errors.New("database error")
 		store.EXPECT().ListSeries(ctx, where).Return(nil, expectedErr)
 
-		m := New(nil, nil, nil, store, nil, config.Manager{})
+		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
 		err := m.ReconcileMissingSeries(ctx, &ReconcileSnapshot{})
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "couldn't list missing series")
@@ -1057,7 +1057,7 @@ func TestMediaManager_ReconcileMissingSeries(t *testing.T) {
 		require.NoError(t, err)
 		pClient.ClientInterface = prowlarrMock
 
-		m := New(nil, pClient, nil, store, mockFactory, config.Manager{})
+		m := New(nil, pClient, nil, store, mockFactory, config.Manager{}, config.Config{})
 
 		err = m.ReconcileMissingSeries(ctx, snapshot)
 		require.NoError(t, err)
@@ -1078,7 +1078,7 @@ func TestMediaManager_ReconcileMissingSeries(t *testing.T) {
 
 func TestMediaManager_ReconcileContinuingSeries(t *testing.T) {
 	t.Run("nil snapshot", func(t *testing.T) {
-		m := New(nil, nil, nil, nil, nil, config.Manager{})
+		m := New(nil, nil, nil, nil, nil, config.Manager{}, config.Config{})
 		err := m.ReconcileContinuingSeries(context.Background(), nil)
 		require.NoError(t, err)
 	})
@@ -1098,7 +1098,7 @@ func TestMediaManager_ReconcileContinuingSeries(t *testing.T) {
 
 		store.EXPECT().ListSeries(ctx, where).Return(nil, storage.ErrNotFound)
 
-		m := New(nil, nil, nil, store, nil, config.Manager{})
+		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
 		err := m.ReconcileContinuingSeries(ctx, &ReconcileSnapshot{})
 		require.NoError(t, err)
 	})
@@ -1119,7 +1119,7 @@ func TestMediaManager_ReconcileContinuingSeries(t *testing.T) {
 		expectedErr := errors.New("database error")
 		store.EXPECT().ListSeries(ctx, where).Return(nil, expectedErr)
 
-		m := New(nil, nil, nil, store, nil, config.Manager{})
+		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
 		err := m.ReconcileContinuingSeries(ctx, &ReconcileSnapshot{})
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "couldn't list continuing series")
@@ -1134,16 +1134,16 @@ func TestMediaManager_ReconcileContinuingSeries(t *testing.T) {
 
 		// Add TMDB mock for the refresh functionality
 		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
-	tmdbMock.EXPECT().GetSeriesDetails(ctx, 1).Return(&tmdb.SeriesDetails{
-		ID:   1,
-		Name: "Continuing Series",
-	}, nil).AnyTimes()
+		tmdbMock.EXPECT().GetSeriesDetails(ctx, 1).Return(&tmdb.SeriesDetails{
+			ID:   1,
+			Name: "Continuing Series",
+		}, nil).AnyTimes()
 
-	// Mock external IDs and watch providers calls during metadata creation
-	extIDsResp := &http.Response{StatusCode: 200, Body: io.NopCloser(bytes.NewBufferString(`{"imdb_id":null,"tvdb_id":null}`))}
-	tmdbMock.EXPECT().TvSeriesExternalIds(gomock.Any(), int32(1)).Return(extIDsResp, nil).AnyTimes()
-	wpResp := &http.Response{StatusCode: 200, Body: io.NopCloser(bytes.NewBufferString(`{"results":{"US":{"flatrate":[]}}}`))}
-	tmdbMock.EXPECT().TvSeriesWatchProviders(gomock.Any(), int32(1)).Return(wpResp, nil).AnyTimes()
+		// Mock external IDs and watch providers calls during metadata creation
+		extIDsResp := &http.Response{StatusCode: 200, Body: io.NopCloser(bytes.NewBufferString(`{"imdb_id":null,"tvdb_id":null}`))}
+		tmdbMock.EXPECT().TvSeriesExternalIds(gomock.Any(), int32(1)).Return(extIDsResp, nil).AnyTimes()
+		wpResp := &http.Response{StatusCode: 200, Body: io.NopCloser(bytes.NewBufferString(`{"results":{"US":{"flatrate":[]}}}`))}
+		tmdbMock.EXPECT().TvSeriesWatchProviders(gomock.Any(), int32(1)).Return(wpResp, nil).AnyTimes()
 
 		mockDownloadClient := downloadMock.NewMockDownloadClient(ctrl)
 		mockFactory := downloadMock.NewMockFactory(ctrl)
@@ -1165,14 +1165,14 @@ func TestMediaManager_ReconcileContinuingSeries(t *testing.T) {
 			Name: "test download continuing",
 		}, nil).AnyTimes()
 
-	seriesMetadataID, err := store.CreateSeriesMetadata(ctx, model.SeriesMetadata{
-		TmdbID:         1,
-		Title:          "Continuing Series",
-		Status:         "Continuing",
-		EpisodeCount:   10,
-		ExternalIds:    nil,
-		WatchProviders: nil,
-	})
+		seriesMetadataID, err := store.CreateSeriesMetadata(ctx, model.SeriesMetadata{
+			TmdbID:         1,
+			Title:          "Continuing Series",
+			Status:         "Continuing",
+			EpisodeCount:   10,
+			ExternalIds:    nil,
+			WatchProviders: nil,
+		})
 		require.NoError(t, err)
 
 		seriesID, err := store.CreateSeries(ctx, storage.Series{
@@ -1244,7 +1244,7 @@ func TestMediaManager_ReconcileContinuingSeries(t *testing.T) {
 		require.NoError(t, err)
 		pClient.ClientInterface = prowlarrMock
 
-		m := New(tmdbMock, pClient, nil, store, mockFactory, config.Manager{})
+		m := New(tmdbMock, pClient, nil, store, mockFactory, config.Manager{}, config.Config{})
 
 		// Just test that the function runs without error
 		err = m.ReconcileContinuingSeries(ctx, snapshot)
@@ -1257,7 +1257,7 @@ func TestMediaManager_ReconcileContinuingSeries(t *testing.T) {
 
 		snapshot := newReconcileSnapshot([]Indexer{{ID: 1}}, []*model.DownloadClient{})
 
-		m := New(nil, nil, nil, store, nil, config.Manager{})
+		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
 
 		err := m.ReconcileContinuingSeries(ctx, snapshot)
 		require.NoError(t, err)
@@ -1271,14 +1271,14 @@ func TestMediaManager_ReconcileContinuingSeries(t *testing.T) {
 		store := newStore(t, ctx)
 
 		// Set up series and season data
-	seriesMetadataID, err := store.CreateSeriesMetadata(ctx, model.SeriesMetadata{
-		TmdbID:         100,
-		Title:          "Weekly Series",
-		SeasonCount:    1,
-		EpisodeCount:   3,
-		Status:         "Returning Series",
-		ExternalIds:    nil,
-		WatchProviders: nil,
+		seriesMetadataID, err := store.CreateSeriesMetadata(ctx, model.SeriesMetadata{
+			TmdbID:         100,
+			Title:          "Weekly Series",
+			SeasonCount:    1,
+			EpisodeCount:   3,
+			Status:         "Returning Series",
+			ExternalIds:    nil,
+			WatchProviders: nil,
 		})
 		require.NoError(t, err)
 
@@ -1396,7 +1396,7 @@ func TestMediaManager_ReconcileContinuingSeries(t *testing.T) {
 		require.NoError(t, err)
 		pClient.ClientInterface = prowlarrMock
 
-		m := New(tmdbMock, pClient, nil, store, nil, config.Manager{})
+		m := New(tmdbMock, pClient, nil, store, nil, config.Manager{}, config.Config{})
 
 		// Before reconciliation, we should only have 2 episode records
 		episodesBefore, err := store.ListEpisodes(ctx, table.Episode.SeasonID.EQ(sqlite.Int64(seasonID)))
@@ -1690,7 +1690,7 @@ func TestMediaManager_ReconcileDiscoveredEpisodes(t *testing.T) {
 
 		store.EXPECT().ListEpisodes(ctx, where).Return(nil, storage.ErrNotFound)
 
-		m := New(nil, nil, nil, store, nil, config.Manager{})
+		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
 		err := m.ReconcileDiscoveredEpisodes(ctx, snapshot)
 		require.NoError(t, err)
 	})
@@ -1713,7 +1713,7 @@ func TestMediaManager_ReconcileDiscoveredEpisodes(t *testing.T) {
 		expectedErr := errors.New("database error")
 		store.EXPECT().ListEpisodes(ctx, where).Return(nil, expectedErr)
 
-		m := New(nil, nil, nil, store, nil, config.Manager{})
+		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
 		err := m.ReconcileDiscoveredEpisodes(ctx, snapshot)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "couldn't list discovered episodes")
@@ -1800,7 +1800,7 @@ func TestMediaManager_ReconcileDiscoveredEpisodes(t *testing.T) {
 		// Mock the TMDB client (not needed for this test but prevents nil pointer)
 		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
 
-		m := New(tmdbMock, nil, libraryMock, store, nil, config.Manager{})
+		m := New(tmdbMock, nil, libraryMock, store, nil, config.Manager{}, config.Config{})
 		err = m.ReconcileDiscoveredEpisodes(ctx, snapshot)
 		require.NoError(t, err)
 
@@ -1847,7 +1847,7 @@ func TestMediaManager_ReconcileDiscoveredEpisodes(t *testing.T) {
 		}, storage.EpisodeStateDiscovered)
 		require.NoError(t, err)
 
-		m := New(nil, nil, nil, store, nil, config.Manager{})
+		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
 		err = m.ReconcileDiscoveredEpisodes(ctx, snapshot)
 		require.NoError(t, err) // Function should not fail even if individual episodes fail to reconcile
 	})
@@ -1881,7 +1881,7 @@ func TestMediaManager_matchEpisodeFileToEpisode(t *testing.T) {
 			{Episode: model.Episode{ID: 3, EpisodeMetadataID: ptr(int32(episodeMetadataID3))}},
 		}
 
-		m := New(nil, nil, nil, store, nil, config.Manager{})
+		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
 		result := m.matchEpisodeFileToEpisode(ctx, "/downloads/Series.Name.S01E03.1080p.WEB-DL.x264-GROUP.mkv", episodes)
 		require.NotNil(t, result)
 		assert.Equal(t, int32(3), result.ID)
@@ -1904,7 +1904,7 @@ func TestMediaManager_matchEpisodeFileToEpisode(t *testing.T) {
 			{Episode: model.Episode{ID: 5, EpisodeMetadataID: ptr(int32(episodeMetadataID5))}},
 		}
 
-		m := New(nil, nil, nil, store, nil, config.Manager{})
+		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
 		result := m.matchEpisodeFileToEpisode(ctx, "/downloads/Series.Name.1x05.720p.HDTV.x264-GROUP.mkv", episodes)
 		require.NotNil(t, result)
 		assert.Equal(t, int32(5), result.ID)
@@ -1919,7 +1919,7 @@ func TestMediaManager_matchEpisodeFileToEpisode(t *testing.T) {
 
 		episodes := []*storage.Episode{{Episode: model.Episode{ID: 6, EpisodeMetadataID: ptr(int32(episodeMetadataID6))}}}
 
-		m := New(nil, nil, nil, store, nil, config.Manager{})
+		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
 		result := m.matchEpisodeFileToEpisode(ctx, "/downloads/Series.Name.Some.Random.File.mkv", episodes)
 		assert.Nil(t, result)
 	})
@@ -1938,7 +1938,7 @@ func TestMediaManager_matchEpisodeFileToEpisode(t *testing.T) {
 			{Episode: model.Episode{ID: 8, EpisodeMetadataID: ptr(int32(episodeMetadataID8))}},
 		}
 
-		m := New(nil, nil, nil, store, nil, config.Manager{})
+		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
 		result := m.matchEpisodeFileToEpisode(ctx, "/downloads/Series.Name.S01E10.1080p.WEB-DL.x264-GROUP.mkv", episodes)
 		assert.Nil(t, result)
 	})

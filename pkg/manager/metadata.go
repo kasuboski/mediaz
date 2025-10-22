@@ -289,30 +289,30 @@ func parseTMDBDate(date string) (*time.Time, error) {
 // Returns nil with no error if the data could not be fetched or parsed.
 func (m MediaManager) fetchExternalIDs(ctx context.Context, tmdbID int) (*string, error) {
 	log := logger.FromCtx(ctx)
-	
+
 	extIDsResp, err := m.tmdb.TvSeriesExternalIds(ctx, int32(tmdbID))
 	if err != nil {
 		log.Debug("failed to fetch external IDs", zap.Error(err))
 		return nil, nil
 	}
 	defer extIDsResp.Body.Close()
-	
+
 	if extIDsResp.StatusCode != 200 {
 		return nil, nil
 	}
-	
+
 	extIDsData, err := parseExternalIDs(extIDsResp)
 	if err != nil {
 		log.Debug("failed to parse external IDs", zap.Error(err))
 		return nil, nil
 	}
-	
+
 	serialized, err := SerializeExternalIDs(extIDsData)
 	if err != nil {
 		log.Debug("failed to serialize external IDs", zap.Error(err))
 		return nil, nil
 	}
-	
+
 	return serialized, nil
 }
 
@@ -320,30 +320,30 @@ func (m MediaManager) fetchExternalIDs(ctx context.Context, tmdbID int) (*string
 // Returns nil with no error if the data could not be fetched or parsed.
 func (m MediaManager) fetchWatchProviders(ctx context.Context, tmdbID int) (*string, error) {
 	log := logger.FromCtx(ctx)
-	
+
 	wpResp, err := m.tmdb.TvSeriesWatchProviders(ctx, int32(tmdbID))
 	if err != nil {
 		log.Debug("failed to fetch watch providers", zap.Error(err))
 		return nil, nil
 	}
 	defer wpResp.Body.Close()
-	
+
 	if wpResp.StatusCode != 200 {
 		return nil, nil
 	}
-	
+
 	wpData, err := parseWatchProviders(wpResp)
 	if err != nil {
 		log.Debug("failed to parse watch providers", zap.Error(err))
 		return nil, nil
 	}
-	
+
 	serialized, err := SerializeWatchProviders(wpData)
 	if err != nil {
 		log.Debug("failed to serialize watch providers", zap.Error(err))
 		return nil, nil
 	}
-	
+
 	return serialized, nil
 }
 

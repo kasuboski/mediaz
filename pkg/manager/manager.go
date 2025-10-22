@@ -32,16 +32,18 @@ type MediaManager struct {
 	library library.Library
 	storage storage.Storage
 	factory download.Factory
+	config  config.Config
 	configs config.Manager
 }
 
-func New(tmbdClient tmdb.ITmdb, prowlarrClient prowlarr.IProwlarr, library library.Library, storage storage.Storage, factory download.Factory, managerConfigs config.Manager) MediaManager {
+func New(tmbdClient tmdb.ITmdb, prowlarrClient prowlarr.IProwlarr, library library.Library, storage storage.Storage, factory download.Factory, managerConfigs config.Manager, fullConfig config.Config) MediaManager {
 	return MediaManager{
 		tmdb:    tmbdClient,
 		indexer: NewIndexerStore(prowlarrClient, storage),
 		library: library,
 		storage: storage,
 		factory: factory,
+		config:  fullConfig,
 		configs: managerConfigs,
 	}
 }
@@ -163,23 +165,23 @@ func (m MediaManager) GetTVDetailByTMDBID(ctx context.Context, tmdbID int) (*TVD
 	// Transform data into result
 	result := m.buildTVDetailResult(metadata, seriesDetailsResponse, series, seasons)
 
-// Add stored external IDs from database
-if extIDs, err := DeserializeExternalIDs(metadata.ExternalIds); err == nil && extIDs != nil {
-	result.ExternalIDs = &ExternalIDs{ImdbID: extIDs.ImdbID, TvdbID: extIDs.TvdbID}
-}
-
-// Add stored watch providers from database
-if wpData, err := DeserializeWatchProviders(metadata.WatchProviders); err == nil && wpData != nil {
-	providers := make([]WatchProvider, 0, len(wpData.US.Flatrate))
-	for _, p := range wpData.US.Flatrate {
-		providers = append(providers, WatchProvider{
-			ProviderID: p.ProviderID,
-			Name:       p.Name,
-			LogoPath:   p.LogoPath,
-		})
+	// Add stored external IDs from database
+	if extIDs, err := DeserializeExternalIDs(metadata.ExternalIds); err == nil && extIDs != nil {
+		result.ExternalIDs = &ExternalIDs{ImdbID: extIDs.ImdbID, TvdbID: extIDs.TvdbID}
 	}
-	result.WatchProviders = providers
-}
+
+	// Add stored watch providers from database
+	if wpData, err := DeserializeWatchProviders(metadata.WatchProviders); err == nil && wpData != nil {
+		providers := make([]WatchProvider, 0, len(wpData.US.Flatrate))
+		for _, p := range wpData.US.Flatrate {
+			providers = append(providers, WatchProvider{
+				ProviderID: p.ProviderID,
+				Name:       p.Name,
+				LogoPath:   p.LogoPath,
+			})
+		}
+		result.WatchProviders = providers
+	}
 
 	return result, nil
 }
@@ -438,6 +440,32 @@ func (m MediaManager) getEpisodesForSeason(ctx context.Context, seasonID int32, 
 	}
 
 	return results, nil
+}
+
+// GetConfigSummary returns a readonly summary of the library configuration
+func (m MediaManager) GetConfigSummary() ConfigSummary {
+	return ConfigSummary{
+		Library: LibraryConfig{
+			MovieDir:         m.config.Library.MovieDir,
+			TVDir:            m.config.Library.TVDir,
+			DownloadMountDir: m.config.Library.DownloadMountDir,
+		},
+		Server: ServerConfig{
+			Port: m.config.Server.Port,
+		},
+		Jobs: JobsConfig{
+			MovieReconcile:  m.config.Manager.Jobs.MovieReconcile.String(),
+			MovieIndex:      m.config.Manager.Jobs.MovieIndex.String(),
+			SeriesReconcile: m.config.Manager.Jobs.SeriesReconcile.String(),
+			SeriesIndex:     m.config.Manager.Jobs.SeriesIndex.String(),
+		},
+	}
+}
+
+// GetLibraryStats returns aggregate statistics about the library using optimized queries
+func (m MediaManager) GetLibraryStats(ctx context.Context) (*storage.LibraryStats, error) {
+	// Use the new optimized storage method that aggregates in the database
+	return m.storage.GetLibraryStats(ctx)
 }
 
 // SearchMovie query tmdb for tv shows
