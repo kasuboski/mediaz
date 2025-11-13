@@ -198,3 +198,27 @@ type EpisodeResult struct {
 	Monitored    bool     `json:"monitored"`
 	Downloaded   bool     `json:"downloaded"`
 }
+
+// ConfigSummary provides a readonly summary of library configuration (excludes sensitive data)
+type ConfigSummary struct {
+	Library LibraryConfig `json:"library"`
+	Server  ServerConfig  `json:"server"`
+	Jobs    JobsConfig    `json:"jobs"`
+}
+
+type LibraryConfig struct {
+	MovieDir         string `json:"movieDir"`
+	TVDir            string `json:"tvDir"`
+	DownloadMountDir string `json:"downloadMountDir"`
+}
+
+type ServerConfig struct {
+	Port int `json:"port"`
+}
+
+type JobsConfig struct {
+	MovieReconcile  string `json:"movieReconcile"`
+	MovieIndex      string `json:"movieIndex"`
+	SeriesReconcile string `json:"seriesReconcile"`
+	SeriesIndex     string `json:"seriesIndex"`
+}

@@ -181,18 +181,18 @@ func generateMoviesFromDB(ctx context.Context, store storage.Storage, outputDir 
 
 	count := 0
 	fileIndex := 0
-	
+
 	for range movies {
 		if fileIndex >= len(actualFiles) {
 			fileIndex = 0 // Wrap around if we have more database entries than files
 		}
-		
+
 		actualFile := actualFiles[fileIndex]
 		fileIndex++
 
 		// Create the target path in output directory
 		targetPath := filepath.Join(outputDir, actualFile.RelativePath)
-		
+
 		// Create parent directories if needed
 		if err := os.MkdirAll(filepath.Dir(targetPath), 0755); err != nil {
 			log.Warnf("failed to create directory for %s: %v", targetPath, err)
@@ -224,44 +224,44 @@ type MovieFile struct {
 // scanMovieLibrary scans the movie library and returns all movie files
 func scanMovieLibrary(libraryPath string, log *zap.SugaredLogger) ([]MovieFile, error) {
 	var files []MovieFile
-	
+
 	err := filepath.Walk(libraryPath, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
-		
+
 		if info.IsDir() {
 			return nil
 		}
-		
+
 		// Check if it's a movie file
 		ext := strings.ToLower(filepath.Ext(path))
 		if ext != ".mp4" && ext != ".mkv" && ext != ".avi" && ext != ".mov" {
 			return nil
 		}
-		
+
 		// Get relative path from library root
 		relPath, err := filepath.Rel(libraryPath, path)
 		if err != nil {
 			return err
 		}
-		
+
 		// Determine if file is in its own folder
 		isInFolder := strings.Contains(relPath, string(os.PathSeparator))
-		
+
 		files = append(files, MovieFile{
 			RelativePath: relPath,
 			Extension:    ext,
 			IsInFolder:   isInFolder,
 		})
-		
+
 		return nil
 	})
-	
+
 	if err != nil {
 		return nil, err
 	}
-	
+
 	log.Infof("Found %d movie files in library at %s", len(files), libraryPath)
 	return files, nil
 }

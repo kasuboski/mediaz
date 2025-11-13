@@ -596,6 +596,21 @@ func (mr *MockStorageMockRecorder) GetJob(ctx, id any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetJob", reflect.TypeOf((*MockStorage)(nil).GetJob), ctx, id)
 }
 
+// GetLibraryStats mocks base method.
+func (m *MockStorage) GetLibraryStats(ctx context.Context) (*storage.LibraryStats, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetLibraryStats", ctx)
+	ret0, _ := ret[0].(*storage.LibraryStats)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetLibraryStats indicates an expected call of GetLibraryStats.
+func (mr *MockStorageMockRecorder) GetLibraryStats(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLibraryStats", reflect.TypeOf((*MockStorage)(nil).GetLibraryStats), ctx)
+}
+
 // GetMovie mocks base method.
 func (m *MockStorage) GetMovie(ctx context.Context, id int64) (*storage.Movie, error) {
 	m.ctrl.T.Helper()
@@ -684,6 +699,21 @@ func (m *MockStorage) GetMovieMetadata(ctx context.Context, where sqlite.BoolExp
 func (mr *MockStorageMockRecorder) GetMovieMetadata(ctx, where any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMovieMetadata", reflect.TypeOf((*MockStorage)(nil).GetMovieMetadata), ctx, where)
+}
+
+// GetMovieStatsByState mocks base method.
+func (m *MockStorage) GetMovieStatsByState(ctx context.Context) ([]storage.MovieStatsByState, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetMovieStatsByState", ctx)
+	ret0, _ := ret[0].([]storage.MovieStatsByState)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetMovieStatsByState indicates an expected call of GetMovieStatsByState.
+func (mr *MockStorageMockRecorder) GetMovieStatsByState(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMovieStatsByState", reflect.TypeOf((*MockStorage)(nil).GetMovieStatsByState), ctx)
 }
 
 // GetQualityDefinition mocks base method.
@@ -789,6 +819,21 @@ func (m *MockStorage) GetSeriesMetadata(ctx context.Context, where sqlite.BoolEx
 func (mr *MockStorageMockRecorder) GetSeriesMetadata(ctx, where any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSeriesMetadata", reflect.TypeOf((*MockStorage)(nil).GetSeriesMetadata), ctx, where)
+}
+
+// GetTVStatsByState mocks base method.
+func (m *MockStorage) GetTVStatsByState(ctx context.Context) ([]storage.TVStatsByState, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetTVStatsByState", ctx)
+	ret0, _ := ret[0].([]storage.TVStatsByState)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetTVStatsByState indicates an expected call of GetTVStatsByState.
+func (mr *MockStorageMockRecorder) GetTVStatsByState(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTVStatsByState", reflect.TypeOf((*MockStorage)(nil).GetTVStatsByState), ctx)
 }
 
 // Init mocks base method.

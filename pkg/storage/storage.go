@@ -28,6 +28,7 @@ type Storage interface {
 	JobStorage
 	SeriesStorage
 	SeriesMetadataStorage
+	StatisticsStorage
 }
 
 type IndexerStorage interface {

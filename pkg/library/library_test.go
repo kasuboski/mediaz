@@ -48,15 +48,15 @@ func TestMatchEpisodeRegex(t *testing.T) {
 		// These work (Fallout)
 		{"Fallout - S01E01 - The End.mkv", true, "Fallout format that works"},
 		{"Fallout - S01E02 - The Target.mkv", true, "Fallout format that works"},
-		
+
 		// These should now work with updated regex (House of the Dragon)
 		{"House.of.the.Dragon.S01E01.1080p.BluRay.x265-RARBG[eztv.re].mp4", true, "House of Dragon original format with dots"},
 		{"House.of.the.Dragon.S01E02.1080p.BluRay.x265-RARBG[eztv.re].mp4", true, "House of Dragon original format with dots"},
-		
+
 		// Test what sanitizeName produces
 		{"House of the Dragon S01E01 1080p BluRay x265-RARBG[eztv re] mp4", true, "House of Dragon sanitized format"},
 		{"House of the Dragon S01E02 1080p BluRay x265-RARBG[eztv re] mp4", true, "House of Dragon sanitized format"},
-		
+
 		// Test simpler House of Dragon formats
 		{"House of the Dragon - S01E01.mp4", true, "House of Dragon simple format"},
 		{"House of the Dragon S01E01.mp4", true, "House of Dragon without dashes"},

@@ -89,7 +89,7 @@ func TestAddMovietoLibrary(t *testing.T) {
 
 	mockFactory := downloadMock.NewMockFactory(ctrl)
 
-	m := New(tClient, pClient, lib, store, mockFactory, config.Manager{})
+	m := New(tClient, pClient, lib, store, mockFactory, config.Manager{}, config.Config{})
 	require.NotNil(t, m)
 
 	req := AddMovieRequest{
@@ -127,7 +127,7 @@ func TestListMoviesInLibrary(t *testing.T) {
 	t.Run("no movies in library", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		store := mocks.NewMockStorage(ctrl)
-		m := New(nil, nil, nil, store, nil, config.Manager{})
+		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
 
 		store.EXPECT().ListMoviesByState(ctx, storage.MovieStateDiscovered).Return([]*storage.Movie{}, nil)
 		store.EXPECT().ListMoviesByState(ctx, storage.MovieStateDownloaded).Return([]*storage.Movie{}, nil)
@@ -140,7 +140,7 @@ func TestListMoviesInLibrary(t *testing.T) {
 	t.Run("movies with metadata", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		store := mocks.NewMockStorage(ctrl)
-		m := New(nil, nil, nil, store, nil, config.Manager{})
+		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
 
 		metadataID := int32(1)
 		path := "movie1"
@@ -197,7 +197,7 @@ func TestListMoviesInLibrary(t *testing.T) {
 	t.Run("movies without metadata", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		store := mocks.NewMockStorage(ctrl)
-		m := New(nil, nil, nil, store, nil, config.Manager{})
+		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
 
 		path := "movie1"
 		discoveredMovie := &storage.Movie{
@@ -224,7 +224,7 @@ func TestListMoviesInLibrary(t *testing.T) {
 	t.Run("error listing discovered movies", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		store := mocks.NewMockStorage(ctrl)
-		m := New(nil, nil, nil, store, nil, config.Manager{})
+		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
 
 		store.EXPECT().ListMoviesByState(ctx, storage.MovieStateDiscovered).Return(nil, errors.New("db error"))
 
@@ -236,7 +236,7 @@ func TestListMoviesInLibrary(t *testing.T) {
 	t.Run("error listing downloaded movies", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		store := mocks.NewMockStorage(ctrl)
-		m := New(nil, nil, nil, store, nil, config.Manager{})
+		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
 
 		store.EXPECT().ListMoviesByState(ctx, storage.MovieStateDiscovered).Return([]*storage.Movie{}, nil)
 		store.EXPECT().ListMoviesByState(ctx, storage.MovieStateDownloaded).Return(nil, errors.New("db error"))
@@ -253,7 +253,7 @@ func TestListShowsInLibrary(t *testing.T) {
 	t.Run("no shows in library", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		store := mocks.NewMockStorage(ctrl)
-		m := New(nil, nil, nil, store, nil, config.Manager{})
+		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
 
 		store.EXPECT().ListSeries(ctx).Return([]*storage.Series{}, nil)
 
@@ -265,7 +265,7 @@ func TestListShowsInLibrary(t *testing.T) {
 	t.Run("shows with metadata", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		store := mocks.NewMockStorage(ctrl)
-		m := New(nil, nil, nil, store, nil, config.Manager{})
+		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
 
 		metadataID := int32(1)
 		path := "Show 1"
@@ -309,7 +309,7 @@ func TestListShowsInLibrary(t *testing.T) {
 	t.Run("shows without metadata", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		store := mocks.NewMockStorage(ctrl)
-		m := New(nil, nil, nil, store, nil, config.Manager{})
+		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
 
 		path := "Show 1"
 		series := &storage.Series{
@@ -335,7 +335,7 @@ func TestListShowsInLibrary(t *testing.T) {
 	t.Run("error listing series", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		store := mocks.NewMockStorage(ctrl)
-		m := New(nil, nil, nil, store, nil, config.Manager{})
+		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
 
 		store.EXPECT().ListSeries(ctx).Return(nil, errors.New("db error"))
 
@@ -352,7 +352,7 @@ func TestIndexMovieLibrary(t *testing.T) {
 
 		library := mockLibrary.NewMockLibrary(ctrl)
 		library.EXPECT().FindMovies(ctx).Times(1).Return(nil, errors.New("expected tested error"))
-		m := New(nil, nil, library, nil, nil, config.Manager{})
+		m := New(nil, nil, library, nil, nil, config.Manager{}, config.Config{})
 		require.NotNil(t, m)
 
 		err := m.IndexMovieLibrary(ctx)
@@ -366,7 +366,7 @@ func TestIndexMovieLibrary(t *testing.T) {
 
 		mockLibrary := mockLibrary.NewMockLibrary(ctrl)
 		mockLibrary.EXPECT().FindMovies(ctx).Times(1).Return([]library.MovieFile{}, nil)
-		m := New(nil, nil, mockLibrary, nil, nil, config.Manager{})
+		m := New(nil, nil, mockLibrary, nil, nil, config.Manager{}, config.Config{})
 		require.NotNil(t, m)
 
 		err := m.IndexMovieLibrary(ctx)
@@ -386,7 +386,7 @@ func TestIndexMovieLibrary(t *testing.T) {
 
 		mockLibrary.EXPECT().FindMovies(ctx).Times(1).Return(discoveredFiles, nil)
 
-		m := New(nil, nil, mockLibrary, store, nil, config.Manager{})
+		m := New(nil, nil, mockLibrary, store, nil, config.Manager{}, config.Config{})
 		require.NotNil(t, m)
 
 		err := m.IndexMovieLibrary(ctx)
@@ -407,7 +407,7 @@ func TestIndexMovieLibrary(t *testing.T) {
 
 		mockLibrary.EXPECT().FindMovies(ctx).Times(1).Return(discoveredFiles, nil)
 
-		m := New(nil, nil, mockLibrary, store, nil, config.Manager{})
+		m := New(nil, nil, mockLibrary, store, nil, config.Manager{}, config.Config{})
 		require.NotNil(t, m)
 
 		err := m.IndexMovieLibrary(ctx)
@@ -452,7 +452,7 @@ func TestIndexMovieLibrary(t *testing.T) {
 
 		mockLibrary.EXPECT().FindMovies(ctx).Times(1).Return(discoveredFiles, nil)
 
-		m := New(nil, nil, mockLibrary, store, nil, config.Manager{})
+		m := New(nil, nil, mockLibrary, store, nil, config.Manager{}, config.Config{})
 		require.NotNil(t, m)
 
 		err = m.IndexMovieLibrary(ctx)
@@ -490,7 +490,7 @@ func TestIndexMovieLibrary(t *testing.T) {
 
 		mockLibrary.EXPECT().FindMovies(ctx).Times(1).Return(discoveredFiles, nil)
 
-		m := New(nil, nil, mockLibrary, store, nil, config.Manager{})
+		m := New(nil, nil, mockLibrary, store, nil, config.Manager{}, config.Config{})
 		require.NotNil(t, m)
 
 		err = m.IndexMovieLibrary(ctx)
@@ -569,7 +569,7 @@ func TestRun(t *testing.T) {
 			SeriesReconcile: time.Minute * 1,
 			SeriesIndex:     time.Minute * 1,
 		},
-	})
+	}, config.Config{})
 	require.NotNil(t, m)
 
 	err = m.Run(ctx)
@@ -690,7 +690,7 @@ func TestGetMovieDetailByTMDBID(t *testing.T) {
 	t.Run("success - movie not in library", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		store := mocks.NewMockStorage(ctrl)
-		m := New(nil, nil, nil, store, nil, config.Manager{})
+		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
 
 		releaseDate := time.Date(2023, 1, 15, 0, 0, 0, 0, time.UTC)
 		year := int32(2023)
@@ -742,7 +742,7 @@ func TestGetMovieDetailByTMDBID(t *testing.T) {
 	t.Run("success - movie in library", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		store := mocks.NewMockStorage(ctrl)
-		m := New(nil, nil, nil, store, nil, config.Manager{})
+		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
 
 		metadata := &model.MovieMetadata{
 			ID:      1,
@@ -784,7 +784,7 @@ func TestGetMovieDetailByTMDBID(t *testing.T) {
 	t.Run("success - movie with nil release date", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		store := mocks.NewMockStorage(ctrl)
-		m := New(nil, nil, nil, store, nil, config.Manager{})
+		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
 
 		metadata := &model.MovieMetadata{
 			ID:          1,
@@ -810,7 +810,7 @@ func TestGetMovieDetailByTMDBID(t *testing.T) {
 	t.Run("success - movie with unmonitored status", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		store := mocks.NewMockStorage(ctrl)
-		m := New(nil, nil, nil, store, nil, config.Manager{})
+		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
 
 		metadata := &model.MovieMetadata{
 			ID:      1,
@@ -845,7 +845,7 @@ func TestGetMovieDetailByTMDBID(t *testing.T) {
 	t.Run("error - GetMovieMetadata fails", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		store := mocks.NewMockStorage(ctrl)
-		m := New(nil, nil, nil, store, nil, config.Manager{})
+		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
 
 		expectedErr := errors.New("metadata fetch error")
 		store.EXPECT().GetMovieMetadata(ctx, gomock.Any()).Return(nil, expectedErr)
@@ -859,7 +859,7 @@ func TestGetMovieDetailByTMDBID(t *testing.T) {
 	t.Run("success - storage error non-NotFound is logged but not returned", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		store := mocks.NewMockStorage(ctrl)
-		m := New(nil, nil, nil, store, nil, config.Manager{})
+		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
 
 		metadata := &model.MovieMetadata{
 			ID:      1,
@@ -887,7 +887,7 @@ func TestGetMovieDetailByTMDBID(t *testing.T) {
 
 func TestBuildTVDetailResult(t *testing.T) {
 	t.Run("builds complete TV detail result", func(t *testing.T) {
-		m := New(nil, nil, nil, nil, nil, config.Manager{})
+		m := New(nil, nil, nil, nil, nil, config.Manager{}, config.Config{})
 
 		// Mock series metadata
 		firstAirDate := time.Date(2023, 1, 15, 0, 0, 0, 0, time.UTC)
@@ -962,7 +962,7 @@ func TestBuildTVDetailResult(t *testing.T) {
 	})
 
 	t.Run("builds TV detail result not in library", func(t *testing.T) {
-		m := New(nil, nil, nil, nil, nil, config.Manager{})
+		m := New(nil, nil, nil, nil, nil, config.Manager{}, config.Config{})
 
 		metadata := &model.SeriesMetadata{
 			ID:             1,
@@ -992,7 +992,7 @@ func TestBuildTVDetailResult(t *testing.T) {
 	})
 
 	t.Run("builds TV detail result with minimal data", func(t *testing.T) {
-		m := New(nil, nil, nil, nil, nil, config.Manager{})
+		m := New(nil, nil, nil, nil, nil, config.Manager{}, config.Config{})
 
 		metadata := &model.SeriesMetadata{
 			ID:             1,
@@ -1026,7 +1026,7 @@ func TestBuildTVDetailResult(t *testing.T) {
 	})
 
 	t.Run("builds TV detail result with unmonitored series", func(t *testing.T) {
-		m := New(nil, nil, nil, nil, nil, config.Manager{})
+		m := New(nil, nil, nil, nil, nil, config.Manager{}, config.Config{})
 
 		metadata := &model.SeriesMetadata{
 			ID:             1,
@@ -1070,22 +1070,22 @@ func TestGetTVDetailByTMDBID(t *testing.T) {
 		store := mocks.NewMockStorage(ctrl)
 		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
 
-		m := New(tmdbMock, nil, nil, store, nil, config.Manager{})
+		m := New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
 
 		firstAirDate := time.Date(2023, 1, 15, 0, 0, 0, 0, time.UTC)
 		externalIDsJSON := `{"imdb_id":"tt7654321","tvdb_id":54321}`
 		watchProvidersJSON := `{"US":{"flatrate":[{"provider_id":8,"provider_name":"Netflix","logo_path":"/net.png"}]}}`
 		metadata := &model.SeriesMetadata{
-		ID:             1,
-		TmdbID:         123,
-		Title:          "Test Series",
-		Overview:       ptr("Test series overview"),
-		FirstAirDate:   &firstAirDate,
-		SeasonCount:    2,
-		EpisodeCount:   20,
-		Status:         "Continuing",
-		ExternalIds:    &externalIDsJSON,
-		WatchProviders: &watchProvidersJSON,
+			ID:             1,
+			TmdbID:         123,
+			Title:          "Test Series",
+			Overview:       ptr("Test series overview"),
+			FirstAirDate:   &firstAirDate,
+			SeasonCount:    2,
+			EpisodeCount:   20,
+			Status:         "Continuing",
+			ExternalIds:    &externalIDsJSON,
+			WatchProviders: &watchProvidersJSON,
 		}
 
 		// Mock series details response will be returned via HTTP response
@@ -1140,19 +1140,19 @@ func TestGetTVDetailByTMDBID(t *testing.T) {
 		store := mocks.NewMockStorage(ctrl)
 		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
 
-		m := New(tmdbMock, nil, nil, store, nil, config.Manager{})
+		m := New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
 
 		emptyExternalIDsJSON := `{"imdb_id":null,"tvdb_id":null}`
 		emptyWatchProvidersJSON := `{"US":{"flatrate":[]}}`
 		metadata := &model.SeriesMetadata{
-		ID:             1,
-		TmdbID:         123,
-		Title:          "Test Series",
-		SeasonCount:    1,
-		EpisodeCount:   10,
-		Status:         "Continuing",
-		ExternalIds:    &emptyExternalIDsJSON,
-		WatchProviders: &emptyWatchProvidersJSON,
+			ID:             1,
+			TmdbID:         123,
+			Title:          "Test Series",
+			SeasonCount:    1,
+			EpisodeCount:   10,
+			Status:         "Continuing",
+			ExternalIds:    &emptyExternalIDsJSON,
+			WatchProviders: &emptyWatchProvidersJSON,
 		}
 
 		// Mock series details response will be returned via HTTP response
@@ -1202,7 +1202,7 @@ func TestGetTVDetailByTMDBID(t *testing.T) {
 		store := mocks.NewMockStorage(ctrl)
 		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
 
-		m := New(tmdbMock, nil, nil, store, nil, config.Manager{})
+		m := New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
 
 		expectedErr := errors.New("metadata fetch error")
 		store.EXPECT().GetSeriesMetadata(ctx, gomock.Any()).Return(nil, expectedErr)
@@ -1218,7 +1218,7 @@ func TestGetTVDetailByTMDBID(t *testing.T) {
 		store := mocks.NewMockStorage(ctrl)
 		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
 
-		m := New(tmdbMock, nil, nil, store, nil, config.Manager{})
+		m := New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
 
 		metadata := &model.SeriesMetadata{
 			ID:             1,
@@ -1245,7 +1245,7 @@ func TestGetTVDetailByTMDBID(t *testing.T) {
 		store := mocks.NewMockStorage(ctrl)
 		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
 
-		m := New(tmdbMock, nil, nil, store, nil, config.Manager{})
+		m := New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
 
 		metadata := &model.SeriesMetadata{
 			ID:             1,
@@ -1286,7 +1286,7 @@ func TestGetTVDetailByTMDBID(t *testing.T) {
 		store := mocks.NewMockStorage(ctrl)
 		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
 
-		m := New(tmdbMock, nil, nil, store, nil, config.Manager{})
+		m := New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
 
 		// This should trigger the creation of metadata which calls FromSeriesDetails with empty FirstAirDate
 		store.EXPECT().GetSeriesMetadata(ctx, gomock.Any()).Return(nil, storage.ErrNotFound)
@@ -1377,7 +1377,7 @@ func TestMediaManager_AddSeriesToLibrary(t *testing.T) {
 		store := mocks.NewMockStorage(ctrl)
 		store.EXPECT().GetQualityProfile(gomock.Any(), int64(1)).Return(storage.QualityProfile{}, errors.New("expected testing error"))
 
-		m := New(nil, nil, nil, store, nil, config.Manager{})
+		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
 		require.NotNil(t, m)
 
 		req := AddSeriesRequest{
@@ -1403,7 +1403,7 @@ func TestMediaManager_AddSeriesToLibrary(t *testing.T) {
 		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
 		tmdbMock.EXPECT().GetSeriesDetails(gomock.Any(), gomock.Any()).Return(nil, errors.New("expected testing error"))
 
-		m := New(tmdbMock, nil, nil, store, nil, config.Manager{})
+		m := New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
 		require.NotNil(t, m)
 
 		req := AddSeriesRequest{
@@ -1427,16 +1427,16 @@ func TestMediaManager_AddSeriesToLibrary(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-	metadataID, err := store.CreateSeriesMetadata(ctx, model.SeriesMetadata{
-		ID:             1,
-		TmdbID:         1234,
-		Title:          "Test Series",
-		SeasonCount:    1,
-		EpisodeCount:   1,
-		Status:         "Continuing",
-		ExternalIds:    nil, // Optional field
-		WatchProviders: nil, // Optional field
-	})
+		metadataID, err := store.CreateSeriesMetadata(ctx, model.SeriesMetadata{
+			ID:             1,
+			TmdbID:         1234,
+			Title:          "Test Series",
+			SeasonCount:    1,
+			EpisodeCount:   1,
+			Status:         "Continuing",
+			ExternalIds:    nil, // Optional field
+			WatchProviders: nil, // Optional field
+		})
 		require.NoError(t, err)
 
 		seriesID, err := store.CreateSeries(ctx, storage.Series{
@@ -1452,7 +1452,7 @@ func TestMediaManager_AddSeriesToLibrary(t *testing.T) {
 
 		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
 
-		m := New(tmdbMock, nil, nil, store, nil, config.Manager{})
+		m := New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
 		require.NotNil(t, m)
 
 		req := AddSeriesRequest{
@@ -1481,22 +1481,22 @@ func TestMediaManager_AddSeriesToLibrary(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-	metadataID, err := store.CreateSeriesMetadata(ctx, model.SeriesMetadata{
-		ID:             1,
-		TmdbID:         1234,
-		Title:          "Test Series",
-		SeasonCount:    1,
-		EpisodeCount:   1,
-		Status:         "Continuing",
-		FirstAirDate:   ptr(time.Now().Add(time.Hour * 24 * 7)),
-		ExternalIds:    nil, // Optional field
-		WatchProviders: nil, // Optional field
-	})
+		metadataID, err := store.CreateSeriesMetadata(ctx, model.SeriesMetadata{
+			ID:             1,
+			TmdbID:         1234,
+			Title:          "Test Series",
+			SeasonCount:    1,
+			EpisodeCount:   1,
+			Status:         "Continuing",
+			FirstAirDate:   ptr(time.Now().Add(time.Hour * 24 * 7)),
+			ExternalIds:    nil, // Optional field
+			WatchProviders: nil, // Optional field
+		})
 		require.NoError(t, err)
 
 		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
 
-		m := New(tmdbMock, nil, nil, store, nil, config.Manager{})
+		m := New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
 		require.NotNil(t, m)
 
 		req := AddSeriesRequest{
@@ -1556,7 +1556,7 @@ func TestMediaManager_AddSeriesToLibrary(t *testing.T) {
 		wpResp := &http.Response{StatusCode: 200, Body: io.NopCloser(bytes.NewBufferString(`{"results":{"US":{"flatrate":[]}}}`))}
 		tmdbMock.EXPECT().TvSeriesWatchProviders(gomock.Any(), int32(1234)).Return(wpResp, nil)
 
-		m := New(tmdbMock, nil, nil, store, nil, config.Manager{})
+		m := New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
 		require.NotNil(t, m)
 
 		req := AddSeriesRequest{

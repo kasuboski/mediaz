@@ -28,19 +28,19 @@ func TestGetTVDetailByTMDBID_WithSeasonsAndEpisodes(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		store := mocks.NewMockStorage(ctrl)
 		tmdbClient := tmdbMocks.NewMockITmdb(ctrl)
-		m := New(tmdbClient, nil, nil, store, nil, config.Manager{})
+		m := New(tmdbClient, nil, nil, store, nil, config.Manager{}, config.Config{})
 
 		tmdbID := 12345
 		externalIDsJSON := `{"imdb_id":"tt9999999","tvdb_id":99999}`
 		watchProvidersJSON := `{"US":{"flatrate":[{"provider_id":8,"provider_name":"Netflix","logo_path":"/net.png"}]}}`
-	seriesMetadata := &model.SeriesMetadata{
-		ID:             1,
-		TmdbID:         int32(tmdbID),
-		Title:          "Test Series",
-		Status:         "Continuing",
-		ExternalIds:    &externalIDsJSON,
-		WatchProviders: &watchProvidersJSON,
-	}
+		seriesMetadata := &model.SeriesMetadata{
+			ID:             1,
+			TmdbID:         int32(tmdbID),
+			Title:          "Test Series",
+			Status:         "Continuing",
+			ExternalIds:    &externalIDsJSON,
+			WatchProviders: &watchProvidersJSON,
+		}
 
 		seasonMetadataID := int32(10)
 		season := &storage.Season{
@@ -137,7 +137,7 @@ func TestGetTVDetailByTMDBID_WithSeasonsAndEpisodes(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		store := mocks.NewMockStorage(ctrl)
 		tmdbClient := tmdbMocks.NewMockITmdb(ctrl)
-		m := New(tmdbClient, nil, nil, store, nil, config.Manager{})
+		m := New(tmdbClient, nil, nil, store, nil, config.Manager{}, config.Config{})
 
 		tmdbID := 99999
 		emptyExternalIDsJSON := `{"imdb_id":null,"tvdb_id":null}`
@@ -181,7 +181,7 @@ func TestGetTVDetailByTMDBID_WithSeasonsAndEpisodes(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		store := mocks.NewMockStorage(ctrl)
 		tmdbClient := tmdbMocks.NewMockITmdb(ctrl)
-		m := New(tmdbClient, nil, nil, store, nil, config.Manager{})
+		m := New(tmdbClient, nil, nil, store, nil, config.Manager{}, config.Config{})
 
 		tmdbID := 12345
 		emptyExternalIDsJSON := `{"imdb_id":null,"tvdb_id":null}`

@@ -120,7 +120,7 @@ var searchIndexerCmd = &cobra.Command{
 			log.Fatal("failed to init database", zap.Error(err))
 		}
 
-		m := manager.New(tmdbClient, prowlarrClient, library, store, nil, cfg.Manager)
+		m := manager.New(tmdbClient, prowlarrClient, library, store, nil, cfg.Manager, cfg)
 
 		idx, err := m.ListIndexers(ctx)
 		if err != nil {

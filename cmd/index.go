@@ -91,7 +91,7 @@ var indexMoviesCmd = &cobra.Command{
 
 		// Create MediaManager
 		factory := download.NewDownloadClientFactory(cfg.Library.DownloadMountDir)
-		m := manager.New(tmdbClient, prowlarrClient, library, store, factory, cfg.Manager)
+		m := manager.New(tmdbClient, prowlarrClient, library, store, factory, cfg.Manager, cfg)
 
 		log.Info("Starting movie library indexing")
 
@@ -165,7 +165,7 @@ var indexSeriesCmd = &cobra.Command{
 
 		// Create MediaManager
 		factory := download.NewDownloadClientFactory(cfg.Library.DownloadMountDir)
-		m := manager.New(tmdbClient, prowlarrClient, library, store, factory, cfg.Manager)
+		m := manager.New(tmdbClient, prowlarrClient, library, store, factory, cfg.Manager, cfg)
 
 		// Setup context and call IndexSeriesLibrary
 

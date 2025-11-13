@@ -137,6 +137,18 @@ Base path: `/api/v1`
 
 ---
 
+### Library Configuration & Statistics
+
+#### GET /config
+- Status: 200 OK
+- Response: `{ "response": ConfigSummary }`
+
+#### GET /library/stats
+- Status: 200 OK
+- Response: `{ "response": LibraryStats }`
+
+---
+
 ## Schemas
 
 ### LibraryMovie
@@ -320,3 +332,34 @@ Base path: `/api/v1`
 - `qualities`: [ `QualityDefinition` ]
 - `cutoff_quality_id`: int
 - `upgradeAllowed`: bool
+
+### ConfigSummary
+- `library`: `LibraryConfig`
+- `server`: `ServerConfig`
+- `jobs`: `JobsConfig`
+
+### LibraryConfig
+- `movieDir`: string
+- `tvDir`: string
+- `downloadMountDir`: string
+
+### ServerConfig
+- `port`: int
+
+### JobsConfig
+- `movieReconcile`: string
+- `movieIndex`: string
+- `seriesReconcile`: string
+- `seriesIndex`: string
+
+### LibraryStats
+- `movies`: `MovieStats`
+- `tv`: `TVStats`
+
+### MovieStats
+- `total`: int
+- `byState`: object (map of state names to counts)
+
+### TVStats
+- `total`: int
+- `byState`: object (map of state names to counts)

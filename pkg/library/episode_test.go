@@ -114,7 +114,7 @@ func TestExtractEpisodeNumber(t *testing.T) {
 		{"Show [1x05] Title.mkv", 5, "Episode in brackets"},
 		{"Series (S01E05) Title.avi", 5, "Episode in parentheses"},
 		{"Show.Name.1x05.720p.HDTV.x264.mkv", 5, "Episode with quality info"},
-		
+
 		// House of the Dragon test cases from testlib
 		{"House.of.the.Dragon.S01E01.1080p.BluRay.x265-RARBG[eztv.re].mp4", 1, "House of the Dragon S01E01 format with dots and quality info"},
 		{"House.of.the.Dragon.S01E02.1080p.BluRay.x265-RARBG[eztv.re].mp4", 2, "House of the Dragon S01E02 format with dots and quality info"},
