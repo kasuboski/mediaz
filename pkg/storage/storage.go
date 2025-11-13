@@ -13,6 +13,7 @@ import (
 )
 
 var ErrNotFound = errors.New("not found in storage")
+var ErrJobAlreadyPending = errors.New("job of this type already pending")
 
 //go:embed sqlite/schema/*.sql
 var schemaFiles embed.FS
@@ -24,6 +25,7 @@ type Storage interface {
 	MovieStorage
 	MovieMetadataStorage
 	DownloadClientStorage
+	JobStorage
 	SeriesStorage
 	SeriesMetadataStorage
 	StatisticsStorage
@@ -118,6 +120,38 @@ type DownloadClientStorage interface {
 	GetDownloadClient(ctx context.Context, id int64) (model.DownloadClient, error)
 	ListDownloadClients(ctx context.Context) ([]*model.DownloadClient, error)
 	DeleteDownloadClient(ctx context.Context, id int64) error
+}
+
+type JobState string
+
+const (
+	JobStateNew     JobState = ""
+	JobStatePending JobState = "pending"
+	JobStateRunning JobState = "running"
+	JobStateError   JobState = "error"
+	JobStateDone    JobState = "done"
+)
+
+type Job struct {
+	model.Job
+	State JobState `alias:"job.to_state" json:"state"`
+}
+
+func (j Job) Machine() *machine.StateMachine[JobState] {
+	return machine.New(j.State,
+		machine.From(JobStateNew).To(JobStatePending),
+		machine.From(JobStatePending).To(JobStateRunning),
+		machine.From(JobStateRunning).To(JobStateError, JobStateDone),
+	)
+}
+
+type JobStorage interface {
+	CreateJob(ctx context.Context, job Job, initialState JobState) (int64, error)
+	GetJob(ctx context.Context, id int64) (*Job, error)
+	ListJobs(ctx context.Context) ([]*Job, error)
+	ListJobsByState(ctx context.Context, state JobState) ([]*Job, error)
+	UpdateJobState(ctx context.Context, id int64, state JobState, errorMsg *string) error
+	DeleteJob(ctx context.Context, id int64) error
 }
 
 type QualityProfile struct {

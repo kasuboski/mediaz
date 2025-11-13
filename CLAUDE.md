@@ -134,3 +134,19 @@ store.EXPECT().ListMoviesByState(ctx, storage.MovieStateDownloaded).Return([]*st
 **System Management**:
 - `mediaz generate schema` - Create DB schema
 - `mediaz --config <path>` - Specify config file
+
+## Task Management with Backlog.md
+
+This project uses the Backlog.md CLI tool for task management. Task files are stored in `backlog/tasks/` and managed through CLI commands.
+
+**⚠️ CRITICAL: Never edit task files directly!** Always use the `backlog` CLI commands.
+
+For comprehensive guidance on using Backlog.md, including task creation, acceptance criteria management, and workflows, the `backlog-manager` skill is available in `.claude/skills/backlog-manager/`.
+
+**Quick Reference:**
+- List tasks: `backlog task list --plain`
+- View task: `backlog task 42 --plain`
+- Edit task: `backlog task edit 42 [options]`
+- Search tasks: `backlog search "query" --plain`
+
+Full documentation: `backlog --help` or consult the backlog-manager skill

@@ -237,6 +237,18 @@ CREATE TABLE IF NOT EXISTS "download_client" (
     "api_key" TEXT
 );
 
+CREATE TABLE IF NOT EXISTS "job" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "type" TEXT NOT NULL,
+    "created_at" DATETIME DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" DATETIME DEFAULT CURRENT_TIMESTAMP,
+    "to_state" TEXT NOT NULL,
+    "from_state" TEXT,
+    "most_recent" BOOLEAN NOT NULL,
+    "sort_key" INTEGER NOT NULL,
+    "error" TEXT
+);
+
 CREATE UNIQUE INDEX IF NOT EXISTS "idx_indexer_name" ON "indexer" ("name" ASC);
 
 CREATE UNIQUE INDEX IF NOT EXISTS "idx_movie_transitions_by_parent_most_recent" ON "movie_transition"("movie_id", "most_recent")
@@ -266,3 +278,13 @@ CREATE UNIQUE INDEX IF NOT EXISTS "idx_episode_transitions_by_parent_sort_key" O
 CREATE UNIQUE INDEX IF NOT EXISTS "idx_season_metadata_unique_series_season" ON "season_metadata" ("series_metadata_id", "number");
 
 CREATE UNIQUE INDEX IF NOT EXISTS "idx_episode_metadata_unique_season_episode" ON "episode_metadata" ("season_metadata_id", "number");
+
+CREATE UNIQUE INDEX IF NOT EXISTS "idx_job_most_recent" ON "job"("most_recent")
+WHERE
+    "most_recent" = 1;
+
+CREATE UNIQUE INDEX IF NOT EXISTS "idx_job_sort_key" ON "job"("sort_key");
+
+CREATE UNIQUE INDEX IF NOT EXISTS "idx_job_type_pending" ON "job"("type", "to_state")
+WHERE
+    "to_state" = 'pending' AND "most_recent" = 1;
