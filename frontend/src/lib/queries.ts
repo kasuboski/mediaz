@@ -3,7 +3,7 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
-import { moviesApi, tvApi } from './api';
+import { moviesApi, tvApi, searchApi } from './api';
 
 /**
  * Query keys for consistent caching
@@ -18,6 +18,11 @@ export const queryKeys = {
     all: ['tv'] as const,
     library: () => ['tv', 'library'] as const,
     detail: (tmdbID: number) => ['tv', 'detail', tmdbID] as const,
+  },
+  search: {
+    all: ['search'] as const,
+    movies: (query: string) => [...queryKeys.search.all, 'movies', query] as const,
+    tv: (query: string) => [...queryKeys.search.all, 'tv', query] as const,
   },
 } as const;
 
@@ -62,6 +67,34 @@ export function useMovieDetail(tmdbID: number) {
     staleTime: 10 * 60 * 1000, // 10 minutes (movie details change less frequently)
     gcTime: 30 * 60 * 1000, // 30 minutes
     enabled: !!tmdbID, // Only run query if tmdbID is provided
+  });
+}
+
+/**
+ * Hook to search for movies
+ */
+export function useSearchMovies(query: string) {
+  const normalizedQuery = query.trim();
+  return useQuery({
+    queryKey: queryKeys.search.movies(normalizedQuery),
+    queryFn: () => searchApi.searchMovies(normalizedQuery),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes
+    enabled: !!normalizedQuery, // Only run query if query is provided
+  });
+}
+
+/**
+ * Hook to search for TV shows
+ */
+export function useSearchTV(query: string) {
+  const normalizedQuery = query.trim();
+  return useQuery({
+    queryKey: queryKeys.search.tv(normalizedQuery),
+    queryFn: () => searchApi.searchTV(normalizedQuery),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes
+    enabled: !!normalizedQuery, // Only run query if query is provided
   });
 }
 

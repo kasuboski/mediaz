@@ -26,6 +26,7 @@ type SearchMediaResponse struct {
 
 // SearchMediaResult represents a single movie/TV search hit.
 // Many fields are optional and may be empty; ReleaseDate is a string date; ID is the TMDB ID when present.
+// TV shows use "name" and "first_air_date" while movies use "title" and "release_date".
 type SearchMediaResult struct {
 	Adult            *bool    `json:"adult,omitempty"`
 	BackdropPath     *string  `json:"backdrop_path,omitempty"`
@@ -33,11 +34,14 @@ type SearchMediaResult struct {
 	ID               *int     `json:"id,omitempty"`
 	OriginalLanguage *string  `json:"original_language,omitempty"`
 	OriginalTitle    *string  `json:"original_title,omitempty"`
+	OriginalName     *string  `json:"original_name,omitempty"` // TV shows use original_name
 	Overview         *string  `json:"overview,omitempty"`
 	Popularity       *float32 `json:"popularity,omitempty"`
 	PosterPath       *string  `json:"poster_path,omitempty"`
-	ReleaseDate      *string  `json:"release_date,omitempty"`
-	Title            *string  `json:"title,omitempty"`
+	ReleaseDate      *string  `json:"release_date,omitempty"`      // Movies use release_date
+	FirstAirDate     *string  `json:"first_air_date,omitempty"`   // TV shows use first_air_date
+	Title            *string  `json:"title,omitempty"`             // Movies use title
+	Name             *string  `json:"name,omitempty"`               // TV shows use name
 	Video            *bool    `json:"video,omitempty"`
 	VoteAverage      *float32 `json:"vote_average,omitempty"`
 	VoteCount        *int     `json:"vote_count,omitempty"`

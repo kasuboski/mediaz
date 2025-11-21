@@ -360,3 +360,95 @@ export const libraryApi = {
     return await apiRequest<LibraryStats>('/library/stats');
   },
 };
+
+/**
+ * SearchMediaResult interface matching the backend SearchMediaResult struct
+ * TV shows use "name" and "first_air_date" while movies use "title" and "release_date"
+ */
+export interface SearchMediaResult {
+  adult?: boolean;
+  backdrop_path?: string;
+  genre_ids?: number[];
+  id?: number;
+  original_language?: string;
+  original_title?: string;
+  original_name?: string; // TV shows use original_name
+  overview?: string;
+  popularity?: number;
+  poster_path?: string;
+  release_date?: string; // Movies use release_date
+  first_air_date?: string; // TV shows use first_air_date
+  title?: string; // Movies use title
+  name?: string; // TV shows use name
+  video?: boolean;
+  vote_average?: number;
+  vote_count?: number;
+}
+
+/**
+ * SearchMediaResponse interface matching the backend SearchMediaResponse struct
+ */
+export interface SearchMediaResponse {
+  page?: number;
+  total_pages?: number;
+  total_results?: number;
+  results?: SearchMediaResult[];
+}
+
+function transformSearchResultToMediaItem(
+  result: SearchMediaResult,
+  mediaType: "movie" | "tv"
+): MediaItem | null {
+  // Early return if no valid ID
+  if (!result.id) {
+    return null;
+  }
+
+  // TV shows use "name" and "first_air_date", movies use "title" and "release_date"
+  // Fallback: if name/title is missing, try to use overview or generic label
+  const title = mediaType === "tv"
+    ? (result.name || result.title || result.overview?.substring(0, 50) || "TV Show")
+    : (result.title || result.overview?.substring(0, 50) || "Movie");
+  const date = mediaType === "tv" ? result.first_air_date : result.release_date;
+
+  return {
+    id: result.id,
+    title: title,
+    poster_path: result.poster_path || "",
+    release_date: mediaType === "movie" ? date : undefined,
+    first_air_date: mediaType === "tv" ? date : undefined,
+    media_type: mediaType,
+  };
+}
+
+// Search API
+export const searchApi = {
+  async searchMovies(query: string): Promise<MediaItem[]> {
+    if (!query.trim()) {
+      return [];
+    }
+    const response = await apiRequest<SearchMediaResponse>(
+      `/discover/movie?query=${encodeURIComponent(query.trim())}`
+    );
+    if (!response.results) {
+      return [];
+    }
+    return response.results
+      .map((result) => transformSearchResultToMediaItem(result, "movie"))
+      .filter((item): item is MediaItem => item !== null);
+  },
+  async searchTV(query: string): Promise<MediaItem[]> {
+    if (!query.trim()) {
+      return [];
+    }
+    const response = await apiRequest<SearchMediaResponse>(
+      `/discover/tv?query=${encodeURIComponent(query.trim())}`
+    );
+    if (!response.results) {
+      return [];
+    }
+    return response.results
+      .map((result) => transformSearchResultToMediaItem(result, "tv"))
+      .filter((item): item is MediaItem => item !== null);
+  },
+};
