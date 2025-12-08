@@ -470,6 +470,45 @@ func TestDownloadClientStorage(t *testing.T) {
 	err = store.DeleteDownloadClient(ctx, 2)
 	assert.Nil(t, err)
 }
+
+func TestUpdateDownloadClient(t *testing.T) {
+	ctx := context.Background()
+	store := initSqlite(t, ctx)
+
+	apiKey := "original-key"
+	client := model.DownloadClient{
+		Type:           "usenet",
+		Implementation: "sabnzbd",
+		Scheme:         "http",
+		Host:           "localhost",
+		Port:           8080,
+		APIKey:         &apiKey,
+	}
+
+	id, err := store.CreateDownloadClient(ctx, client)
+	require.NoError(t, err)
+
+	newApiKey := "updated-key"
+	updatedClient := model.DownloadClient{
+		Type:           "usenet",
+		Implementation: "sabnzbd",
+		Scheme:         "https",
+		Host:           "sabnzbd.updated.com",
+		Port:           443,
+		APIKey:         &newApiKey,
+	}
+
+	err = store.UpdateDownloadClient(ctx, id, updatedClient)
+	require.NoError(t, err)
+
+	retrieved, err := store.GetDownloadClient(ctx, id)
+	require.NoError(t, err)
+	assert.Equal(t, "https", retrieved.Scheme)
+	assert.Equal(t, "sabnzbd.updated.com", retrieved.Host)
+	assert.Equal(t, int32(443), retrieved.Port)
+	assert.Equal(t, &newApiKey, retrieved.APIKey)
+}
+
 func TestSQLite_UpdateMovieMovieFileID(t *testing.T) {
 	t.Run("update movie file id", func(t *testing.T) {
 		ctx := context.Background()

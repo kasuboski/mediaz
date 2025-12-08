@@ -3,7 +3,7 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { moviesApi, tvApi, searchApi, jobsApi, libraryApi, type JobType } from './api';
+import { moviesApi, tvApi, searchApi, jobsApi, libraryApi, downloadClientsApi, type JobType, type CreateDownloadClientRequest, type UpdateDownloadClientRequest } from './api';
 
 /**
  * Query keys for consistent caching
@@ -31,6 +31,11 @@ export const queryKeys = {
   },
   config: {
     all: ['config'] as const,
+  },
+  downloadClients: {
+    all: ['downloadClients'] as const,
+    list: () => [...queryKeys.downloadClients.all, 'list'] as const,
+    detail: (id: number) => [...queryKeys.downloadClients.all, 'detail', id] as const,
   },
 } as const;
 
@@ -163,8 +168,68 @@ export function useConfig() {
   return useQuery({
     queryKey: queryKeys.config.all,
     queryFn: libraryApi.getConfig,
-    staleTime: 10 * 60 * 1000, // 10 minutes
+    staleTime: 10 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
+  });
+}
+
+export function useDownloadClients() {
+  return useQuery({
+    queryKey: queryKeys.downloadClients.list(),
+    queryFn: downloadClientsApi.listClients,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+  });
+}
+
+export function useDownloadClient(id: number) {
+  return useQuery({
+    queryKey: queryKeys.downloadClients.detail(id),
+    queryFn: () => downloadClientsApi.getClient(id),
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    enabled: !!id,
+  });
+}
+
+export function useCreateDownloadClient() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (request: CreateDownloadClientRequest) =>
+      downloadClientsApi.createClient(request),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.downloadClients.list() });
+    },
+  });
+}
+
+export function useUpdateDownloadClient() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, request }: { id: number; request: UpdateDownloadClientRequest }) =>
+      downloadClientsApi.updateClient(id, request),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.downloadClients.list() });
+    },
+  });
+}
+
+export function useDeleteDownloadClient() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: number) => downloadClientsApi.deleteClient(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.downloadClients.list() });
+    },
+  });
+}
+
+export function useTestDownloadClient() {
+  return useMutation({
+    mutationFn: (request: CreateDownloadClientRequest) => downloadClientsApi.testConnection(request),
   });
 }
 

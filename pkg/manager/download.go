@@ -13,6 +13,11 @@ type AddDownloadClientRequest struct {
 	model.DownloadClient
 }
 
+// UpdateDownloadClientRequest describes what is required to update a download client
+type UpdateDownloadClientRequest struct {
+	model.DownloadClient
+}
+
 func (m MediaManager) CreateDownloadClient(ctx context.Context, request AddDownloadClientRequest) (model.DownloadClient, error) {
 	downloadClient := request.DownloadClient
 
@@ -23,6 +28,39 @@ func (m MediaManager) CreateDownloadClient(ctx context.Context, request AddDownl
 
 	downloadClient.ID = int32(id)
 	return downloadClient, nil
+}
+
+func (m MediaManager) UpdateDownloadClient(ctx context.Context, id int64, request UpdateDownloadClientRequest) (model.DownloadClient, error) {
+	// If API key is not provided, preserve the existing one
+	if request.APIKey == nil || (request.APIKey != nil && *request.APIKey == "") {
+		existing, err := m.storage.GetDownloadClient(ctx, id)
+		if err != nil {
+			return model.DownloadClient{}, err
+		}
+		request.APIKey = existing.APIKey
+	}
+
+	downloadClient := request.DownloadClient
+	downloadClient.ID = int32(id)
+
+	err := m.storage.UpdateDownloadClient(ctx, id, downloadClient)
+	if err != nil {
+		return model.DownloadClient{}, err
+	}
+
+	return downloadClient, nil
+}
+
+func (m MediaManager) TestDownloadClient(ctx context.Context, request AddDownloadClientRequest) error {
+	// Create a temporary download client to test connectivity
+	client, err := m.factory.NewDownloadClient(request.DownloadClient)
+	if err != nil {
+		return err
+	}
+
+	// Test connection by calling List - simple operation to verify connectivity
+	_, err = client.List(ctx)
+	return err
 }
 
 func (m MediaManager) GetDownloadClient(ctx context.Context, id int64) (download.DownloadClient, error) {

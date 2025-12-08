@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from "react-router-dom";
-import { Film, Tv, Search, Library, Settings, Clock } from "lucide-react";
+import { Film, Tv, Search, Library, Settings, Clock, Download } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -20,6 +20,7 @@ const navigationItems = [
 
 const libraryItems = [
   { title: "Jobs", url: "/jobs", icon: Clock },
+  { title: "Download Clients", url: "/clients", icon: Download },
   { title: "Library", url: "/library", icon: Library },
   { title: "Settings", url: "/settings", icon: Settings },
 ];

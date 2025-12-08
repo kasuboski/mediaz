@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"net/url"
 	"path/filepath"
@@ -104,7 +103,6 @@ func (t *TransmissionTorrent) ToStatus(mountPrefix string) Status {
 		paths = append(paths, filepath.Join(mountPrefix, t.DownloadDir, f.Name))
 	}
 
-	log.Printf("%+v", t)
 	s := Status{
 		ID:        fmt.Sprintf("%d", t.ID),
 		Name:      t.Name,
