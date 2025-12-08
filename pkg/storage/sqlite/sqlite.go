@@ -730,6 +730,21 @@ func (s *SQLite) ListDownloadClients(ctx context.Context) ([]*model.DownloadClie
 	return items, err
 }
 
+// UpdateDownloadClient updates an existing download client
+func (s *SQLite) UpdateDownloadClient(ctx context.Context, id int64, client model.DownloadClient) error {
+	stmt := table.DownloadClient.UPDATE(
+		table.DownloadClient.Type,
+		table.DownloadClient.Implementation,
+		table.DownloadClient.Scheme,
+		table.DownloadClient.Host,
+		table.DownloadClient.Port,
+		table.DownloadClient.APIKey,
+	).MODEL(client).WHERE(table.DownloadClient.ID.EQ(sqlite.Int64(id)))
+
+	_, err := stmt.ExecContext(ctx, s.db)
+	return err
+}
+
 // DeleteDownloadClient deletes a download client given an id
 func (s *SQLite) DeleteDownloadClient(ctx context.Context, id int64) error {
 	stmt := table.DownloadClient.DELETE().WHERE(table.DownloadClient.ID.EQ(sqlite.Int64(id)))

@@ -332,8 +332,6 @@ func TestScheduler_executeJob(t *testing.T) {
 }
 
 func TestScheduler_CancelJob(t *testing.T) {
-<<<<<<< HEAD
-=======
 	t.Run("cancel pending job", func(t *testing.T) {
 		store, err := mediaSqlite.New(":memory:")
 		require.NoError(t, err)
@@ -362,7 +360,6 @@ func TestScheduler_CancelJob(t *testing.T) {
 		assert.Equal(t, storage.JobStateCancelled, job.State)
 	})
 
->>>>>>> df5c97d46ccebca5e2701ca732f079be196a5af3
 	t.Run("cancel running job", func(t *testing.T) {
 		store, err := mediaSqlite.New(":memory:")
 		require.NoError(t, err)
@@ -409,11 +406,7 @@ func TestScheduler_CancelJob(t *testing.T) {
 		assert.Equal(t, storage.JobStateCancelled, updatedJob.State)
 	})
 
-<<<<<<< HEAD
-	t.Run("cancel non-running job", func(t *testing.T) {
-=======
 	t.Run("cancel completed job does nothing", func(t *testing.T) {
->>>>>>> df5c97d46ccebca5e2701ca732f079be196a5af3
 		store, err := mediaSqlite.New(":memory:")
 		require.NoError(t, err)
 
@@ -429,23 +422,17 @@ func TestScheduler_CancelJob(t *testing.T) {
 		jobID, err := scheduler.createPendingJob(ctx, MovieIndex)
 		require.NoError(t, err)
 
-<<<<<<< HEAD
-=======
 		err = store.UpdateJobState(ctx, jobID, storage.JobStateRunning, nil)
 		require.NoError(t, err)
 
 		err = store.UpdateJobState(ctx, jobID, storage.JobStateDone, nil)
 		require.NoError(t, err)
 
->>>>>>> df5c97d46ccebca5e2701ca732f079be196a5af3
 		err = scheduler.CancelJob(ctx, jobID)
 		require.NoError(t, err)
 
 		job, err := store.GetJob(ctx, jobID)
 		require.NoError(t, err)
-<<<<<<< HEAD
-		assert.Equal(t, storage.JobStatePending, job.State)
-=======
 		assert.Equal(t, storage.JobStateDone, job.State)
 	})
 
@@ -504,7 +491,6 @@ func TestScheduler_CancelJob(t *testing.T) {
 		job, err := store.GetJob(ctx, jobID)
 		require.NoError(t, err)
 		assert.Equal(t, storage.JobStateCancelled, job.State)
->>>>>>> df5c97d46ccebca5e2701ca732f079be196a5af3
 	})
 
 	t.Run("cancel non-existent job", func(t *testing.T) {

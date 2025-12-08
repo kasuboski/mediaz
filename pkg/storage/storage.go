@@ -120,6 +120,7 @@ type DownloadClientStorage interface {
 	CreateDownloadClient(ctx context.Context, client model.DownloadClient) (int64, error)
 	GetDownloadClient(ctx context.Context, id int64) (model.DownloadClient, error)
 	ListDownloadClients(ctx context.Context) ([]*model.DownloadClient, error)
+	UpdateDownloadClient(ctx context.Context, id int64, client model.DownloadClient) error
 	DeleteDownloadClient(ctx context.Context, id int64) error
 }
 
