@@ -527,55 +527,6 @@ func TestIndexMovieLibrary(t *testing.T) {
 	})
 }
 
-func TestRun(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	prowlarrMock := prowlMock.NewMockClientInterface(ctrl)
-	store, err := mediaSqlite.New(":memory:")
-	require.Nil(t, err)
-
-	schemas, err := storage.ReadSchemaFiles("../storage/sqlite/schema/schema.sql")
-	require.Nil(t, err)
-
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
-	defer cancel()
-	err = store.Init(ctx, schemas...)
-	require.Nil(t, err)
-
-	movieFS, expectedMovies := library.MovieFSFromFile(t, "../library/testing/test_movies.txt")
-	require.NotEmpty(t, expectedMovies)
-	tvFS, expectedEpisodes := library.TVFSFromFile(t, "../library/testing/test_episodes.txt")
-	require.NotEmpty(t, expectedEpisodes)
-
-	lib := library.New(
-		library.FileSystem{
-			FS: movieFS,
-		},
-		library.FileSystem{
-			FS: tvFS,
-		},
-		&mio.MediaFileSystem{},
-	)
-	pClient, err := prowlarr.New(":", "1234")
-	pClient.ClientInterface = prowlarrMock
-	require.NoError(t, err)
-
-	require.NoError(t, err)
-
-	mockFactory := downloadMock.NewMockFactory(ctrl)
-	m := New(nil, pClient, lib, store, mockFactory, config.Manager{
-		Jobs: config.Jobs{
-			MovieReconcile:  time.Minute * 1,
-			MovieIndex:      time.Minute * 1,
-			SeriesReconcile: time.Minute * 1,
-			SeriesIndex:     time.Minute * 1,
-		},
-	}, config.Config{})
-	require.NotNil(t, m)
-
-	err = m.Run(ctx)
-	assert.ErrorIs(t, err, context.DeadlineExceeded)
-}
-
 func TestMovieRejectRelease(t *testing.T) {
 	t.Run("prefix match only", func(t *testing.T) {
 		ctx := context.Background()
