@@ -240,13 +240,20 @@ CREATE TABLE IF NOT EXISTS "download_client" (
 CREATE TABLE IF NOT EXISTS "job" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     "type" TEXT NOT NULL,
-    "created_at" DATETIME DEFAULT CURRENT_TIMESTAMP,
-    "updated_at" DATETIME DEFAULT CURRENT_TIMESTAMP,
+    "created_at" DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS "job_transition" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "job_id" INTEGER NOT NULL REFERENCES "job"("id"),
+    "type" TEXT NOT NULL,
     "to_state" TEXT NOT NULL,
     "from_state" TEXT,
     "most_recent" BOOLEAN NOT NULL,
     "sort_key" INTEGER NOT NULL,
-    "error" TEXT
+    "error" TEXT,
+    "created_at" DATETIME DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS "idx_indexer_name" ON "indexer" ("name" ASC);
@@ -279,12 +286,12 @@ CREATE UNIQUE INDEX IF NOT EXISTS "idx_season_metadata_unique_series_season" ON 
 
 CREATE UNIQUE INDEX IF NOT EXISTS "idx_episode_metadata_unique_season_episode" ON "episode_metadata" ("season_metadata_id", "number");
 
-CREATE UNIQUE INDEX IF NOT EXISTS "idx_job_most_recent" ON "job"("most_recent")
+CREATE UNIQUE INDEX IF NOT EXISTS "idx_job_transitions_by_parent_most_recent" ON "job_transition"("job_id", "most_recent")
 WHERE
     "most_recent" = 1;
 
-CREATE UNIQUE INDEX IF NOT EXISTS "idx_job_sort_key" ON "job"("sort_key");
+CREATE UNIQUE INDEX IF NOT EXISTS "idx_job_transitions_by_parent_sort_key" ON "job_transition"("job_id", "sort_key");
 
-CREATE UNIQUE INDEX IF NOT EXISTS "idx_job_type_pending" ON "job"("type", "to_state")
+CREATE UNIQUE INDEX IF NOT EXISTS "idx_job_type_pending" ON "job_transition"("type", "to_state")
 WHERE
     "to_state" = 'pending' AND "most_recent" = 1;

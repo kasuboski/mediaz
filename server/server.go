@@ -111,6 +111,11 @@ func (s *Server) Serve(port int) error {
 	v1.HandleFunc("/config", s.GetConfig()).Methods(http.MethodGet)
 	v1.HandleFunc("/library/stats", s.GetLibraryStats()).Methods(http.MethodGet)
 
+	v1.HandleFunc("/jobs", s.ListJobs()).Methods(http.MethodGet)
+	v1.HandleFunc("/jobs", s.CreateJob()).Methods(http.MethodPost)
+	v1.HandleFunc("/jobs/{id}", s.GetJob()).Methods(http.MethodGet)
+	v1.HandleFunc("/jobs/{id}/cancel", s.CancelJob()).Methods(http.MethodPost)
+
 	rtr.PathPrefix("/static/").Handler(s.FileHandler()).Methods(http.MethodGet)
 	rtr.PathPrefix("/").Handler(s.IndexHandler())
 
@@ -715,6 +720,105 @@ func (s Server) GetConfig() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		result := s.manager.GetConfigSummary()
 		writeResponse(w, http.StatusOK, GenericResponse{Response: result})
+	}
+}
+
+// ListJobs lists jobs
+func (s Server) ListJobs() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		jobs, err := s.manager.ListJobs(r.Context(), nil, nil)
+		if err != nil {
+			writeResponse(w, http.StatusInternalServerError, GenericResponse{
+				Error: err,
+			})
+			return
+		}
+
+		writeResponse(w, http.StatusOK, GenericResponse{Response: jobs})
+	}
+}
+
+// GetJob gets a job
+func (s Server) GetJob() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log := logger.FromCtx(r.Context())
+
+		vars := mux.Vars(r)
+		idVar := vars["id"]
+
+		id, err := strconv.ParseInt(idVar, 10, 64)
+		if err != nil {
+			log.Debug("invalid id provided", zap.Error(err), zap.Any("id", id))
+			http.Error(w, "Invalid ID format", http.StatusBadRequest)
+			return
+		}
+
+		jobs, err := s.manager.GetJob(r.Context(), id)
+		if err != nil {
+			writeResponse(w, http.StatusInternalServerError, GenericResponse{
+				Error: err,
+			})
+			return
+		}
+
+		writeResponse(w, http.StatusOK, GenericResponse{Response: jobs})
+	}
+}
+
+// CancelJob cancels a running job
+func (s Server) CancelJob() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log := logger.FromCtx(r.Context())
+		vars := mux.Vars(r)
+		idVar := vars["id"]
+
+		id, err := strconv.ParseInt(idVar, 10, 64)
+		if err != nil {
+			log.Debug("invalid id provided", zap.Error(err), zap.Any("id", id))
+			http.Error(w, "Invalid ID format", http.StatusBadRequest)
+			return
+		}
+
+		jobs, err := s.manager.CancelJob(r.Context(), id)
+		if err != nil {
+			writeResponse(w, http.StatusInternalServerError, GenericResponse{
+				Error: err,
+			})
+			return
+		}
+
+		writeResponse(w, http.StatusOK, GenericResponse{Response: jobs})
+	}
+}
+
+// CreateJob creates a new pending job
+func (s Server) CreateJob() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log := logger.FromCtx(r.Context())
+		b, err := io.ReadAll(r.Body)
+		if err != nil {
+			log.Debug("invalid request body", zap.Error(err))
+			http.Error(w, "invalid request body", http.StatusBadRequest)
+			return
+		}
+
+		var request manager.TriggerJobRequest
+		err = json.Unmarshal(b, &request)
+		if err != nil {
+			log.Debug("invalid request body", zap.String("body", string(b)))
+			http.Error(w, "invalid request body", http.StatusBadRequest)
+			return
+		}
+
+		jobs, err := s.manager.CreateJob(r.Context(), request)
+		if err != nil {
+			writeResponse(w, http.StatusInternalServerError, GenericResponse{
+				Error: err,
+			})
+			return
+		}
+
+		writeResponse(w, http.StatusCreated, GenericResponse{Response: jobs})
 	}
 }
 

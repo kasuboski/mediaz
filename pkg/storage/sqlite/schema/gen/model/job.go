@@ -12,13 +12,7 @@ import (
 )
 
 type Job struct {
-	ID         int32 `sql:"primary_key"`
-	Type       string
-	CreatedAt  *time.Time
-	UpdatedAt  *time.Time
-	ToState    string
-	FromState  *string
-	MostRecent bool
-	SortKey    int32
-	Error      *string
+	ID        int32 `sql:"primary_key"`
+	Type      string
+	CreatedAt *time.Time
 }

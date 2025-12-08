@@ -17,15 +17,9 @@ type jobTable struct {
 	sqlite.Table
 
 	// Columns
-	ID         sqlite.ColumnInteger
-	Type       sqlite.ColumnString
-	CreatedAt  sqlite.ColumnTimestamp
-	UpdatedAt  sqlite.ColumnTimestamp
-	ToState    sqlite.ColumnString
-	FromState  sqlite.ColumnString
-	MostRecent sqlite.ColumnBool
-	SortKey    sqlite.ColumnInteger
-	Error      sqlite.ColumnString
+	ID        sqlite.ColumnInteger
+	Type      sqlite.ColumnString
+	CreatedAt sqlite.ColumnTimestamp
 
 	AllColumns     sqlite.ColumnList
 	MutableColumns sqlite.ColumnList
@@ -66,32 +60,20 @@ func newJobTable(schemaName, tableName, alias string) *JobTable {
 
 func newJobTableImpl(schemaName, tableName, alias string) jobTable {
 	var (
-		IDColumn         = sqlite.IntegerColumn("id")
-		TypeColumn       = sqlite.StringColumn("type")
-		CreatedAtColumn  = sqlite.TimestampColumn("created_at")
-		UpdatedAtColumn  = sqlite.TimestampColumn("updated_at")
-		ToStateColumn    = sqlite.StringColumn("to_state")
-		FromStateColumn  = sqlite.StringColumn("from_state")
-		MostRecentColumn = sqlite.BoolColumn("most_recent")
-		SortKeyColumn    = sqlite.IntegerColumn("sort_key")
-		ErrorColumn      = sqlite.StringColumn("error")
-		allColumns       = sqlite.ColumnList{IDColumn, TypeColumn, CreatedAtColumn, UpdatedAtColumn, ToStateColumn, FromStateColumn, MostRecentColumn, SortKeyColumn, ErrorColumn}
-		mutableColumns   = sqlite.ColumnList{TypeColumn, CreatedAtColumn, UpdatedAtColumn, ToStateColumn, FromStateColumn, MostRecentColumn, SortKeyColumn, ErrorColumn}
+		IDColumn        = sqlite.IntegerColumn("id")
+		TypeColumn      = sqlite.StringColumn("type")
+		CreatedAtColumn = sqlite.TimestampColumn("created_at")
+		allColumns      = sqlite.ColumnList{IDColumn, TypeColumn, CreatedAtColumn}
+		mutableColumns  = sqlite.ColumnList{TypeColumn, CreatedAtColumn}
 	)
 
 	return jobTable{
 		Table: sqlite.NewTable(schemaName, tableName, alias, allColumns...),
 
 		//Columns
-		ID:         IDColumn,
-		Type:       TypeColumn,
-		CreatedAt:  CreatedAtColumn,
-		UpdatedAt:  UpdatedAtColumn,
-		ToState:    ToStateColumn,
-		FromState:  FromStateColumn,
-		MostRecent: MostRecentColumn,
-		SortKey:    SortKeyColumn,
-		Error:      ErrorColumn,
+		ID:        IDColumn,
+		Type:      TypeColumn,
+		CreatedAt: CreatedAtColumn,
 
 		AllColumns:     allColumns,
 		MutableColumns: mutableColumns,

@@ -38,10 +38,10 @@ type SearchMediaResult struct {
 	Overview         *string  `json:"overview,omitempty"`
 	Popularity       *float32 `json:"popularity,omitempty"`
 	PosterPath       *string  `json:"poster_path,omitempty"`
-	ReleaseDate      *string  `json:"release_date,omitempty"`      // Movies use release_date
-	FirstAirDate     *string  `json:"first_air_date,omitempty"`   // TV shows use first_air_date
-	Title            *string  `json:"title,omitempty"`             // Movies use title
-	Name             *string  `json:"name,omitempty"`               // TV shows use name
+	ReleaseDate      *string  `json:"release_date,omitempty"`   // Movies use release_date
+	FirstAirDate     *string  `json:"first_air_date,omitempty"` // TV shows use first_air_date
+	Title            *string  `json:"title,omitempty"`          // Movies use title
+	Name             *string  `json:"name,omitempty"`           // TV shows use name
 	Video            *bool    `json:"video,omitempty"`
 	VoteAverage      *float32 `json:"vote_average,omitempty"`
 	VoteCount        *int     `json:"vote_count,omitempty"`

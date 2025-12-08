@@ -42,20 +42,11 @@ func TestSQLite_CreateJob(t *testing.T) {
 		got, err := store.GetJob(ctx, id)
 		require.NoError(t, err)
 
-		want := &storage.Job{
-			Job: model.Job{
-				ID:         int32(id),
-				Type:       "test-job",
-				ToState:    string(storage.JobStatePending),
-				MostRecent: true,
-				SortKey:    1,
-			},
-			State: storage.JobStatePending,
-		}
-
-		got.CreatedAt = nil
-		got.UpdatedAt = nil
-		assert.Equal(t, want, got)
+		assert.Equal(t, int32(id), got.ID)
+		assert.Equal(t, "test-job", got.Type)
+		assert.Equal(t, storage.JobStatePending, got.State)
+		assert.NotNil(t, got.CreatedAt)
+		assert.NotNil(t, got.UpdatedAt)
 	})
 
 	t.Run("invalid state transition", func(t *testing.T) {
@@ -113,20 +104,11 @@ func TestSQLite_GetJob(t *testing.T) {
 		got, err := store.GetJob(ctx, id)
 		assert.NoError(t, err)
 
-		want := &storage.Job{
-			Job: model.Job{
-				ID:         int32(id),
-				Type:       "get-job",
-				ToState:    string(storage.JobStatePending),
-				MostRecent: true,
-				SortKey:    1,
-			},
-			State: storage.JobStatePending,
-		}
-
-		got.CreatedAt = nil
-		got.UpdatedAt = nil
-		assert.Equal(t, want, got)
+		assert.Equal(t, int32(id), got.ID)
+		assert.Equal(t, "get-job", got.Type)
+		assert.Equal(t, storage.JobStatePending, got.State)
+		assert.NotNil(t, got.CreatedAt)
+		assert.NotNil(t, got.UpdatedAt)
 	})
 
 	t.Run("get non-existent job", func(t *testing.T) {
@@ -153,25 +135,13 @@ func TestSQLite_ListJobs(t *testing.T) {
 
 		got, err := store.ListJobs(ctx)
 		assert.NoError(t, err)
+		require.Len(t, got, 1)
 
-		want := []*storage.Job{
-			{
-				Job: model.Job{
-					ID:         int32(id),
-					Type:       "list-test",
-					ToState:    string(storage.JobStatePending),
-					MostRecent: true,
-					SortKey:    1,
-				},
-				State: storage.JobStatePending,
-			},
-		}
-
-		for i := range got {
-			got[i].CreatedAt = nil
-			got[i].UpdatedAt = nil
-		}
-		assert.Equal(t, want, got)
+		assert.Equal(t, int32(id), got[0].ID)
+		assert.Equal(t, "list-test", got[0].Type)
+		assert.Equal(t, storage.JobStatePending, got[0].State)
+		assert.NotNil(t, got[0].CreatedAt)
+		assert.NotNil(t, got[0].UpdatedAt)
 	})
 
 	t.Run("list empty", func(t *testing.T) {
@@ -182,83 +152,6 @@ func TestSQLite_ListJobs(t *testing.T) {
 		assert.NoError(t, err)
 
 		want := []*storage.Job{}
-		assert.Equal(t, want, got)
-	})
-}
-
-func TestSQLite_ListJobsByState(t *testing.T) {
-	t.Run("list pending jobs", func(t *testing.T) {
-		ctx := context.Background()
-		store := initTestDB(t)
-
-		pendingJob := storage.Job{
-			Job: model.Job{
-				Type: "pending-job",
-			},
-		}
-		id, err := store.CreateJob(ctx, pendingJob, storage.JobStatePending)
-		require.NoError(t, err)
-
-		got, err := store.ListJobsByState(ctx, storage.JobStatePending)
-		assert.NoError(t, err)
-
-		want := []*storage.Job{
-			{
-				Job: model.Job{
-					ID:         int32(id),
-					Type:       "pending-job",
-					ToState:    string(storage.JobStatePending),
-					MostRecent: true,
-					SortKey:    1,
-				},
-				State: storage.JobStatePending,
-			},
-		}
-
-		for i := range got {
-			got[i].CreatedAt = nil
-			got[i].UpdatedAt = nil
-		}
-		assert.Equal(t, want, got)
-	})
-
-	t.Run("list running jobs", func(t *testing.T) {
-		ctx := context.Background()
-		store := initTestDB(t)
-
-		job := storage.Job{
-			Job: model.Job{
-				Type: "running-job",
-			},
-		}
-		id, err := store.CreateJob(ctx, job, storage.JobStatePending)
-		require.NoError(t, err)
-
-		err = store.UpdateJobState(ctx, id, storage.JobStateRunning, nil)
-		require.NoError(t, err)
-
-		got, err := store.ListJobsByState(ctx, storage.JobStateRunning)
-		assert.NoError(t, err)
-
-		fromState := string(storage.JobStatePending)
-		want := []*storage.Job{
-			{
-				Job: model.Job{
-					ID:         int32(id),
-					Type:       "running-job",
-					ToState:    string(storage.JobStateRunning),
-					FromState:  &fromState,
-					MostRecent: true,
-					SortKey:    2,
-				},
-				State: storage.JobStateRunning,
-			},
-		}
-
-		for i := range got {
-			got[i].CreatedAt = nil
-			got[i].UpdatedAt = nil
-		}
 		assert.Equal(t, want, got)
 	})
 }
@@ -283,22 +176,11 @@ func TestSQLite_UpdateJobState(t *testing.T) {
 		got, err := store.GetJob(ctx, id)
 		assert.NoError(t, err)
 
-		fromState := string(storage.JobStatePending)
-		want := &storage.Job{
-			Job: model.Job{
-				ID:         int32(id),
-				Type:       "update-job",
-				ToState:    string(storage.JobStateRunning),
-				FromState:  &fromState,
-				MostRecent: true,
-				SortKey:    2,
-			},
-			State: storage.JobStateRunning,
-		}
-
-		got.CreatedAt = nil
-		got.UpdatedAt = nil
-		assert.Equal(t, want, got)
+		assert.Equal(t, int32(id), got.ID)
+		assert.Equal(t, "update-job", got.Type)
+		assert.Equal(t, storage.JobStateRunning, got.State)
+		assert.NotNil(t, got.CreatedAt)
+		assert.NotNil(t, got.UpdatedAt)
 	})
 
 	t.Run("update running to done", func(t *testing.T) {
@@ -323,22 +205,11 @@ func TestSQLite_UpdateJobState(t *testing.T) {
 		got, err := store.GetJob(ctx, id)
 		assert.NoError(t, err)
 
-		fromState := string(storage.JobStateRunning)
-		want := &storage.Job{
-			Job: model.Job{
-				ID:         int32(id),
-				Type:       "done-job",
-				ToState:    string(storage.JobStateDone),
-				FromState:  &fromState,
-				MostRecent: true,
-				SortKey:    3,
-			},
-			State: storage.JobStateDone,
-		}
-
-		got.CreatedAt = nil
-		got.UpdatedAt = nil
-		assert.Equal(t, want, got)
+		assert.Equal(t, int32(id), got.ID)
+		assert.Equal(t, "done-job", got.Type)
+		assert.Equal(t, storage.JobStateDone, got.State)
+		assert.NotNil(t, got.CreatedAt)
+		assert.NotNil(t, got.UpdatedAt)
 	})
 
 	t.Run("update running to error with message", func(t *testing.T) {
@@ -364,23 +235,13 @@ func TestSQLite_UpdateJobState(t *testing.T) {
 		got, err := store.GetJob(ctx, id)
 		assert.NoError(t, err)
 
-		fromState := string(storage.JobStateRunning)
-		want := &storage.Job{
-			Job: model.Job{
-				ID:         int32(id),
-				Type:       "error-job",
-				ToState:    string(storage.JobStateError),
-				FromState:  &fromState,
-				MostRecent: true,
-				SortKey:    3,
-				Error:      &errorMsg,
-			},
-			State: storage.JobStateError,
-		}
-
-		got.CreatedAt = nil
-		got.UpdatedAt = nil
-		assert.Equal(t, want, got)
+		assert.Equal(t, int32(id), got.ID)
+		assert.Equal(t, "error-job", got.Type)
+		assert.Equal(t, storage.JobStateError, got.State)
+		assert.NotNil(t, got.Error)
+		assert.Equal(t, errorMsg, *got.Error)
+		assert.NotNil(t, got.CreatedAt)
+		assert.NotNil(t, got.UpdatedAt)
 	})
 
 	t.Run("invalid state transition", func(t *testing.T) {
@@ -402,20 +263,11 @@ func TestSQLite_UpdateJobState(t *testing.T) {
 		got, err := store.GetJob(ctx, id)
 		assert.NoError(t, err)
 
-		want := &storage.Job{
-			Job: model.Job{
-				ID:         int32(id),
-				Type:       "invalid-transition",
-				ToState:    string(storage.JobStatePending),
-				MostRecent: true,
-				SortKey:    1,
-			},
-			State: storage.JobStatePending,
-		}
-
-		got.CreatedAt = nil
-		got.UpdatedAt = nil
-		assert.Equal(t, want, got)
+		assert.Equal(t, int32(id), got.ID)
+		assert.Equal(t, "invalid-transition", got.Type)
+		assert.Equal(t, storage.JobStatePending, got.State)
+		assert.NotNil(t, got.CreatedAt)
+		assert.NotNil(t, got.UpdatedAt)
 	})
 }
 
