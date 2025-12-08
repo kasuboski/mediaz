@@ -514,3 +514,63 @@ export const jobsApi = {
     });
   },
 };
+
+export interface DownloadClient {
+  ID: number;
+  Type: string;
+  Implementation: string;
+  Scheme: string;
+  Host: string;
+  Port: number;
+  APIKey?: string | null;
+}
+
+export interface CreateDownloadClientRequest {
+  type: string;
+  implementation: string;
+  scheme: string;
+  host: string;
+  port: number;
+  apiKey?: string | null;
+}
+
+export interface UpdateDownloadClientRequest extends CreateDownloadClientRequest {
+  id: number;
+}
+
+export const downloadClientsApi = {
+  async listClients(): Promise<DownloadClient[]> {
+    return apiRequest<DownloadClient[]>('/download/clients');
+  },
+
+  async getClient(id: number): Promise<DownloadClient> {
+    return apiRequest<DownloadClient>(`/download/clients/${id}`);
+  },
+
+  async createClient(request: CreateDownloadClientRequest): Promise<DownloadClient> {
+    return apiRequest<DownloadClient>('/download/clients', {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
+  },
+
+  async updateClient(id: number, request: UpdateDownloadClientRequest): Promise<DownloadClient> {
+    return apiRequest<DownloadClient>(`/download/clients/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(request),
+    });
+  },
+
+  async deleteClient(id: number): Promise<void> {
+    return apiRequest<void>(`/download/clients/${id}`, {
+      method: 'DELETE',
+    });
+  },
+
+  async testConnection(request: CreateDownloadClientRequest): Promise<void> {
+    return apiRequest<void>('/download/clients/test', {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
+  },
+};

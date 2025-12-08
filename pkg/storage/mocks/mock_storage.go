@@ -1206,6 +1206,20 @@ func (mr *MockStorageMockRecorder) ListSeriesMetadata(ctx any, where ...any) *go
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListSeriesMetadata", reflect.TypeOf((*MockStorage)(nil).ListSeriesMetadata), varargs...)
 }
 
+// UpdateDownloadClient mocks base method.
+func (m *MockStorage) UpdateDownloadClient(ctx context.Context, id int64, client model.DownloadClient) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateDownloadClient", ctx, id, client)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateDownloadClient indicates an expected call of UpdateDownloadClient.
+func (mr *MockStorageMockRecorder) UpdateDownloadClient(ctx, id, client any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateDownloadClient", reflect.TypeOf((*MockStorage)(nil).UpdateDownloadClient), ctx, id, client)
+}
+
 // UpdateEpisodeEpisodeFileID mocks base method.
 func (m *MockStorage) UpdateEpisodeEpisodeFileID(ctx context.Context, id, fileID int64) error {
 	m.ctrl.T.Helper()
@@ -1981,6 +1995,20 @@ func (m *MockDownloadClientStorage) ListDownloadClients(ctx context.Context) ([]
 func (mr *MockDownloadClientStorageMockRecorder) ListDownloadClients(ctx any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListDownloadClients", reflect.TypeOf((*MockDownloadClientStorage)(nil).ListDownloadClients), ctx)
+}
+
+// UpdateDownloadClient mocks base method.
+func (m *MockDownloadClientStorage) UpdateDownloadClient(ctx context.Context, id int64, client model.DownloadClient) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateDownloadClient", ctx, id, client)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateDownloadClient indicates an expected call of UpdateDownloadClient.
+func (mr *MockDownloadClientStorageMockRecorder) UpdateDownloadClient(ctx, id, client any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateDownloadClient", reflect.TypeOf((*MockDownloadClientStorage)(nil).UpdateDownloadClient), ctx, id, client)
 }
 
 // MockJobStorage is a mock of JobStorage interface.
