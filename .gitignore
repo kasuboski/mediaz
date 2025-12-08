@@ -40,3 +40,5 @@ local.yaml
 .direnv/
 
 mediaz
+
+config.yaml

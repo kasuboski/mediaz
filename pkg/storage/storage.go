@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/go-jet/jet/v2/sqlite"
 	"github.com/kasuboski/mediaz/pkg/machine"
@@ -125,31 +126,35 @@ type DownloadClientStorage interface {
 type JobState string
 
 const (
-	JobStateNew     JobState = ""
-	JobStatePending JobState = "pending"
-	JobStateRunning JobState = "running"
-	JobStateError   JobState = "error"
-	JobStateDone    JobState = "done"
+	JobStateNew       JobState = ""
+	JobStatePending   JobState = "pending"
+	JobStateRunning   JobState = "running"
+	JobStateError     JobState = "error"
+	JobStateDone      JobState = "done"
+	JobStateCancelled JobState = "cancelled"
 )
 
 type Job struct {
 	model.Job
-	State JobState `alias:"job.to_state" json:"state"`
+	State     JobState   `alias:"job_transition.to_state" json:"state"`
+	UpdatedAt *time.Time `alias:"job_transition.updated_at" json:"updatedAt"`
+	Error     *string    `alias:"job_transition.error" json:"error,omitempty"`
 }
+
+type JobTransition model.JobTransition
 
 func (j Job) Machine() *machine.StateMachine[JobState] {
 	return machine.New(j.State,
 		machine.From(JobStateNew).To(JobStatePending),
-		machine.From(JobStatePending).To(JobStateRunning),
-		machine.From(JobStateRunning).To(JobStateError, JobStateDone),
+		machine.From(JobStatePending).To(JobStateRunning, JobStateError, JobStateCancelled),
+		machine.From(JobStateRunning).To(JobStateError, JobStateDone, JobStateCancelled),
 	)
 }
 
 type JobStorage interface {
 	CreateJob(ctx context.Context, job Job, initialState JobState) (int64, error)
 	GetJob(ctx context.Context, id int64) (*Job, error)
-	ListJobs(ctx context.Context) ([]*Job, error)
-	ListJobsByState(ctx context.Context, state JobState) ([]*Job, error)
+	ListJobs(ctx context.Context, where ...sqlite.BoolExpression) ([]*Job, error)
 	UpdateJobState(ctx context.Context, id int64, state JobState, errorMsg *string) error
 	DeleteJob(ctx context.Context, id int64) error
 }

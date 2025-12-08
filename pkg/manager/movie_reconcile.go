@@ -89,8 +89,6 @@ func (r *ReconcileSnapshot) GetIndexers() []Indexer {
 }
 
 func (m MediaManager) ReconcileMovies(ctx context.Context) error {
-	var wg sync.WaitGroup
-
 	log := logger.FromCtx(ctx)
 
 	dcs, err := m.ListDownloadClients(ctx)
@@ -110,24 +108,30 @@ func (m MediaManager) ReconcileMovies(ctx context.Context) error {
 
 	snapshot := newReconcileSnapshot(indexers, dcs)
 
-	wg.Add(1)
-	go m.ReconcileMissingMovies(ctx, &wg, snapshot)
+	err = m.ReconcileMissingMovies(ctx, snapshot)
+	if err != nil {
+		log.Error("failed to reconcile missing movies", zap.Error(err))
+	}
 
-	wg.Add(1)
-	go m.ReconcileUnreleasedMovies(ctx, &wg, snapshot)
+	err = m.ReconcileUnreleasedMovies(ctx, snapshot)
+	if err != nil {
+		log.Error("failed to reconcile unreleased movies", zap.Error(err))
+	}
 
-	wg.Add(1)
-	go m.ReconcileDownloadingMovies(ctx, &wg, snapshot)
+	err = m.ReconcileDownloadingMovies(ctx, snapshot)
+	if err != nil {
+		log.Error("failed to reconcile downloading movies", zap.Error(err))
+	}
 
-	wg.Add(1)
-	go m.ReconcileDiscoveredMovies(ctx, &wg, snapshot)
+	err = m.ReconcileDiscoveredMovies(ctx, snapshot)
+	if err != nil {
+		log.Error("failed to reconcile discovered movies", zap.Error(err))
+	}
 
-	wg.Wait()
 	return nil
 }
 
-func (m MediaManager) ReconcileMissingMovies(ctx context.Context, wg *sync.WaitGroup, snapshot *ReconcileSnapshot) error {
-	defer wg.Done()
+func (m MediaManager) ReconcileMissingMovies(ctx context.Context, snapshot *ReconcileSnapshot) error {
 	log := logger.FromCtx(ctx)
 
 	if snapshot == nil {
@@ -140,6 +144,10 @@ func (m MediaManager) ReconcileMissingMovies(ctx context.Context, wg *sync.WaitG
 	}
 
 	for _, movie := range movies {
+		if err := ctx.Err(); err != nil {
+			log.Debug("context was canceled")
+			return nil
+		}
 		err = m.reconcileMissingMovie(ctx, movie, snapshot)
 		if err != nil {
 			log.Warn("failed to reconcile movie", zap.Error(err))
@@ -149,8 +157,7 @@ func (m MediaManager) ReconcileMissingMovies(ctx context.Context, wg *sync.WaitG
 	return nil
 }
 
-func (m MediaManager) ReconcileDownloadingMovies(ctx context.Context, wg *sync.WaitGroup, snapshot *ReconcileSnapshot) error {
-	defer wg.Done()
+func (m MediaManager) ReconcileDownloadingMovies(ctx context.Context, snapshot *ReconcileSnapshot) error {
 	log := logger.FromCtx(ctx)
 	movies, err := m.storage.ListMoviesByState(ctx, storage.MovieStateDownloading)
 	if err != nil {
@@ -158,6 +165,10 @@ func (m MediaManager) ReconcileDownloadingMovies(ctx context.Context, wg *sync.W
 	}
 
 	for _, movie := range movies {
+		if err := ctx.Err(); err != nil {
+			log.Debug("context was canceled")
+			return nil
+		}
 		err = m.reconcileDownloadingMovie(ctx, movie, snapshot)
 		if err != nil {
 			log.Warn("failed to reconcile downloading movie", zap.Error(err))
@@ -331,9 +342,7 @@ func (m MediaManager) reconcileMissingMovie(ctx context.Context, movie *storage.
 	})
 }
 
-func (m MediaManager) ReconcileUnreleasedMovies(ctx context.Context, wg *sync.WaitGroup, snapshot *ReconcileSnapshot) error {
-	defer wg.Done()
-
+func (m MediaManager) ReconcileUnreleasedMovies(ctx context.Context, snapshot *ReconcileSnapshot) error {
 	if snapshot == nil {
 		return fmt.Errorf("snapshot is nil")
 	}
@@ -347,6 +356,10 @@ func (m MediaManager) ReconcileUnreleasedMovies(ctx context.Context, wg *sync.Wa
 	}
 
 	for _, movie := range movies {
+		if err := ctx.Err(); err != nil {
+			log.Debug("context was canceled")
+			return nil
+		}
 		err = m.reconcileUnreleasedMovie(ctx, movie, snapshot)
 		if err != nil {
 			log.Warn("error reconciling unreleased movie", zap.Error(err))
@@ -396,9 +409,7 @@ func (m MediaManager) updateMovieState(ctx context.Context, movie *storage.Movie
 	return nil
 }
 
-func (m MediaManager) ReconcileDiscoveredMovies(ctx context.Context, wg *sync.WaitGroup, snapshot *ReconcileSnapshot) error {
-	defer wg.Done()
-
+func (m MediaManager) ReconcileDiscoveredMovies(ctx context.Context, snapshot *ReconcileSnapshot) error {
 	if snapshot == nil {
 		return fmt.Errorf("snapshot is nil")
 	}
@@ -411,6 +422,10 @@ func (m MediaManager) ReconcileDiscoveredMovies(ctx context.Context, wg *sync.Wa
 	log := logger.FromCtx(ctx)
 
 	for _, movie := range movies {
+		if err := ctx.Err(); err != nil {
+			log.Debug("context was canceled")
+			return nil
+		}
 		err = m.reconcileDiscoveredMovie(ctx, movie)
 		if err != nil {
 			log.Warn("failed to reconcile movie", zap.Error(err))

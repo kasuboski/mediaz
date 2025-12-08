@@ -27,17 +27,19 @@ import (
 )
 
 type MediaManager struct {
-	tmdb    tmdb.ITmdb
-	indexer IndexerStore
-	library library.Library
-	storage storage.Storage
-	factory download.Factory
-	config  config.Config
-	configs config.Manager
+	tmdb      tmdb.ITmdb
+	indexer   IndexerStore
+	library   library.Library
+	storage   storage.Storage
+	factory   download.Factory
+	config    config.Config
+	configs   config.Manager
+	scheduler *Scheduler
 }
 
 func New(tmbdClient tmdb.ITmdb, prowlarrClient prowlarr.IProwlarr, library library.Library, storage storage.Storage, factory download.Factory, managerConfigs config.Manager, fullConfig config.Config) MediaManager {
-	return MediaManager{
+
+	m := MediaManager{
 		tmdb:    tmbdClient,
 		indexer: NewIndexerStore(prowlarrClient, storage),
 		library: library,
@@ -46,6 +48,26 @@ func New(tmbdClient tmdb.ITmdb, prowlarrClient prowlarr.IProwlarr, library libra
 		config:  fullConfig,
 		configs: managerConfigs,
 	}
+
+	executors := map[JobType]JobExecutor{
+		MovieReconcile: func(ctx context.Context, jobID int64) error {
+			return m.ReconcileMovies(ctx)
+		},
+		MovieIndex: func(ctx context.Context, jobID int64) error {
+			return m.IndexMovieLibrary(ctx)
+		},
+		SeriesReconcile: func(ctx context.Context, jobID int64) error {
+			return m.ReconcileSeries(ctx)
+		},
+		SeriesIndex: func(ctx context.Context, jobID int64) error {
+			return m.IndexSeriesLibrary(ctx)
+		},
+	}
+
+	scheduler := NewScheduler(storage, managerConfigs, executors)
+	m.scheduler = scheduler
+
+	return m
 }
 
 func now() time.Time {
@@ -594,83 +616,14 @@ func (m MediaManager) ListMoviesInLibrary(ctx context.Context) ([]LibraryMovie, 
 func (m MediaManager) Run(ctx context.Context) error {
 	log := logger.FromCtx(ctx)
 
-	movieIndexTicker := time.NewTicker(m.configs.Jobs.MovieIndex)
-	defer movieIndexTicker.Stop()
-	movieIndexerLock := new(sync.Mutex)
+	go m.scheduler.Run(ctx)
 
-	movieReconcileTicker := time.NewTicker(m.configs.Jobs.MovieReconcile)
-	defer movieReconcileTicker.Stop()
-	movieReconcileLock := new(sync.Mutex)
-
-	seriesIndexTicker := time.NewTicker(m.configs.Jobs.SeriesIndex)
-	defer seriesIndexTicker.Stop()
-	seriesIndexLock := new(sync.Mutex)
-
-	seriesReconcileTicker := time.NewTicker(m.configs.Jobs.SeriesReconcile)
-	defer seriesReconcileTicker.Stop()
-	seriesReconcileLock := new(sync.Mutex)
-
-	for {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-movieIndexTicker.C:
-			if !movieIndexerLock.TryLock() {
-				continue
-			}
-
-			go lock(movieIndexerLock, func() {
-				err := m.IndexMovieLibrary(ctx)
-				if err != nil {
-					log.Errorf("movie library indexing failed", zap.Error(err))
-				}
-			})
-
-		case <-movieReconcileTicker.C:
-			if !movieReconcileLock.TryLock() {
-				continue
-			}
-
-			go lock(movieReconcileLock, func() {
-				err := m.ReconcileMovies(ctx)
-				if err != nil {
-					log.Error("movie reconcile failed", zap.Error(err))
-				}
-			})
-
-		case <-seriesIndexTicker.C:
-			if !seriesIndexLock.TryLock() {
-				continue
-			}
-
-			go lock(seriesIndexLock, func() {
-				err := m.IndexSeriesLibrary(ctx)
-				if err != nil {
-					log.Errorf("series library indexing failed", zap.Error(err))
-				}
-			})
-
-		case <-seriesReconcileTicker.C:
-			if !seriesReconcileLock.TryLock() {
-				continue
-			}
-
-			go lock(seriesReconcileLock, func() {
-				err := m.ReconcileSeries(ctx)
-				if err != nil {
-					log.Error("series reconcile failed", zap.Error(err))
-				}
-			})
-		}
+	for range ctx.Done() {
+		log.Info("shutting down manager")
+		return ctx.Err()
 	}
-}
 
-func lock(mu *sync.Mutex, fn func()) {
-	if mu == nil {
-		return
-	}
-	defer mu.Unlock()
-	fn()
+	return nil
 }
 
 // IndexMovieLibrary indexes the movie library directory for new files that are not yet monitored. The movies are then stored with a state of discovered.
@@ -1274,4 +1227,97 @@ func (m MediaManager) ListEpisodesForSeason(ctx context.Context, tmdbID int, sea
 	}
 
 	return results, nil
+}
+
+func (m MediaManager) CreateJob(ctx context.Context, request TriggerJobRequest) (JobResponse, error) {
+	log := logger.FromCtx(ctx)
+
+	jobID, err := m.scheduler.createPendingJob(ctx, JobType(request.Type))
+	if err == storage.ErrJobAlreadyPending {
+		log.Debug("job already pending, returning existing job")
+		jobs, err := m.scheduler.listPendingJobsByType(ctx, JobType(request.Type))
+		if err != nil {
+			return JobResponse{}, err
+		}
+		if len(jobs) == 0 {
+			return JobResponse{}, fmt.Errorf("pending job not found after conflict")
+		}
+		return toJobResponse(jobs[0]), nil
+	}
+	if err != nil {
+		return JobResponse{}, err
+	}
+
+	job, err := m.storage.GetJob(ctx, jobID)
+	if err != nil {
+		return JobResponse{}, err
+	}
+
+	return toJobResponse(job), nil
+}
+
+func (m MediaManager) GetJob(ctx context.Context, id int64) (JobResponse, error) {
+	job, err := m.storage.GetJob(ctx, id)
+	if err != nil {
+		return JobResponse{}, err
+	}
+
+	return toJobResponse(job), nil
+}
+
+func (m MediaManager) ListJobs(ctx context.Context, jobType *string, state *string) (JobListResponse, error) {
+	var conditions []sqlite.BoolExpression
+
+	if jobType != nil {
+		if !isValidJobType(*jobType) {
+			return JobListResponse{}, fmt.Errorf("invalid job type: %s", *jobType)
+		}
+		conditions = append(conditions, table.Job.Type.EQ(sqlite.String(*jobType)))
+	}
+
+	if state != nil {
+		switch storage.JobState(*state) {
+		case storage.JobStatePending, storage.JobStateRunning, storage.JobStateDone,
+			storage.JobStateError, storage.JobStateCancelled:
+			conditions = append(conditions, table.JobTransition.ToState.EQ(sqlite.String(*state)))
+		default:
+			return JobListResponse{}, fmt.Errorf("invalid job state: %s", *state)
+		}
+	}
+
+	conditions = append(conditions, table.JobTransition.MostRecent.EQ(sqlite.Bool(true)))
+
+	where := sqlite.AND(conditions...)
+
+	jobs, err := m.storage.ListJobs(ctx, where)
+	if err != nil {
+		return JobListResponse{}, err
+	}
+
+	responses := make([]JobResponse, len(jobs))
+	for i, job := range jobs {
+		responses[i] = toJobResponse(job)
+	}
+
+	return JobListResponse{
+		Jobs:  responses,
+		Count: len(responses),
+	}, nil
+}
+
+func (m MediaManager) CancelJob(ctx context.Context, id int64) (JobResponse, error) {
+	log := logger.FromCtx(ctx)
+
+	err := m.scheduler.CancelJob(ctx, id)
+	if err != nil {
+		log.Error("failed to cancel job", zap.Error(err), zap.Int64("job_id", id))
+		return JobResponse{}, err
+	}
+
+	job, err := m.storage.GetJob(ctx, id)
+	if err != nil {
+		return JobResponse{}, err
+	}
+
+	return toJobResponse(job), nil
 }

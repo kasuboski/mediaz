@@ -574,7 +574,6 @@ func TestRun(t *testing.T) {
 
 	err = m.Run(ctx)
 	assert.ErrorIs(t, err, context.DeadlineExceeded)
-
 }
 
 func TestMovieRejectRelease(t *testing.T) {
@@ -1586,5 +1585,427 @@ func TestMediaManager_AddSeriesToLibrary(t *testing.T) {
 		assert.Equal(t, int32(1), episodes[0].EpisodeNumber)
 		assert.Equal(t, int32(1), episodes[0].Monitored)
 		assert.Equal(t, storage.EpisodeStateMissing, episodes[0].State)
+	})
+}
+
+func TestMediaManager_GetJob(t *testing.T) {
+	t.Run("get job", func(t *testing.T) {
+		ctx := context.Background()
+		store := newStore(t, ctx)
+		scheduler := NewScheduler(store, config.Manager{}, make(map[JobType]JobExecutor))
+
+		id, err := scheduler.createPendingJob(ctx, MovieIndex)
+		require.Nil(t, err)
+		require.NotEqual(t, id, int64(0))
+
+		manager := MediaManager{
+			storage:   store,
+			scheduler: scheduler,
+		}
+
+		job, err := manager.GetJob(ctx, id)
+		require.Nil(t, err)
+
+		job.CreatedAt = time.Time{}
+		job.UpdatedAt = time.Time{}
+
+		assert.Equal(t, JobResponse{
+			ID:    1,
+			Type:  string(MovieIndex),
+			State: string(storage.JobStatePending),
+			Error: nil,
+		}, job)
+	})
+
+	t.Run("job not found", func(t *testing.T) {
+		ctx := context.Background()
+		store := newStore(t, ctx)
+		scheduler := NewScheduler(store, config.Manager{}, make(map[JobType]JobExecutor))
+
+		manager := MediaManager{
+			storage:   store,
+			scheduler: scheduler,
+		}
+
+		_, err := manager.GetJob(ctx, 999)
+		require.Error(t, err)
+		assert.Equal(t, storage.ErrNotFound, err)
+	})
+}
+
+func TestMediaManager_CreateJob(t *testing.T) {
+	t.Run("create job successfully", func(t *testing.T) {
+		ctx := context.Background()
+		store := newStore(t, ctx)
+		scheduler := NewScheduler(store, config.Manager{}, make(map[JobType]JobExecutor))
+
+		manager := MediaManager{
+			storage:   store,
+			scheduler: scheduler,
+		}
+
+		req := TriggerJobRequest{Type: string(MovieIndex)}
+		job, err := manager.CreateJob(ctx, req)
+		require.NoError(t, err)
+
+		assert.Equal(t, int64(1), job.ID)
+		assert.Equal(t, string(MovieIndex), job.Type)
+		assert.Equal(t, string(storage.JobStatePending), job.State)
+		assert.Nil(t, job.Error)
+
+		retrievedJob, err := manager.GetJob(ctx, job.ID)
+		require.NoError(t, err)
+		assert.Equal(t, job.ID, retrievedJob.ID)
+		assert.Equal(t, job.Type, retrievedJob.Type)
+		assert.Equal(t, job.State, retrievedJob.State)
+	})
+
+	t.Run("create job when pending already exists", func(t *testing.T) {
+		ctx := context.Background()
+		store := newStore(t, ctx)
+		scheduler := NewScheduler(store, config.Manager{}, make(map[JobType]JobExecutor))
+
+		manager := MediaManager{
+			storage:   store,
+			scheduler: scheduler,
+		}
+
+		req := TriggerJobRequest{Type: string(MovieReconcile)}
+		job1, err := manager.CreateJob(ctx, req)
+		require.NoError(t, err)
+		assert.Equal(t, int64(1), job1.ID)
+
+		job2, err := manager.CreateJob(ctx, req)
+		require.NoError(t, err)
+		assert.Equal(t, job1.ID, job2.ID)
+		assert.Equal(t, string(MovieReconcile), job2.Type)
+
+		listResult, err := manager.ListJobs(ctx, nil, nil)
+		require.NoError(t, err)
+		assert.Equal(t, 1, listResult.Count)
+		assert.Equal(t, job1.ID, listResult.Jobs[0].ID)
+	})
+
+	t.Run("create multiple different job types", func(t *testing.T) {
+		ctx := context.Background()
+		store := newStore(t, ctx)
+		scheduler := NewScheduler(store, config.Manager{}, make(map[JobType]JobExecutor))
+
+		manager := MediaManager{
+			storage:   store,
+			scheduler: scheduler,
+		}
+
+		movieIndexReq := TriggerJobRequest{Type: string(MovieIndex)}
+		seriesIndexReq := TriggerJobRequest{Type: string(SeriesIndex)}
+
+		movieJob, err := manager.CreateJob(ctx, movieIndexReq)
+		require.NoError(t, err)
+		assert.Equal(t, string(MovieIndex), movieJob.Type)
+
+		seriesJob, err := manager.CreateJob(ctx, seriesIndexReq)
+		require.NoError(t, err)
+		assert.Equal(t, string(SeriesIndex), seriesJob.Type)
+		assert.NotEqual(t, movieJob.ID, seriesJob.ID)
+
+		listResult, err := manager.ListJobs(ctx, nil, nil)
+		require.NoError(t, err)
+		assert.Equal(t, 2, listResult.Count)
+
+		movieJobFound := false
+		seriesJobFound := false
+		for _, job := range listResult.Jobs {
+			if job.ID == movieJob.ID {
+				movieJobFound = true
+				assert.Equal(t, string(MovieIndex), job.Type)
+			}
+			if job.ID == seriesJob.ID {
+				seriesJobFound = true
+				assert.Equal(t, string(SeriesIndex), job.Type)
+			}
+		}
+		assert.True(t, movieJobFound, "movie job should be in list")
+		assert.True(t, seriesJobFound, "series job should be in list")
+	})
+}
+
+func TestMediaManager_ListJobs(t *testing.T) {
+	t.Run("list all jobs", func(t *testing.T) {
+		ctx := context.Background()
+		store := newStore(t, ctx)
+		scheduler := NewScheduler(store, config.Manager{}, make(map[JobType]JobExecutor))
+
+		manager := MediaManager{
+			storage:   store,
+			scheduler: scheduler,
+		}
+
+		_, err := manager.CreateJob(ctx, TriggerJobRequest{Type: string(MovieIndex)})
+		require.NoError(t, err)
+		_, err = manager.CreateJob(ctx, TriggerJobRequest{Type: string(SeriesIndex)})
+		require.NoError(t, err)
+
+		result, err := manager.ListJobs(ctx, nil, nil)
+		require.NoError(t, err)
+		assert.Equal(t, 2, result.Count)
+		assert.Len(t, result.Jobs, 2)
+	})
+
+	t.Run("list jobs filtered by type", func(t *testing.T) {
+		ctx := context.Background()
+		store := newStore(t, ctx)
+		scheduler := NewScheduler(store, config.Manager{}, make(map[JobType]JobExecutor))
+
+		manager := MediaManager{
+			storage:   store,
+			scheduler: scheduler,
+		}
+
+		_, err := manager.CreateJob(ctx, TriggerJobRequest{Type: string(MovieIndex)})
+		require.NoError(t, err)
+		_, err = manager.CreateJob(ctx, TriggerJobRequest{Type: string(SeriesIndex)})
+		require.NoError(t, err)
+		_, err = manager.CreateJob(ctx, TriggerJobRequest{Type: string(MovieReconcile)})
+		require.NoError(t, err)
+
+		jobType := string(MovieIndex)
+		result, err := manager.ListJobs(ctx, &jobType, nil)
+		require.NoError(t, err)
+		assert.Equal(t, 1, result.Count)
+		assert.Len(t, result.Jobs, 1)
+		assert.Equal(t, string(MovieIndex), result.Jobs[0].Type)
+	})
+
+	t.Run("list jobs filtered by state", func(t *testing.T) {
+		ctx := context.Background()
+		store := newStore(t, ctx)
+		scheduler := NewScheduler(store, config.Manager{}, make(map[JobType]JobExecutor))
+
+		manager := MediaManager{
+			storage:   store,
+			scheduler: scheduler,
+		}
+
+		id1, err := manager.CreateJob(ctx, TriggerJobRequest{Type: string(MovieIndex)})
+		require.NoError(t, err)
+		_, err = manager.CreateJob(ctx, TriggerJobRequest{Type: string(SeriesIndex)})
+		require.NoError(t, err)
+
+		err = store.UpdateJobState(ctx, id1.ID, storage.JobStateRunning, nil)
+		require.NoError(t, err)
+		err = store.UpdateJobState(ctx, id1.ID, storage.JobStateDone, nil)
+		require.NoError(t, err)
+
+		state := string(storage.JobStatePending)
+		result, err := manager.ListJobs(ctx, nil, &state)
+		require.NoError(t, err)
+		assert.Equal(t, 1, result.Count)
+		assert.Len(t, result.Jobs, 1)
+		assert.Equal(t, string(storage.JobStatePending), result.Jobs[0].State)
+	})
+
+	t.Run("list jobs filtered by type and state", func(t *testing.T) {
+		ctx := context.Background()
+		store := newStore(t, ctx)
+		scheduler := NewScheduler(store, config.Manager{}, make(map[JobType]JobExecutor))
+
+		manager := MediaManager{
+			storage:   store,
+			scheduler: scheduler,
+		}
+
+		id1, err := manager.CreateJob(ctx, TriggerJobRequest{Type: string(MovieIndex)})
+		require.NoError(t, err)
+		_, err = manager.CreateJob(ctx, TriggerJobRequest{Type: string(SeriesIndex)})
+		require.NoError(t, err)
+		_, err = manager.CreateJob(ctx, TriggerJobRequest{Type: string(MovieReconcile)})
+		require.NoError(t, err)
+
+		err = store.UpdateJobState(ctx, id1.ID, storage.JobStateRunning, nil)
+		require.NoError(t, err)
+		err = store.UpdateJobState(ctx, id1.ID, storage.JobStateDone, nil)
+		require.NoError(t, err)
+
+		jobType := string(MovieIndex)
+		state := string(storage.JobStateDone)
+		result, err := manager.ListJobs(ctx, &jobType, &state)
+		require.NoError(t, err)
+		assert.Equal(t, 1, result.Count)
+		assert.Len(t, result.Jobs, 1)
+		assert.Equal(t, string(MovieIndex), result.Jobs[0].Type)
+		assert.Equal(t, string(storage.JobStateDone), result.Jobs[0].State)
+	})
+
+	t.Run("list jobs with no results", func(t *testing.T) {
+		ctx := context.Background()
+		store := newStore(t, ctx)
+		scheduler := NewScheduler(store, config.Manager{}, make(map[JobType]JobExecutor))
+
+		manager := MediaManager{
+			storage:   store,
+			scheduler: scheduler,
+		}
+
+		result, err := manager.ListJobs(ctx, nil, nil)
+		require.NoError(t, err)
+		assert.Equal(t, 0, result.Count)
+		assert.Empty(t, result.Jobs)
+	})
+
+	t.Run("invalid job type", func(t *testing.T) {
+		ctx := context.Background()
+		store := newStore(t, ctx)
+		scheduler := NewScheduler(store, config.Manager{}, make(map[JobType]JobExecutor))
+
+		manager := MediaManager{
+			storage:   store,
+			scheduler: scheduler,
+		}
+
+		invalidType := "InvalidJobType"
+		_, err := manager.ListJobs(ctx, &invalidType, nil)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "invalid job type")
+	})
+
+	t.Run("invalid job state", func(t *testing.T) {
+		ctx := context.Background()
+		store := newStore(t, ctx)
+		scheduler := NewScheduler(store, config.Manager{}, make(map[JobType]JobExecutor))
+
+		manager := MediaManager{
+			storage:   store,
+			scheduler: scheduler,
+		}
+
+		invalidState := "InvalidState"
+		_, err := manager.ListJobs(ctx, nil, &invalidState)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "invalid job state")
+	})
+}
+
+func TestMediaManager_CancelJob(t *testing.T) {
+	t.Run("cancel running job", func(t *testing.T) {
+		ctx := context.Background()
+		store := newStore(t, ctx)
+
+		jobExecuted := false
+		jobCancelled := false
+		executors := map[JobType]JobExecutor{
+			MovieIndex: func(ctx context.Context, jobID int64) error {
+				jobExecuted = true
+				<-ctx.Done()
+				jobCancelled = true
+				return ctx.Err()
+			},
+		}
+		scheduler := NewScheduler(store, config.Manager{}, executors)
+
+		manager := MediaManager{
+			storage:   store,
+			scheduler: scheduler,
+		}
+
+		job, err := manager.CreateJob(ctx, TriggerJobRequest{Type: string(MovieIndex)})
+		require.NoError(t, err)
+
+		go scheduler.executeJob(ctx, &storage.Job{
+			Job: model.Job{
+				ID:   int32(job.ID),
+				Type: job.Type,
+			},
+			State: storage.JobStatePending,
+		})
+
+		time.Sleep(100 * time.Millisecond)
+		require.True(t, jobExecuted, "job should have started executing")
+
+		result, err := manager.CancelJob(ctx, job.ID)
+		require.NoError(t, err)
+		assert.Equal(t, job.ID, result.ID)
+
+		time.Sleep(200 * time.Millisecond)
+		require.True(t, jobCancelled, "job should have been cancelled")
+
+		cancelledJob, err := store.GetJob(ctx, job.ID)
+		require.NoError(t, err)
+		assert.Equal(t, storage.JobStateCancelled, cancelledJob.State)
+
+		retrievedJob, err := manager.GetJob(ctx, job.ID)
+		require.NoError(t, err)
+		assert.Equal(t, string(storage.JobStateCancelled), retrievedJob.State)
+	})
+
+	t.Run("cancel non-running job", func(t *testing.T) {
+		ctx := context.Background()
+		store := newStore(t, ctx)
+		scheduler := NewScheduler(store, config.Manager{}, make(map[JobType]JobExecutor))
+
+		manager := MediaManager{
+			storage:   store,
+			scheduler: scheduler,
+		}
+
+		job, err := manager.CreateJob(ctx, TriggerJobRequest{Type: string(MovieIndex)})
+		require.NoError(t, err)
+
+		result, err := manager.CancelJob(ctx, job.ID)
+		require.NoError(t, err)
+		assert.Equal(t, job.ID, result.ID)
+
+		pendingJob, err := store.GetJob(ctx, job.ID)
+		require.NoError(t, err)
+		assert.Equal(t, storage.JobStatePending, pendingJob.State)
+
+		retrievedJob, err := manager.GetJob(ctx, job.ID)
+		require.NoError(t, err)
+		assert.Equal(t, string(storage.JobStatePending), retrievedJob.State)
+	})
+
+	t.Run("cancel completed job", func(t *testing.T) {
+		ctx := context.Background()
+		store := newStore(t, ctx)
+		scheduler := NewScheduler(store, config.Manager{}, make(map[JobType]JobExecutor))
+
+		manager := MediaManager{
+			storage:   store,
+			scheduler: scheduler,
+		}
+
+		job, err := manager.CreateJob(ctx, TriggerJobRequest{Type: string(MovieIndex)})
+		require.NoError(t, err)
+
+		err = store.UpdateJobState(ctx, job.ID, storage.JobStateRunning, nil)
+		require.NoError(t, err)
+		err = store.UpdateJobState(ctx, job.ID, storage.JobStateDone, nil)
+		require.NoError(t, err)
+
+		result, err := manager.CancelJob(ctx, job.ID)
+		require.NoError(t, err)
+		assert.Equal(t, job.ID, result.ID)
+
+		doneJob, err := store.GetJob(ctx, job.ID)
+		require.NoError(t, err)
+		assert.Equal(t, storage.JobStateDone, doneJob.State)
+
+		retrievedJob, err := manager.GetJob(ctx, job.ID)
+		require.NoError(t, err)
+		assert.Equal(t, string(storage.JobStateDone), retrievedJob.State)
+	})
+
+	t.Run("cancel non-existent job", func(t *testing.T) {
+		ctx := context.Background()
+		store := newStore(t, ctx)
+		scheduler := NewScheduler(store, config.Manager{}, make(map[JobType]JobExecutor))
+
+		manager := MediaManager{
+			storage:   store,
+			scheduler: scheduler,
+		}
+
+		_, err := manager.CancelJob(ctx, 999)
+		require.Error(t, err)
+		assert.Equal(t, storage.ErrNotFound, err)
 	})
 }
