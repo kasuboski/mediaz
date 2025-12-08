@@ -1888,7 +1888,7 @@ func TestMediaManager_CancelJob(t *testing.T) {
 		assert.Equal(t, string(storage.JobStateCancelled), retrievedJob.State)
 	})
 
-	t.Run("cancel non-running job", func(t *testing.T) {
+	t.Run("cancel pending job", func(t *testing.T) {
 		ctx := context.Background()
 		store := newStore(t, ctx)
 		scheduler := NewScheduler(store, config.Manager{}, make(map[JobType]JobExecutor))
@@ -1905,13 +1905,13 @@ func TestMediaManager_CancelJob(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, job.ID, result.ID)
 
-		pendingJob, err := store.GetJob(ctx, job.ID)
+		cancelledJob, err := store.GetJob(ctx, job.ID)
 		require.NoError(t, err)
-		assert.Equal(t, storage.JobStatePending, pendingJob.State)
+		assert.Equal(t, storage.JobStateCancelled, cancelledJob.State)
 
 		retrievedJob, err := manager.GetJob(ctx, job.ID)
 		require.NoError(t, err)
-		assert.Equal(t, string(storage.JobStatePending), retrievedJob.State)
+		assert.Equal(t, string(storage.JobStateCancelled), retrievedJob.State)
 	})
 
 	t.Run("cancel completed job", func(t *testing.T) {
