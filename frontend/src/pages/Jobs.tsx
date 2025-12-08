@@ -1,13 +1,7 @@
-import { useJobs, useTriggerJob, useCancelJob } from "@/lib/queries";
+import { useJobs, useTriggerJob, useCancelJob, useConfig } from "@/lib/queries";
 import { type Job, type JobType, type JobState } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   Table,
   TableBody,
@@ -23,7 +17,6 @@ import {
   CheckCircle,
   AlertCircle,
   X,
-  Plus,
   RefreshCw,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -48,15 +41,15 @@ function getJobStateBadge(state: JobState) {
       };
     case "done":
       return {
-        variant: "default" as const,
+        variant: "outline" as const,
         icon: <CheckCircle className="h-3 w-3" />,
         className: "bg-green-500/10 text-green-500 border-green-500/20",
       };
     case "error":
       return {
-        variant: "destructive" as const,
+        variant: "outline" as const,
         icon: <AlertCircle className="h-3 w-3" />,
-        className: "",
+        className: "bg-red-500/10 text-red-500 border-red-500/20",
       };
     case "cancelled":
       return {
@@ -109,7 +102,7 @@ function JobStateBadge({ state }: { state: JobState }) {
   const { variant, icon, className } = getJobStateBadge(state);
 
   return (
-    <Badge variant={variant} className={`flex items-center gap-1.5 ${className}`}>
+    <Badge variant={variant} className={`flex items-center gap-1.5 pointer-events-none ${className}`}>
       {icon}
       <span className="capitalize">{state || "new"}</span>
     </Badge>
@@ -121,6 +114,7 @@ function JobStateBadge({ state }: { state: JobState }) {
  */
 export default function Jobs() {
   const { data, isLoading, error, refetch } = useJobs();
+  const { data: config } = useConfig();
   const triggerJob = useTriggerJob();
   const cancelJob = useCancelJob();
 
@@ -156,9 +150,9 @@ export default function Jobs() {
   // Sort jobs by created date (newest first)
   const sortedJobs = data?.jobs
     ? [...data.jobs].sort(
-        (a, b) =>
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      )
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    )
     : [];
 
   return (
@@ -171,46 +165,116 @@ export default function Jobs() {
         </p>
       </div>
 
-      {/* Actions Bar */}
-      <div className="mb-6 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                disabled={triggerJob.isPending}
-                className="flex items-center gap-2"
-              >
-                {triggerJob.isPending ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Plus className="h-4 w-4" />
-                )}
-                Trigger Job
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start">
-              <DropdownMenuItem onClick={() => handleTriggerJob("MovieIndex")}>
-                Movie Index
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleTriggerJob("MovieReconcile")}>
-                Movie Reconcile
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleTriggerJob("SeriesIndex")}>
-                Series Index
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleTriggerJob("SeriesReconcile")}>
-                Series Reconcile
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+      {/* Job Schedules */}
+      {config?.jobs && (
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>Schedule</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Job Type</TableHead>
+                  <TableHead>Schedule</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                <TableRow>
+                  <TableCell className="font-medium">Movie Index</TableCell>
+                  <TableCell className="font-semibold text-blue-400">
+                    {config.jobs.movieIndex}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button
+                      size="sm"
+                      onClick={() => handleTriggerJob("MovieIndex")}
+                      disabled={triggerJob.isPending}
+                      className="bg-gradient-primary hover:opacity-90"
+                    >
+                      {triggerJob.isPending ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        "Run"
+                      )}
+                    </Button>
+                  </TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell className="font-medium">Movie Reconcile</TableCell>
+                  <TableCell className="font-semibold text-blue-400">
+                    {config.jobs.movieReconcile}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button
+                      size="sm"
+                      onClick={() => handleTriggerJob("MovieReconcile")}
+                      disabled={triggerJob.isPending}
+                      className="bg-gradient-primary hover:opacity-90"
+                    >
+                      {triggerJob.isPending ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        "Run"
+                      )}
+                    </Button>
+                  </TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell className="font-medium">Series Index</TableCell>
+                  <TableCell className="font-semibold text-orange-400">
+                    {config.jobs.seriesIndex}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button
+                      size="sm"
+                      onClick={() => handleTriggerJob("SeriesIndex")}
+                      disabled={triggerJob.isPending}
+                      className="bg-gradient-primary hover:opacity-90"
+                    >
+                      {triggerJob.isPending ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        "Run"
+                      )}
+                    </Button>
+                  </TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell className="font-medium">Series Reconcile</TableCell>
+                  <TableCell className="font-semibold text-orange-400">
+                    {config.jobs.seriesReconcile}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button
+                      size="sm"
+                      onClick={() => handleTriggerJob("SeriesReconcile")}
+                      disabled={triggerJob.isPending}
+                      className="bg-gradient-primary hover:opacity-90"
+                    >
+                      {triggerJob.isPending ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        "Run"
+                      )}
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
 
-        {data && data.jobs.length > 0 && (
+      {/* Job Count */}
+      {data && data.jobs.length > 0 && (
+        <div className="mb-6 flex items-center justify-between">
           <div className="text-sm text-muted-foreground">
             {data.count} {data.count === 1 ? "job" : "jobs"} total
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Loading State */}
       {isLoading && (
@@ -261,14 +325,13 @@ export default function Jobs() {
       {!isLoading && !error && sortedJobs.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>Job History</CardTitle>
+            <CardTitle>History</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[80px]">ID</TableHead>
                     <TableHead>Type</TableHead>
                     <TableHead>State</TableHead>
                     <TableHead>Created</TableHead>
@@ -279,9 +342,6 @@ export default function Jobs() {
                 <TableBody>
                   {sortedJobs.map((job) => (
                     <TableRow key={job.id}>
-                      <TableCell className="font-mono text-sm">
-                        {job.id}
-                      </TableCell>
                       <TableCell className="font-medium">
                         {formatJobType(job.type)}
                       </TableCell>

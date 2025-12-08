@@ -3,7 +3,7 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { moviesApi, tvApi, searchApi, jobsApi, type JobType } from './api';
+import { moviesApi, tvApi, searchApi, jobsApi, libraryApi, type JobType } from './api';
 
 /**
  * Query keys for consistent caching
@@ -28,6 +28,9 @@ export const queryKeys = {
     all: ['jobs'] as const,
     list: () => [...queryKeys.jobs.all, 'list'] as const,
     detail: (id: number) => [...queryKeys.jobs.all, 'detail', id] as const,
+  },
+  config: {
+    all: ['config'] as const,
   },
 } as const;
 
@@ -150,6 +153,18 @@ export function useCancelJob() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.jobs.list() });
     },
+  });
+}
+
+/**
+ * Hook to fetch configuration including job schedules
+ */
+export function useConfig() {
+  return useQuery({
+    queryKey: queryKeys.config.all,
+    queryFn: libraryApi.getConfig,
+    staleTime: 10 * 60 * 1000, // 10 minutes
+    gcTime: 30 * 60 * 1000,
   });
 }
 
