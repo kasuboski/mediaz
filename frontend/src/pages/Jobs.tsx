@@ -31,7 +31,7 @@ function getJobStateBadge(state: JobState) {
       return {
         variant: "outline" as const,
         icon: <Clock className="h-3 w-3" />,
-        className: "border-yellow-500 text-yellow-500",
+        className: "bg-yellow-500/10 text-yellow-500 border-yellow-500/20",
       };
     case "running":
       return {
@@ -267,15 +267,6 @@ export default function Jobs() {
         </Card>
       )}
 
-      {/* Job Count */}
-      {data && data.jobs.length > 0 && (
-        <div className="mb-6 flex items-center justify-between">
-          <div className="text-sm text-muted-foreground">
-            {data.count} {data.count === 1 ? "job" : "jobs"} total
-          </div>
-        </div>
-      )}
-
       {/* Loading State */}
       {isLoading && (
         <Card>
@@ -332,7 +323,7 @@ export default function Jobs() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Type</TableHead>
+                    <TableHead>Job Type</TableHead>
                     <TableHead>State</TableHead>
                     <TableHead>Created</TableHead>
                     <TableHead>Updated</TableHead>
@@ -366,11 +357,10 @@ export default function Jobs() {
                       <TableCell className="text-right">
                         {canCancelJob(job.state) && (
                           <Button
-                            variant="ghost"
                             size="sm"
                             onClick={() => handleCancelJob(job)}
                             disabled={cancelJob.isPending}
-                            className="text-destructive hover:text-destructive"
+                            className="bg-red-500 hover:bg-red-600 text-white"
                           >
                             {cancelJob.isPending ? (
                               <Loader2 className="h-4 w-4 animate-spin" />
