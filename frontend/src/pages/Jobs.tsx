@@ -357,10 +357,10 @@ export default function Jobs() {
                       <TableCell className="text-right">
                         {canCancelJob(job.state) && (
                           <Button
+                            variant="destructive"
                             size="sm"
                             onClick={() => handleCancelJob(job)}
                             disabled={cancelJob.isPending}
-                            className="bg-red-500 hover:bg-red-600 text-white"
                           >
                             {cancelJob.isPending ? (
                               <Loader2 className="h-4 w-4 animate-spin" />
