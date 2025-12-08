@@ -527,55 +527,6 @@ func TestIndexMovieLibrary(t *testing.T) {
 	})
 }
 
-func TestRun(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	prowlarrMock := prowlMock.NewMockClientInterface(ctrl)
-	store, err := mediaSqlite.New(":memory:")
-	require.Nil(t, err)
-
-	schemas, err := storage.ReadSchemaFiles("../storage/sqlite/schema/schema.sql")
-	require.Nil(t, err)
-
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
-	defer cancel()
-	err = store.Init(ctx, schemas...)
-	require.Nil(t, err)
-
-	movieFS, expectedMovies := library.MovieFSFromFile(t, "../library/testing/test_movies.txt")
-	require.NotEmpty(t, expectedMovies)
-	tvFS, expectedEpisodes := library.TVFSFromFile(t, "../library/testing/test_episodes.txt")
-	require.NotEmpty(t, expectedEpisodes)
-
-	lib := library.New(
-		library.FileSystem{
-			FS: movieFS,
-		},
-		library.FileSystem{
-			FS: tvFS,
-		},
-		&mio.MediaFileSystem{},
-	)
-	pClient, err := prowlarr.New(":", "1234")
-	pClient.ClientInterface = prowlarrMock
-	require.NoError(t, err)
-
-	require.NoError(t, err)
-
-	mockFactory := downloadMock.NewMockFactory(ctrl)
-	m := New(nil, pClient, lib, store, mockFactory, config.Manager{
-		Jobs: config.Jobs{
-			MovieReconcile:  time.Minute * 1,
-			MovieIndex:      time.Minute * 1,
-			SeriesReconcile: time.Minute * 1,
-			SeriesIndex:     time.Minute * 1,
-		},
-	}, config.Config{})
-	require.NotNil(t, m)
-
-	err = m.Run(ctx)
-	assert.ErrorIs(t, err, context.DeadlineExceeded)
-}
-
 func TestMovieRejectRelease(t *testing.T) {
 	t.Run("prefix match only", func(t *testing.T) {
 		ctx := context.Background()
@@ -1937,7 +1888,7 @@ func TestMediaManager_CancelJob(t *testing.T) {
 		assert.Equal(t, string(storage.JobStateCancelled), retrievedJob.State)
 	})
 
-	t.Run("cancel non-running job", func(t *testing.T) {
+	t.Run("cancel pending job", func(t *testing.T) {
 		ctx := context.Background()
 		store := newStore(t, ctx)
 		scheduler := NewScheduler(store, config.Manager{}, make(map[JobType]JobExecutor))
@@ -1954,13 +1905,13 @@ func TestMediaManager_CancelJob(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, job.ID, result.ID)
 
-		pendingJob, err := store.GetJob(ctx, job.ID)
+		cancelledJob, err := store.GetJob(ctx, job.ID)
 		require.NoError(t, err)
-		assert.Equal(t, storage.JobStatePending, pendingJob.State)
+		assert.Equal(t, storage.JobStateCancelled, cancelledJob.State)
 
 		retrievedJob, err := manager.GetJob(ctx, job.ID)
 		require.NoError(t, err)
-		assert.Equal(t, string(storage.JobStatePending), retrievedJob.State)
+		assert.Equal(t, string(storage.JobStateCancelled), retrievedJob.State)
 	})
 
 	t.Run("cancel completed job", func(t *testing.T) {

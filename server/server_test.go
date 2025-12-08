@@ -518,7 +518,6 @@ func TestServer_GetTVDetailByTMDBID(t *testing.T) {
 		assert.Equal(t, http.StatusInternalServerError, rr.Code)
 		assert.Equal(t, "application/json", rr.Header().Get("content-type"))
 
-		// For error responses, we just check that it's a proper error response
 		responseBody := rr.Body.String()
 		assert.Contains(t, responseBody, "error")
 		assert.Contains(t, responseBody, "null") // response should be null when there's an error
@@ -533,7 +532,6 @@ func TestServer_ListJobs(t *testing.T) {
 		store := storeMocks.NewMockStorage(ctrl)
 		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
 
-		// Setup test jobs
 		createdAt := time.Now().Add(-1 * time.Hour)
 		updatedAt := time.Now()
 		errorMsg := "test error"
@@ -593,13 +591,11 @@ func TestServer_ListJobs(t *testing.T) {
 
 		assert.Equal(t, float64(2), jobList["count"])
 
-		// Check first job
 		job1 := jobsArray[0].(map[string]any)
 		assert.Equal(t, float64(1), job1["id"])
 		assert.Equal(t, "MovieIndex", job1["type"])
 		assert.Equal(t, "done", job1["state"])
 
-		// Check second job with error
 		job2 := jobsArray[1].(map[string]any)
 		assert.Equal(t, float64(2), job2["id"])
 		assert.Equal(t, "SeriesReconcile", job2["type"])
@@ -782,7 +778,6 @@ func TestServer_CancelJob(t *testing.T) {
 		createdAt := time.Now().Add(-1 * time.Hour)
 		updatedAt := time.Now()
 
-		// Expect GetJob call to check current state
 		store.EXPECT().GetJob(gomock.Any(), int64(42)).Return(&storage.Job{
 			Job: model.Job{
 				ID:        42,
@@ -793,7 +788,6 @@ func TestServer_CancelJob(t *testing.T) {
 			UpdatedAt: &updatedAt,
 		}, nil)
 
-		// After cancellation, return cancelled job
 		store.EXPECT().GetJob(gomock.Any(), int64(42)).Return(&storage.Job{
 			Job: model.Job{
 				ID:        42,
@@ -890,7 +884,6 @@ func TestServer_CreateJob(t *testing.T) {
 		createdAt := time.Now()
 		updatedAt := time.Now()
 
-		// Expect CreateJob to be called
 		store.EXPECT().CreateJob(gomock.Any(), gomock.Any(), storage.JobStatePending).Return(int64(1), nil)
 		store.EXPECT().GetJob(gomock.Any(), int64(1)).Return(&storage.Job{
 			Job: model.Job{
@@ -918,7 +911,7 @@ func TestServer_CreateJob(t *testing.T) {
 		handler := s.CreateJob()
 		handler.ServeHTTP(rr, req)
 
-		assert.Equal(t, http.StatusOK, rr.Code)
+		assert.Equal(t, http.StatusCreated, rr.Code)
 		assert.Equal(t, "application/json", rr.Header().Get("content-type"))
 
 		var response GenericResponse
@@ -953,7 +946,6 @@ func TestServer_CreateJob(t *testing.T) {
 			UpdatedAt: &updatedAt,
 		}
 
-		// Simulate job already pending
 		store.EXPECT().CreateJob(gomock.Any(), gomock.Any(), storage.JobStatePending).Return(int64(0), storage.ErrJobAlreadyPending)
 		store.EXPECT().ListJobs(gomock.Any(), gomock.Any()).Return([]*storage.Job{existingJob}, nil)
 
@@ -973,7 +965,7 @@ func TestServer_CreateJob(t *testing.T) {
 		handler := s.CreateJob()
 		handler.ServeHTTP(rr, req)
 
-		assert.Equal(t, http.StatusOK, rr.Code)
+		assert.Equal(t, http.StatusCreated, rr.Code)
 
 		var response GenericResponse
 		err = json.Unmarshal(rr.Body.Bytes(), &response)
