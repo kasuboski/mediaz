@@ -234,33 +234,40 @@ func (s *Scheduler) CancelJob(ctx context.Context, jobID int64) error {
 	if err != nil {
 		return err
 	}
-	if job.State != storage.JobStateRunning {
-		return nil
-	}
 
-	cancel, ok := s.runningJobs.Get(jobID)
-	if !ok {
-		log.Debug("job not found in running jobs map")
-		return nil
-	}
+	switch job.State {
+	case storage.JobStatePending:
+		log.Debug("cancelling pending job")
+		return s.storage.UpdateJobState(ctx, jobID, storage.JobStateCancelled, nil)
 
-	log.Debug("cancelling job")
-	cancel()
-
-	timeout := time.After(30 * time.Second)
-	ticker := time.NewTicker(100 * time.Millisecond)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-timeout:
-			log.Error("timeout waiting for job to complete cancellation")
+	case storage.JobStateRunning:
+		cancel, ok := s.runningJobs.Get(jobID)
+		if !ok {
+			log.Debug("job not found in running jobs map")
 			return nil
-		case <-ticker.C:
-			if _, exists := s.runningJobs.Get(jobID); !exists {
-				log.Debug("job was cancelled")
+		}
+
+		log.Debug("cancelling running job")
+		cancel()
+
+		timeout := time.After(30 * time.Second)
+		ticker := time.NewTicker(100 * time.Millisecond)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-timeout:
+				log.Error("timeout waiting for job to complete cancellation")
 				return nil
+			case <-ticker.C:
+				if _, exists := s.runningJobs.Get(jobID); !exists {
+					log.Debug("job was cancelled")
+					return nil
+				}
 			}
 		}
+
+	default:
+		return nil
 	}
 }
