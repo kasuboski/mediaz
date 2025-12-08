@@ -177,3 +177,20 @@ func sortIndexers(indexers []Indexer) {
 		return cmp.Compare(a.Priority, b.Priority)
 	})
 }
+
+func toIndexerResponse(indexer model.Indexer) IndexerResponse {
+	return IndexerResponse{
+		ID:       indexer.ID,
+		Name:     indexer.Name,
+		Priority: indexer.Priority,
+		URI:      indexer.URI,
+	}
+}
+
+func toIndexerResponses(indexers ...*model.Indexer) []IndexerResponse {
+	responses := make([]IndexerResponse, len(indexers))
+	for i, indexer := range indexers {
+		responses[i] = toIndexerResponse(*indexer)
+	}
+	return responses
+}

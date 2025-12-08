@@ -541,14 +541,23 @@ func parseMediaResult(res *http.Response) (*SearchMediaResponse, error) {
 	return results, err
 }
 
-// ListIndexers lists all managed indexers
-func (m MediaManager) ListIndexers(ctx context.Context) ([]Indexer, error) {
+func (m MediaManager) listIndexersInternal(ctx context.Context) ([]Indexer, error) {
 	log := logger.FromCtx(ctx)
 
 	if err := m.indexer.FetchIndexers(ctx); err != nil {
 		log.Error("couldn't fetch indexer", err)
 	}
 	return m.indexer.ListIndexers(ctx)
+}
+
+// ListIndexers lists all managed indexers
+func (m MediaManager) ListIndexers(ctx context.Context) ([]IndexerResponse, error) {
+	indexers, err := m.storage.ListIndexers(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return toIndexerResponses(indexers...), nil
 }
 
 func (m MediaManager) ListShowsInLibrary(ctx context.Context) ([]LibraryShow, error) {
@@ -940,22 +949,42 @@ func (m MediaManager) SearchIndexers(ctx context.Context, indexers, categories [
 	return releases, nil
 }
 
-// AddIndexer stores a new indexer in the database
-func (m MediaManager) AddIndexer(ctx context.Context, request AddIndexerRequest) (model.Indexer, error) {
+func (m MediaManager) AddIndexer(ctx context.Context, request AddIndexerRequest) (IndexerResponse, error) {
 	indexer := request.Indexer
 
 	if indexer.Name == "" {
-		return indexer, fmt.Errorf("indexer name is required")
+		return IndexerResponse{}, fmt.Errorf("indexer name is required")
 	}
 
 	id, err := m.storage.CreateIndexer(ctx, indexer)
 	if err != nil {
-		return indexer, err
+		return IndexerResponse{}, err
 	}
 
 	indexer.ID = int32(id)
 
-	return indexer, nil
+	return toIndexerResponse(indexer), nil
+}
+
+func (m MediaManager) UpdateIndexer(ctx context.Context, id int32, request UpdateIndexerRequest) (IndexerResponse, error) {
+	if request.Name == "" {
+		return IndexerResponse{}, fmt.Errorf("indexer name is required")
+	}
+
+	indexer := model.Indexer{
+		ID:       id,
+		Name:     request.Name,
+		Priority: request.Priority,
+		URI:      request.URI,
+		APIKey:   request.APIKey,
+	}
+
+	err := m.storage.UpdateIndexer(ctx, int64(id), indexer)
+	if err != nil {
+		return IndexerResponse{}, err
+	}
+
+	return toIndexerResponse(indexer), nil
 }
 
 // AddIndexer stores a new indexer in the database

@@ -96,7 +96,7 @@ func (m MediaManager) ReconcileMovies(ctx context.Context) error {
 		return err
 	}
 
-	indexers, err := m.ListIndexers(ctx)
+	indexers, err := m.listIndexersInternal(ctx)
 	if err != nil {
 		return err
 	}
