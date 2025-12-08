@@ -2,8 +2,8 @@
  * React Query hooks for API data fetching
  */
 
-import { useQuery } from '@tanstack/react-query';
-import { moviesApi, tvApi, searchApi } from './api';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { moviesApi, tvApi, searchApi, jobsApi, libraryApi, type JobType } from './api';
 
 /**
  * Query keys for consistent caching
@@ -23,6 +23,14 @@ export const queryKeys = {
     all: ['search'] as const,
     movies: (query: string) => [...queryKeys.search.all, 'movies', query] as const,
     tv: (query: string) => [...queryKeys.search.all, 'tv', query] as const,
+  },
+  jobs: {
+    all: ['jobs'] as const,
+    list: () => [...queryKeys.jobs.all, 'list'] as const,
+    detail: (id: number) => [...queryKeys.jobs.all, 'detail', id] as const,
+  },
+  config: {
+    all: ['config'] as const,
   },
 } as const;
 
@@ -95,6 +103,68 @@ export function useSearchTV(query: string) {
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 10 * 60 * 1000, // 10 minutes
     enabled: !!normalizedQuery, // Only run query if query is provided
+  });
+}
+
+/**
+ * Hook to fetch jobs list with auto-refresh for active jobs
+ */
+export function useJobs() {
+  return useQuery({
+    queryKey: queryKeys.jobs.list(),
+    queryFn: jobsApi.listJobs,
+    refetchInterval: (data) => {
+      // Poll every 3 seconds if there are active jobs
+      if (!data?.jobs || !Array.isArray(data.jobs)) {
+        return false;
+      }
+      const hasActiveJobs = data.jobs.some(j =>
+        ['pending', 'running'].includes(j.state)
+      );
+      return hasActiveJobs ? 3000 : false;
+    },
+    staleTime: 1000, // Very short stale time since jobs change rapidly
+    gcTime: 5 * 60 * 1000,
+  });
+}
+
+/**
+ * Mutation hook to trigger new jobs
+ */
+export function useTriggerJob() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (type: JobType) => jobsApi.triggerJob(type),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.jobs.list() });
+    },
+  });
+}
+
+/**
+ * Mutation hook to cancel jobs
+ */
+export function useCancelJob() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: number) => jobsApi.cancelJob(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.jobs.list() });
+    },
+  });
+}
+
+/**
+ * Hook to fetch configuration including job schedules
+ */
+export function useConfig() {
+  return useQuery({
+    queryKey: queryKeys.config.all,
+    queryFn: libraryApi.getConfig,
+    staleTime: 10 * 60 * 1000, // 10 minutes
+    gcTime: 30 * 60 * 1000,
   });
 }
 

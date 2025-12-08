@@ -197,10 +197,16 @@ export class ApiError extends Error {
 /**
  * Generic fetch wrapper with error handling
  */
-async function apiRequest<T>(endpoint: string): Promise<T> {
+async function apiRequest<T>(
+  endpoint: string,
+  options?: RequestInit
+): Promise<T> {
   const url = `${API_BASE_URL}${endpoint}`;
   try {
-    const response = await fetch(url);
+    const response = await fetch(url, {
+      headers: { 'Content-Type': 'application/json' },
+      ...options,
+    });
     if (!response.ok) {
       throw new ApiError(response.status, `HTTP ${response.status}: ${response.statusText}`);
     }
@@ -450,5 +456,61 @@ export const searchApi = {
     return response.results
       .map((result) => transformSearchResultToMediaItem(result, "tv"))
       .filter((item): item is MediaItem => item !== null);
+  },
+};
+
+/**
+ * Job types matching the backend JobType
+ */
+export type JobType = 'MovieIndex' | 'MovieReconcile' | 'SeriesIndex' | 'SeriesReconcile';
+
+/**
+ * Job states matching the backend JobState
+ */
+export type JobState = '' | 'pending' | 'running' | 'error' | 'done' | 'cancelled';
+
+/**
+ * Job interface matching the backend JobResponse
+ */
+export interface Job {
+  id: number;
+  type: JobType;
+  state: JobState;
+  createdAt: string;
+  updatedAt: string;
+  error?: string;
+}
+
+/**
+ * JobListResponse interface matching the backend
+ */
+export interface JobListResponse {
+  jobs: Job[];
+  count: number;
+}
+
+/**
+ * Jobs API for managing background jobs
+ */
+export const jobsApi = {
+  async listJobs(): Promise<JobListResponse> {
+    return apiRequest<JobListResponse>('/jobs');
+  },
+
+  async getJob(id: number): Promise<Job> {
+    return apiRequest<Job>(`/jobs/${id}`);
+  },
+
+  async triggerJob(type: JobType): Promise<Job> {
+    return apiRequest<Job>('/jobs', {
+      method: 'POST',
+      body: JSON.stringify({ type }),
+    });
+  },
+
+  async cancelJob(id: number): Promise<Job> {
+    return apiRequest<Job>(`/jobs/${id}/cancel`, {
+      method: 'POST',
+    });
   },
 };
