@@ -258,7 +258,7 @@ func (s *Scheduler) CancelJob(ctx context.Context, jobID int64) error {
 			return nil
 		case <-ticker.C:
 			if _, exists := s.runningJobs.Get(jobID); !exists {
-				log.Debug("job was canceled")
+				log.Debug("job was cancelled")
 				return nil
 			}
 		}

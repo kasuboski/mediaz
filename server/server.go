@@ -818,7 +818,7 @@ func (s Server) CreateJob() http.HandlerFunc {
 			return
 		}
 
-		writeResponse(w, http.StatusOK, GenericResponse{Response: jobs})
+		writeResponse(w, http.StatusCreated, GenericResponse{Response: jobs})
 	}
 }
 
