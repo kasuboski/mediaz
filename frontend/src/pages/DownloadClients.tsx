@@ -125,7 +125,7 @@ export default function DownloadClients() {
                 {clients.map((client) => (
                   <TableRow key={client.ID}>
                     <TableCell>{getImplementationBadge(client.Implementation)}</TableCell>
-                    <TableCell className="font-mono text-sm">
+                    <TableCell>
                       {client.Scheme}://{client.Host}{client.Port ? `:${client.Port}` : ''}
                     </TableCell>
                     <TableCell className="capitalize">{client.Type}</TableCell>
