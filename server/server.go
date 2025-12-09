@@ -366,7 +366,7 @@ func (s Server) UpdateIndexer() http.HandlerFunc {
 			return
 		}
 
-		log.Debug("succesfully updated indexer")
+		log.Debug("successfully updated indexer")
 		writeResponse(w, http.StatusOK, GenericResponse{
 			Response: indexer,
 		})
