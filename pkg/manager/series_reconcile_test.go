@@ -899,7 +899,8 @@ func TestMediaManager_ReconcileMissingSeries(t *testing.T) {
 		store.EXPECT().ListSeries(ctx, where).Return(nil, storage.ErrNotFound)
 
 		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
-		err := m.ReconcileMissingSeries(ctx, &ReconcileSnapshot{})
+		snapshot := newReconcileSnapshot([]Indexer{{ID: 1}}, nil)
+		err := m.ReconcileMissingSeries(ctx, snapshot)
 		require.NoError(t, err)
 	})
 
@@ -918,7 +919,8 @@ func TestMediaManager_ReconcileMissingSeries(t *testing.T) {
 		store.EXPECT().ListSeries(ctx, where).Return(nil, expectedErr)
 
 		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
-		err := m.ReconcileMissingSeries(ctx, &ReconcileSnapshot{})
+		snapshot := newReconcileSnapshot([]Indexer{{ID: 1}}, nil)
+		err := m.ReconcileMissingSeries(ctx, snapshot)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "couldn't list missing series")
 	})

@@ -2,7 +2,6 @@ package manager
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"slices"
 	"sync"
@@ -102,9 +101,6 @@ func (m MediaManager) ReconcileMovies(ctx context.Context) error {
 	}
 
 	log.Debugw("listed indexers", "count", len(indexers))
-	if len(indexers) == 0 {
-		return errors.New("no indexers available")
-	}
 
 	snapshot := newReconcileSnapshot(indexers, dcs)
 
@@ -136,6 +132,11 @@ func (m MediaManager) ReconcileMissingMovies(ctx context.Context, snapshot *Reco
 
 	if snapshot == nil {
 		return fmt.Errorf("snapshot is nil")
+	}
+
+	if len(snapshot.GetIndexers()) == 0 {
+		log.Warn("Skipping missing movies reconciliation: no indexers available")
+		return nil
 	}
 
 	movies, err := m.storage.ListMoviesByState(ctx, storage.MovieStateMissing)
