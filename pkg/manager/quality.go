@@ -70,12 +70,12 @@ func (m MediaManager) GetQualityProfile(ctx context.Context, id int64) (storage.
 	return m.storage.GetQualityProfile(ctx, id)
 }
 
-func (m MediaManager) ListEpisodeQualityProfiles(ctx context.Context, id int64) ([]*storage.QualityProfile, error) {
+func (m MediaManager) ListEpisodeQualityProfiles(ctx context.Context) ([]*storage.QualityProfile, error) {
 	where := table.QualityDefinition.MediaType.EQ(sqlite.String("episode"))
 	return m.storage.ListQualityProfiles(ctx, where)
 }
 
-func (m MediaManager) ListMovieQualityProfiles(ctx context.Context, id int64) ([]*storage.QualityProfile, error) {
+func (m MediaManager) ListMovieQualityProfiles(ctx context.Context) ([]*storage.QualityProfile, error) {
 	where := table.QualityDefinition.MediaType.EQ(sqlite.String("movie"))
 	return m.storage.ListQualityProfiles(ctx, where)
 }

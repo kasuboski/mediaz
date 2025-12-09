@@ -141,7 +141,7 @@ func TestMediaManager_ListMovieQualityProfiles(t *testing.T) {
 			storage: store,
 		}
 
-		profile, err := manager.ListMovieQualityProfiles(ctx, 1)
+		profile, err := manager.ListMovieQualityProfiles(ctx)
 		require.NoError(t, err)
 		require.Len(t, profile, 3)
 		assert.Equal(t, int32(3), profile[0].ID)
@@ -174,7 +174,7 @@ func TestMediaManager_ListEpisodeQualityProfiles(t *testing.T) {
 			storage: store,
 		}
 
-		profile, err := manager.ListEpisodeQualityProfiles(ctx, 1)
+		profile, err := manager.ListEpisodeQualityProfiles(ctx)
 		require.NoError(t, err)
 		require.Len(t, profile, 3)
 
