@@ -574,3 +574,44 @@ export const downloadClientsApi = {
     });
   },
 };
+
+export interface Indexer {
+  id: number;
+  name: string;
+  priority: number;
+  uri: string;
+}
+
+export interface IndexerRequest {
+  name: string;
+  priority: number;
+  uri: string;
+  api_key?: string;
+}
+
+export const indexersApi = {
+  async list(): Promise<Indexer[]> {
+    return apiRequest<Indexer[]>('/indexers');
+  },
+
+  async create(request: IndexerRequest): Promise<Indexer> {
+    return apiRequest<Indexer>('/indexers', {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
+  },
+
+  async update(id: number, request: IndexerRequest): Promise<Indexer> {
+    return apiRequest<Indexer>(`/indexers/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(request),
+    });
+  },
+
+  async delete(id: number): Promise<void> {
+    return apiRequest<void>('/indexers', {
+      method: 'DELETE',
+      body: JSON.stringify({ id }),
+    });
+  },
+};

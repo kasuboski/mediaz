@@ -84,6 +84,27 @@ func (s *SQLite) CreateIndexer(ctx context.Context, indexer model.Indexer) (int6
 	return result.LastInsertId()
 }
 
+func (s *SQLite) UpdateIndexer(ctx context.Context, id int64, indexer model.Indexer) error {
+	if indexer.APIKey != nil {
+		stmt := table.Indexer.UPDATE(
+			table.Indexer.Name,
+			table.Indexer.Priority,
+			table.Indexer.URI,
+			table.Indexer.APIKey,
+		).MODEL(indexer).WHERE(table.Indexer.ID.EQ(sqlite.Int64(id)))
+		_, err := stmt.ExecContext(ctx, s.db)
+		return err
+	}
+
+	stmt := table.Indexer.UPDATE(
+		table.Indexer.Name,
+		table.Indexer.Priority,
+		table.Indexer.URI,
+	).MODEL(indexer).WHERE(table.Indexer.ID.EQ(sqlite.Int64(id)))
+	_, err := stmt.ExecContext(ctx, s.db)
+	return err
+}
+
 // DeleteIndexer deletes a stored indexer given the indexer ID
 func (s *SQLite) DeleteIndexer(ctx context.Context, id int64) error {
 	stmt := table.Indexer.DELETE().WHERE(table.Indexer.ID.EQ(sqlite.Int64(id))).RETURNING(table.Indexer.AllColumns)

@@ -891,16 +891,18 @@ func TestMediaManager_ReconcileMissingSeries(t *testing.T) {
 
 		ctx := context.Background()
 		store := mocks.NewMockStorage(ctrl)
+		prowlarrMock := prowlMock.NewMockClientInterface(ctrl)
 
-		where := table.SeriesTransition.ToState.EQ(sqlite.String(string(storage.SeriesStateMissing))).
-			AND(table.SeriesTransition.MostRecent.EQ(sqlite.Bool(true))).
-			AND(table.Series.Monitored.EQ(sqlite.Int(1)))
+		prowlarrMock.EXPECT().GetAPIV1Indexer(ctx).Return(nil, errors.New("prowlarr not configured"))
+		store.EXPECT().ListIndexers(ctx).Return([]*model.Indexer{}, nil)
 
-		store.EXPECT().ListSeries(ctx, where).Return(nil, storage.ErrNotFound)
+		pClient, err := prowlarr.New(":", "1234")
+		pClient.ClientInterface = prowlarrMock
+		require.NoError(t, err)
 
-		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
-		snapshot := newReconcileSnapshot([]Indexer{{ID: 1}}, nil)
-		err := m.ReconcileMissingSeries(ctx, snapshot)
+		m := New(nil, pClient, nil, store, nil, config.Manager{}, config.Config{})
+		snapshot := newReconcileSnapshot([]Indexer{}, nil)
+		err = m.ReconcileMissingSeries(ctx, snapshot)
 		require.NoError(t, err)
 	})
 
@@ -910,17 +912,26 @@ func TestMediaManager_ReconcileMissingSeries(t *testing.T) {
 
 		ctx := context.Background()
 		store := mocks.NewMockStorage(ctrl)
+		prowlarrMock := prowlMock.NewMockClientInterface(ctrl)
 
 		where := table.SeriesTransition.ToState.EQ(sqlite.String(string(storage.SeriesStateMissing))).
 			AND(table.SeriesTransition.MostRecent.EQ(sqlite.Bool(true))).
 			AND(table.Series.Monitored.EQ(sqlite.Int(1)))
 
+		prowlarrMock.EXPECT().GetAPIV1Indexer(ctx).Return(nil, errors.New("prowlarr not configured"))
+		indexer := &model.Indexer{ID: 1, Name: "test", Priority: 1}
+		store.EXPECT().ListIndexers(ctx).Return([]*model.Indexer{indexer}, nil)
+
 		expectedErr := errors.New("database error")
 		store.EXPECT().ListSeries(ctx, where).Return(nil, expectedErr)
 
-		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
-		snapshot := newReconcileSnapshot([]Indexer{{ID: 1}}, nil)
-		err := m.ReconcileMissingSeries(ctx, snapshot)
+		pClient, err := prowlarr.New(":", "1234")
+		pClient.ClientInterface = prowlarrMock
+		require.NoError(t, err)
+
+		m := New(nil, pClient, nil, store, nil, config.Manager{}, config.Config{})
+		snapshot := newReconcileSnapshot([]Indexer{}, nil)
+		err = m.ReconcileMissingSeries(ctx, snapshot)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "couldn't list missing series")
 	})
@@ -1053,11 +1064,21 @@ func TestMediaManager_ReconcileMissingSeries(t *testing.T) {
 		}
 
 		prowlarrMock := prowlMock.NewMockClientInterface(ctrl)
+
+		prowlarrMock.EXPECT().GetAPIV1Indexer(ctx).Return(nil, errors.New("prowlarr not configured"))
+
 		prowlarrMock.EXPECT().GetAPIV1Search(gomock.Any(), gomock.Any()).Return(searchIndexersResponse(t, releases), nil).Times(1)
 
 		pClient, err := prowlarr.New(":", "1234")
 		require.NoError(t, err)
 		pClient.ClientInterface = prowlarrMock
+
+		_, err = store.CreateIndexer(ctx, model.Indexer{
+			ID:       1,
+			Name:     "test",
+			Priority: 1,
+		})
+		require.NoError(t, err)
 
 		m := New(nil, pClient, nil, store, mockFactory, config.Manager{}, config.Config{})
 
