@@ -3,7 +3,7 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { moviesApi, tvApi, searchApi, jobsApi, libraryApi, downloadClientsApi, type JobType, type CreateDownloadClientRequest, type UpdateDownloadClientRequest } from './api';
+import { moviesApi, tvApi, searchApi, jobsApi, libraryApi, downloadClientsApi, indexersApi, type JobType, type CreateDownloadClientRequest, type UpdateDownloadClientRequest, type IndexerRequest } from './api';
 
 /**
  * Query keys for consistent caching
@@ -36,6 +36,10 @@ export const queryKeys = {
     all: ['downloadClients'] as const,
     list: () => [...queryKeys.downloadClients.all, 'list'] as const,
     detail: (id: number) => [...queryKeys.downloadClients.all, 'detail', id] as const,
+  },
+  indexers: {
+    all: ['indexers'] as const,
+    list: () => [...queryKeys.indexers.all, 'list'] as const,
   },
 } as const;
 
@@ -230,6 +234,48 @@ export function useDeleteDownloadClient() {
 export function useTestDownloadClient() {
   return useMutation({
     mutationFn: (request: CreateDownloadClientRequest) => downloadClientsApi.testConnection(request),
+  });
+}
+
+export function useIndexers() {
+  return useQuery({
+    queryKey: queryKeys.indexers.list(),
+    queryFn: indexersApi.list,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useCreateIndexer() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (request: IndexerRequest) => indexersApi.create(request),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.indexers.list() });
+    },
+  });
+}
+
+export function useUpdateIndexer() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, request }: { id: number; request: IndexerRequest }) =>
+      indexersApi.update(id, request),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.indexers.list() });
+    },
+  });
+}
+
+export function useDeleteIndexer() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: number) => indexersApi.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.indexers.list() });
+    },
   });
 }
 

@@ -128,16 +128,16 @@ func (m MediaManager) ReconcileMissingMovies(ctx context.Context, snapshot *Reco
 		return fmt.Errorf("snapshot is nil")
 	}
 
-	indexers, err := m.ListIndexers(ctx)
+	indexers, err := m.listIndexersInternal(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to list indexers: %w", err)
+		return err
 	}
 
+	log.Debug("listed indexers", zap.Int("count", len(indexers)))
 	if len(indexers) == 0 {
-		log.Warn("Skipping missing movies reconciliation: no indexers available")
+		log.Warn("skipping missing series reconciliation: no indexers available")
 		return nil
 	}
-
 	snapshot = newReconcileSnapshot(indexers, snapshot.GetDownloadClients())
 
 	movies, err := m.storage.ListMoviesByState(ctx, storage.MovieStateMissing)

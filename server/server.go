@@ -93,6 +93,7 @@ func (s *Server) Serve(port int) error {
 
 	v1.HandleFunc("/indexers", s.ListIndexers()).Methods(http.MethodGet)
 	v1.HandleFunc("/indexers", s.CreateIndexer()).Methods(http.MethodPost)
+	v1.HandleFunc("/indexers/{id}", s.UpdateIndexer()).Methods(http.MethodPut)
 	v1.HandleFunc("/indexers", s.DeleteIndexer()).Methods(http.MethodDelete)
 
 	v1.HandleFunc("/download/clients", s.ListDownloadClients()).Methods(http.MethodGet)
@@ -326,6 +327,48 @@ func (s Server) DeleteIndexer() http.HandlerFunc {
 		log.Debug("succesfully deleted indexer")
 		writeResponse(w, http.StatusOK, GenericResponse{
 			Response: request,
+		})
+	}
+}
+
+func (s Server) UpdateIndexer() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log := logger.FromCtx(r.Context())
+		vars := mux.Vars(r)
+		idStr := vars["id"]
+
+		id, err := strconv.Atoi(idStr)
+		if err != nil {
+			http.Error(w, "Invalid ID format", http.StatusBadRequest)
+			return
+		}
+
+		b, err := io.ReadAll(r.Body)
+		if err != nil {
+			log.Debug("invalid request body", zap.Error(err))
+			http.Error(w, "invalid request body", http.StatusBadRequest)
+			return
+		}
+
+		var request manager.UpdateIndexerRequest
+		err = json.Unmarshal(b, &request)
+		if err != nil {
+			log.Debug("invalid request body", zap.ByteString("body", b))
+			http.Error(w, "invalid request body", http.StatusBadRequest)
+			return
+		}
+
+		log.Debug("updating indexer", zap.Int("id", id), zap.Any("request", request))
+		indexer, err := s.manager.UpdateIndexer(r.Context(), int32(id), request)
+		if err != nil {
+			log.Debug("failed to update indexer", zap.Error(err))
+			writeErrorResponse(w, http.StatusInternalServerError, err)
+			return
+		}
+
+		log.Debug("successfully updated indexer")
+		writeResponse(w, http.StatusOK, GenericResponse{
+			Response: indexer,
 		})
 	}
 }

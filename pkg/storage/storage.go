@@ -34,6 +34,7 @@ type Storage interface {
 
 type IndexerStorage interface {
 	CreateIndexer(ctx context.Context, indexer model.Indexer) (int64, error)
+	UpdateIndexer(ctx context.Context, id int64, indexer model.Indexer) error
 	DeleteIndexer(ctx context.Context, id int64) error
 	ListIndexers(ctx context.Context) ([]*model.Indexer, error)
 }

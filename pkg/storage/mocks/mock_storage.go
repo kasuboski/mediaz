@@ -1248,6 +1248,20 @@ func (mr *MockStorageMockRecorder) UpdateEpisodeState(ctx, id, state, metadata a
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateEpisodeState", reflect.TypeOf((*MockStorage)(nil).UpdateEpisodeState), ctx, id, state, metadata)
 }
 
+// UpdateIndexer mocks base method.
+func (m *MockStorage) UpdateIndexer(ctx context.Context, id int64, indexer model.Indexer) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateIndexer", ctx, id, indexer)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateIndexer indicates an expected call of UpdateIndexer.
+func (mr *MockStorageMockRecorder) UpdateIndexer(ctx, id, indexer any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateIndexer", reflect.TypeOf((*MockStorage)(nil).UpdateIndexer), ctx, id, indexer)
+}
+
 // UpdateJobState mocks base method.
 func (m *MockStorage) UpdateJobState(ctx context.Context, id int64, state storage.JobState, errorMsg *string) error {
 	m.ctrl.T.Helper()
@@ -1383,6 +1397,20 @@ func (m *MockIndexerStorage) ListIndexers(ctx context.Context) ([]*model.Indexer
 func (mr *MockIndexerStorageMockRecorder) ListIndexers(ctx any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListIndexers", reflect.TypeOf((*MockIndexerStorage)(nil).ListIndexers), ctx)
+}
+
+// UpdateIndexer mocks base method.
+func (m *MockIndexerStorage) UpdateIndexer(ctx context.Context, id int64, indexer model.Indexer) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateIndexer", ctx, id, indexer)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateIndexer indicates an expected call of UpdateIndexer.
+func (mr *MockIndexerStorageMockRecorder) UpdateIndexer(ctx, id, indexer any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateIndexer", reflect.TypeOf((*MockIndexerStorage)(nil).UpdateIndexer), ctx, id, indexer)
 }
 
 // MockQualityStorage is a mock of QualityStorage interface.

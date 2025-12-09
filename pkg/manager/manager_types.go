@@ -158,10 +158,24 @@ type AddSeriesRequest struct {
 	QualityProfileID int32 `json:"qualityProfileID"`
 }
 
+type IndexerResponse struct {
+	ID       int32  `json:"id"`
+	Name     string `json:"name"`
+	Priority int32  `json:"priority"`
+	URI      string `json:"uri"`
+}
+
 // AddIndexerRequest wraps a storage Indexer model to create a new indexer.
 // Ensure Name and Priority are set appropriately; credentials/URI should be validated upstream.
 type AddIndexerRequest struct {
 	model.Indexer
+}
+
+type UpdateIndexerRequest struct {
+	Name     string  `json:"name"`
+	Priority int32   `json:"priority"`
+	URI      string  `json:"uri"`
+	APIKey   *string `json:"api_key,omitempty"`
 }
 
 // DeleteIndexerRequest identifies an indexer to delete by ID.
