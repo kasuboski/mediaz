@@ -2,7 +2,6 @@ package manager
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"slices"
 	"sync"
@@ -96,17 +95,7 @@ func (m MediaManager) ReconcileMovies(ctx context.Context) error {
 		return err
 	}
 
-	indexers, err := m.ListIndexers(ctx)
-	if err != nil {
-		return err
-	}
-
-	log.Debugw("listed indexers", "count", len(indexers))
-	if len(indexers) == 0 {
-		return errors.New("no indexers available")
-	}
-
-	snapshot := newReconcileSnapshot(indexers, dcs)
+	snapshot := newReconcileSnapshot(make([]Indexer, 0), dcs)
 
 	err = m.ReconcileMissingMovies(ctx, snapshot)
 	if err != nil {
@@ -133,10 +122,23 @@ func (m MediaManager) ReconcileMovies(ctx context.Context) error {
 
 func (m MediaManager) ReconcileMissingMovies(ctx context.Context, snapshot *ReconcileSnapshot) error {
 	log := logger.FromCtx(ctx)
+	log.Debug("starting missing movies reconciliation")
 
 	if snapshot == nil {
 		return fmt.Errorf("snapshot is nil")
 	}
+
+	indexers, err := m.ListIndexers(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to list indexers: %w", err)
+	}
+
+	if len(indexers) == 0 {
+		log.Warn("Skipping missing movies reconciliation: no indexers available")
+		return nil
+	}
+
+	snapshot = newReconcileSnapshot(indexers, snapshot.GetDownloadClients())
 
 	movies, err := m.storage.ListMoviesByState(ctx, storage.MovieStateMissing)
 	if err != nil {
@@ -159,6 +161,8 @@ func (m MediaManager) ReconcileMissingMovies(ctx context.Context, snapshot *Reco
 
 func (m MediaManager) ReconcileDownloadingMovies(ctx context.Context, snapshot *ReconcileSnapshot) error {
 	log := logger.FromCtx(ctx)
+	log.Debug("starting downloading movies reconciliation")
+
 	movies, err := m.storage.ListMoviesByState(ctx, storage.MovieStateDownloading)
 	if err != nil {
 		return fmt.Errorf("couldn't list downloading movies: %w", err)
@@ -343,11 +347,12 @@ func (m MediaManager) reconcileMissingMovie(ctx context.Context, movie *storage.
 }
 
 func (m MediaManager) ReconcileUnreleasedMovies(ctx context.Context, snapshot *ReconcileSnapshot) error {
+	log := logger.FromCtx(ctx)
+	log.Debug("starting unreleased movies reconciliation")
+
 	if snapshot == nil {
 		return fmt.Errorf("snapshot is nil")
 	}
-
-	log := logger.FromCtx(ctx)
 
 	movies, err := m.storage.ListMoviesByState(ctx, storage.MovieStateUnreleased)
 	if err != nil {
@@ -410,6 +415,9 @@ func (m MediaManager) updateMovieState(ctx context.Context, movie *storage.Movie
 }
 
 func (m MediaManager) ReconcileDiscoveredMovies(ctx context.Context, snapshot *ReconcileSnapshot) error {
+	log := logger.FromCtx(ctx)
+	log.Debug("starting discovered movies reconciliation")
+
 	if snapshot == nil {
 		return fmt.Errorf("snapshot is nil")
 	}
@@ -418,8 +426,6 @@ func (m MediaManager) ReconcileDiscoveredMovies(ctx context.Context, snapshot *R
 	if err != nil {
 		return fmt.Errorf("couldn't list discovered movies: %w", err)
 	}
-
-	log := logger.FromCtx(ctx)
 
 	for _, movie := range movies {
 		if err := ctx.Err(); err != nil {
