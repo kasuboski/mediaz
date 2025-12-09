@@ -26,17 +26,7 @@ func (m MediaManager) ReconcileSeries(ctx context.Context) error {
 		return err
 	}
 
-	indexers, err := m.listIndexersInternal(ctx)
-	if err != nil {
-		return err
-	}
-
-	log.Debug("listed indexers", zap.Int("count", len(indexers)))
-	if len(indexers) == 0 {
-		return errors.New("no indexers available")
-	}
-
-	snapshot := newReconcileSnapshot(indexers, dcs)
+	snapshot := newReconcileSnapshot(make([]Indexer, 0), dcs)
 
 	err = m.ReconcileMissingSeries(ctx, snapshot)
 	if err != nil {
@@ -73,11 +63,25 @@ func (m MediaManager) ReconcileSeries(ctx context.Context) error {
 
 func (m MediaManager) ReconcileMissingSeries(ctx context.Context, snapshot *ReconcileSnapshot) error {
 	log := logger.FromCtx(ctx)
+	log.Debug("starting missing series reconciliation")
 
 	if snapshot == nil {
 		log.Warn("snapshot is nil, skipping reconcile")
 		return nil
 	}
+
+	indexers, err := m.listIndexersInternal(ctx)
+	if err != nil {
+		return err
+	}
+
+	log.Debug("listed indexers", zap.Int("count", len(indexers)))
+	if len(indexers) == 0 {
+		log.Warn("skipping missing series reconciliation: no indexers available")
+		return nil
+	}
+
+	snapshot = newReconcileSnapshot(indexers, snapshot.GetDownloadClients())
 
 	where := table.SeriesTransition.ToState.EQ(sqlite.String(string(storage.SeriesStateMissing))).
 		AND(table.SeriesTransition.MostRecent.EQ(sqlite.Bool(true))).
@@ -110,6 +114,7 @@ func (m MediaManager) ReconcileMissingSeries(ctx context.Context, snapshot *Reco
 
 func (m MediaManager) ReconcileContinuingSeries(ctx context.Context, snapshot *ReconcileSnapshot) error {
 	log := logger.FromCtx(ctx)
+	log.Debug("starting continuing series reconciliation")
 
 	if snapshot == nil {
 		log.Warn("snapshot is nil, skipping reconcile")
@@ -908,6 +913,7 @@ func (m MediaManager) evaluateAndUpdateSeriesState(ctx context.Context, seriesID
 // files on disk that need to be associated with the proper metadata before transitioning to "completed" state.
 func (m MediaManager) ReconcileDiscoveredEpisodes(ctx context.Context, snapshot *ReconcileSnapshot) error {
 	log := logger.FromCtx(ctx)
+	log.Debug("starting discovered episodes reconciliation")
 
 	where := table.EpisodeTransition.ToState.EQ(sqlite.String(string(storage.EpisodeStateDiscovered))).
 		AND(table.EpisodeTransition.MostRecent.EQ(sqlite.Bool(true))).
@@ -1235,6 +1241,7 @@ func (m MediaManager) getEpisodeFileByID(ctx context.Context, fileID int32) (*mo
 // ReconcileCompletedSeries evaluates and updates states for series that may have completed
 func (m MediaManager) ReconcileCompletedSeries(ctx context.Context) error {
 	log := logger.FromCtx(ctx)
+	log.Debug("starting completed series reconciliation")
 
 	where := table.SeriesTransition.ToState.IN(
 		sqlite.String(string(storage.SeriesStateDownloading)),
@@ -1267,6 +1274,7 @@ func (m MediaManager) ReconcileCompletedSeries(ctx context.Context) error {
 // ReconcileCompletedSeasons evaluates and updates states for seasons that may have completed
 func (m MediaManager) ReconcileCompletedSeasons(ctx context.Context) error {
 	log := logger.FromCtx(ctx)
+	log.Debug("starting completed seasons reconciliation")
 
 	where := table.SeasonTransition.ToState.IN(
 		sqlite.String(string(storage.SeasonStateDownloading)),
