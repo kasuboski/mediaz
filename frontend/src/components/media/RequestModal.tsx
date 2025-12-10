@@ -151,7 +151,7 @@ export function RequestModal({
                     >
                       <div className="flex flex-col gap-1">
                         <span className="font-semibold">{profile.name}</span>
-                        <span className="text-xs opacity-70">
+                        <span className="text-xs opacity-70 whitespace-normal break-words">
                           {qualityNames || "No qualities defined"}
                         </span>
                       </div>
