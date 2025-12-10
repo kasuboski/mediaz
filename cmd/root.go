@@ -34,8 +34,7 @@ func init() {
 }
 
 const (
-	defaultJobTicker      = time.Minute * 10
-	metadataRefreshTicker = 7 * 24 * time.Hour
+	defaultJobTicker = time.Minute * 10
 )
 
 func initConfig() {
@@ -71,9 +70,7 @@ func initConfig() {
 
 	viper.SetDefault("manager.jobs.movieIndex", defaultJobTicker)
 	viper.SetDefault("manager.jobs.movieReconcile", defaultJobTicker)
-	viper.SetDefault("manager.jobs.movieMetadata", metadataRefreshTicker)
 
 	viper.SetDefault("manager.jobs.seriesIndex", defaultJobTicker)
 	viper.SetDefault("manager.jobs.seriesReconcile", defaultJobTicker)
-	viper.SetDefault("manager.jobs.seriesMetadata", metadataRefreshTicker)
 }
