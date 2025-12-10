@@ -340,24 +340,6 @@ func (m MediaManager) reconcileMissingSeries(ctx context.Context, series *storag
 		return nil
 	}
 
-	// // Re-evaluate season and series states first, before quality profile validation
-	// // This handles cases where seasons are marked as "missing" but actually have unreleased episodes
-	// where := table.Season.SeriesID.EQ(sqlite.Int32(series.ID)).
-	// 	AND(table.Season.Monitored.EQ(sqlite.Int(1))).
-	// 	AND(table.SeasonTransition.ToState.EQ(sqlite.String(string(storage.SeasonStateMissing))))
-
-	// seasons, err := m.storage.ListSeasons(ctx, where)
-	// if err == nil && len(seasons) > 0 {
-	// 	for _, season := range seasons {
-	// 		if err := m.evaluateAndUpdateSeasonState(ctx, season.ID); err != nil {
-	// 			log.Warn("failed to re-evaluate season state", zap.Error(err), zap.Int32("season_id", season.ID))
-	// 		}
-	// 	}
-	// 	if err := m.evaluateAndUpdateSeriesState(ctx, series.ID); err != nil {
-	// 		log.Warn("failed to re-evaluate series state", zap.Error(err), zap.Int32("series_id", series.ID))
-	// 	}
-	// }
-
 	qualityProfile, err := m.storage.GetQualityProfile(ctx, int64(series.QualityProfileID))
 	if err != nil {
 		log.Warnw("failed to find series qualityprofile", "quality_id", series.QualityProfileID)
@@ -1283,7 +1265,6 @@ func (m MediaManager) ReconcileCompletedSeries(ctx context.Context) error {
 	where := table.SeriesTransition.ToState.IN(
 		sqlite.String(string(storage.SeriesStateDownloading)),
 		sqlite.String(string(storage.SeriesStateContinuing)),
-		sqlite.String(string(storage.SeriesStateCompleted)),
 	).AND(table.SeriesTransition.MostRecent.EQ(sqlite.Bool(true))).
 		AND(table.Series.Monitored.EQ(sqlite.Int(1)))
 

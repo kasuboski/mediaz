@@ -478,10 +478,8 @@ func (m MediaManager) GetConfigSummary() ConfigSummary {
 		Jobs: JobsConfig{
 			MovieReconcile:  m.config.Manager.Jobs.MovieReconcile.String(),
 			MovieIndex:      m.config.Manager.Jobs.MovieIndex.String(),
-			MovieMetadata:   m.config.Manager.Jobs.MovieMetadata.String(),
 			SeriesReconcile: m.config.Manager.Jobs.SeriesReconcile.String(),
 			SeriesIndex:     m.config.Manager.Jobs.SeriesIndex.String(),
-			SeriesMetadata:  m.config.Manager.Jobs.SeriesMetadata.String(),
 		},
 	}
 }
