@@ -15,6 +15,7 @@ import (
 	"github.com/kasuboski/mediaz/config"
 	"github.com/kasuboski/mediaz/pkg/logger"
 	"github.com/kasuboski/mediaz/pkg/manager"
+	"github.com/kasuboski/mediaz/pkg/storage"
 	"go.uber.org/zap"
 
 	"github.com/gorilla/handlers"
@@ -594,7 +595,21 @@ func (s Server) GetQualityProfile() http.HandlerFunc {
 func (s Server) ListQualityProfiles() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromCtx(r.Context())
-		profile, err := s.manager.ListQualityProfiles(r.Context())
+
+		mediaType := r.URL.Query().Get("type")
+
+		var profile []*storage.QualityProfile
+		var err error
+
+		switch mediaType {
+		case "movie":
+			profile, err = s.manager.ListMovieQualityProfiles(r.Context())
+		case "series":
+			profile, err = s.manager.ListEpisodeQualityProfiles(r.Context())
+		default:
+			profile, err = s.manager.ListQualityProfiles(r.Context())
+		}
+
 		if err != nil {
 			log.Errorw("failed to list quality profile", zap.Error(err))
 			http.Error(w, "failed to list quality profile", http.StatusInternalServerError)

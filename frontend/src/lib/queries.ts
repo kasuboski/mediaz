@@ -3,7 +3,22 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { moviesApi, tvApi, searchApi, jobsApi, libraryApi, downloadClientsApi, indexersApi, type JobType, type CreateDownloadClientRequest, type UpdateDownloadClientRequest, type IndexerRequest } from './api';
+import {
+  moviesApi,
+  tvApi,
+  searchApi,
+  jobsApi,
+  libraryApi,
+  downloadClientsApi,
+  indexersApi,
+  qualityProfilesApi,
+  type JobType,
+  type CreateDownloadClientRequest,
+  type UpdateDownloadClientRequest,
+  type IndexerRequest,
+  type AddMovieRequest,
+  type AddSeriesRequest,
+} from './api';
 
 /**
  * Query keys for consistent caching
@@ -40,6 +55,10 @@ export const queryKeys = {
   indexers: {
     all: ['indexers'] as const,
     list: () => [...queryKeys.indexers.all, 'list'] as const,
+  },
+  qualityProfiles: {
+    all: ['qualityProfiles'] as const,
+    list: () => [...queryKeys.qualityProfiles.all, 'list'] as const,
   },
 } as const;
 
@@ -275,6 +294,66 @@ export function useDeleteIndexer() {
     mutationFn: (id: number) => indexersApi.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.indexers.list() });
+    },
+  });
+}
+
+/**
+ * Hook to fetch quality profiles
+ */
+export function useQualityProfiles() {
+  return useQuery({
+    queryKey: queryKeys.qualityProfiles.list(),
+    queryFn: qualityProfilesApi.listProfiles,
+    staleTime: 10 * 60 * 1000, // 10 minutes
+    gcTime: 30 * 60 * 1000,
+  });
+}
+
+export function useMovieQualityProfiles() {
+  return useQuery({
+    queryKey: [...queryKeys.qualityProfiles.all, 'movie'],
+    queryFn: () => qualityProfilesApi.listProfiles('movie'),
+    staleTime: 10 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+  });
+}
+
+export function useSeriesQualityProfiles() {
+  return useQuery({
+    queryKey: [...queryKeys.qualityProfiles.all, 'series'],
+    queryFn: () => qualityProfilesApi.listProfiles('series'),
+    staleTime: 10 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+  });
+}
+
+/**
+ * Mutation hook to add a movie to the library
+ */
+export function useAddMovie() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (request: AddMovieRequest) => moviesApi.addMovie(request),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.movies.library() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.movies.detail(data.tmdbID) });
+    },
+  });
+}
+
+/**
+ * Mutation hook to add a TV series to the library
+ */
+export function useAddSeries() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (request: AddSeriesRequest) => tvApi.addSeries(request),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.tv.library() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.tv.detail(data.tmdbID) });
     },
   });
 }

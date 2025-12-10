@@ -580,6 +580,9 @@ func (m MediaManager) ListShowsInLibrary(ctx context.Context) ([]LibraryShow, er
 				if meta.PosterPath != nil {
 					ls.PosterPath = *meta.PosterPath
 				}
+				if meta.FirstAirDate != nil {
+					ls.Year = int32(meta.FirstAirDate.Year())
+				}
 			}
 		}
 		shows = append(shows, ls)
@@ -589,16 +592,10 @@ func (m MediaManager) ListShowsInLibrary(ctx context.Context) ([]LibraryShow, er
 
 // ListMoviesInLibrary returns library movies enriched with metadata
 func (m MediaManager) ListMoviesInLibrary(ctx context.Context) ([]LibraryMovie, error) {
-	// fetch by state
-	discovered, err := m.storage.ListMoviesByState(ctx, storage.MovieStateDiscovered)
+	all, err := m.storage.ListMovies(ctx)
 	if err != nil {
 		return nil, err
 	}
-	downloaded, err := m.storage.ListMoviesByState(ctx, storage.MovieStateDownloaded)
-	if err != nil {
-		return nil, err
-	}
-	all := append(discovered, downloaded...)
 	var movies []LibraryMovie
 	for _, mp := range all {
 		mrec := *mp

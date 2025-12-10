@@ -47,7 +47,9 @@ export interface MediaItem {
   poster_path: string;
   release_date?: string;
   first_air_date?: string;
+  year?: number;
   media_type: "movie" | "tv";
+  state?: string;
 }
 
 /**
@@ -185,6 +187,61 @@ export interface TVDetail {
 }
 
 /**
+ * Quality profile request/response types
+ */
+export interface QualityDefinition {
+  name: string;
+  type: string; // "movie" or "episode"
+  preferredSize: number;
+  minSize: number;
+  maxSize: number;
+}
+
+export interface QualityProfile {
+  id: number;
+  name: string;
+  cutoff_quality_id: number;
+  upgradeAllowed: boolean;
+  qualities: QualityDefinition[];
+}
+
+/**
+ * Request types for adding media to library
+ */
+export interface AddMovieRequest {
+  tmdbID: number;
+  qualityProfileID: number;
+}
+
+export interface AddSeriesRequest {
+  tmdbID: number;
+  qualityProfileID: number;
+}
+
+/**
+ * Response types for added media
+ */
+export interface AddMovieResponse {
+  path: string;
+  tmdbID: number;
+  title: string;
+  poster_path: string;
+  year?: number;
+  state: string;
+  qualityProfileID?: number;
+}
+
+export interface AddSeriesResponse {
+  path: string;
+  tmdbID: number;
+  title: string;
+  poster_path: string;
+  year?: number;
+  state: string;
+  qualityProfileID?: number;
+}
+
+/**
  * Generic API error class
  */
 export class ApiError extends Error {
@@ -226,7 +283,9 @@ function transformLibraryMovieToMediaItem(movie: LibraryMovie): MediaItem {
     title: movie.title,
     poster_path: movie.poster_path,
     release_date: movie.year ? `${movie.year}-01-01` : undefined,
+    year: movie.year,
     media_type: "movie" as const,
+    state: movie.state,
   };
 }
 
@@ -236,7 +295,9 @@ function transformLibraryShowToMediaItem(show: LibraryShow): MediaItem {
     title: show.title,
     poster_path: show.poster_path,
     first_air_date: show.year ? `${show.year}-01-01` : undefined,
+    year: show.year,
     media_type: "tv" as const,
+    state: show.state,
   };
 }
 
@@ -270,6 +331,12 @@ export const moviesApi = {
   async getMovieDetail(tmdbID: number): Promise<MovieDetail> {
     const result = await apiRequest<MovieDetailResult>(`/movie/${tmdbID}`);
     return transformMovieDetailResult(result);
+  },
+  async addMovie(request: AddMovieRequest): Promise<AddMovieResponse> {
+    return apiRequest<AddMovieResponse>('/library/movies', {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
   },
 };
 
@@ -315,6 +382,12 @@ export const tvApi = {
   async getTVDetail(tmdbID: number): Promise<TVDetail> {
     const result = await apiRequest<TVDetailResult>(`/tv/${tmdbID}`);
     return transformTVDetailResult(result);
+  },
+  async addSeries(request: AddSeriesRequest): Promise<AddSeriesResponse> {
+    return apiRequest<AddSeriesResponse>('/library/tv', {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
   },
 };
 
@@ -613,5 +686,17 @@ export const indexersApi = {
       method: 'DELETE',
       body: JSON.stringify({ id }),
     });
+  },
+};
+
+/**
+ * Quality Profiles API
+ */
+export const qualityProfilesApi = {
+  async listProfiles(mediaType?: 'movie' | 'series'): Promise<QualityProfile[]> {
+    const endpoint = mediaType
+      ? `/quality/profiles?type=${mediaType}`
+      : '/quality/profiles';
+    return apiRequest<QualityProfile[]>(endpoint);
   },
 };

@@ -129,8 +129,7 @@ func TestListMoviesInLibrary(t *testing.T) {
 		store := mocks.NewMockStorage(ctrl)
 		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
 
-		store.EXPECT().ListMoviesByState(ctx, storage.MovieStateDiscovered).Return([]*storage.Movie{}, nil)
-		store.EXPECT().ListMoviesByState(ctx, storage.MovieStateDownloaded).Return([]*storage.Movie{}, nil)
+		store.EXPECT().ListMovies(ctx).Return([]*storage.Movie{}, nil)
 
 		movies, err := m.ListMoviesInLibrary(ctx)
 		require.NoError(t, err)
@@ -169,8 +168,7 @@ func TestListMoviesInLibrary(t *testing.T) {
 			Year:   &year,
 		}
 
-		store.EXPECT().ListMoviesByState(ctx, storage.MovieStateDiscovered).Return([]*storage.Movie{discoveredMovie}, nil)
-		store.EXPECT().ListMoviesByState(ctx, storage.MovieStateDownloaded).Return([]*storage.Movie{downloadedMovie}, nil)
+		store.EXPECT().ListMovies(ctx).Return([]*storage.Movie{discoveredMovie, downloadedMovie}, nil)
 		store.EXPECT().GetMovieMetadata(ctx, gomock.Any()).Return(movieMetadata, nil).Times(2)
 
 		movies, err := m.ListMoviesInLibrary(ctx)
@@ -207,8 +205,7 @@ func TestListMoviesInLibrary(t *testing.T) {
 			State: storage.MovieStateDiscovered,
 		}
 
-		store.EXPECT().ListMoviesByState(ctx, storage.MovieStateDiscovered).Return([]*storage.Movie{discoveredMovie}, nil)
-		store.EXPECT().ListMoviesByState(ctx, storage.MovieStateDownloaded).Return([]*storage.Movie{}, nil)
+		store.EXPECT().ListMovies(ctx).Return([]*storage.Movie{discoveredMovie}, nil)
 
 		movies, err := m.ListMoviesInLibrary(ctx)
 		require.NoError(t, err)
@@ -221,25 +218,12 @@ func TestListMoviesInLibrary(t *testing.T) {
 		assert.Equal(t, expectedMovie, movies[0])
 	})
 
-	t.Run("error listing discovered movies", func(t *testing.T) {
+	t.Run("error listing movies", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		store := mocks.NewMockStorage(ctrl)
 		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
 
-		store.EXPECT().ListMoviesByState(ctx, storage.MovieStateDiscovered).Return(nil, errors.New("db error"))
-
-		movies, err := m.ListMoviesInLibrary(ctx)
-		assert.Error(t, err)
-		assert.Nil(t, movies)
-	})
-
-	t.Run("error listing downloaded movies", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
-		store := mocks.NewMockStorage(ctrl)
-		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
-
-		store.EXPECT().ListMoviesByState(ctx, storage.MovieStateDiscovered).Return([]*storage.Movie{}, nil)
-		store.EXPECT().ListMoviesByState(ctx, storage.MovieStateDownloaded).Return(nil, errors.New("db error"))
+		store.EXPECT().ListMovies(ctx).Return(nil, errors.New("db error"))
 
 		movies, err := m.ListMoviesInLibrary(ctx)
 		assert.Error(t, err)
