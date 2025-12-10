@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 
-export type MediaStateFilter = "all" | "missing" | "available" | "unreleased" | "downloading";
+export type MovieStateFilter = "all" | "missing" | "available" | "unreleased" | "downloading";
+export type MediaStateFilter = MovieStateFilter;
 
 interface MediaItem {
   state?: string;

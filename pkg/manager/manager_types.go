@@ -237,6 +237,8 @@ type ServerConfig struct {
 type JobsConfig struct {
 	MovieReconcile  string `json:"movieReconcile"`
 	MovieIndex      string `json:"movieIndex"`
+	MovieMetadata   string `json:"movieMetadata"`
 	SeriesReconcile string `json:"seriesReconcile"`
 	SeriesIndex     string `json:"seriesIndex"`
+	SeriesMetadata  string `json:"seriesMetadata"`
 }

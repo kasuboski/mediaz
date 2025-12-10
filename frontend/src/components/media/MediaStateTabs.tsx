@@ -1,7 +1,8 @@
 import { ReactNode } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { getMovieStateColor } from "@/lib/movie-state";
-import type { MediaStateFilter } from "@/hooks/use-media-state-filter";
+import { getMediaStateColor, type MediaType } from "@/lib/media-state";
+import type { MovieStateFilter } from "@/hooks/use-media-state-filter";
+import type { SeriesStateFilter } from "@/hooks/use-series-state-filter";
 
 interface StateCounts {
   all: number;
@@ -9,29 +10,29 @@ interface StateCounts {
   available: number;
   unreleased: number;
   downloading: number;
+  continuing?: number;
+  completed?: number;
 }
 
 interface MediaStateTabsProps {
-  filter: MediaStateFilter;
-  onFilterChange: (filter: MediaStateFilter) => void;
+  filter: MovieStateFilter | SeriesStateFilter;
+  onFilterChange: (filter: MovieStateFilter | SeriesStateFilter) => void;
   counts: StateCounts;
   children: ReactNode;
+  mediaType: MediaType;
 }
 
-/**
- * Shared component for filtering media items by state.
- * Displays tabs for all, available, downloading, missing, and unreleased states.
- */
 export function MediaStateTabs({
   filter,
   onFilterChange,
   counts,
   children,
+  mediaType,
 }: MediaStateTabsProps) {
   return (
     <Tabs
       value={filter}
-      onValueChange={(v) => onFilterChange(v as MediaStateFilter)}
+      onValueChange={(v) => onFilterChange(v as MovieStateFilter | SeriesStateFilter)}
       className="mb-6"
     >
       <TabsList>
@@ -47,10 +48,25 @@ export function MediaStateTabs({
               </span>
             </span>
             <div
-              className={`h-1 w-full ${getMovieStateColor("discovered")}`}
+              className={`h-1 w-full ${getMediaStateColor("discovered", mediaType)}`}
             />
           </div>
         </TabsTrigger>
+        {mediaType === 'tv' && (
+          <TabsTrigger value="continuing">
+            <div className="flex flex-col items-center gap-1">
+              <span>
+                Continuing{" "}
+                <span className="ml-1.5 text-xs opacity-70">
+                  ({counts.continuing})
+                </span>
+              </span>
+              <div
+                className={`h-1 w-full ${getMediaStateColor("continuing", mediaType)}`}
+              />
+            </div>
+          </TabsTrigger>
+        )}
         <TabsTrigger value="downloading">
           <div className="flex flex-col items-center gap-1">
             <span>
@@ -60,7 +76,7 @@ export function MediaStateTabs({
               </span>
             </span>
             <div
-              className={`h-1 w-full ${getMovieStateColor("downloading")}`}
+              className={`h-1 w-full ${getMediaStateColor("downloading", mediaType)}`}
             />
           </div>
         </TabsTrigger>
@@ -73,7 +89,7 @@ export function MediaStateTabs({
               </span>
             </span>
             <div
-              className={`h-1 w-full ${getMovieStateColor("missing")}`}
+              className={`h-1 w-full ${getMediaStateColor("missing", mediaType)}`}
             />
           </div>
         </TabsTrigger>
@@ -86,7 +102,7 @@ export function MediaStateTabs({
               </span>
             </span>
             <div
-              className={`h-1 w-full ${getMovieStateColor("unreleased")}`}
+              className={`h-1 w-full ${getMediaStateColor("unreleased", mediaType)}`}
             />
           </div>
         </TabsTrigger>

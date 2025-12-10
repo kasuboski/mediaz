@@ -1276,6 +1276,20 @@ func (mr *MockStorageMockRecorder) UpdateJobState(ctx, id, state, errorMsg any) 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateJobState", reflect.TypeOf((*MockStorage)(nil).UpdateJobState), ctx, id, state, errorMsg)
 }
 
+// UpdateMovieMetadata mocks base method.
+func (m *MockStorage) UpdateMovieMetadata(ctx context.Context, metadata model.MovieMetadata) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateMovieMetadata", ctx, metadata)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateMovieMetadata indicates an expected call of UpdateMovieMetadata.
+func (mr *MockStorageMockRecorder) UpdateMovieMetadata(ctx, metadata any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateMovieMetadata", reflect.TypeOf((*MockStorage)(nil).UpdateMovieMetadata), ctx, metadata)
+}
+
 // UpdateMovieMovieFileID mocks base method.
 func (m *MockStorage) UpdateMovieMovieFileID(ctx context.Context, id, fileID int64) error {
 	m.ctrl.T.Helper()
@@ -1316,6 +1330,20 @@ func (m *MockStorage) UpdateSeasonState(ctx context.Context, id int64, season st
 func (mr *MockStorageMockRecorder) UpdateSeasonState(ctx, id, season, metadata any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateSeasonState", reflect.TypeOf((*MockStorage)(nil).UpdateSeasonState), ctx, id, season, metadata)
+}
+
+// UpdateSeriesMetadata mocks base method.
+func (m *MockStorage) UpdateSeriesMetadata(ctx context.Context, metadata model.SeriesMetadata) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateSeriesMetadata", ctx, metadata)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateSeriesMetadata indicates an expected call of UpdateSeriesMetadata.
+func (mr *MockStorageMockRecorder) UpdateSeriesMetadata(ctx, metadata any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateSeriesMetadata", reflect.TypeOf((*MockStorage)(nil).UpdateSeriesMetadata), ctx, metadata)
 }
 
 // UpdateSeriesState mocks base method.
@@ -1941,6 +1969,20 @@ func (m *MockMovieMetadataStorage) ListMovieMetadata(ctx context.Context) ([]*mo
 func (mr *MockMovieMetadataStorageMockRecorder) ListMovieMetadata(ctx any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListMovieMetadata", reflect.TypeOf((*MockMovieMetadataStorage)(nil).ListMovieMetadata), ctx)
+}
+
+// UpdateMovieMetadata mocks base method.
+func (m *MockMovieMetadataStorage) UpdateMovieMetadata(ctx context.Context, metadata model.MovieMetadata) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateMovieMetadata", ctx, metadata)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateMovieMetadata indicates an expected call of UpdateMovieMetadata.
+func (mr *MockMovieMetadataStorageMockRecorder) UpdateMovieMetadata(ctx, metadata any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateMovieMetadata", reflect.TypeOf((*MockMovieMetadataStorage)(nil).UpdateMovieMetadata), ctx, metadata)
 }
 
 // MockDownloadClientStorage is a mock of DownloadClientStorage interface.
@@ -2740,4 +2782,18 @@ func (mr *MockSeriesMetadataStorageMockRecorder) ListSeriesMetadata(ctx any, whe
 	mr.mock.ctrl.T.Helper()
 	varargs := append([]any{ctx}, where...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListSeriesMetadata", reflect.TypeOf((*MockSeriesMetadataStorage)(nil).ListSeriesMetadata), varargs...)
+}
+
+// UpdateSeriesMetadata mocks base method.
+func (m *MockSeriesMetadataStorage) UpdateSeriesMetadata(ctx context.Context, metadata model.SeriesMetadata) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateSeriesMetadata", ctx, metadata)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateSeriesMetadata indicates an expected call of UpdateSeriesMetadata.
+func (mr *MockSeriesMetadataStorageMockRecorder) UpdateSeriesMetadata(ctx, metadata any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateSeriesMetadata", reflect.TypeOf((*MockSeriesMetadataStorage)(nil).UpdateSeriesMetadata), ctx, metadata)
 }

@@ -524,6 +524,21 @@ func (s *SQLite) CreateMovieMetadata(ctx context.Context, movieMeta model.MovieM
 	return inserted, nil
 }
 
+// UpdateMovieMetadata updates an existing movie metadata record
+func (s *SQLite) UpdateMovieMetadata(ctx context.Context, metadata model.MovieMetadata) error {
+	stmt := table.MovieMetadata.
+		UPDATE(table.MovieMetadata.AllColumns.Except(table.MovieMetadata.ID, table.MovieMetadata.TmdbID, table.MovieMetadata.LastInfoSync)).
+		MODEL(metadata).
+		WHERE(table.MovieMetadata.ID.EQ(sqlite.Int32(metadata.ID)))
+
+	_, err := s.handleStatement(ctx, stmt)
+	if err != nil {
+		return fmt.Errorf("failed to update movie metadata: %w", err)
+	}
+
+	return nil
+}
+
 // DeleteMovieMetadata deletes a movie metadata by id
 func (s *SQLite) DeleteMovieMetadata(ctx context.Context, id int64) error {
 	stmt := table.MovieMetadata.DELETE().WHERE(table.MovieMetadata.ID.EQ(sqlite.Int64(id))).RETURNING(table.MovieMetadata.ID)

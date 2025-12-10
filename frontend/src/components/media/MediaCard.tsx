@@ -3,7 +3,7 @@ import { Film, Tv, Calendar } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { MediaItem } from "@/lib/api";
-import { getMovieStateColor } from "@/lib/movie-state";
+import { getMediaStateColor } from "@/lib/media-state";
 
 interface MediaCardProps {
   item: MediaItem;
@@ -11,7 +11,7 @@ interface MediaCardProps {
 
 export function MediaCard({ item }: MediaCardProps) {
   const navigate = useNavigate();
-  const statusColor = getMovieStateColor(item.state);
+  const statusColor = getMediaStateColor(item.state, item.media_type);
 
   const handleClick = () => {
     navigate(`/${item.media_type}/${item.id}`);

@@ -27,6 +27,10 @@ type GenericResponse struct {
 	Response any   `json:"response"`
 }
 
+type RefreshRequest struct {
+	TmdbIDs []int `json:"tmdbIds"`
+}
+
 // Server houses all dependencies for the media server to work such as loggers, clients, configurations, etc.
 type Server struct {
 	baseLogger *zap.SugaredLogger
@@ -88,6 +92,9 @@ func (s *Server) Serve(port int) error {
 
 	v1.HandleFunc("/library/tv", s.ListTVShows()).Methods(http.MethodGet)
 	v1.HandleFunc("/library/tv", s.AddSeriesToLibrary()).Methods(http.MethodPost)
+
+	v1.HandleFunc("/tv/refresh", s.RefreshSeriesMetadata()).Methods(http.MethodPost)
+	v1.HandleFunc("/movies/refresh", s.RefreshMovieMetadata()).Methods(http.MethodPost)
 
 	v1.HandleFunc("/discover/movie", s.SearchMovie()).Methods(http.MethodGet)
 	v1.HandleFunc("/discover/tv", s.SearchTV()).Methods(http.MethodGet)
@@ -964,5 +971,53 @@ func (s Server) GetLibraryStats() http.HandlerFunc {
 			return
 		}
 		writeResponse(w, http.StatusOK, GenericResponse{Response: stats})
+	}
+}
+
+func (s Server) RefreshSeriesMetadata() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log := logger.FromCtx(r.Context())
+
+		var req RefreshRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			log.Debug("invalid request body", zap.Error(err))
+			http.Error(w, "invalid request body", http.StatusBadRequest)
+			return
+		}
+
+		err := s.manager.RefreshSeriesMetadata(r.Context(), req.TmdbIDs...)
+		if err != nil {
+			log.Error("failed to refresh series metadata", zap.Error(err))
+			writeErrorResponse(w, http.StatusInternalServerError, err)
+			return
+		}
+
+		writeResponse(w, http.StatusOK, GenericResponse{
+			Response: "Series metadata refresh completed",
+		})
+	}
+}
+
+func (s Server) RefreshMovieMetadata() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log := logger.FromCtx(r.Context())
+
+		var req RefreshRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			log.Debug("invalid request body", zap.Error(err))
+			http.Error(w, "invalid request body", http.StatusBadRequest)
+			return
+		}
+
+		err := s.manager.RefreshMovieMetadata(r.Context(), req.TmdbIDs...)
+		if err != nil {
+			log.Error("failed to refresh movie metadata", zap.Error(err))
+			writeErrorResponse(w, http.StatusInternalServerError, err)
+			return
+		}
+
+		writeResponse(w, http.StatusOK, GenericResponse{
+			Response: "Movie metadata refresh completed",
+		})
 	}
 }
