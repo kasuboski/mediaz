@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/go-jet/jet/v2/qrm"
 	"github.com/go-jet/jet/v2/sqlite"
@@ -676,9 +677,17 @@ func (s *SQLite) CreateSeriesMetadata(ctx context.Context, seriesMeta model.Seri
 
 // UpdateSeriesMetadata updates an existing series metadata record
 func (s *SQLite) UpdateSeriesMetadata(ctx context.Context, metadata model.SeriesMetadata) error {
+	now := time.Now()
+	metadata.LastInfoSync = &now
+
 	stmt := table.SeriesMetadata.
-		UPDATE(table.SeriesMetadata.AllColumns.Except(table.SeriesMetadata.ID, table.SeriesMetadata.TmdbID, table.SeriesMetadata.LastInfoSync)).
+		UPDATE(table.SeriesMetadata.AllColumns.
+			Except(
+				table.SeriesMetadata.ID,
+				table.SeriesMetadata.TmdbID,
+			)).
 		MODEL(metadata).
+		SET(table.SeriesMetadata.LastInfoSync.SET(sqlite.CURRENT_TIMESTAMP())).
 		WHERE(table.SeriesMetadata.ID.EQ(sqlite.Int32(metadata.ID)))
 
 	_, err := s.handleStatement(ctx, stmt)
