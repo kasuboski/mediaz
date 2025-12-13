@@ -803,4 +803,3 @@ func (s *SQLite) CreateDownloadClient(ctx context.Context, profile model.Downloa
 
 	return inserted, nil
 }
-	
