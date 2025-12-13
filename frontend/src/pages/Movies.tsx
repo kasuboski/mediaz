@@ -1,4 +1,3 @@
-import { useState, useMemo } from "react";
 import { MediaGrid } from "@/components/media/MediaGrid";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { MediaStateTabs } from "@/components/media/MediaStateTabs";
