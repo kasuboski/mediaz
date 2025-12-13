@@ -171,8 +171,8 @@ func (m MediaManager) GetTVDetailByTMDBID(ctx context.Context, tmdbID int) (*TVD
 
 	// Get seasons and episodes information for the consolidated response
 	var seasons []SeasonResult
-	if series != nil {
-		seasonsData, err := m.getSeasonsWithEpisodes(ctx, metadata.ID, series.ID)
+	if series != nil { 
+		seasonsData, err := m.getSeasonsWithEpisodes(ctx, series.ID)
 		if err != nil {
 			log.Debug("failed to get seasons and episodes", zap.Error(err), zap.Int32("metadataID", metadata.ID))
 			// Continue without seasons data - buildTVDetailResult will handle empty seasons
@@ -333,7 +333,7 @@ func (m MediaManager) buildTVDetailResult(metadata *model.SeriesMetadata, detail
 }
 
 // getSeasonsWithEpisodes retrieves seasons and their episodes for a series
-func (m MediaManager) getSeasonsWithEpisodes(ctx context.Context, seriesMetadataID int32, seriesID int32) ([]SeasonResult, error) {
+func (m MediaManager) getSeasonsWithEpisodes(ctx context.Context, seriesID int32) ([]SeasonResult, error) {
 	log := logger.FromCtx(ctx)
 
 	// Query seasons for this series
