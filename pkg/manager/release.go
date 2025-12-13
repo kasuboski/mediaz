@@ -24,6 +24,7 @@ var (
 	// pathToSearchTerm regex patterns
 	releaseGroupRegex   = regexp.MustCompile(`-[A-Z0-9]+\[[^\]]+\]`)
 	yearRegex           = regexp.MustCompile(`\s*[\(\[\{]?(19|20)\d{2}[\)\]\}]?(?:\s|$)`)
+	countryCodeRegex    = regexp.MustCompile(`\s*[\(\[\{]([A-Z]{2,3})[\)\]\}]\s*`)
 	qualityRegex        = regexp.MustCompile(`(?i)\b(720p|1080p|4k|2160p|x264|h264|hevc|web-dl|bluray|dvdrip|cam|ts|tc)\b`)
 	codecRegex          = regexp.MustCompile(`(?i)\b(h264|ac3|aac|dts|dd5\.1)\b`)
 	emptyBracketsRegex  = regexp.MustCompile(`\s*[\[\(\{][\]\)\}]\s*`)
@@ -528,6 +529,9 @@ func pathToSearchTerm(path string) string {
 
 	// Remove years in various formats: (YYYY), {YYYY}, [YYYY], or trailing YYYY
 	cleaned = yearRegex.ReplaceAllString(cleaned, " ")
+
+	// Remove country codes (e.g., (US), (UK), [AU])
+	cleaned = countryCodeRegex.ReplaceAllString(cleaned, " ")
 
 	// Remove common quality indicators
 	cleaned = qualityRegex.ReplaceAllString(cleaned, "")
