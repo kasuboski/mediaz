@@ -687,7 +687,6 @@ func (s *SQLite) UpdateSeriesMetadata(ctx context.Context, metadata model.Series
 				table.SeriesMetadata.TmdbID,
 			)).
 		MODEL(metadata).
-		SET(table.SeriesMetadata.LastInfoSync.SET(sqlite.CURRENT_TIMESTAMP())).
 		WHERE(table.SeriesMetadata.ID.EQ(sqlite.Int32(metadata.ID)))
 
 	_, err := s.handleStatement(ctx, stmt)
@@ -699,7 +698,7 @@ func (s *SQLite) UpdateSeriesMetadata(ctx context.Context, metadata model.Series
 }
 
 // DeleteSeriesMetadata deletes a Series metadata by id
-func (s *SQLite) DeleteSeriesMetadata(ctx context.Context, id int64) error {
+func (s *SQLite) DeleteSeriesMetadata(ctx context.Context, id	 int64) error {
 	stmt := table.SeriesMetadata.
 		DELETE().
 		WHERE(table.SeriesMetadata.ID.EQ(sqlite.Int64(id)))
