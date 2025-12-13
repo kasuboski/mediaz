@@ -1,95 +1,87 @@
 import { ReactNode } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { getMovieStateColor } from "@/lib/movie-state";
-import type { MediaStateFilter } from "@/hooks/use-media-state-filter";
+import { getMediaStateColor, type MediaType } from "@/lib/media-state";
 
-interface StateCounts {
-  all: number;
-  missing: number;
-  available: number;
-  unreleased: number;
-  downloading: number;
+/**
+ * Mapping of filter values to their display configuration
+ */
+interface TabConfig {
+  label: string;
+  colorState?: string; // State to use for color (if undefined, no color bar shown)
 }
 
-interface MediaStateTabsProps {
-  filter: MediaStateFilter;
-  onFilterChange: (filter: MediaStateFilter) => void;
-  counts: StateCounts;
+interface MediaStateTabsProps<
+  TFilter extends string,
+  TCounts extends Record<string, number>
+> {
+  filter: TFilter;
+  onFilterChange: (filter: TFilter) => void;
+  counts: TCounts;
+  availableFilters: readonly TFilter[];
   children: ReactNode;
+  mediaType: MediaType;
 }
 
 /**
- * Shared component for filtering media items by state.
- * Displays tabs for all, available, downloading, missing, and unreleased states.
+ * Tab configurations for each filter type
  */
-export function MediaStateTabs({
+const TAB_CONFIGS: Record<string, TabConfig> = {
+  all: { label: "All" },
+  available: { label: "Available", colorState: "discovered" },
+  continuing: { label: "Continuing", colorState: "continuing" },
+  downloading: { label: "Downloading", colorState: "downloading" },
+  missing: { label: "Missing", colorState: "missing" },
+  unreleased: { label: "Unreleased", colorState: "unreleased" },
+};
+
+export function MediaStateTabs<
+  TFilter extends string,
+  TCounts extends Record<string, number>
+>({
   filter,
   onFilterChange,
   counts,
+  availableFilters,
   children,
-}: MediaStateTabsProps) {
+  mediaType,
+}: MediaStateTabsProps<TFilter, TCounts>) {
   return (
     <Tabs
       value={filter}
-      onValueChange={(v) => onFilterChange(v as MediaStateFilter)}
+      onValueChange={(v) => onFilterChange(v as TFilter)}
       className="mb-6"
     >
       <TabsList>
-        <TabsTrigger value="all">
-          All <span className="ml-1.5 text-xs opacity-70">({counts.all})</span>
-        </TabsTrigger>
-        <TabsTrigger value="available">
-          <div className="flex flex-col items-center gap-1">
-            <span>
-              Available{" "}
-              <span className="ml-1.5 text-xs opacity-70">
-                ({counts.available})
-              </span>
-            </span>
-            <div
-              className={`h-1 w-full ${getMovieStateColor("discovered")}`}
-            />
-          </div>
-        </TabsTrigger>
-        <TabsTrigger value="downloading">
-          <div className="flex flex-col items-center gap-1">
-            <span>
-              Downloading{" "}
-              <span className="ml-1.5 text-xs opacity-70">
-                ({counts.downloading})
-              </span>
-            </span>
-            <div
-              className={`h-1 w-full ${getMovieStateColor("downloading")}`}
-            />
-          </div>
-        </TabsTrigger>
-        <TabsTrigger value="missing">
-          <div className="flex flex-col items-center gap-1">
-            <span>
-              Missing{" "}
-              <span className="ml-1.5 text-xs opacity-70">
-                ({counts.missing})
-              </span>
-            </span>
-            <div
-              className={`h-1 w-full ${getMovieStateColor("missing")}`}
-            />
-          </div>
-        </TabsTrigger>
-        <TabsTrigger value="unreleased">
-          <div className="flex flex-col items-center gap-1">
-            <span>
-              Unreleased{" "}
-              <span className="ml-1.5 text-xs opacity-70">
-                ({counts.unreleased})
-              </span>
-            </span>
-            <div
-              className={`h-1 w-full ${getMovieStateColor("unreleased")}`}
-            />
-          </div>
-        </TabsTrigger>
+        {availableFilters.map((filterValue) => {
+          const config = TAB_CONFIGS[filterValue] || {
+            label: filterValue,
+          };
+          const count = counts[filterValue as keyof TCounts] ?? 0;
+
+          return (
+            <TabsTrigger key={filterValue} value={filterValue}>
+              {config.colorState ? (
+                <div className="flex flex-col items-center gap-1">
+                  <span>
+                    {config.label}{" "}
+                    <span className="ml-1.5 text-xs opacity-70">({count})</span>
+                  </span>
+                  <div
+                    className={`h-1 w-full ${getMediaStateColor(
+                      config.colorState,
+                      mediaType
+                    )}`}
+                  />
+                </div>
+              ) : (
+                <>
+                  {config.label}{" "}
+                  <span className="ml-1.5 text-xs opacity-70">({count})</span>
+                </>
+              )}
+            </TabsTrigger>
+          );
+        })}
       </TabsList>
 
       <TabsContent value={filter} className="mt-6">

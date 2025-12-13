@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/go-jet/jet/v2/qrm"
 	"github.com/go-jet/jet/v2/sqlite"
@@ -674,8 +675,30 @@ func (s *SQLite) CreateSeriesMetadata(ctx context.Context, seriesMeta model.Seri
 	return int64(existing.ID), nil
 }
 
+// UpdateSeriesMetadata updates an existing series metadata record
+func (s *SQLite) UpdateSeriesMetadata(ctx context.Context, metadata model.SeriesMetadata) error {
+	now := time.Now()
+	metadata.LastInfoSync = &now
+
+	stmt := table.SeriesMetadata.
+		UPDATE(table.SeriesMetadata.AllColumns.
+			Except(
+				table.SeriesMetadata.ID,
+				table.SeriesMetadata.TmdbID,
+			)).
+		MODEL(metadata).
+		WHERE(table.SeriesMetadata.ID.EQ(sqlite.Int32(metadata.ID)))
+
+	_, err := s.handleStatement(ctx, stmt)
+	if err != nil {
+		return fmt.Errorf("failed to update series metadata: %w", err)
+	}
+
+	return nil
+}
+
 // DeleteSeriesMetadata deletes a Series metadata by id
-func (s *SQLite) DeleteSeriesMetadata(ctx context.Context, id int64) error {
+func (s *SQLite) DeleteSeriesMetadata(ctx context.Context, id	 int64) error {
 	stmt := table.SeriesMetadata.
 		DELETE().
 		WHERE(table.SeriesMetadata.ID.EQ(sqlite.Int64(id)))

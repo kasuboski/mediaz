@@ -119,6 +119,7 @@ func (m TMDBClient) GetSeriesDetails(ctx context.Context, tmdbID int) (*SeriesDe
 		Languages:        seriesDetailsResponse.Languages,
 		PosterPath:       seriesDetailsResponse.PosterPath,
 		Overview:         seriesDetailsResponse.Overview,
+		Status:           seriesDetailsResponse.Status,
 	}
 
 	return seriesDetails, nil
@@ -307,6 +308,7 @@ type SeriesDetails struct {
 	PosterPath       string   `json:"poster_path"`
 	Seasons          []Season `json:"seasons"`
 	Overview         string   `json:"overview"`
+	Status           string   `json:"status"`
 }
 
 type Season struct {

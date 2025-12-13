@@ -1,5 +1,5 @@
 import { useParams } from "react-router-dom";
-import { Calendar, Tv, Users, Film, Play } from "lucide-react";
+import { Calendar, Tv, Users, Film, Play, MoreVertical, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
@@ -9,6 +9,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useState } from "react";
 import { useTVDetail } from "@/lib/queries";
 import { type SeasonResult, type EpisodeResult } from "@/lib/api";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { metadataApi } from "@/lib/api";
+import { toast } from "sonner";
 
 // Component for rendering individual episodes
 
@@ -102,9 +110,23 @@ const SeasonContent = ({ season }: { season: SeasonResult }) => {
 export default function TVDetail() {
   const { id } = useParams<{ id: string }>();
   const [showRequestModal, setShowRequestModal] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const tmdbID = parseInt(id || '0');
   const { data: show, isLoading, error } = useTVDetail(tmdbID);
+
+  const handleRefreshMetadata = async () => {
+    setIsRefreshing(true);
+    try {
+      await metadataApi.refreshSeriesMetadata([tmdbID]);
+      toast.success("Series metadata refresh started");
+    } catch (error) {
+      toast.error("Failed to refresh metadata");
+      console.error(error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -183,7 +205,22 @@ export default function TVDetail() {
                 }}
               />
               <div className="flex-1 text-white">
-                <h1 className="hero-title">{show.title}</h1>
+                <div className="flex items-center gap-3 mb-2">
+                  <h1 className="hero-title">{show.title}</h1>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-white hover:bg-white/20">
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" side="right">
+                      <DropdownMenuItem onClick={handleRefreshMetadata} disabled={isRefreshing}>
+                        <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                        Refresh Metadata
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
                 <div className="flex items-center gap-4 text-sm opacity-90 mb-4">
                   {show.firstAirDate && (
                     <div className="flex items-center gap-1">

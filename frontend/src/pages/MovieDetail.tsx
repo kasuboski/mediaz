@@ -1,18 +1,40 @@
 import { useParams } from "react-router-dom";
-import { Calendar, Clock, Star, Globe, ExternalLink } from "lucide-react";
+import { Calendar, Clock, Star, Globe, ExternalLink, MoreVertical, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { RequestModal } from "@/components/media/RequestModal";
 import { useMovieDetail } from "@/lib/queries";
 import { useState } from "react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { metadataApi } from "@/lib/api";
+import { toast } from "sonner";
 
 export default function MovieDetail() {
   const { id } = useParams<{ id: string }>();
   const [showRequestModal, setShowRequestModal] = useState(false);
-  
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
   const tmdbID = parseInt(id || '0');
   const { data: movie, isLoading, error } = useMovieDetail(tmdbID);
+
+  const handleRefreshMetadata = async () => {
+    setIsRefreshing(true);
+    try {
+      await metadataApi.refreshMoviesMetadata([tmdbID]);
+      toast.success("Movie metadata refresh started");
+    } catch (error) {
+      toast.error("Failed to refresh metadata");
+      console.error(error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -65,7 +87,22 @@ export default function MovieDetail() {
                 className="w-48 h-72 object-cover rounded-lg shadow-modal border border-border/20"
               />
               <div className="flex-1 text-white">
-                <h1 className="text-4xl font-bold mb-2">{movie.title}</h1>
+                <div className="flex items-center gap-3 mb-2">
+                  <h1 className="text-4xl font-bold">{movie.title}</h1>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-white hover:bg-white/20">
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" side="right">
+                      <DropdownMenuItem onClick={handleRefreshMetadata} disabled={isRefreshing}>
+                        <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                        Refresh Metadata
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
                 <div className="flex items-center gap-4 text-sm opacity-90 mb-4">
                   {movie.year && (
                     <div className="flex items-center gap-1">

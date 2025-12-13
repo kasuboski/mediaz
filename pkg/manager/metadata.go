@@ -34,6 +34,34 @@ func (m MediaManager) GetMovieMetadata(ctx context.Context, tmdbID int) (*model.
 	return res, err
 }
 
+func (m MediaManager) UpdateMovieMetadataFromTMDB(ctx context.Context, tmdbID int) (*model.MovieMetadata, error) {
+	log := logger.FromCtx(ctx)
+
+	det, err := m.tmdb.GetMovieDetails(ctx, tmdbID)
+	if err != nil {
+		log.Error("failed to get movie details", zap.Error(err))
+		return nil, err
+	}
+
+	existing, err := m.storage.GetMovieMetadata(ctx, table.MovieMetadata.TmdbID.EQ(sqlite.Int(int64(tmdbID))))
+	if err != nil {
+		log.Error("failed to get existing movie metadata", zap.Error(err))
+		return nil, err
+	}
+
+	updated := FromMediaDetails(*det)
+	updated.ID = existing.ID
+	updated.TmdbID = existing.TmdbID
+
+	err = m.storage.UpdateMovieMetadata(ctx, updated)
+	if err != nil {
+		log.Error("failed to update movie metadata", zap.Error(err))
+		return nil, err
+	}
+
+	return &updated, nil
+}
+
 func (m MediaManager) loadMovieMetadata(ctx context.Context, tmdbID int) (*model.MovieMetadata, error) {
 	det, err := m.tmdb.GetMovieDetails(ctx, tmdbID)
 	if err != nil {
@@ -67,6 +95,47 @@ func (m MediaManager) GetSeriesMetadata(ctx context.Context, tmdbID int) (*model
 // RefreshSeriesMetadataFromTMDB refreshes series metadata with proper entity linking
 func (m MediaManager) RefreshSeriesMetadataFromTMDB(ctx context.Context, tmdbID int) (*model.SeriesMetadata, error) {
 	return m.loadSeriesMetadata(ctx, tmdbID)
+}
+
+func (m MediaManager) UpdateSeriesMetadataFromTMDB(ctx context.Context, tmdbID int) (*model.SeriesMetadata, error) {
+	log := logger.FromCtx(ctx)
+
+	details, err := m.tmdb.GetSeriesDetails(ctx, tmdbID)
+	if err != nil {
+		log.Error("failed to get series details", zap.Error(err))
+		return nil, err
+	}
+
+	existing, err := m.storage.GetSeriesMetadata(ctx, table.SeriesMetadata.TmdbID.EQ(sqlite.Int64(int64(tmdbID))))
+	if err != nil {
+		log.Error("failed to get existing series metadata", zap.Error(err))
+		return nil, err
+	}
+
+	updated, err := FromSeriesDetails(*details)
+	if err != nil {
+		log.Error("failed to parse series details", zap.Error(err))
+		return nil, err
+	}
+
+	updated.ID = existing.ID
+	updated.TmdbID = existing.TmdbID
+
+	if extIDs, err := m.fetchExternalIDs(ctx, tmdbID); err == nil && extIDs != nil {
+		updated.ExternalIds = extIDs
+	}
+
+	if watchProviders, err := m.fetchWatchProviders(ctx, tmdbID); err == nil && watchProviders != nil {
+		updated.WatchProviders = watchProviders
+	}
+
+	err = m.storage.UpdateSeriesMetadata(ctx, updated)
+	if err != nil {
+		log.Error("failed to update series metadata", zap.Error(err))
+		return nil, err
+	}
+
+	return &updated, nil
 }
 
 func (m MediaManager) loadSeriesMetadata(ctx context.Context, tmdbID int) (*model.SeriesMetadata, error) {
@@ -232,6 +301,7 @@ func FromSeriesDetails(series tmdb.SeriesDetails) (model.SeriesMetadata, error) 
 		FirstAirDate: airDate,
 		PosterPath:   poster,
 		Overview:     &series.Overview,
+		Status:       series.Status,
 	}, nil
 
 }
@@ -407,4 +477,65 @@ func parseWatchProviders(resp *http.Response) (*WatchProvidersData, error) {
 		}
 	}
 	return result, nil
+}
+
+func (m MediaManager) RefreshSeriesMetadata(ctx context.Context, tmdbIDs ...int) error {
+	log := logger.FromCtx(ctx).With("ids", tmdbIDs)
+	log.Debug("refreshing series metadata")
+
+	if len(tmdbIDs) == 0 {
+		allSeries, err := m.storage.ListSeriesMetadata(ctx, table.SeriesMetadata.Status.EQ(sqlite.String("")))
+		if err != nil {
+			log.Error("failed to list series with empty status", zap.Error(err))
+			return err
+		}
+
+		for _, series := range allSeries {
+			_, err := m.UpdateSeriesMetadataFromTMDB(ctx, int(series.TmdbID))
+			if err != nil {
+				log.Error("failed to refresh series metadata", zap.Int32("tmdb_id", series.TmdbID), zap.Error(err))
+			}
+		}
+
+		return nil
+	}
+
+	for _, id := range tmdbIDs {
+		_, err := m.UpdateSeriesMetadataFromTMDB(ctx, id)
+		if err != nil {
+			log.Error("failed to refresh series metadata", zap.Int("tmdb_id", id), zap.Error(err))
+		}
+	}
+
+	return nil
+}
+
+func (m MediaManager) RefreshMovieMetadata(ctx context.Context, tmdbIDs ...int) error {
+	log := logger.FromCtx(ctx)
+
+	if len(tmdbIDs) == 0 {
+		allMovies, err := m.storage.ListMovieMetadata(ctx)
+		if err != nil {
+			log.Error("failed to list movie metadata", zap.Error(err))
+			return err
+		}
+
+		for _, movie := range allMovies {
+			_, err := m.UpdateMovieMetadataFromTMDB(ctx, int(movie.TmdbID))
+			if err != nil {
+				log.Error("failed to refresh movie metadata", zap.Int32("tmdb_id", movie.TmdbID), zap.Error(err))
+			}
+		}
+
+		return nil
+	}
+
+	for _, id := range tmdbIDs {
+		_, err := m.UpdateMovieMetadataFromTMDB(ctx, id)
+		if err != nil {
+			log.Error("failed to refresh movie metadata", zap.Int("tmdb_id", id), zap.Error(err))
+		}
+	}
+
+	return nil
 }
