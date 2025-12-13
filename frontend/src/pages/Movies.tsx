@@ -2,7 +2,8 @@ import { MediaGrid } from "@/components/media/MediaGrid";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { MediaStateTabs } from "@/components/media/MediaStateTabs";
 import { useLibraryMovies } from "@/lib/queries";
-import { useMediaStateFilter } from "@/hooks/use-media-state-filter";
+import { useConfigurableMediaStateFilter } from "@/hooks/use-configurable-media-state-filter";
+import { movieFilterConfig } from "@/config/media-filter-configs";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,7 +19,7 @@ import { useState } from "react";
 export default function Movies() {
   const { data: movies = [], isLoading, error } = useLibraryMovies();
   const { filter, setFilter, counts, filteredItems: filteredMovies } =
-    useMediaStateFilter(movies);
+    useConfigurableMediaStateFilter(movies, movieFilterConfig);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const handleRefreshMetadata = async () => {
@@ -83,6 +84,7 @@ export default function Movies() {
           filter={filter}
           onFilterChange={setFilter}
           counts={counts}
+          availableFilters={movieFilterConfig.filters}
           mediaType="movie"
         >
           <MediaGrid items={filteredMovies} />

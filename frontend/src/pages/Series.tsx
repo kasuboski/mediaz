@@ -2,7 +2,8 @@ import { MediaGrid } from "@/components/media/MediaGrid";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { MediaStateTabs } from "@/components/media/MediaStateTabs";
 import { useLibraryShows } from "@/lib/queries";
-import { useSeriesStateFilter } from "@/hooks/use-series-state-filter";
+import { useConfigurableMediaStateFilter } from "@/hooks/use-configurable-media-state-filter";
+import { seriesFilterConfig } from "@/config/media-filter-configs";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,7 +19,7 @@ import { useState } from "react";
 export default function Series() {
   const { data: shows = [], isLoading, error } = useLibraryShows();
   const { filter, setFilter, counts, filteredItems: filteredShows } =
-    useSeriesStateFilter(shows);
+    useConfigurableMediaStateFilter(shows, seriesFilterConfig);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const handleRefreshMetadata = async () => {
@@ -85,6 +86,7 @@ export default function Series() {
           filter={filter}
           onFilterChange={setFilter}
           counts={counts}
+          availableFilters={seriesFilterConfig.filters}
           mediaType="tv"
         >
           <MediaGrid items={filteredShows} />
