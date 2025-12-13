@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strings"
 
 	"github.com/go-jet/jet/v2/sqlite"
 	"github.com/kasuboski/mediaz/pkg/download"
@@ -839,6 +840,15 @@ func (m MediaManager) evaluateAndUpdateSeriesState(ctx context.Context, seriesID
 		return err
 	}
 
+	var tmdbStatus string
+	if series.SeriesMetadataID != nil {
+		metadata, err := m.storage.GetSeriesMetadata(ctx, table.SeriesMetadata.ID.EQ(sqlite.Int32(*series.SeriesMetadataID)))
+		if err == nil && metadata != nil {
+			tmdbStatus = metadata.Status
+			log.Debug("retrieved TMDB status", zap.String("status", tmdbStatus))
+		}
+	}
+
 	where := table.Season.SeriesID.EQ(sqlite.Int32(seriesID))
 	seasons, err := m.storage.ListSeasons(ctx, where)
 	if err != nil {
@@ -853,6 +863,10 @@ func (m MediaManager) evaluateAndUpdateSeriesState(ctx context.Context, seriesID
 
 	var completed, downloading, missing, unreleased, discovered, continuing int
 	for _, season := range seasons {
+		// dont count specials
+		if season.SeasonNumber == 0 {
+			continue
+		}
 		switch season.State {
 		case storage.SeasonStateCompleted:
 			completed++
@@ -869,27 +883,30 @@ func (m MediaManager) evaluateAndUpdateSeriesState(ctx context.Context, seriesID
 		}
 	}
 
+	isSeriesEnded := strings.EqualFold(tmdbStatus, "ended") || strings.EqualFold(tmdbStatus, "canceled")
+	isSeriesContinuing := strings.EqualFold(tmdbStatus, "returning series") || strings.EqualFold(tmdbStatus, "in production")
+
 	var newSeriesState storage.SeriesState
+
 	switch {
-	case completed == len(seasons):
+	case completed == len(seasons) && isSeriesEnded:
 		newSeriesState = storage.SeriesStateCompleted
 	case downloading > 0:
 		newSeriesState = storage.SeriesStateDownloading
-	case discovered > 0 && (completed > 0 || missing > 0 || downloading > 0 || continuing > 0):
-		newSeriesState = storage.SeriesStateContinuing
-	case continuing > 0:
-		newSeriesState = storage.SeriesStateContinuing
-	case missing > 0 && unreleased == 0:
-		newSeriesState = storage.SeriesStateMissing
-	case unreleased > 0:
-		newSeriesState = storage.SeriesStateUnreleased
-	case discovered > 0 && completed == 0 && missing == 0 && downloading == 0 && continuing == 0 && unreleased == 0:
+	case discovered == len(seasons) && isSeriesEnded:
 		newSeriesState = storage.SeriesStateDiscovered
-	default:
+	case isSeriesEnded && missing == 0 && discovered == 0 && (completed > 0 || continuing > 0):
+		newSeriesState = storage.SeriesStateCompleted
+	case continuing > 0 || discovered > 0 || (isSeriesContinuing && (completed > 0 || discovered > 0)):
 		newSeriesState = storage.SeriesStateContinuing
+	case unreleased == len(seasons):
+		newSeriesState = storage.SeriesStateUnreleased
+	default:
+		newSeriesState = storage.SeriesStateMissing
 	}
 
 	log.Debug("evaluating series state",
+		zap.Int("series_id", int(seriesID)),
 		zap.Int("total_seasons", len(seasons)),
 		zap.Int("completed", completed),
 		zap.Int("downloading", downloading),
@@ -897,6 +914,8 @@ func (m MediaManager) evaluateAndUpdateSeriesState(ctx context.Context, seriesID
 		zap.Int("unreleased", unreleased),
 		zap.Int("discovered", discovered),
 		zap.Int("continuing", continuing),
+		zap.String("tmdb_status", tmdbStatus),
+		zap.Bool("is_series_ended", isSeriesEnded),
 		zap.String("current_state", string(series.State)),
 		zap.String("new_state", string(newSeriesState)))
 

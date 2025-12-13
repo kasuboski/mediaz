@@ -535,7 +535,7 @@ export const searchApi = {
 /**
  * Job types matching the backend JobType
  */
-export type JobType = 'MovieIndex' | 'MovieReconcile' | 'SeriesIndex' | 'SeriesReconcile';
+export type JobType = 'MovieIndex' | 'MovieReconcile' | 'MovieMetadata' | 'SeriesIndex' | 'SeriesReconcile' | 'SeriesMetadata';
 
 /**
  * Job states matching the backend JobState
@@ -698,5 +698,20 @@ export const qualityProfilesApi = {
       ? `/quality/profiles?type=${mediaType}`
       : '/quality/profiles';
     return apiRequest<QualityProfile[]>(endpoint);
+  },
+};
+
+export const metadataApi = {
+  async refreshMoviesMetadata(tmdbIds?: number[]): Promise<string> {
+    return apiRequest<string>('/movies/refresh', {
+      method: 'POST',
+      body: JSON.stringify({ tmdbIds: tmdbIds || [] }),
+    });
+  },
+  async refreshSeriesMetadata(tmdbIds?: number[]): Promise<string> {
+    return apiRequest<string>('/tv/refresh', {
+      method: 'POST',
+      body: JSON.stringify({ tmdbIds: tmdbIds || [] }),
+    });
   },
 };

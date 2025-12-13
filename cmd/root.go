@@ -70,6 +70,7 @@ func initConfig() {
 
 	viper.SetDefault("manager.jobs.movieIndex", defaultJobTicker)
 	viper.SetDefault("manager.jobs.movieReconcile", defaultJobTicker)
+
 	viper.SetDefault("manager.jobs.seriesIndex", defaultJobTicker)
 	viper.SetDefault("manager.jobs.seriesReconcile", defaultJobTicker)
 }

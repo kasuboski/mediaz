@@ -112,6 +112,7 @@ type MovieStorage interface {
 
 type MovieMetadataStorage interface {
 	CreateMovieMetadata(ctx context.Context, movieMeta model.MovieMetadata) (int64, error)
+	UpdateMovieMetadata(ctx context.Context, metadata model.MovieMetadata) error
 	DeleteMovieMetadata(ctx context.Context, id int64) error
 	ListMovieMetadata(ctx context.Context) ([]*model.MovieMetadata, error)
 	GetMovieMetadata(ctx context.Context, where sqlite.BoolExpression) (*model.MovieMetadata, error)
@@ -245,7 +246,7 @@ func (s Season) Machine() *machine.StateMachine[SeasonState] {
 		machine.From(SeasonStateMissing).To(SeasonStateDiscovered, SeasonStateDownloading),
 		machine.From(SeasonStateUnreleased).To(SeasonStateDiscovered, SeasonStateMissing),
 		machine.From(SeasonStateDownloading).To(SeasonStateContinuing, SeasonStateCompleted),
-		machine.From(SeasonStateContinuing).To(SeasonStateCompleted),
+		machine.From(SeasonStateContinuing).To(SeasonStateCompleted, SeasonStateMissing),
 		machine.From(SeasonStateCompleted).To(SeasonStateContinuing),
 	)
 }
@@ -303,6 +304,7 @@ type SeriesStorage interface {
 
 type SeriesMetadataStorage interface {
 	CreateSeriesMetadata(ctx context.Context, SeriesMeta model.SeriesMetadata) (int64, error)
+	UpdateSeriesMetadata(ctx context.Context, metadata model.SeriesMetadata) error
 	DeleteSeriesMetadata(ctx context.Context, id int64) error
 	ListSeriesMetadata(ctx context.Context, where ...sqlite.BoolExpression) ([]*model.SeriesMetadata, error)
 	GetSeriesMetadata(ctx context.Context, where sqlite.BoolExpression) (*model.SeriesMetadata, error)
