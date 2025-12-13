@@ -263,6 +263,41 @@ func TestPathToSearchTerm(t *testing.T) {
 			path: "Guardians of the Galaxy [2014] 1080p",
 			want: "Guardians of the Galaxy",
 		},
+		{
+			name: "TV show with US country code",
+			path: "Euphoria (US)",
+			want: "Euphoria",
+		},
+		{
+			name: "TV show with UK country code",
+			path: "The Office (UK)",
+			want: "The Office",
+		},
+		{
+			name: "TV show with AU country code in brackets",
+			path: "Offspring [AU]",
+			want: "Offspring",
+		},
+		{
+			name: "movie with year and country code",
+			path: "Parasite (2019) (KR)",
+			want: "Parasite",
+		},
+		{
+			name: "three letter country code",
+			path: "Degrassi (CAN)",
+			want: "Degrassi",
+		},
+		{
+			name: "country code with year and quality",
+			path: "Dark (DE) (2017) 1080p",
+			want: "Dark",
+		},
+		{
+			name: "preserve non-country code parentheses",
+			path: "Star Trek (The Next Generation)",
+			want: "Star Trek (The Next Generation)",
+		},
 	}
 
 	for _, tt := range tests {
