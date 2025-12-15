@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import { QualityProfileDialog } from '@/components/QualityProfileDialog';
 import { QualityDefinitionDialog } from '@/components/QualityDefinitionDialog';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 export default function QualityProfiles() {
   const [mediaType, setMediaType] = useState<'movie' | 'series'>('movie');
@@ -169,9 +170,8 @@ export default function QualityProfiles() {
                           <div className="flex-1">
                             <div className="font-semibold text-lg mb-1">{profile.name}</div>
                             <div className="text-sm text-muted-foreground mb-2">
-                              {profile.qualities.length} quality definitions
                               {profile.upgradeAllowed && (
-                                <Badge variant="outline" className="ml-2">
+                                <Badge variant="outline">
                                   Upgrades Allowed
                                 </Badge>
                               )}
@@ -200,9 +200,36 @@ export default function QualityProfiles() {
                         <div className="space-y-1.5 text-sm">
                           <div className="font-medium text-muted-foreground">Qualities:</div>
                           {profile.qualities.map((quality, idx) => (
-                            <div key={idx} className="flex items-center justify-between py-1 px-2 bg-accent/50 rounded text-xs">
-                              <span className="font-medium">{quality.name}</span>
-                            </div>
+                            <Popover key={idx}>
+                              <PopoverTrigger asChild>
+                                <div className="flex items-center justify-between py-1 px-2 bg-accent/50 rounded text-xs cursor-pointer hover:bg-accent transition-colors">
+                                  <span className="font-medium">{quality.name}</span>
+                                </div>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-64">
+                                <div className="space-y-2">
+                                  <h4 className="font-semibold">{quality.name}</h4>
+                                  <div className="space-y-1 text-sm">
+                                    <div className="flex justify-between">
+                                      <span className="text-muted-foreground">Min Size:</span>
+                                      <span className="font-medium">{quality.minSize} MB/min</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                      <span className="text-muted-foreground">Preferred:</span>
+                                      <span className="font-medium">{quality.preferredSize} MB/min</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                      <span className="text-muted-foreground">Max Size:</span>
+                                      <span className="font-medium">{quality.maxSize} MB/min</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                      <span className="text-muted-foreground">Type:</span>
+                                      <span className="font-medium capitalize">{quality.type}</span>
+                                    </div>
+                                  </div>
+                                </div>
+                              </PopoverContent>
+                            </Popover>
                           ))}
                         </div>
                       </CardContent>

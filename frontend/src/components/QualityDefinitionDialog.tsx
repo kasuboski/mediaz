@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-import type { QualityDefinition } from '@/lib/api';
+import type { QualityDefinition, PendingQualityDefinition } from '@/lib/api';
 import { useCreateQualityDefinition, useUpdateQualityDefinition } from '@/lib/queries';
 
 interface QualityDefinitionDialogProps {
@@ -14,13 +14,19 @@ interface QualityDefinitionDialogProps {
   onOpenChange: (open: boolean) => void;
   definition?: QualityDefinition | null;
   defaultMediaType?: 'movie' | 'episode';
+  onCreated?: (definition: QualityDefinition) => void;
+  onPendingCreated?: (definition: PendingQualityDefinition) => void;
+  lockMediaType?: boolean;
 }
 
 export function QualityDefinitionDialog({
   open,
   onOpenChange,
   definition,
-  defaultMediaType = 'movie'
+  defaultMediaType = 'movie',
+  onCreated,
+  onPendingCreated,
+  lockMediaType = false
 }: QualityDefinitionDialogProps) {
   const [name, setName] = useState('');
   const [mediaType, setMediaType] = useState<'movie' | 'episode'>(defaultMediaType);
@@ -79,9 +85,25 @@ export function QualityDefinitionDialog({
           request
         });
         toast.success('Quality definition updated');
-      } else {
-        await createDefinition.mutateAsync(request);
-        toast.success('Quality definition created');
+        onOpenChange(false);
+        return;
+      }
+
+      if (onPendingCreated) {
+        const pendingDef: PendingQualityDefinition = {
+          tempId: crypto.randomUUID(),
+          ...request
+        };
+        onPendingCreated(pendingDef);
+        toast.success('Definition will be created when profile is saved');
+        onOpenChange(false);
+        return;
+      }
+
+      const newDefinition = await createDefinition.mutateAsync(request);
+      toast.success('Quality definition created');
+      if (onCreated && newDefinition) {
+        onCreated(newDefinition);
       }
       onOpenChange(false);
     } catch (error) {
@@ -113,8 +135,8 @@ export function QualityDefinitionDialog({
 
           <div className="grid gap-2">
             <Label htmlFor="mediaType">Media Type</Label>
-            <Select value={mediaType} defaultValue={defaultMediaType} onValueChange={(v) => setMediaType(v as 'movie' | 'episode')}>
-              <SelectTrigger id="mediaType">
+            <Select value={mediaType} defaultValue={defaultMediaType} onValueChange={(v) => setMediaType(v as 'movie' | 'episode')} disabled={lockMediaType}>
+              <SelectTrigger id="mediaType" className={lockMediaType ? 'text-muted-foreground' : ''}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>

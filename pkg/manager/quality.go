@@ -176,15 +176,16 @@ func (m MediaManager) AddQualityProfile(ctx context.Context, request AddQualityP
 		return storage.QualityProfile{}, err
 	}
 
-	for _, qualityID := range request.QualityIDs {
-		item := model.QualityProfileItem{
+	items := make([]model.QualityProfileItem, len(request.QualityIDs))
+	for i, qualityID := range request.QualityIDs {
+		items[i] = model.QualityProfileItem{
 			ProfileID: int32(id),
 			QualityID: qualityID,
 		}
-		_, err := m.storage.CreateQualityProfileItem(ctx, item)
-		if err != nil {
-			return storage.QualityProfile{}, err
-		}
+	}
+	err = m.storage.CreateQualityProfileItems(ctx, items)
+	if err != nil {
+		return storage.QualityProfile{}, err
 	}
 
 	return m.storage.GetQualityProfile(ctx, id)
@@ -193,6 +194,9 @@ func (m MediaManager) AddQualityProfile(ctx context.Context, request AddQualityP
 func (m MediaManager) UpdateQualityProfile(ctx context.Context, id int64, request UpdateQualityProfileRequest) (storage.QualityProfile, error) {
 	if request.Name == "" {
 		return storage.QualityProfile{}, fmt.Errorf("name is required")
+	}
+	if len(request.QualityIDs) == 0 {
+		return storage.QualityProfile{}, fmt.Errorf("at least one quality must be selected")
 	}
 
 	existingProfile, err := m.storage.GetQualityProfile(ctx, id)
@@ -208,6 +212,23 @@ func (m MediaManager) UpdateQualityProfile(ctx context.Context, id int64, reques
 	}
 
 	err = m.storage.UpdateQualityProfile(ctx, id, profile)
+	if err != nil {
+		return storage.QualityProfile{}, err
+	}
+
+	err = m.storage.DeleteQualityProfileItemsByProfileID(ctx, id)
+	if err != nil {
+		return storage.QualityProfile{}, err
+	}
+
+	items := make([]model.QualityProfileItem, len(request.QualityIDs))
+	for i, qualityID := range request.QualityIDs {
+		items[i] = model.QualityProfileItem{
+			ProfileID: int32(id),
+			QualityID: qualityID,
+		}
+	}
+	err = m.storage.CreateQualityProfileItems(ctx, items)
 	if err != nil {
 		return storage.QualityProfile{}, err
 	}

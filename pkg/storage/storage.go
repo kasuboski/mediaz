@@ -47,7 +47,9 @@ type QualityStorage interface {
 	DeleteQualityProfile(ctx context.Context, id int64) error //TODO: do we cascade associated items?
 
 	CreateQualityProfileItem(ctx context.Context, item model.QualityProfileItem) (int64, error)
+	CreateQualityProfileItems(ctx context.Context, items []model.QualityProfileItem) error
 	DeleteQualityProfileItem(ctx context.Context, id int64) error
+	DeleteQualityProfileItemsByProfileID(ctx context.Context, profileID int64) error
 	GetQualityProfileItem(ctx context.Context, id int64) (model.QualityProfileItem, error)
 	ListQualityProfileItems(ctx context.Context) ([]*model.QualityProfileItem, error)
 

@@ -199,6 +199,7 @@ export interface QualityDefinition {
 }
 
 export interface ProfileQuality {
+  id: number;
   name: string;
   type: string;
   preferredSize: number;
@@ -237,6 +238,15 @@ export interface CreateQualityDefinitionRequest {
 }
 
 export interface UpdateQualityDefinitionRequest {
+  name: string;
+  type: 'movie' | 'episode';
+  preferredSize: number;
+  minSize: number;
+  maxSize: number;
+}
+
+export interface PendingQualityDefinition {
+  tempId: string;
   name: string;
   type: 'movie' | 'episode';
   preferredSize: number;

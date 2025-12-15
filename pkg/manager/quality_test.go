@@ -191,3 +191,97 @@ func TestMediaManager_ListEpisodeQualityProfiles(t *testing.T) {
 		assert.Equal(t, int32(16), profile[2].CutoffQualityID)
 	})
 }
+
+func TestMediaManager_UpdateQualityProfile(t *testing.T) {
+	t.Run("update profile with new quality associations", func(t *testing.T) {
+		ctx := context.Background()
+		store, err := mediaSqlite.New(":memory:")
+		require.NoError(t, err)
+
+		schemas, err := storage.ReadSchemaFiles("../storage/sqlite/schema/schema.sql", "../storage/sqlite/schema/defaults.sql")
+		require.NoError(t, err)
+		err = store.Init(ctx, schemas...)
+		require.NoError(t, err)
+
+		manager := MediaManager{
+			storage: store,
+		}
+
+		profile, err := manager.GetQualityProfile(ctx, 1)
+		require.NoError(t, err)
+		initialQualityCount := len(profile.Qualities)
+		assert.Greater(t, initialQualityCount, 0)
+
+		updateReq := UpdateQualityProfileRequest{
+			Name:            "Updated Profile",
+			CutoffQualityID: 3,
+			UpgradeAllowed:  false,
+			QualityIDs:      []int32{3, 7},
+		}
+
+		updated, err := manager.UpdateQualityProfile(ctx, 1, updateReq)
+		require.NoError(t, err)
+
+		assert.Equal(t, "Updated Profile", updated.Name)
+		assert.Equal(t, int32(3), updated.CutoffQualityID)
+		assert.Equal(t, false, updated.UpgradeAllowed)
+
+		assert.Equal(t, 2, len(updated.Qualities))
+		qualityIDs := make([]int32, len(updated.Qualities))
+		for i, q := range updated.Qualities {
+			qualityIDs[i] = q.ID
+		}
+		assert.ElementsMatch(t, []int32{3, 7}, qualityIDs)
+	})
+
+	t.Run("update fails with empty quality IDs", func(t *testing.T) {
+		ctx := context.Background()
+		store, err := mediaSqlite.New(":memory:")
+		require.NoError(t, err)
+
+		schemas, err := storage.ReadSchemaFiles("../storage/sqlite/schema/schema.sql", "../storage/sqlite/schema/defaults.sql")
+		require.NoError(t, err)
+		err = store.Init(ctx, schemas...)
+		require.NoError(t, err)
+
+		manager := MediaManager{
+			storage: store,
+		}
+
+		updateReq := UpdateQualityProfileRequest{
+			Name:            "Updated Profile",
+			CutoffQualityID: 3,
+			UpgradeAllowed:  false,
+			QualityIDs:      []int32{},
+		}
+
+		_, err = manager.UpdateQualityProfile(ctx, 1, updateReq)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "at least one quality must be selected")
+	})
+
+	t.Run("update fails for non-existent profile", func(t *testing.T) {
+		ctx := context.Background()
+		store, err := mediaSqlite.New(":memory:")
+		require.NoError(t, err)
+
+		schemas, err := storage.ReadSchemaFiles("../storage/sqlite/schema/schema.sql", "../storage/sqlite/schema/defaults.sql")
+		require.NoError(t, err)
+		err = store.Init(ctx, schemas...)
+		require.NoError(t, err)
+
+		manager := MediaManager{
+			storage: store,
+		}
+
+		updateReq := UpdateQualityProfileRequest{
+			Name:            "Updated Profile",
+			CutoffQualityID: 3,
+			UpgradeAllowed:  false,
+			QualityIDs:      []int32{3},
+		}
+
+		_, err = manager.UpdateQualityProfile(ctx, 999, updateReq)
+		require.Error(t, err)
+	})
+}
