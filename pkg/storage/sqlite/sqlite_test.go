@@ -241,7 +241,6 @@ func TestGetQualityStorage(t *testing.T) {
 	assert.Equal(t, int64(1), id)
 
 	firstDefinition := model.QualityDefinition{
-		QualityID:     1,
 		Name:          "test quality definition 1",
 		PreferredSize: 1999,
 		MinSize:       15,
@@ -258,7 +257,6 @@ func TestGetQualityStorage(t *testing.T) {
 	assert.Equal(t, firstDefinition, definitionOne)
 
 	secondDefinition := model.QualityDefinition{
-		QualityID:     2,
 		Name:          "test quality definition 2",
 		PreferredSize: 1499,
 		MinSize:       10,
@@ -321,7 +319,6 @@ func TestGetQualityStorage(t *testing.T) {
 	assert.Equal(t, int32(3), profile.CutoffQualityID)
 	assert.ElementsMatch(t, []storage.QualityDefinition{
 		{
-			QualityID:     1,
 			Name:          "test quality definition 1",
 			PreferredSize: 1999,
 			MinSize:       15,
@@ -329,7 +326,6 @@ func TestGetQualityStorage(t *testing.T) {
 			MediaType:     "movie",
 		},
 		{
-			QualityID:     2,
 			Name:          "test quality definition 2",
 			PreferredSize: 1499,
 			MinSize:       10,
@@ -348,7 +344,6 @@ func TestGetQualityStorage(t *testing.T) {
 			CutoffQualityID: 3,
 			Qualities: []storage.QualityDefinition{
 				{
-					QualityID:     1,
 					Name:          "test quality definition 1",
 					PreferredSize: 1999,
 					MinSize:       15,
@@ -356,7 +351,6 @@ func TestGetQualityStorage(t *testing.T) {
 					MediaType:     "movie",
 				},
 				{
-					QualityID:     2,
 					Name:          "test quality definition 2",
 					PreferredSize: 1499,
 					MinSize:       10,

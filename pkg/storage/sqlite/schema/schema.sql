@@ -30,7 +30,7 @@ CREATE TABLE IF NOT EXISTS "quality_profile_item" (
     "profile_id" INTEGER NOT NULL,
     "quality_id" INTEGER NOT NULL,
     FOREIGN KEY ("profile_id") REFERENCES "quality_profile" ("id"),
-    FOREIGN KEY ("quality_id") REFERENCES "quality_definition" ("quality_id")
+    FOREIGN KEY ("quality_id") REFERENCES "quality_definition" ("id")
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS "idx_quality_profile_item_profile_quality" ON "quality_profile_item" ("profile_id", "quality_id");

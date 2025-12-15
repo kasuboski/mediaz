@@ -43,6 +43,7 @@ type QualityStorage interface {
 	CreateQualityProfile(ctx context.Context, profile model.QualityProfile) (int64, error)
 	GetQualityProfile(ctx context.Context, id int64) (QualityProfile, error)
 	ListQualityProfiles(ctx context.Context, where ...sqlite.BoolExpression) ([]*QualityProfile, error)
+	UpdateQualityProfile(ctx context.Context, id int64, profile model.QualityProfile) error
 	DeleteQualityProfile(ctx context.Context, id int64) error //TODO: do we cascade associated items?
 
 	CreateQualityProfileItem(ctx context.Context, item model.QualityProfileItem) (int64, error)
@@ -53,6 +54,7 @@ type QualityStorage interface {
 	CreateQualityDefinition(ctx context.Context, definition model.QualityDefinition) (int64, error)
 	GetQualityDefinition(ctx context.Context, id int64) (model.QualityDefinition, error)
 	ListQualityDefinitions(ctx context.Context) ([]*model.QualityDefinition, error)
+	UpdateQualityDefinition(ctx context.Context, id int64, definition model.QualityDefinition) error
 	DeleteQualityDefinition(ctx context.Context, id int64) error
 }
 
@@ -171,12 +173,12 @@ type QualityProfile struct {
 }
 
 type QualityDefinition struct {
+	ID            int32   `alias:"quality_definition.id" json:"id"`
 	Name          string  `alias:"quality_definition.name" json:"name"`
 	MediaType     string  `alias:"quality_definition.media_type" json:"type"`
 	PreferredSize float64 `alias:"quality_definition.preferred_size" json:"preferredSize"`
 	MinSize       float64 `alias:"quality_definition.min_size" json:"minSize"`
 	MaxSize       float64 `alias:"quality_definition.max_size" json:"maxSize"`
-	QualityID     int32   `alias:"quality_definition.quality_id" json:"-"`
 }
 
 type (

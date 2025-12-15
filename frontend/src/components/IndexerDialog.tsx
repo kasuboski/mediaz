@@ -109,7 +109,7 @@ export function IndexerDialog({ open, onOpenChange, indexer }: IndexerDialogProp
 
           <div className="grid gap-2">
             <Label htmlFor="scheme">Protocol</Label>
-            <Select value={scheme} onValueChange={setScheme}>
+            <Select value={scheme} defaultValue="http" onValueChange={setScheme}>
               <SelectTrigger id="scheme">
                 <SelectValue />
               </SelectTrigger>

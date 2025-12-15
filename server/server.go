@@ -114,10 +114,14 @@ func (s *Server) Serve(port int) error {
 	v1.HandleFunc("/quality/definitions", s.ListQualityDefinitions()).Methods(http.MethodGet)
 	v1.HandleFunc("/quality/definitions/{id}", s.GetQualityDefinition()).Methods(http.MethodGet)
 	v1.HandleFunc("/quality/definitions", s.CreateQualityDefinition()).Methods(http.MethodPost)
+	v1.HandleFunc("/quality/definitions/{id}", s.UpdateQualityDefinition()).Methods(http.MethodPut)
 	v1.HandleFunc("/quality/definitions", s.DeleteQualityDefinition()).Methods(http.MethodDelete)
 
 	v1.HandleFunc("/quality/profiles/{id}", s.GetQualityProfile()).Methods(http.MethodGet)
 	v1.HandleFunc("/quality/profiles", s.ListQualityProfiles()).Methods(http.MethodGet)
+	v1.HandleFunc("/quality/profiles", s.CreateQualityProfile()).Methods(http.MethodPost)
+	v1.HandleFunc("/quality/profiles/{id}", s.UpdateQualityProfile()).Methods(http.MethodPut)
+	v1.HandleFunc("/quality/profiles/{id}", s.DeleteQualityProfile()).Methods(http.MethodDelete)
 
 	v1.HandleFunc("/config", s.GetConfig()).Methods(http.MethodGet)
 	v1.HandleFunc("/library/stats", s.GetLibraryStats()).Methods(http.MethodGet)
@@ -628,6 +632,133 @@ func (s Server) ListQualityProfiles() http.HandlerFunc {
 		}
 
 		writeResponse(w, http.StatusOK, resp)
+	}
+}
+
+func (s Server) CreateQualityProfile() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log := logger.FromCtx(r.Context())
+		b, err := io.ReadAll(r.Body)
+		if err != nil {
+			log.Debug("invalid request body", zap.Error(err))
+			http.Error(w, "invalid request body", http.StatusBadRequest)
+			return
+		}
+
+		var request manager.AddQualityProfileRequest
+		err = json.Unmarshal(b, &request)
+		if err != nil {
+			log.Debug("invalid request body", zap.ByteString("body", b))
+			http.Error(w, "invalid request body", http.StatusBadRequest)
+			return
+		}
+
+		profile, err := s.manager.AddQualityProfile(r.Context(), request)
+		if err != nil {
+			writeErrorResponse(w, http.StatusInternalServerError, err)
+			return
+		}
+
+		writeResponse(w, http.StatusCreated, GenericResponse{Response: profile})
+	}
+}
+
+func (s Server) UpdateQualityProfile() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log := logger.FromCtx(r.Context())
+		vars := mux.Vars(r)
+		idStr := vars["id"]
+
+		id, err := strconv.ParseInt(idStr, 10, 64)
+		if err != nil {
+			http.Error(w, "Invalid ID format", http.StatusBadRequest)
+			return
+		}
+
+		b, err := io.ReadAll(r.Body)
+		if err != nil {
+			log.Debug("invalid request body", zap.Error(err))
+			http.Error(w, "invalid request body", http.StatusBadRequest)
+			return
+		}
+
+		var request manager.UpdateQualityProfileRequest
+		err = json.Unmarshal(b, &request)
+		if err != nil {
+			log.Debug("invalid request body", zap.ByteString("body", b))
+			http.Error(w, "invalid request body", http.StatusBadRequest)
+			return
+		}
+
+		profile, err := s.manager.UpdateQualityProfile(r.Context(), id, request)
+		if err != nil {
+			writeErrorResponse(w, http.StatusInternalServerError, err)
+			return
+		}
+
+		writeResponse(w, http.StatusOK, GenericResponse{Response: profile})
+	}
+}
+
+func (s Server) DeleteQualityProfile() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
+		idStr := vars["id"]
+
+		id, err := strconv.ParseInt(idStr, 10, 64)
+		if err != nil {
+			http.Error(w, "Invalid ID format", http.StatusBadRequest)
+			return
+		}
+
+		request := manager.DeleteQualityProfileRequest{
+			ID: func() *int { i := int(id); return &i }(),
+		}
+
+		err = s.manager.DeleteQualityProfile(r.Context(), request)
+		if err != nil {
+			writeErrorResponse(w, http.StatusInternalServerError, err)
+			return
+		}
+
+		writeResponse(w, http.StatusOK, GenericResponse{Response: request})
+	}
+}
+
+func (s Server) UpdateQualityDefinition() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log := logger.FromCtx(r.Context())
+		vars := mux.Vars(r)
+		idStr := vars["id"]
+
+		id, err := strconv.ParseInt(idStr, 10, 64)
+		if err != nil {
+			http.Error(w, "Invalid ID format", http.StatusBadRequest)
+			return
+		}
+
+		b, err := io.ReadAll(r.Body)
+		if err != nil {
+			log.Debug("invalid request body", zap.Error(err))
+			http.Error(w, "invalid request body", http.StatusBadRequest)
+			return
+		}
+
+		var request manager.UpdateQualityDefinitionRequest
+		err = json.Unmarshal(b, &request)
+		if err != nil {
+			log.Debug("invalid request body", zap.ByteString("body", b))
+			http.Error(w, "invalid request body", http.StatusBadRequest)
+			return
+		}
+
+		definition, err := s.manager.UpdateQualityDefinition(r.Context(), id, request)
+		if err != nil {
+			writeErrorResponse(w, http.StatusInternalServerError, err)
+			return
+		}
+
+		writeResponse(w, http.StatusOK, GenericResponse{Response: definition})
 	}
 }
 

@@ -1318,6 +1318,34 @@ func (mr *MockStorageMockRecorder) UpdateMovieState(ctx, id, state, metadata any
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateMovieState", reflect.TypeOf((*MockStorage)(nil).UpdateMovieState), ctx, id, state, metadata)
 }
 
+// UpdateQualityDefinition mocks base method.
+func (m *MockStorage) UpdateQualityDefinition(ctx context.Context, id int64, definition model.QualityDefinition) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateQualityDefinition", ctx, id, definition)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateQualityDefinition indicates an expected call of UpdateQualityDefinition.
+func (mr *MockStorageMockRecorder) UpdateQualityDefinition(ctx, id, definition any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateQualityDefinition", reflect.TypeOf((*MockStorage)(nil).UpdateQualityDefinition), ctx, id, definition)
+}
+
+// UpdateQualityProfile mocks base method.
+func (m *MockStorage) UpdateQualityProfile(ctx context.Context, id int64, profile model.QualityProfile) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateQualityProfile", ctx, id, profile)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateQualityProfile indicates an expected call of UpdateQualityProfile.
+func (mr *MockStorageMockRecorder) UpdateQualityProfile(ctx, id, profile any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateQualityProfile", reflect.TypeOf((*MockStorage)(nil).UpdateQualityProfile), ctx, id, profile)
+}
+
 // UpdateSeasonState mocks base method.
 func (m *MockStorage) UpdateSeasonState(ctx context.Context, id int64, season storage.SeasonState, metadata *storage.TransitionStateMetadata) error {
 	m.ctrl.T.Helper()
@@ -1644,6 +1672,34 @@ func (mr *MockQualityStorageMockRecorder) ListQualityProfiles(ctx any, where ...
 	mr.mock.ctrl.T.Helper()
 	varargs := append([]any{ctx}, where...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListQualityProfiles", reflect.TypeOf((*MockQualityStorage)(nil).ListQualityProfiles), varargs...)
+}
+
+// UpdateQualityDefinition mocks base method.
+func (m *MockQualityStorage) UpdateQualityDefinition(ctx context.Context, id int64, definition model.QualityDefinition) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateQualityDefinition", ctx, id, definition)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateQualityDefinition indicates an expected call of UpdateQualityDefinition.
+func (mr *MockQualityStorageMockRecorder) UpdateQualityDefinition(ctx, id, definition any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateQualityDefinition", reflect.TypeOf((*MockQualityStorage)(nil).UpdateQualityDefinition), ctx, id, definition)
+}
+
+// UpdateQualityProfile mocks base method.
+func (m *MockQualityStorage) UpdateQualityProfile(ctx context.Context, id int64, profile model.QualityProfile) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateQualityProfile", ctx, id, profile)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateQualityProfile indicates an expected call of UpdateQualityProfile.
+func (mr *MockQualityStorageMockRecorder) UpdateQualityProfile(ctx, id, profile any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateQualityProfile", reflect.TypeOf((*MockQualityStorage)(nil).UpdateQualityProfile), ctx, id, profile)
 }
 
 // MockMovieStorage is a mock of MovieStorage interface.

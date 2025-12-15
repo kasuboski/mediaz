@@ -608,7 +608,19 @@ func (s *SQLite) ListQualityDefinitions(ctx context.Context) ([]*model.QualityDe
 	return definitions, err
 }
 
-// DeleteQualityDefinition deletes a quality
+// UpdateQualityDefinition updates a quality definition
+func (s *SQLite) UpdateQualityDefinition(ctx context.Context, id int64, definition model.QualityDefinition) error {
+	stmt := table.QualityDefinition.UPDATE(
+		table.QualityDefinition.Name,
+		table.QualityDefinition.PreferredSize,
+		table.QualityDefinition.MinSize,
+		table.QualityDefinition.MaxSize,
+		table.QualityDefinition.MediaType,
+	).MODEL(definition).WHERE(table.QualityDefinition.ID.EQ(sqlite.Int64(id)))
+	_, err := stmt.ExecContext(ctx, s.db)
+	return err
+}
+
 func (s *SQLite) DeleteQualityDefinition(ctx context.Context, id int64) error {
 	stmt := table.QualityDefinition.DELETE().WHERE(table.QualityDefinition.ID.EQ(sqlite.Int64(id))).RETURNING(table.QualityDefinition.AllColumns)
 	_, err := s.handleDelete(ctx, stmt)
@@ -711,6 +723,17 @@ func (s *SQLite) ListQualityProfiles(ctx context.Context, where ...sqlite.BoolEx
 	result := make([]*storage.QualityProfile, 0)
 	err := stmt.QueryContext(ctx, s.db, &result)
 	return result, err
+}
+
+// UpdateQualityProfile updates a quality profile
+func (s *SQLite) UpdateQualityProfile(ctx context.Context, id int64, profile model.QualityProfile) error {
+	stmt := table.QualityProfile.UPDATE(
+		table.QualityProfile.Name,
+		table.QualityProfile.CutoffQualityID,
+		table.QualityProfile.UpgradeAllowed,
+	).MODEL(profile).WHERE(table.QualityProfile.ID.EQ(sqlite.Int64(id)))
+	_, err := stmt.ExecContext(ctx, s.db)
+	return err
 }
 
 // DeleteQualityProfile delete a quality profile
