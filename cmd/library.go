@@ -83,7 +83,7 @@ func runGenerateTestlib(cmd *cobra.Command, args []string) {
 		"tv_only", tvOnly)
 
 	// Initialize storage
-	store, err := sqliteStorage.New(dbPath)
+	store, err := sqliteStorage.New(ctx, dbPath)
 	if err != nil {
 		log.Fatalf("failed to open database: %v", err)
 	}

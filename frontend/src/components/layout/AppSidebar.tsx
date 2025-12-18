@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from "react-router-dom";
-import { Film, Tv, Search, Library, Settings, Clock, Download, ScanSearch } from "lucide-react";
+import { Film, Tv, Search, Library, Settings, Clock, Download, ScanSearch, Layers } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -22,6 +22,7 @@ const libraryItems = [
   { title: "Jobs", url: "/jobs", icon: Clock },
   { title: "Download Clients", url: "/clients", icon: Download },
   { title: "Indexers", url: "/indexers", icon: ScanSearch },
+  { title: "Quality Profiles", url: "/quality", icon: Layers },
   { title: "Library", url: "/library", icon: Library },
   { title: "Settings", url: "/settings", icon: Settings },
 ];

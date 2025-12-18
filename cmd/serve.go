@@ -12,7 +12,6 @@ import (
 	"github.com/kasuboski/mediaz/pkg/logger"
 	"github.com/kasuboski/mediaz/pkg/manager"
 	"github.com/kasuboski/mediaz/pkg/prowlarr"
-	"github.com/kasuboski/mediaz/pkg/storage"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite"
 	"github.com/kasuboski/mediaz/pkg/tmdb"
 	"github.com/kasuboski/mediaz/server"
@@ -48,19 +47,14 @@ var serveCmd = &cobra.Command{
 			log.Fatal("failed to create client", zap.Error(err))
 		}
 
-		store, err := sqlite.New(cfg.Storage.FilePath)
+		store, err := sqlite.New(ctx, cfg.Storage.FilePath)
 		if err != nil {
 			log.Fatal("failed to create storage connection", zap.Error(err))
 		}
 
-		schemas, err := storage.GetSchemas()
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		err = store.Init(ctx, schemas...)
-		if err != nil {
-			log.Fatal("failed to init database", zap.Error(err))
+		// Run database migrations explicitly on server startup
+		if err := store.RunMigrations(ctx); err != nil {
+			log.Fatal("failed to run migrations", zap.Error(err))
 		}
 
 		movieFS := os.DirFS(cfg.Library.MovieDir)

@@ -24,7 +24,7 @@ func ptr[A any](thing A) *A {
 }
 
 func initSqlite(t *testing.T, ctx context.Context) storage.Storage {
-	store, err := New(":memory:")
+	store, err := New(ctx, ":memory:")
 	assert.Nil(t, err)
 
 	schemas, err := storage.ReadSchemaFiles("./schema/schema.sql")
@@ -230,10 +230,11 @@ func TestGetQualityStorage(t *testing.T) {
 	ctx := context.Background()
 	store := initSqlite(t, ctx)
 
+	cutoffID := int32(3)
 	testProfile := model.QualityProfile{
 		Name:            "test profile",
 		UpgradeAllowed:  true,
-		CutoffQualityID: 3,
+		CutoffQualityID: &cutoffID,
 	}
 
 	id, err := store.CreateQualityProfile(ctx, testProfile)
@@ -241,7 +242,6 @@ func TestGetQualityStorage(t *testing.T) {
 	assert.Equal(t, int64(1), id)
 
 	firstDefinition := model.QualityDefinition{
-		QualityID:     1,
 		Name:          "test quality definition 1",
 		PreferredSize: 1999,
 		MinSize:       15,
@@ -258,7 +258,6 @@ func TestGetQualityStorage(t *testing.T) {
 	assert.Equal(t, firstDefinition, definitionOne)
 
 	secondDefinition := model.QualityDefinition{
-		QualityID:     2,
 		Name:          "test quality definition 2",
 		PreferredSize: 1499,
 		MinSize:       10,
@@ -318,10 +317,10 @@ func TestGetQualityStorage(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, "test profile", profile.Name)
 	assert.Equal(t, true, profile.UpgradeAllowed)
-	assert.Equal(t, int32(3), profile.CutoffQualityID)
+	assert.Equal(t, int32(3), *profile.CutoffQualityID)
 	assert.ElementsMatch(t, []storage.QualityDefinition{
 		{
-			QualityID:     1,
+			ID:            1,
 			Name:          "test quality definition 1",
 			PreferredSize: 1999,
 			MinSize:       15,
@@ -329,7 +328,7 @@ func TestGetQualityStorage(t *testing.T) {
 			MediaType:     "movie",
 		},
 		{
-			QualityID:     2,
+			ID:            2,
 			Name:          "test quality definition 2",
 			PreferredSize: 1499,
 			MinSize:       10,
@@ -340,15 +339,16 @@ func TestGetQualityStorage(t *testing.T) {
 
 	profiles, err := store.ListQualityProfiles(ctx)
 	assert.Nil(t, err)
+	cutoffIDPtr := int32(3)
 	assert.ElementsMatch(t, []*storage.QualityProfile{
 		{
 			ID:              1,
 			Name:            "test profile",
 			UpgradeAllowed:  true,
-			CutoffQualityID: 3,
+			CutoffQualityID: &cutoffIDPtr,
 			Qualities: []storage.QualityDefinition{
 				{
-					QualityID:     1,
+					ID:            1,
 					Name:          "test quality definition 1",
 					PreferredSize: 1999,
 					MinSize:       15,
@@ -356,7 +356,7 @@ func TestGetQualityStorage(t *testing.T) {
 					MediaType:     "movie",
 				},
 				{
-					QualityID:     2,
+					ID:            2,
 					Name:          "test quality definition 2",
 					PreferredSize: 1499,
 					MinSize:       10,

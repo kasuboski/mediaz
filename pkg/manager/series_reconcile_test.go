@@ -35,7 +35,7 @@ import (
 func TestMediaManager_updateEpisodeState(t *testing.T) {
 	t.Run("update episode state", func(t *testing.T) {
 		ctx := context.Background()
-		store, err := mediaSqlite.New(":memory:")
+		store, err := mediaSqlite.New(context.Background(), ":memory:")
 		require.NoError(t, err)
 
 		schemas, err := storage.ReadSchemaFiles("../storage/sqlite/schema/schema.sql", "../storage/sqlite/schema/defaults.sql")

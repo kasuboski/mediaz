@@ -105,7 +105,7 @@ var searchIndexerCmd = &cobra.Command{
 			&mio.MediaFileSystem{},
 		)
 
-		store, err := sqlite.New(cfg.Storage.FilePath)
+		store, err := sqlite.New(ctx, cfg.Storage.FilePath)
 		if err != nil {
 			log.Fatal("failed to create storage connection", zap.Error(err))
 		}

@@ -16,7 +16,7 @@ import (
 
 // IndexSeriesLibrary indexes the tv library directory for new files that are not yet monitored. The episodes are then stored with a state of discovered.
 func (m MediaManager) IndexSeriesLibrary(ctx context.Context) error {
-	log := logger.FromCtx(ctx).With("series indexer")
+	log := logger.FromCtx(ctx).With("indexer", "series")
 
 	discoveredFiles, err := m.library.FindEpisodes(ctx)
 	if err != nil {
