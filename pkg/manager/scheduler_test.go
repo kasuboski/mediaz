@@ -16,7 +16,7 @@ import (
 
 func TestScheduler_createPendingJob(t *testing.T) {
 	t.Run("invalid job type", func(t *testing.T) {
-		store, err := mediaSqlite.New(":memory:")
+		store, err := mediaSqlite.New(context.Background(), ":memory:")
 		require.NoError(t, err)
 
 		scheduler := NewScheduler(store, config.Manager{}, make(map[JobType]JobExecutor))
@@ -28,7 +28,7 @@ func TestScheduler_createPendingJob(t *testing.T) {
 	})
 
 	t.Run("create job and duplicate pending job", func(t *testing.T) {
-		store, err := mediaSqlite.New(":memory:")
+		store, err := mediaSqlite.New(context.Background(), ":memory:")
 		require.NoError(t, err)
 
 		schemas, err := storage.ReadSchemaFiles("../storage/sqlite/schema/schema.sql", "../storage/sqlite/schema/defaults.sql")
@@ -69,7 +69,7 @@ func TestScheduler_createPendingJob(t *testing.T) {
 
 func TestScheduler_listPendingJobs(t *testing.T) {
 	t.Run("no pending jobs", func(t *testing.T) {
-		store, err := mediaSqlite.New(":memory:")
+		store, err := mediaSqlite.New(context.Background(), ":memory:")
 		require.NoError(t, err)
 
 		schemas, err := storage.ReadSchemaFiles("../storage/sqlite/schema/schema.sql", "../storage/sqlite/schema/defaults.sql")
@@ -87,7 +87,7 @@ func TestScheduler_listPendingJobs(t *testing.T) {
 	})
 
 	t.Run("list multiple pending jobs", func(t *testing.T) {
-		store, err := mediaSqlite.New(":memory:")
+		store, err := mediaSqlite.New(context.Background(), ":memory:")
 		require.NoError(t, err)
 
 		schemas, err := storage.ReadSchemaFiles("../storage/sqlite/schema/schema.sql", "../storage/sqlite/schema/defaults.sql")
@@ -122,7 +122,7 @@ func TestScheduler_listPendingJobs(t *testing.T) {
 
 func TestScheduler_listPendingJobsByType(t *testing.T) {
 	t.Run("no pending jobs of type", func(t *testing.T) {
-		store, err := mediaSqlite.New(":memory:")
+		store, err := mediaSqlite.New(context.Background(), ":memory:")
 		require.NoError(t, err)
 
 		schemas, err := storage.ReadSchemaFiles("../storage/sqlite/schema/schema.sql", "../storage/sqlite/schema/defaults.sql")
@@ -140,7 +140,7 @@ func TestScheduler_listPendingJobsByType(t *testing.T) {
 	})
 
 	t.Run("list only jobs of specific type", func(t *testing.T) {
-		store, err := mediaSqlite.New(":memory:")
+		store, err := mediaSqlite.New(context.Background(), ":memory:")
 		require.NoError(t, err)
 
 		schemas, err := storage.ReadSchemaFiles("../storage/sqlite/schema/schema.sql", "../storage/sqlite/schema/defaults.sql")
@@ -175,7 +175,7 @@ func TestScheduler_listPendingJobsByType(t *testing.T) {
 
 func TestScheduler_executeJob(t *testing.T) {
 	t.Run("successful job execution", func(t *testing.T) {
-		store, err := mediaSqlite.New(":memory:")
+		store, err := mediaSqlite.New(context.Background(), ":memory:")
 		require.NoError(t, err)
 
 		schemas, err := storage.ReadSchemaFiles("../storage/sqlite/schema/schema.sql", "../storage/sqlite/schema/defaults.sql")
@@ -216,7 +216,7 @@ func TestScheduler_executeJob(t *testing.T) {
 	})
 
 	t.Run("no executor found for job type", func(t *testing.T) {
-		store, err := mediaSqlite.New(":memory:")
+		store, err := mediaSqlite.New(context.Background(), ":memory:")
 		require.NoError(t, err)
 
 		schemas, err := storage.ReadSchemaFiles("../storage/sqlite/schema/schema.sql", "../storage/sqlite/schema/defaults.sql")
@@ -247,7 +247,7 @@ func TestScheduler_executeJob(t *testing.T) {
 	})
 
 	t.Run("executor returns error", func(t *testing.T) {
-		store, err := mediaSqlite.New(":memory:")
+		store, err := mediaSqlite.New(context.Background(), ":memory:")
 		require.NoError(t, err)
 
 		schemas, err := storage.ReadSchemaFiles("../storage/sqlite/schema/schema.sql", "../storage/sqlite/schema/defaults.sql")
@@ -285,7 +285,7 @@ func TestScheduler_executeJob(t *testing.T) {
 	})
 
 	t.Run("job added to and removed from running cache", func(t *testing.T) {
-		store, err := mediaSqlite.New(":memory:")
+		store, err := mediaSqlite.New(context.Background(), ":memory:")
 		require.NoError(t, err)
 
 		schemas, err := storage.ReadSchemaFiles("../storage/sqlite/schema/schema.sql", "../storage/sqlite/schema/defaults.sql")
@@ -333,7 +333,7 @@ func TestScheduler_executeJob(t *testing.T) {
 
 func TestScheduler_CancelJob(t *testing.T) {
 	t.Run("cancel pending job", func(t *testing.T) {
-		store, err := mediaSqlite.New(":memory:")
+		store, err := mediaSqlite.New(context.Background(), ":memory:")
 		require.NoError(t, err)
 
 		schemas, err := storage.ReadSchemaFiles("../storage/sqlite/schema/schema.sql", "../storage/sqlite/schema/defaults.sql")
@@ -361,7 +361,7 @@ func TestScheduler_CancelJob(t *testing.T) {
 	})
 
 	t.Run("cancel running job", func(t *testing.T) {
-		store, err := mediaSqlite.New(":memory:")
+		store, err := mediaSqlite.New(context.Background(), ":memory:")
 		require.NoError(t, err)
 
 		schemas, err := storage.ReadSchemaFiles("../storage/sqlite/schema/schema.sql", "../storage/sqlite/schema/defaults.sql")
@@ -407,7 +407,7 @@ func TestScheduler_CancelJob(t *testing.T) {
 	})
 
 	t.Run("cancel completed job does nothing", func(t *testing.T) {
-		store, err := mediaSqlite.New(":memory:")
+		store, err := mediaSqlite.New(context.Background(), ":memory:")
 		require.NoError(t, err)
 
 		schemas, err := storage.ReadSchemaFiles("../storage/sqlite/schema/schema.sql", "../storage/sqlite/schema/defaults.sql")
@@ -437,7 +437,7 @@ func TestScheduler_CancelJob(t *testing.T) {
 	})
 
 	t.Run("cancel errored job does nothing", func(t *testing.T) {
-		store, err := mediaSqlite.New(":memory:")
+		store, err := mediaSqlite.New(context.Background(), ":memory:")
 		require.NoError(t, err)
 
 		schemas, err := storage.ReadSchemaFiles("../storage/sqlite/schema/schema.sql", "../storage/sqlite/schema/defaults.sql")
@@ -467,7 +467,7 @@ func TestScheduler_CancelJob(t *testing.T) {
 	})
 
 	t.Run("cancel already cancelled job does nothing", func(t *testing.T) {
-		store, err := mediaSqlite.New(":memory:")
+		store, err := mediaSqlite.New(context.Background(), ":memory:")
 		require.NoError(t, err)
 
 		schemas, err := storage.ReadSchemaFiles("../storage/sqlite/schema/schema.sql", "../storage/sqlite/schema/defaults.sql")
@@ -494,7 +494,7 @@ func TestScheduler_CancelJob(t *testing.T) {
 	})
 
 	t.Run("cancel non-existent job", func(t *testing.T) {
-		store, err := mediaSqlite.New(":memory:")
+		store, err := mediaSqlite.New(context.Background(), ":memory:")
 		require.NoError(t, err)
 
 		schemas, err := storage.ReadSchemaFiles("../storage/sqlite/schema/schema.sql", "../storage/sqlite/schema/defaults.sql")

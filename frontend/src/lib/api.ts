@@ -210,21 +210,21 @@ export interface ProfileQuality {
 export interface QualityProfile {
   id: number;
   name: string;
-  cutoff_quality_id: number;
+  cutoff_quality_id: number | null;
   upgradeAllowed: boolean;
   qualities: ProfileQuality[];
 }
 
 export interface CreateQualityProfileRequest {
   name: string;
-  cutoffQualityId: number;
+  cutoffQualityId: number | null;
   upgradeAllowed: boolean;
   qualityIds: number[];
 }
 
 export interface UpdateQualityProfileRequest {
   name: string;
-  cutoffQualityId: number;
+  cutoffQualityId: number | null;
   upgradeAllowed: boolean;
   qualityIds: number[];
 }

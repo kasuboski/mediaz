@@ -28,7 +28,7 @@ var schemaCmd = &cobra.Command{
 			log.Fatal(err)
 		}
 
-		tmpStorage, err := sqlite.New("tmp.sqlite")
+		tmpStorage, err := sqlite.New(context.Background(), "tmp.sqlite")
 		if err != nil {
 			log.Fatal(err)
 		}

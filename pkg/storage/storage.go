@@ -21,6 +21,7 @@ var schemaFiles embed.FS
 
 type Storage interface {
 	Init(ctx context.Context, schemas ...string) error
+	RunMigrations(ctx context.Context) error
 	IndexerStorage
 	QualityStorage
 	MovieStorage
@@ -170,7 +171,7 @@ type QualityProfile struct {
 	Name            string              `json:"name"`
 	Qualities       []QualityDefinition `json:"qualities"`
 	ID              int32               `sql:"primary_key" json:"id"`
-	CutoffQualityID int32               `alias:"cutoff_quality_id" json:"cutoff_quality_id"`
+	CutoffQualityID *int32              `alias:"cutoff_quality_id" json:"cutoff_quality_id,omitempty"`
 	UpgradeAllowed  bool                `json:"upgradeAllowed"`
 }
 

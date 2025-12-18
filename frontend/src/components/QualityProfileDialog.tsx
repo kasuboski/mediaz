@@ -4,9 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Plus, X, Clock } from 'lucide-react';
+import { Loader2, Plus, X } from 'lucide-react';
 import { toast } from 'sonner';
 import type { QualityProfile, PendingQualityDefinition } from '@/lib/api';
 import { useCreateQualityProfile, useUpdateQualityProfile, useQualityDefinitions, useCreateQualityDefinition } from '@/lib/queries';
@@ -59,6 +58,12 @@ export function QualityProfileDialog({
     }
   }, [open, profile]);
 
+  useEffect(() => {
+    if (!upgradeAllowed) {
+      setCutoffQualityId(null);
+    }
+  }, [upgradeAllowed]);
+
   const toggleQuality = (qualityId: number) => {
     setSelectedQualityIds(prev => {
       const newSet = new Set(prev);
@@ -85,12 +90,12 @@ export function QualityProfileDialog({
       return;
     }
 
-    if (!cutoffQualityId) {
-      toast.error('Cutoff quality must be selected');
+    if (upgradeAllowed && !cutoffQualityId) {
+      toast.error('Cutoff quality must be selected when upgrades are allowed');
       return;
     }
 
-    if (!selectedQualityIds.has(cutoffQualityId)) {
+    if (cutoffQualityId !== null && !selectedQualityIds.has(cutoffQualityId)) {
       toast.error('Cutoff quality must be one of the selected qualities');
       return;
     }
@@ -171,6 +176,11 @@ export function QualityProfileDialog({
               />
               <Label htmlFor="upgradeAllowed">Allow Upgrades</Label>
             </div>
+            {!upgradeAllowed && (
+              <p className="text-sm text-muted-foreground mt-1">
+                Cutoff quality is only applicable when upgrades are allowed
+              </p>
+            )}
 
             <div className="grid gap-2">
               <div className="flex items-center justify-between">
@@ -192,17 +202,14 @@ export function QualityProfileDialog({
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {pendingDefinitions.length > 0 && (
-                    <div className="border rounded-md p-3 bg-yellow-50/50 dark:bg-yellow-900/10">
-                      <h4 className="text-sm font-semibold mb-2 text-foreground/80 flex items-center gap-2">
-                        <Clock className="h-4 w-4 text-yellow-600" />
-                        Pending Definitions (will be created on save)
-                      </h4>
+                  {(definitions.filter(def => selectedQualityIds.has(def.ID)).length > 0 || pendingDefinitions.length > 0) && (
+                    <div className="border rounded-md p-3 bg-accent/10">
+                      <h4 className="text-sm font-semibold mb-2 text-foreground/80">Currently in Profile</h4>
                       <div className="space-y-2">
                         {pendingDefinitions.map((pendingDef) => (
                           <div
                             key={pendingDef.tempId}
-                            className="flex items-center justify-between py-2 px-2 bg-background rounded border border-yellow-200 dark:border-yellow-800"
+                            className="flex items-center justify-between py-2 px-2 bg-background rounded"
                           >
                             <div className="flex items-center space-x-3">
                               <Button
@@ -228,16 +235,16 @@ export function QualityProfileDialog({
                                 </div>
                               </div>
                             </div>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              disabled={true}
+                            >
+                              Set Cutoff
+                            </Button>
                           </div>
                         ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {definitions.filter(def => selectedQualityIds.has(def.ID)).length > 0 && (
-                    <div className="border rounded-md p-3 bg-accent/10">
-                      <h4 className="text-sm font-semibold mb-2 text-foreground/80">Currently in Profile</h4>
-                      <div className="space-y-2">
                         {definitions
                           .filter(def => selectedQualityIds.has(def.ID))
                           .map((def) => (
@@ -262,15 +269,17 @@ export function QualityProfileDialog({
                                   </div>
                                 </div>
                               </div>
-                              <Button
-                                type="button"
-                                variant={cutoffQualityId === def.ID ? 'default' : 'outline'}
-                                size="sm"
-                                disabled={!selectedQualityIds.has(def.ID)}
-                                onClick={() => setCutoffQualityId(def.ID)}
-                              >
-                                {cutoffQualityId === def.ID ? 'Cutoff' : 'Set Cutoff'}
-                              </Button>
+                              {upgradeAllowed && (
+                                <Button
+                                  type="button"
+                                  variant={cutoffQualityId === def.ID ? 'default' : 'outline'}
+                                  size="sm"
+                                  disabled={!selectedQualityIds.has(def.ID)}
+                                  onClick={() => setCutoffQualityId(def.ID)}
+                                >
+                                  {cutoffQualityId === def.ID ? 'Cutoff' : 'Set Cutoff'}
+                                </Button>
+                              )}
                             </div>
                           ))}
                       </div>
@@ -278,7 +287,7 @@ export function QualityProfileDialog({
                   )}
 
                   {definitions.filter(def => !selectedQualityIds.has(def.ID)).length > 0 && (
-                    <div className="border rounded-md p-3">
+                    <div className="border rounded-md p-3 bg-accent/10">
                       <h4 className="text-sm font-semibold mb-2 text-foreground/80">Available to Add</h4>
                       <div className="space-y-2">
                         {definitions
@@ -286,7 +295,7 @@ export function QualityProfileDialog({
                           .map((def) => (
                             <div
                               key={def.ID}
-                              className="flex items-center justify-between py-2 px-2 rounded"
+                              className="flex items-center justify-between py-2 px-2 bg-background rounded"
                             >
                               <div className="flex items-center space-x-3">
                                 <Button
@@ -299,7 +308,7 @@ export function QualityProfileDialog({
                                   <Plus className="h-4 w-4" />
                                 </Button>
                                 <div>
-                                  <div className="font-medium text-muted-foreground">{def.Name}</div>
+                                  <div className="font-medium">{def.Name}</div>
                                   <div className="text-sm text-muted-foreground">
                                     {def.MinSize} - {def.MaxSize} MB/min
                                   </div>

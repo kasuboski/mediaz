@@ -38,7 +38,7 @@ import (
 func TestAddMovietoLibrary(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
-	store, err := mediaSqlite.New(":memory:")
+	store, err := mediaSqlite.New(context.Background(), ":memory:")
 	require.NoError(t, err)
 
 	schemas, err := storage.ReadSchemaFiles("../storage/sqlite/schema/schema.sql", "../storage/sqlite/schema/defaults.sql")
@@ -606,7 +606,7 @@ func sizeGBToBytes(gb int) *int64 {
 }
 
 func newStore(t *testing.T, ctx context.Context) storage.Storage {
-	store, err := mediaSqlite.New(":memory:")
+	store, err := mediaSqlite.New(context.Background(), ":memory:")
 	require.NoError(t, err)
 
 	schemas, err := storage.ReadSchemaFiles("../storage/sqlite/schema/schema.sql", "../storage/sqlite/schema/defaults.sql")

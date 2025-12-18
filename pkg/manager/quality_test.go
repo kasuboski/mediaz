@@ -67,7 +67,7 @@ func TestQualitySizeCutoff(t *testing.T) {
 func TestMediaManager_GetQualityProfile(t *testing.T) {
 	t.Run("get movie quality profile", func(t *testing.T) {
 		ctx := context.Background()
-		store, err := mediaSqlite.New(":memory:")
+		store, err := mediaSqlite.New(context.Background(), ":memory:")
 		require.NoError(t, err)
 
 		schemas, err := storage.ReadSchemaFiles("../storage/sqlite/schema/schema.sql", "../storage/sqlite/schema/defaults.sql")
@@ -85,8 +85,8 @@ func TestMediaManager_GetQualityProfile(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, int32(1), profile.ID)
 		assert.Equal(t, "Standard Definition", profile.Name)
-		assert.Equal(t, int32(2), profile.CutoffQualityID)
-		assert.Equal(t, true, profile.UpgradeAllowed)
+		assert.Nil(t, profile.CutoffQualityID)
+		assert.Equal(t, false, profile.UpgradeAllowed)
 		assert.Equal(t, "HDTV-720p", profile.Qualities[0].Name)
 		assert.Equal(t, float64(1999), profile.Qualities[0].PreferredSize)
 		assert.Equal(t, float64(17.1), profile.Qualities[0].MinSize)
@@ -96,7 +96,7 @@ func TestMediaManager_GetQualityProfile(t *testing.T) {
 
 	t.Run("get episode quality profile", func(t *testing.T) {
 		ctx := context.Background()
-		store, err := mediaSqlite.New(":memory:")
+		store, err := mediaSqlite.New(context.Background(), ":memory:")
 		require.NoError(t, err)
 
 		schemas, err := storage.ReadSchemaFiles("../storage/sqlite/schema/schema.sql", "../storage/sqlite/schema/defaults.sql")
@@ -114,8 +114,8 @@ func TestMediaManager_GetQualityProfile(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, int32(5), profile.ID)
 		assert.Equal(t, "High Definition", profile.Name)
-		assert.Equal(t, int32(23), profile.CutoffQualityID)
-		assert.Equal(t, true, profile.UpgradeAllowed)
+		assert.Nil(t, profile.CutoffQualityID)
+		assert.Equal(t, false, profile.UpgradeAllowed)
 		assert.Equal(t, "Remux-1080p", profile.Qualities[0].Name)
 		assert.Equal(t, float64(995), profile.Qualities[0].PreferredSize)
 		assert.Equal(t, float64(69.1), profile.Qualities[0].MinSize)
@@ -127,7 +127,7 @@ func TestMediaManager_GetQualityProfile(t *testing.T) {
 func TestMediaManager_ListMovieQualityProfiles(t *testing.T) {
 	t.Run("list movie quality profiles", func(t *testing.T) {
 		ctx := context.Background()
-		store, err := mediaSqlite.New(":memory:")
+		store, err := mediaSqlite.New(context.Background(), ":memory:")
 		require.NoError(t, err)
 
 		schemas, err := storage.ReadSchemaFiles("../storage/sqlite/schema/schema.sql", "../storage/sqlite/schema/defaults.sql")
@@ -146,21 +146,21 @@ func TestMediaManager_ListMovieQualityProfiles(t *testing.T) {
 		require.Len(t, profile, 3)
 		assert.Equal(t, int32(3), profile[0].ID)
 		assert.Equal(t, "Ultra High Definition", profile[0].Name)
-		assert.Equal(t, int32(13), profile[0].CutoffQualityID)
+		assert.Nil(t, profile[0].CutoffQualityID)
 		assert.Equal(t, int32(2), profile[1].ID)
 		assert.Equal(t, "High Definition", profile[1].Name)
-		assert.Equal(t, int32(8), profile[1].CutoffQualityID)
+		assert.Nil(t, profile[1].CutoffQualityID)
 		assert.Equal(t, int32(2), profile[1].ID)
 		assert.Equal(t, "Standard Definition", profile[2].Name)
 		assert.Equal(t, int32(1), profile[2].ID)
-		assert.Equal(t, int32(2), profile[2].CutoffQualityID)
+		assert.Nil(t, profile[2].CutoffQualityID)
 	})
 }
 
 func TestMediaManager_ListEpisodeQualityProfiles(t *testing.T) {
 	t.Run("list episode quality profiles", func(t *testing.T) {
 		ctx := context.Background()
-		store, err := mediaSqlite.New(":memory:")
+		store, err := mediaSqlite.New(context.Background(), ":memory:")
 		require.NoError(t, err)
 
 		schemas, err := storage.ReadSchemaFiles("../storage/sqlite/schema/schema.sql", "../storage/sqlite/schema/defaults.sql")
@@ -180,22 +180,22 @@ func TestMediaManager_ListEpisodeQualityProfiles(t *testing.T) {
 
 		assert.Equal(t, "Ultra High Definition", profile[0].Name)
 		assert.Equal(t, int32(6), profile[0].ID)
-		assert.Equal(t, int32(27), profile[0].CutoffQualityID)
+		assert.Nil(t, profile[0].CutoffQualityID)
 
 		assert.Equal(t, "High Definition", profile[1].Name)
 		assert.Equal(t, int32(5), profile[1].ID)
-		assert.Equal(t, int32(23), profile[1].CutoffQualityID)
+		assert.Nil(t, profile[1].CutoffQualityID)
 
 		assert.Equal(t, "Standard Definition", profile[2].Name)
 		assert.Equal(t, int32(4), profile[2].ID)
-		assert.Equal(t, int32(16), profile[2].CutoffQualityID)
+		assert.Nil(t, profile[2].CutoffQualityID)
 	})
 }
 
 func TestMediaManager_UpdateQualityProfile(t *testing.T) {
 	t.Run("update profile with new quality associations", func(t *testing.T) {
 		ctx := context.Background()
-		store, err := mediaSqlite.New(":memory:")
+		store, err := mediaSqlite.New(context.Background(), ":memory:")
 		require.NoError(t, err)
 
 		schemas, err := storage.ReadSchemaFiles("../storage/sqlite/schema/schema.sql", "../storage/sqlite/schema/defaults.sql")
@@ -214,7 +214,7 @@ func TestMediaManager_UpdateQualityProfile(t *testing.T) {
 
 		updateReq := UpdateQualityProfileRequest{
 			Name:            "Updated Profile",
-			CutoffQualityID: 3,
+			CutoffQualityID: nil,
 			UpgradeAllowed:  false,
 			QualityIDs:      []int32{3, 7},
 		}
@@ -223,7 +223,7 @@ func TestMediaManager_UpdateQualityProfile(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Equal(t, "Updated Profile", updated.Name)
-		assert.Equal(t, int32(3), updated.CutoffQualityID)
+		assert.Nil(t, updated.CutoffQualityID)
 		assert.Equal(t, false, updated.UpgradeAllowed)
 
 		assert.Equal(t, 2, len(updated.Qualities))
@@ -236,7 +236,7 @@ func TestMediaManager_UpdateQualityProfile(t *testing.T) {
 
 	t.Run("update fails with empty quality IDs", func(t *testing.T) {
 		ctx := context.Background()
-		store, err := mediaSqlite.New(":memory:")
+		store, err := mediaSqlite.New(context.Background(), ":memory:")
 		require.NoError(t, err)
 
 		schemas, err := storage.ReadSchemaFiles("../storage/sqlite/schema/schema.sql", "../storage/sqlite/schema/defaults.sql")
@@ -250,7 +250,7 @@ func TestMediaManager_UpdateQualityProfile(t *testing.T) {
 
 		updateReq := UpdateQualityProfileRequest{
 			Name:            "Updated Profile",
-			CutoffQualityID: 3,
+			CutoffQualityID: nil,
 			UpgradeAllowed:  false,
 			QualityIDs:      []int32{},
 		}
@@ -262,7 +262,7 @@ func TestMediaManager_UpdateQualityProfile(t *testing.T) {
 
 	t.Run("update fails for non-existent profile", func(t *testing.T) {
 		ctx := context.Background()
-		store, err := mediaSqlite.New(":memory:")
+		store, err := mediaSqlite.New(context.Background(), ":memory:")
 		require.NoError(t, err)
 
 		schemas, err := storage.ReadSchemaFiles("../storage/sqlite/schema/schema.sql", "../storage/sqlite/schema/defaults.sql")
@@ -276,12 +276,95 @@ func TestMediaManager_UpdateQualityProfile(t *testing.T) {
 
 		updateReq := UpdateQualityProfileRequest{
 			Name:            "Updated Profile",
-			CutoffQualityID: 3,
+			CutoffQualityID: nil,
 			UpgradeAllowed:  false,
 			QualityIDs:      []int32{3},
 		}
 
 		_, err = manager.UpdateQualityProfile(ctx, 999, updateReq)
 		require.Error(t, err)
+	})
+}
+
+func TestMediaManager_AddQualityProfile(t *testing.T) {
+	t.Run("add profile fails when upgrade allowed but cutoff not provided", func(t *testing.T) {
+		ctx := context.Background()
+		store, err := mediaSqlite.New(context.Background(), ":memory:")
+		require.NoError(t, err)
+
+		schemas, err := storage.ReadSchemaFiles("../storage/sqlite/schema/schema.sql", "../storage/sqlite/schema/defaults.sql")
+		require.NoError(t, err)
+		err = store.Init(ctx, schemas...)
+		require.NoError(t, err)
+
+		manager := MediaManager{
+			storage: store,
+		}
+
+		addReq := AddQualityProfileRequest{
+			Name:            "Test Profile",
+			CutoffQualityID: nil,
+			UpgradeAllowed:  true,
+			QualityIDs:      []int32{3, 7},
+		}
+
+		_, err = manager.AddQualityProfile(ctx, addReq)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "cutoff quality must be specified when upgrades are allowed")
+	})
+
+	t.Run("add profile succeeds when upgrade not allowed and cutoff not provided", func(t *testing.T) {
+		ctx := context.Background()
+		store, err := mediaSqlite.New(context.Background(), ":memory:")
+		require.NoError(t, err)
+
+		schemas, err := storage.ReadSchemaFiles("../storage/sqlite/schema/schema.sql", "../storage/sqlite/schema/defaults.sql")
+		require.NoError(t, err)
+		err = store.Init(ctx, schemas...)
+		require.NoError(t, err)
+
+		manager := MediaManager{
+			storage: store,
+		}
+
+		addReq := AddQualityProfileRequest{
+			Name:            "Test Profile",
+			CutoffQualityID: nil,
+			UpgradeAllowed:  false,
+			QualityIDs:      []int32{3, 7},
+		}
+
+		profile, err := manager.AddQualityProfile(ctx, addReq)
+		require.NoError(t, err)
+		assert.Equal(t, "Test Profile", profile.Name)
+		assert.Nil(t, profile.CutoffQualityID)
+		assert.Equal(t, false, profile.UpgradeAllowed)
+	})
+
+	t.Run("add profile fails when cutoff not in quality list", func(t *testing.T) {
+		ctx := context.Background()
+		store, err := mediaSqlite.New(context.Background(), ":memory:")
+		require.NoError(t, err)
+
+		schemas, err := storage.ReadSchemaFiles("../storage/sqlite/schema/schema.sql", "../storage/sqlite/schema/defaults.sql")
+		require.NoError(t, err)
+		err = store.Init(ctx, schemas...)
+		require.NoError(t, err)
+
+		manager := MediaManager{
+			storage: store,
+		}
+
+		cutoffID := int32(10)
+		addReq := AddQualityProfileRequest{
+			Name:            "Test Profile",
+			CutoffQualityID: &cutoffID,
+			UpgradeAllowed:  true,
+			QualityIDs:      []int32{3, 7},
+		}
+
+		_, err = manager.AddQualityProfile(ctx, addReq)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "cutoff quality must be one of the selected qualities")
 	})
 }

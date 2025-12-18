@@ -28,7 +28,7 @@ const (
 )
 
 // New creates a new sqlite database given a path to the database file.
-func New(filePath string) (storage.Storage, error) {
+func New(ctx context.Context, filePath string) (storage.Storage, error) {
 	db, err := sql.Open("sqlite3", filePath)
 	if err != nil {
 		return nil, err
@@ -53,6 +53,12 @@ func New(filePath string) (storage.Storage, error) {
 		db: db,
 		mu: sync.Mutex{},
 	}, nil
+}
+
+// RunMigrations explicitly runs database migrations.
+// This should be called after New() when starting the server.
+func (s *SQLite) RunMigrations(ctx context.Context) error {
+	return runMigrations(s.db)
 }
 
 // Init applies the provided schema file contents to the database

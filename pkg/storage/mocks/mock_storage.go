@@ -1234,6 +1234,20 @@ func (mr *MockStorageMockRecorder) ListSeriesMetadata(ctx any, where ...any) *go
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListSeriesMetadata", reflect.TypeOf((*MockStorage)(nil).ListSeriesMetadata), varargs...)
 }
 
+// RunMigrations mocks base method.
+func (m *MockStorage) RunMigrations(ctx context.Context) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RunMigrations", ctx)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// RunMigrations indicates an expected call of RunMigrations.
+func (mr *MockStorageMockRecorder) RunMigrations(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RunMigrations", reflect.TypeOf((*MockStorage)(nil).RunMigrations), ctx)
+}
+
 // UpdateDownloadClient mocks base method.
 func (m *MockStorage) UpdateDownloadClient(ctx context.Context, id int64, client model.DownloadClient) error {
 	m.ctrl.T.Helper()

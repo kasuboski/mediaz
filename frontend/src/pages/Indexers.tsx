@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Loader2, AlertCircle, RefreshCw, Plus, Pencil, Trash2, Database } from 'lucide-react';
+import { Loader2, AlertCircle, RefreshCw, Plus, Pencil, Trash2, ScanSearch } from 'lucide-react';
 import { toast } from 'sonner';
 import { IndexerDialog } from '@/components/IndexerDialog';
 
@@ -28,7 +28,7 @@ export default function Indexers() {
     setDialogOpen(true);
   };
 
-  const handleDeleteClick = (indexer:   Indexer) => {
+  const handleDeleteClick = (indexer: Indexer) => {
     setIndexerToDelete(indexer);
     setDeleteDialogOpen(true);
   };
@@ -88,7 +88,7 @@ export default function Indexers() {
       {!isLoading && !error && (!indexers || indexers.length === 0) && (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
-            <Database className="h-12 w-12 text-muted-foreground mb-4" />
+            <ScanSearch className="h-12 w-12 text-muted-foreground mb-4" />
             <p className="text-lg font-semibold text-foreground mb-2">No indexers configured</p>
             <Button onClick={handleAddIndexer} className="bg-gradient-primary hover:opacity-90">
               <Plus className="mr-2 h-4 w-4" />

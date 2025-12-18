@@ -77,14 +77,14 @@ type UpdateQualityDefinitionRequest struct {
 
 type AddQualityProfileRequest struct {
 	Name            string  `json:"name"`
-	CutoffQualityID int32   `json:"cutoffQualityId"`
+	CutoffQualityID *int32  `json:"cutoffQualityId,omitempty"`
 	UpgradeAllowed  bool    `json:"upgradeAllowed"`
 	QualityIDs      []int32 `json:"qualityIds"`
 }
 
 type UpdateQualityProfileRequest struct {
 	Name            string  `json:"name"`
-	CutoffQualityID int32   `json:"cutoffQualityId"`
+	CutoffQualityID *int32  `json:"cutoffQualityId,omitempty"`
 	UpgradeAllowed  bool    `json:"upgradeAllowed"`
 	QualityIDs      []int32 `json:"qualityIds"`
 }
@@ -157,12 +157,34 @@ func (m MediaManager) UpdateQualityDefinition(ctx context.Context, id int64, req
 	return m.storage.GetQualityDefinition(ctx, id)
 }
 
+func validateQualityProfileCutoff(cutoffQualityID *int32, upgradeAllowed bool, qualityIDs []int32) error {
+	if upgradeAllowed && cutoffQualityID == nil {
+		return fmt.Errorf("cutoff quality must be specified when upgrades are allowed")
+	}
+
+	if cutoffQualityID == nil {
+		return nil
+	}
+
+	for _, qid := range qualityIDs {
+		if qid == *cutoffQualityID {
+			return nil
+		}
+	}
+
+	return fmt.Errorf("cutoff quality must be one of the selected qualities")
+}
+
 func (m MediaManager) AddQualityProfile(ctx context.Context, request AddQualityProfileRequest) (storage.QualityProfile, error) {
 	if request.Name == "" {
 		return storage.QualityProfile{}, fmt.Errorf("name is required")
 	}
 	if len(request.QualityIDs) == 0 {
 		return storage.QualityProfile{}, fmt.Errorf("at least one quality must be selected")
+	}
+
+	if err := validateQualityProfileCutoff(request.CutoffQualityID, request.UpgradeAllowed, request.QualityIDs); err != nil {
+		return storage.QualityProfile{}, err
 	}
 
 	profile := model.QualityProfile{
@@ -197,6 +219,10 @@ func (m MediaManager) UpdateQualityProfile(ctx context.Context, id int64, reques
 	}
 	if len(request.QualityIDs) == 0 {
 		return storage.QualityProfile{}, fmt.Errorf("at least one quality must be selected")
+	}
+
+	if err := validateQualityProfileCutoff(request.CutoffQualityID, request.UpgradeAllowed, request.QualityIDs); err != nil {
+		return storage.QualityProfile{}, err
 	}
 
 	existingProfile, err := m.storage.GetQualityProfile(ctx, id)
