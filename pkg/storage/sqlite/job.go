@@ -198,7 +198,7 @@ func (s *SQLite) ListJobs(ctx context.Context, offset, limit int, where ...sqlit
 				table.Job.ID.EQ(table.JobTransition.JobID),
 			),
 		).
-		ORDER_BY(table.Job.CreatedAt.ASC())
+		ORDER_BY(table.Job.CreatedAt.DESC())
 
 	for _, w := range where {
 		stmt = stmt.WHERE(w)

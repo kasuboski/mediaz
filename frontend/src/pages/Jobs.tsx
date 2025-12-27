@@ -160,13 +160,7 @@ export default function Jobs() {
     return state === "pending" || state === "running";
   };
 
-  // Sort jobs by created date (newest first)
-  const sortedJobs = data?.jobs
-    ? [...data.jobs].sort(
-      (a, b) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    )
-    : [];
+  const jobs = data?.jobs || [];
 
   return (
     <div className="container mx-auto px-6 py-8">
@@ -311,7 +305,7 @@ export default function Jobs() {
       )}
 
       {/* Empty State */}
-      {!isLoading && !error && sortedJobs.length === 0 && (
+      {!isLoading && !error && jobs.length === 0 && (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <Clock className="h-12 w-12 text-muted-foreground mb-4" />
@@ -326,7 +320,7 @@ export default function Jobs() {
       )}
 
       {/* Jobs Table */}
-      {!isLoading && !error && sortedJobs.length > 0 && (
+      {!isLoading && !error && jobs.length > 0 && (
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>History</CardTitle>
@@ -354,7 +348,7 @@ export default function Jobs() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {sortedJobs.map((job) => (
+                  {jobs.map((job) => (
                     <TableRow key={job.id}>
                       <TableCell className="font-medium">
                         {formatJobType(job.type)}
