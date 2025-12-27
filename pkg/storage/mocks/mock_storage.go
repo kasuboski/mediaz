@@ -42,6 +42,26 @@ func (m *MockStorage) EXPECT() *MockStorageMockRecorder {
 	return m.recorder
 }
 
+// CountJobs mocks base method.
+func (m *MockStorage) CountJobs(ctx context.Context, where ...sqlite.BoolExpression) (int, error) {
+	m.ctrl.T.Helper()
+	varargs := []any{ctx}
+	for _, a := range where {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "CountJobs", varargs...)
+	ret0, _ := ret[0].(int)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CountJobs indicates an expected call of CountJobs.
+func (mr *MockStorageMockRecorder) CountJobs(ctx any, where ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{ctx}, where...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CountJobs", reflect.TypeOf((*MockStorage)(nil).CountJobs), varargs...)
+}
+
 // CreateDownloadClient mocks base method.
 func (m *MockStorage) CreateDownloadClient(ctx context.Context, client model.DownloadClient) (int64, error) {
 	m.ctrl.T.Helper()
@@ -997,9 +1017,9 @@ func (mr *MockStorageMockRecorder) ListIndexers(ctx any) *gomock.Call {
 }
 
 // ListJobs mocks base method.
-func (m *MockStorage) ListJobs(ctx context.Context, where ...sqlite.BoolExpression) ([]*storage.Job, error) {
+func (m *MockStorage) ListJobs(ctx context.Context, offset, limit int, where ...sqlite.BoolExpression) ([]*storage.Job, error) {
 	m.ctrl.T.Helper()
-	varargs := []any{ctx}
+	varargs := []any{ctx, offset, limit}
 	for _, a := range where {
 		varargs = append(varargs, a)
 	}
@@ -1010,9 +1030,9 @@ func (m *MockStorage) ListJobs(ctx context.Context, where ...sqlite.BoolExpressi
 }
 
 // ListJobs indicates an expected call of ListJobs.
-func (mr *MockStorageMockRecorder) ListJobs(ctx any, where ...any) *gomock.Call {
+func (mr *MockStorageMockRecorder) ListJobs(ctx, offset, limit any, where ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	varargs := append([]any{ctx}, where...)
+	varargs := append([]any{ctx, offset, limit}, where...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListJobs", reflect.TypeOf((*MockStorage)(nil).ListJobs), varargs...)
 }
 
@@ -2104,6 +2124,26 @@ func (m *MockJobStorage) EXPECT() *MockJobStorageMockRecorder {
 	return m.recorder
 }
 
+// CountJobs mocks base method.
+func (m *MockJobStorage) CountJobs(ctx context.Context, where ...sqlite.BoolExpression) (int, error) {
+	m.ctrl.T.Helper()
+	varargs := []any{ctx}
+	for _, a := range where {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "CountJobs", varargs...)
+	ret0, _ := ret[0].(int)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CountJobs indicates an expected call of CountJobs.
+func (mr *MockJobStorageMockRecorder) CountJobs(ctx any, where ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{ctx}, where...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CountJobs", reflect.TypeOf((*MockJobStorage)(nil).CountJobs), varargs...)
+}
+
 // CreateJob mocks base method.
 func (m *MockJobStorage) CreateJob(ctx context.Context, job storage.Job, initialState storage.JobState) (int64, error) {
 	m.ctrl.T.Helper()
@@ -2149,9 +2189,9 @@ func (mr *MockJobStorageMockRecorder) GetJob(ctx, id any) *gomock.Call {
 }
 
 // ListJobs mocks base method.
-func (m *MockJobStorage) ListJobs(ctx context.Context, where ...sqlite.BoolExpression) ([]*storage.Job, error) {
+func (m *MockJobStorage) ListJobs(ctx context.Context, offset, limit int, where ...sqlite.BoolExpression) ([]*storage.Job, error) {
 	m.ctrl.T.Helper()
-	varargs := []any{ctx}
+	varargs := []any{ctx, offset, limit}
 	for _, a := range where {
 		varargs = append(varargs, a)
 	}
@@ -2162,9 +2202,9 @@ func (m *MockJobStorage) ListJobs(ctx context.Context, where ...sqlite.BoolExpre
 }
 
 // ListJobs indicates an expected call of ListJobs.
-func (mr *MockJobStorageMockRecorder) ListJobs(ctx any, where ...any) *gomock.Call {
+func (mr *MockJobStorageMockRecorder) ListJobs(ctx, offset, limit any, where ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	varargs := append([]any{ctx}, where...)
+	varargs := append([]any{ctx, offset, limit}, where...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListJobs", reflect.TypeOf((*MockJobStorage)(nil).ListJobs), varargs...)
 }
 

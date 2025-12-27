@@ -560,7 +560,8 @@ func TestServer_ListJobs(t *testing.T) {
 			},
 		}
 
-		store.EXPECT().ListJobs(gomock.Any(), gomock.Any()).Return(jobs, nil)
+		store.EXPECT().CountJobs(gomock.Any(), gomock.Any()).Return(len(jobs), nil)
+		store.EXPECT().ListJobs(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(jobs, nil)
 
 		mgr := manager.New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
 
@@ -612,7 +613,8 @@ func TestServer_ListJobs(t *testing.T) {
 		store := storeMocks.NewMockStorage(ctrl)
 		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
 
-		store.EXPECT().ListJobs(gomock.Any(), gomock.Any()).Return([]*storage.Job{}, nil)
+		store.EXPECT().CountJobs(gomock.Any(), gomock.Any()).Return(0, nil)
+		store.EXPECT().ListJobs(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return([]*storage.Job{}, nil)
 
 		mgr := manager.New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
 
@@ -647,7 +649,7 @@ func TestServer_ListJobs(t *testing.T) {
 		store := storeMocks.NewMockStorage(ctrl)
 		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
 
-		store.EXPECT().ListJobs(gomock.Any(), gomock.Any()).Return(nil, errors.New("storage error"))
+		store.EXPECT().CountJobs(gomock.Any(), gomock.Any()).Return(0, errors.New("storage error"))
 
 		mgr := manager.New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
 
@@ -949,7 +951,7 @@ func TestServer_CreateJob(t *testing.T) {
 		}
 
 		store.EXPECT().CreateJob(gomock.Any(), gomock.Any(), storage.JobStatePending).Return(int64(0), storage.ErrJobAlreadyPending)
-		store.EXPECT().ListJobs(gomock.Any(), gomock.Any()).Return([]*storage.Job{existingJob}, nil)
+		store.EXPECT().ListJobs(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return([]*storage.Job{existingJob}, nil)
 
 		mgr := manager.New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
 

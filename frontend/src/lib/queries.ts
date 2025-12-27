@@ -18,6 +18,7 @@ import {
   type IndexerRequest,
   type AddMovieRequest,
   type AddSeriesRequest,
+  type PaginationParams,
 } from './api';
 
 /**
@@ -137,12 +138,11 @@ export function useSearchTV(query: string) {
 /**
  * Hook to fetch jobs list with auto-refresh for active jobs
  */
-export function useJobs() {
+export function useJobs(params?: PaginationParams) {
   return useQuery({
-    queryKey: queryKeys.jobs.list(),
-    queryFn: jobsApi.listJobs,
+    queryKey: [...queryKeys.jobs.list(), params?.page ?? 1, params?.pageSize ?? 0],
+    queryFn: () => jobsApi.listJobs(params),
     refetchInterval: (data) => {
-      // Poll every 3 seconds if there are active jobs
       if (!data?.jobs || !Array.isArray(data.jobs)) {
         return false;
       }
@@ -151,7 +151,7 @@ export function useJobs() {
       );
       return hasActiveJobs ? 3000 : false;
     },
-    staleTime: 1000, // Very short stale time since jobs change rapidly
+    staleTime: 1000,
     gcTime: 5 * 60 * 1000,
   });
 }

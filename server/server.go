@@ -862,10 +862,18 @@ func (s Server) GetConfig() http.HandlerFunc {
 	}
 }
 
-// ListJobs lists jobs
+// ListJobs lists jobs with optional pagination
 func (s Server) ListJobs() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		jobs, err := s.manager.ListJobs(r.Context(), nil, nil)
+		params, err := ParsePaginationParams(r)
+		if err != nil {
+			writeResponse(w, http.StatusBadRequest, GenericResponse{
+				Error: err,
+			})
+			return
+		}
+
+		jobs, err := s.manager.ListJobs(r.Context(), nil, nil, params)
 		if err != nil {
 			writeResponse(w, http.StatusInternalServerError, GenericResponse{
 				Error: err,

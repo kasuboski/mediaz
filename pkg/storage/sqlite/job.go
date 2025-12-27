@@ -156,8 +156,35 @@ func (s *SQLite) GetJob(ctx context.Context, id int64) (*storage.Job, error) {
 	return job, nil
 }
 
-// ListJobs lists all jobs with optional where expressions
-func (s *SQLite) ListJobs(ctx context.Context, where ...sqlite.BoolExpression) ([]*storage.Job, error) {
+// CountJobs returns the total count of jobs matching the where conditions
+func (s *SQLite) CountJobs(ctx context.Context, where ...sqlite.BoolExpression) (int, error) {
+	stmt := table.Job.
+		SELECT(sqlite.COUNT(table.Job.ID).AS("count")).
+		FROM(
+			table.Job.INNER_JOIN(
+				table.JobTransition,
+				table.Job.ID.EQ(table.JobTransition.JobID),
+			),
+		)
+
+	for _, w := range where {
+		stmt = stmt.WHERE(w)
+	}
+
+	var result struct {
+		Count int64
+	}
+	err := stmt.QueryContext(ctx, s.db, &result)
+	if err != nil {
+		return 0, fmt.Errorf("failed to count jobs: %w", err)
+	}
+
+	return int(result.Count), nil
+}
+
+// ListJobs lists all jobs with optional pagination and where expressions
+// If limit is 0, returns all jobs without pagination
+func (s *SQLite) ListJobs(ctx context.Context, offset, limit int, where ...sqlite.BoolExpression) ([]*storage.Job, error) {
 	stmt := table.Job.
 		SELECT(
 			table.Job.AllColumns,
@@ -171,10 +198,14 @@ func (s *SQLite) ListJobs(ctx context.Context, where ...sqlite.BoolExpression) (
 				table.Job.ID.EQ(table.JobTransition.JobID),
 			),
 		).
-		ORDER_BY(table.Job.CreatedAt.ASC())
+		ORDER_BY(table.Job.CreatedAt.DESC())
 
 	for _, w := range where {
 		stmt = stmt.WHERE(w)
+	}
+
+	if limit > 0 {
+		stmt = stmt.LIMIT(int64(limit)).OFFSET(int64(offset))
 	}
 
 	jobs := make([]*storage.Job, 0)

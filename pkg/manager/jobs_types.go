@@ -3,6 +3,7 @@ package manager
 import (
 	"time"
 
+	"github.com/kasuboski/mediaz/pkg/pagination"
 	"github.com/kasuboski/mediaz/pkg/storage"
 )
 
@@ -23,8 +24,9 @@ type JobResponse struct {
 
 // JobListResponse represents a list of jobs in API responses
 type JobListResponse struct {
-	Jobs  []JobResponse `json:"jobs"`
-	Count int           `json:"count"`
+	Jobs       []JobResponse      `json:"jobs"`
+	Count      int                `json:"count"`
+	Pagination *pagination.Meta `json:"pagination,omitempty"`
 }
 
 // toJobResponse converts a storage.Job to a JobResponse
