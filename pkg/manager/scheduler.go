@@ -128,7 +128,7 @@ func (s *Scheduler) listPendingJobs(ctx context.Context) ([]*storage.Job, error)
 		table.JobTransition.ToState.EQ(sqlite.String(string(storage.JobStatePending))),
 		table.JobTransition.MostRecent.EQ(sqlite.Bool(true)),
 	)
-	return s.storage.ListJobs(ctx, where)
+	return s.storage.ListJobs(ctx, 0, 0, where)
 }
 
 func (s *Scheduler) listPendingJobsByType(ctx context.Context, jobType JobType) ([]*storage.Job, error) {
@@ -137,7 +137,7 @@ func (s *Scheduler) listPendingJobsByType(ctx context.Context, jobType JobType) 
 		table.JobTransition.ToState.EQ(sqlite.String(string(storage.JobStatePending))),
 		table.JobTransition.MostRecent.EQ(sqlite.Bool(true)),
 	)
-	return s.storage.ListJobs(ctx, where)
+	return s.storage.ListJobs(ctx, 0, 0, where)
 }
 
 func (s *Scheduler) processPendingJobs(ctx context.Context) {
