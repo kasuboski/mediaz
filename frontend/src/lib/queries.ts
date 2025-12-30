@@ -154,7 +154,8 @@ export function useJobs(params?: PaginationParams) {
   return useQuery({
     queryKey: [...queryKeys.jobs.list(), params?.page ?? 1, params?.pageSize ?? 0],
     queryFn: () => jobsApi.listJobs(params),
-    refetchInterval: (data) => {
+    refetchInterval: (query) => {
+      const data = query.state.data;
       if (!data?.jobs || !Array.isArray(data.jobs)) {
         return false;
       }
