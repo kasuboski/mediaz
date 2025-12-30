@@ -21,6 +21,9 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
+import { usePagination } from "@/hooks/use-pagination";
+import { PageSizeSelector } from "@/components/ui/page-size-selector";
+import { PaginationControls } from "@/components/ui/pagination-controls";
 
 /**
  * Get badge variant and icon for job state
@@ -113,7 +116,17 @@ function JobStateBadge({ state }: { state: JobState }) {
  * Jobs page component for managing background jobs
  */
 export default function Jobs() {
-  const { data, isLoading, error, refetch } = useJobs();
+  const pagination = usePagination({
+    defaultPageSize: 10,
+    defaultPage: 1,
+    storageKey: 'jobs-pagination',
+  });
+
+  const { data, isLoading, error, refetch } = useJobs(
+    pagination.pageSize > 0
+      ? { page: pagination.page, pageSize: pagination.pageSize }
+      : undefined
+  );
   const { data: config } = useConfig();
   const triggerJob = useTriggerJob();
   const cancelJob = useCancelJob();
@@ -147,13 +160,7 @@ export default function Jobs() {
     return state === "pending" || state === "running";
   };
 
-  // Sort jobs by created date (newest first)
-  const sortedJobs = data?.jobs
-    ? [...data.jobs].sort(
-      (a, b) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    )
-    : [];
+  const jobs = data?.jobs || [];
 
   return (
     <div className="container mx-auto px-6 py-8">
@@ -298,7 +305,7 @@ export default function Jobs() {
       )}
 
       {/* Empty State */}
-      {!isLoading && !error && sortedJobs.length === 0 && (
+      {!isLoading && !error && jobs.length === 0 && (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <Clock className="h-12 w-12 text-muted-foreground mb-4" />
@@ -313,12 +320,22 @@ export default function Jobs() {
       )}
 
       {/* Jobs Table */}
-      {!isLoading && !error && sortedJobs.length > 0 && (
+      {!isLoading && !error && jobs.length > 0 && (
         <Card>
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>History</CardTitle>
+            <PageSizeSelector
+              value={pagination.pageSize}
+              onChange={pagination.setPageSize}
+              options={[10, 25, 50, 100]}
+            />
           </CardHeader>
           <CardContent>
+            {data?.pagination && (
+              <div className="mb-4 text-sm text-muted-foreground">
+                Showing {((data.pagination.page - 1) * data.pagination.pageSize) + 1}-{Math.min(data.pagination.page * data.pagination.pageSize, data.pagination.totalItems)} of {data.pagination.totalItems} jobs
+              </div>
+            )}
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
@@ -331,7 +348,7 @@ export default function Jobs() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {sortedJobs.map((job) => (
+                  {jobs.map((job) => (
                     <TableRow key={job.id}>
                       <TableCell className="font-medium">
                         {formatJobType(job.type)}
@@ -375,6 +392,16 @@ export default function Jobs() {
                 </TableBody>
               </Table>
             </div>
+
+            {data?.pagination && data.pagination.totalPages > 1 && (
+              <div className="mt-4 flex justify-center">
+                <PaginationControls
+                  currentPage={data.pagination.page}
+                  totalPages={data.pagination.totalPages}
+                  onPageChange={pagination.setPage}
+                />
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

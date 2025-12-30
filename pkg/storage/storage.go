@@ -162,7 +162,8 @@ func (j Job) Machine() *machine.StateMachine[JobState] {
 type JobStorage interface {
 	CreateJob(ctx context.Context, job Job, initialState JobState) (int64, error)
 	GetJob(ctx context.Context, id int64) (*Job, error)
-	ListJobs(ctx context.Context, where ...sqlite.BoolExpression) ([]*Job, error)
+	CountJobs(ctx context.Context, where ...sqlite.BoolExpression) (int, error)
+	ListJobs(ctx context.Context, offset, limit int, where ...sqlite.BoolExpression) ([]*Job, error)
 	UpdateJobState(ctx context.Context, id int64, state JobState, errorMsg *string) error
 	DeleteJob(ctx context.Context, id int64) error
 }

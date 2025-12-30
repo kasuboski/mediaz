@@ -606,17 +606,44 @@ export interface Job {
 /**
  * JobListResponse interface matching the backend
  */
+export interface PaginationParams {
+  page?: number;
+  pageSize?: number;
+}
+
+export interface PaginationMeta {
+  page: number;
+  pageSize: number;
+  totalItems: number;
+  totalPages: number;
+}
+
 export interface JobListResponse {
   jobs: Job[];
   count: number;
+  pagination?: PaginationMeta;
 }
 
 /**
  * Jobs API for managing background jobs
  */
 export const jobsApi = {
-  async listJobs(): Promise<JobListResponse> {
-    return apiRequest<JobListResponse>('/jobs');
+  async listJobs(params?: PaginationParams): Promise<JobListResponse> {
+    const queryParams = new URLSearchParams();
+
+    if (params?.page !== undefined && params.page > 0) {
+      queryParams.set('page', params.page.toString());
+    }
+
+    if (params?.pageSize !== undefined && params.pageSize >= 0) {
+      queryParams.set('pageSize', params.pageSize.toString());
+    }
+
+    const endpoint = queryParams.toString()
+      ? `/jobs?${queryParams.toString()}`
+      : '/jobs';
+
+    return apiRequest<JobListResponse>(endpoint);
   },
 
   async getJob(id: number): Promise<Job> {

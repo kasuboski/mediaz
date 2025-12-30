@@ -133,7 +133,7 @@ func TestSQLite_ListJobs(t *testing.T) {
 		id, err := store.CreateJob(ctx, job, storage.JobStatePending)
 		require.NoError(t, err)
 
-		got, err := store.ListJobs(ctx)
+		got, err := store.ListJobs(ctx, 0, 0)
 		assert.NoError(t, err)
 		require.Len(t, got, 1)
 
@@ -148,7 +148,7 @@ func TestSQLite_ListJobs(t *testing.T) {
 		ctx := context.Background()
 		store := initTestDB(t)
 
-		got, err := store.ListJobs(ctx)
+		got, err := store.ListJobs(ctx, 0, 0)
 		assert.NoError(t, err)
 
 		want := []*storage.Job{}

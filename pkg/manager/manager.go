@@ -17,6 +17,7 @@ import (
 	"github.com/kasuboski/mediaz/pkg/download"
 	"github.com/kasuboski/mediaz/pkg/library"
 	"github.com/kasuboski/mediaz/pkg/logger"
+	"github.com/kasuboski/mediaz/pkg/pagination"
 	"github.com/kasuboski/mediaz/pkg/prowlarr"
 	"github.com/kasuboski/mediaz/pkg/storage"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
@@ -1291,7 +1292,7 @@ func (m MediaManager) GetJob(ctx context.Context, id int64) (JobResponse, error)
 	return toJobResponse(job), nil
 }
 
-func (m MediaManager) ListJobs(ctx context.Context, jobType *string, state *string) (JobListResponse, error) {
+func (m MediaManager) ListJobs(ctx context.Context, jobType *string, state *string, params pagination.Params) (JobListResponse, error) {
 	var conditions []sqlite.BoolExpression
 
 	if jobType != nil {
@@ -1315,7 +1316,14 @@ func (m MediaManager) ListJobs(ctx context.Context, jobType *string, state *stri
 
 	where := sqlite.AND(conditions...)
 
-	jobs, err := m.storage.ListJobs(ctx, where)
+	totalCount, err := m.storage.CountJobs(ctx, where)
+	if err != nil {
+		return JobListResponse{}, err
+	}
+
+	offset, limit := params.CalculateOffsetLimit()
+
+	jobs, err := m.storage.ListJobs(ctx, offset, limit, where)
 	if err != nil {
 		return JobListResponse{}, err
 	}
@@ -1325,9 +1333,18 @@ func (m MediaManager) ListJobs(ctx context.Context, jobType *string, state *stri
 		responses[i] = toJobResponse(job)
 	}
 
+	if params.PageSize == 0 {
+		return JobListResponse{
+			Jobs:  responses,
+			Count: totalCount,
+		}, nil
+	}
+
+	meta := params.BuildMeta(totalCount)
 	return JobListResponse{
-		Jobs:  responses,
-		Count: len(responses),
+		Jobs:       responses,
+		Count:      totalCount,
+		Pagination: &meta,
 	}, nil
 }
 

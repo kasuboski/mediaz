@@ -21,6 +21,7 @@ import (
 	mio "github.com/kasuboski/mediaz/pkg/io"
 	"github.com/kasuboski/mediaz/pkg/library"
 	mockLibrary "github.com/kasuboski/mediaz/pkg/library/mocks"
+	"github.com/kasuboski/mediaz/pkg/pagination"
 	"github.com/kasuboski/mediaz/pkg/prowlarr"
 	prowlMock "github.com/kasuboski/mediaz/pkg/prowlarr/mocks"
 	"github.com/kasuboski/mediaz/pkg/storage"
@@ -1615,7 +1616,7 @@ func TestMediaManager_CreateJob(t *testing.T) {
 		assert.Equal(t, job1.ID, job2.ID)
 		assert.Equal(t, string(MovieReconcile), job2.Type)
 
-		listResult, err := manager.ListJobs(ctx, nil, nil)
+		listResult, err := manager.ListJobs(ctx, nil, nil, pagination.Params{Page: 1, PageSize: 0})
 		require.NoError(t, err)
 		assert.Equal(t, 1, listResult.Count)
 		assert.Equal(t, job1.ID, listResult.Jobs[0].ID)
@@ -1643,7 +1644,7 @@ func TestMediaManager_CreateJob(t *testing.T) {
 		assert.Equal(t, string(SeriesIndex), seriesJob.Type)
 		assert.NotEqual(t, movieJob.ID, seriesJob.ID)
 
-		listResult, err := manager.ListJobs(ctx, nil, nil)
+		listResult, err := manager.ListJobs(ctx, nil, nil, pagination.Params{Page: 1, PageSize: 0})
 		require.NoError(t, err)
 		assert.Equal(t, 2, listResult.Count)
 
@@ -1680,7 +1681,7 @@ func TestMediaManager_ListJobs(t *testing.T) {
 		_, err = manager.CreateJob(ctx, TriggerJobRequest{Type: string(SeriesIndex)})
 		require.NoError(t, err)
 
-		result, err := manager.ListJobs(ctx, nil, nil)
+		result, err := manager.ListJobs(ctx, nil, nil, pagination.Params{Page: 1, PageSize: 0})
 		require.NoError(t, err)
 		assert.Equal(t, 2, result.Count)
 		assert.Len(t, result.Jobs, 2)
@@ -1704,7 +1705,7 @@ func TestMediaManager_ListJobs(t *testing.T) {
 		require.NoError(t, err)
 
 		jobType := string(MovieIndex)
-		result, err := manager.ListJobs(ctx, &jobType, nil)
+		result, err := manager.ListJobs(ctx, &jobType, nil, pagination.Params{Page: 1, PageSize: 0})
 		require.NoError(t, err)
 		assert.Equal(t, 1, result.Count)
 		assert.Len(t, result.Jobs, 1)
@@ -1732,7 +1733,7 @@ func TestMediaManager_ListJobs(t *testing.T) {
 		require.NoError(t, err)
 
 		state := string(storage.JobStatePending)
-		result, err := manager.ListJobs(ctx, nil, &state)
+		result, err := manager.ListJobs(ctx, nil, &state, pagination.Params{Page: 1, PageSize: 0})
 		require.NoError(t, err)
 		assert.Equal(t, 1, result.Count)
 		assert.Len(t, result.Jobs, 1)
@@ -1763,7 +1764,7 @@ func TestMediaManager_ListJobs(t *testing.T) {
 
 		jobType := string(MovieIndex)
 		state := string(storage.JobStateDone)
-		result, err := manager.ListJobs(ctx, &jobType, &state)
+		result, err := manager.ListJobs(ctx, &jobType, &state, pagination.Params{Page: 1, PageSize: 0})
 		require.NoError(t, err)
 		assert.Equal(t, 1, result.Count)
 		assert.Len(t, result.Jobs, 1)
@@ -1781,7 +1782,7 @@ func TestMediaManager_ListJobs(t *testing.T) {
 			scheduler: scheduler,
 		}
 
-		result, err := manager.ListJobs(ctx, nil, nil)
+		result, err := manager.ListJobs(ctx, nil, nil, pagination.Params{Page: 1, PageSize: 0})
 		require.NoError(t, err)
 		assert.Equal(t, 0, result.Count)
 		assert.Empty(t, result.Jobs)
@@ -1798,7 +1799,7 @@ func TestMediaManager_ListJobs(t *testing.T) {
 		}
 
 		invalidType := "InvalidJobType"
-		_, err := manager.ListJobs(ctx, &invalidType, nil)
+		_, err := manager.ListJobs(ctx, &invalidType, nil, pagination.Params{Page: 1, PageSize: 0})
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "invalid job type")
 	})
@@ -1814,7 +1815,7 @@ func TestMediaManager_ListJobs(t *testing.T) {
 		}
 
 		invalidState := "InvalidState"
-		_, err := manager.ListJobs(ctx, nil, &invalidState)
+		_, err := manager.ListJobs(ctx, nil, &invalidState, pagination.Params{Page: 1, PageSize: 0})
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "invalid job state")
 	})
