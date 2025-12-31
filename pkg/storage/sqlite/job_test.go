@@ -12,7 +12,7 @@ import (
 )
 
 func initTestDB(t *testing.T) storage.Storage {
-	store, err := sqlite.New(":memory:")
+	store, err := sqlite.New(t.Context(), ":memory:")
 	require.NoError(t, err)
 
 	schemas, err := storage.ReadSchemaFiles("./schema/schema.sql")

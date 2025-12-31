@@ -28,7 +28,7 @@ const (
 )
 
 // New creates a new sqlite database given a path to the database file.
-func New(filePath string) (storage.Storage, error) {
+func New(ctx context.Context, filePath string) (storage.Storage, error) {
 	db, err := sql.Open("sqlite3", filePath)
 	if err != nil {
 		return nil, err
@@ -53,6 +53,12 @@ func New(filePath string) (storage.Storage, error) {
 		db: db,
 		mu: sync.Mutex{},
 	}, nil
+}
+
+// RunMigrations explicitly runs database migrations.
+// This should be called after New() when starting the server.
+func (s *SQLite) RunMigrations(ctx context.Context) error {
+	return runMigrations(s.db)
 }
 
 // Init applies the provided schema file contents to the database
@@ -608,7 +614,19 @@ func (s *SQLite) ListQualityDefinitions(ctx context.Context) ([]*model.QualityDe
 	return definitions, err
 }
 
-// DeleteQualityDefinition deletes a quality
+// UpdateQualityDefinition updates a quality definition
+func (s *SQLite) UpdateQualityDefinition(ctx context.Context, id int64, definition model.QualityDefinition) error {
+	stmt := table.QualityDefinition.UPDATE(
+		table.QualityDefinition.Name,
+		table.QualityDefinition.PreferredSize,
+		table.QualityDefinition.MinSize,
+		table.QualityDefinition.MaxSize,
+		table.QualityDefinition.MediaType,
+	).MODEL(definition).WHERE(table.QualityDefinition.ID.EQ(sqlite.Int64(id)))
+	_, err := stmt.ExecContext(ctx, s.db)
+	return err
+}
+
 func (s *SQLite) DeleteQualityDefinition(ctx context.Context, id int64) error {
 	stmt := table.QualityDefinition.DELETE().WHERE(table.QualityDefinition.ID.EQ(sqlite.Int64(id))).RETURNING(table.QualityDefinition.AllColumns)
 	_, err := s.handleDelete(ctx, stmt)
@@ -630,6 +648,15 @@ func (s *SQLite) CreateQualityProfileItem(ctx context.Context, item model.Qualit
 	return inserted, nil
 }
 
+func (s *SQLite) CreateQualityProfileItems(ctx context.Context, items []model.QualityProfileItem) error {
+	if len(items) == 0 {
+		return nil
+	}
+	stmt := table.QualityProfileItem.INSERT(table.QualityProfileItem.AllColumns.Except(table.QualityProfileItem.ID)).MODELS(items)
+	_, err := stmt.ExecContext(ctx, s.db)
+	return err
+}
+
 // GetQualityProfileItem gets a quality item that belongs to a profile
 func (s *SQLite) GetQualityProfileItem(ctx context.Context, id int64) (model.QualityProfileItem, error) {
 	stmt := table.QualityProfileItem.SELECT(table.QualityProfileItem.AllColumns).FROM(table.QualityProfileItem).WHERE(table.QualityProfileItem.ID.EQ(sqlite.Int64(id)))
@@ -649,6 +676,13 @@ func (s *SQLite) ListQualityProfileItems(ctx context.Context) ([]*model.QualityP
 // DeleteQualityDefinition deletes a quality
 func (s *SQLite) DeleteQualityProfileItem(ctx context.Context, id int64) error {
 	stmt := table.QualityProfileItem.DELETE().WHERE(table.QualityProfileItem.ID.EQ(sqlite.Int64(id))).RETURNING(table.QualityProfileItem.AllColumns)
+	_, err := s.handleDelete(ctx, stmt)
+	return err
+}
+
+// DeleteQualityProfileItemsByProfileID deletes all items for a given profile
+func (s *SQLite) DeleteQualityProfileItemsByProfileID(ctx context.Context, profileID int64) error {
+	stmt := table.QualityProfileItem.DELETE().WHERE(table.QualityProfileItem.ProfileID.EQ(sqlite.Int64(profileID)))
 	_, err := s.handleDelete(ctx, stmt)
 	return err
 }
@@ -711,6 +745,17 @@ func (s *SQLite) ListQualityProfiles(ctx context.Context, where ...sqlite.BoolEx
 	result := make([]*storage.QualityProfile, 0)
 	err := stmt.QueryContext(ctx, s.db, &result)
 	return result, err
+}
+
+// UpdateQualityProfile updates a quality profile
+func (s *SQLite) UpdateQualityProfile(ctx context.Context, id int64, profile model.QualityProfile) error {
+	stmt := table.QualityProfile.UPDATE(
+		table.QualityProfile.Name,
+		table.QualityProfile.CutoffQualityID,
+		table.QualityProfile.UpgradeAllowed,
+	).MODEL(profile).WHERE(table.QualityProfile.ID.EQ(sqlite.Int64(id)))
+	_, err := stmt.ExecContext(ctx, s.db)
+	return err
 }
 
 // DeleteQualityProfile delete a quality profile

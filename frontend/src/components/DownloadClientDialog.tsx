@@ -132,7 +132,7 @@ export function DownloadClientDialog({ open, onOpenChange, client }: DownloadCli
         <div className="grid gap-4 py-4">
           <div className="grid gap-2">
             <Label htmlFor="implementation">Implementation</Label>
-            <Select value={implementation} onValueChange={setImplementation} disabled={!!client}>
+            <Select value={implementation} defaultValue="transmission" onValueChange={setImplementation} disabled={!!client}>
               <SelectTrigger id="implementation">
                 <SelectValue />
               </SelectTrigger>
@@ -145,7 +145,7 @@ export function DownloadClientDialog({ open, onOpenChange, client }: DownloadCli
 
           <div className="grid gap-2">
             <Label htmlFor="scheme">Protocol</Label>
-            <Select value={scheme} onValueChange={setScheme}>
+            <Select value={scheme} defaultValue="http" onValueChange={setScheme}>
               <SelectTrigger id="scheme">
                 <SelectValue />
               </SelectTrigger>
