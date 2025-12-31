@@ -130,6 +130,8 @@ func TestFindEpisodes_FlatStructure(t *testing.T) {
 		"Fargo/Fargo - S01E01 - The Crocodile's Dilemma WEBDL-1080p.mkv": {},
 		"Fargo/Fargo - S01E02 - The Rooster Prince WEBDL-1080p.mkv":      {},
 		"Fargo/Fargo - S01E03 - A Muddy Road WEBDL-1080p.mkv":            {},
+		"Fargo/Extras/Fargo - S01E04 - Deleted Scenes.mkv":               {},
+		"Fargo/Samples/Fargo - S01E05 - Sample.mkv":                      {},
 	}
 
 	want := []EpisodeFile{

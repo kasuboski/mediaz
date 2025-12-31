@@ -1399,7 +1399,7 @@ func TestMediaManager_ReconcileContinuingSeries(t *testing.T) {
 					Episodes: []tmdb.Episode{
 						{ID: 1001001, EpisodeNumber: 1, Name: "Episode 1", Overview: "First episode", Runtime: 45, AirDate: "2024-01-01"},
 						{ID: 1001002, EpisodeNumber: 2, Name: "Episode 2", Overview: "Second episode", Runtime: 45, AirDate: "2024-01-02"},
-						{ID: 1001003, EpisodeNumber: 3, Name: "Episode 3", Overview: "Third episode", Runtime: 45, AirDate: "2025-12-31"},
+						{ID: 1001003, EpisodeNumber: 3, Name: "Episode 3", Overview: "Third episode", Runtime: 45, AirDate: "2099-12-31"},
 					},
 				},
 			},
