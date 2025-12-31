@@ -245,8 +245,8 @@ func (l *MediaLibrary) FindEpisodes(ctx context.Context) ([]EpisodeFile, error) 
 			if strings.Contains(d.Name(), "Season ") {
 				return nil
 			}
-			if nesting > 2 || (!match && d.Name() != ".") {
-				log.Debugw("skipping", "dir", d.Name())
+			if nesting >= 2 {
+				log.Debugw("skipping", "dir", d.Name(), "reason", "exceeds max nesting level")
 				return fs.SkipDir
 			}
 			return nil

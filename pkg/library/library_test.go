@@ -124,6 +124,171 @@ func TestFindEpisodes(t *testing.T) {
 	}
 }
 
+func TestFindEpisodes_FlatStructure(t *testing.T) {
+	ctx := context.Background()
+	fs := fstest.MapFS{
+		"Fargo/Fargo - S01E01 - The Crocodile's Dilemma WEBDL-1080p.mkv": {},
+		"Fargo/Fargo - S01E02 - The Rooster Prince WEBDL-1080p.mkv":      {},
+		"Fargo/Fargo - S01E03 - A Muddy Road WEBDL-1080p.mkv":            {},
+	}
+
+	want := []EpisodeFile{
+		{
+			Name:          "Fargo - S01E01 - The Crocodile's Dilemma WEBDL-1080p.mkv",
+			RelativePath:  "Fargo/Fargo - S01E01 - The Crocodile's Dilemma WEBDL-1080p.mkv",
+			SeriesName:    "Fargo",
+			SeasonNumber:  1,
+			EpisodeNumber: 1,
+		},
+		{
+			Name:          "Fargo - S01E02 - The Rooster Prince WEBDL-1080p.mkv",
+			RelativePath:  "Fargo/Fargo - S01E02 - The Rooster Prince WEBDL-1080p.mkv",
+			SeriesName:    "Fargo",
+			SeasonNumber:  1,
+			EpisodeNumber: 2,
+		},
+		{
+			Name:          "Fargo - S01E03 - A Muddy Road WEBDL-1080p.mkv",
+			RelativePath:  "Fargo/Fargo - S01E03 - A Muddy Road WEBDL-1080p.mkv",
+			SeriesName:    "Fargo",
+			SeasonNumber:  1,
+			EpisodeNumber: 3,
+		},
+	}
+
+	fileSystem := FileSystem{
+		FS: fs,
+	}
+
+	l := New(FileSystem{}, fileSystem, &io.MediaFileSystem{})
+	got, err := l.FindEpisodes(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, want, got)
+}
+
+func TestFindEpisodes_SeasonSubdirectory(t *testing.T) {
+	ctx := context.Background()
+	fs := fstest.MapFS{
+		"Arcane/Season 1/Arcane (2021) - S01E01 - Welcome to the Playground.mkv": {},
+		"Arcane/Season 1/Arcane (2021) - S01E02 - Some Mysteries.mkv":            {},
+	}
+
+	want := []EpisodeFile{
+		{
+			Name:          "Arcane (2021) - S01E01 - Welcome to the Playground.mkv",
+			RelativePath:  "Arcane/Season 1/Arcane (2021) - S01E01 - Welcome to the Playground.mkv",
+			SeriesName:    "Arcane",
+			SeasonNumber:  1,
+			EpisodeNumber: 1,
+		},
+		{
+			Name:          "Arcane (2021) - S01E02 - Some Mysteries.mkv",
+			RelativePath:  "Arcane/Season 1/Arcane (2021) - S01E02 - Some Mysteries.mkv",
+			SeriesName:    "Arcane",
+			SeasonNumber:  1,
+			EpisodeNumber: 2,
+		},
+	}
+
+	fileSystem := FileSystem{
+		FS: fs,
+	}
+
+	l := New(FileSystem{}, fileSystem, &io.MediaFileSystem{})
+	got, err := l.FindEpisodes(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, want, got)
+}
+
+func TestFindEpisodes_MixedStructures(t *testing.T) {
+	ctx := context.Background()
+	fs := fstest.MapFS{
+		"Fargo/Fargo - S01E01.mkv":            {},
+		"Fargo/Fargo - S01E02.mkv":            {},
+		"Arcane/Season 1/Arcane - S01E01.mkv": {},
+		"Arcane/Season 1/Arcane - S01E02.mkv": {},
+	}
+
+	want := []EpisodeFile{
+		{
+			Name:          "Arcane - S01E01.mkv",
+			RelativePath:  "Arcane/Season 1/Arcane - S01E01.mkv",
+			SeriesName:    "Arcane",
+			SeasonNumber:  1,
+			EpisodeNumber: 1,
+		},
+		{
+			Name:          "Arcane - S01E02.mkv",
+			RelativePath:  "Arcane/Season 1/Arcane - S01E02.mkv",
+			SeriesName:    "Arcane",
+			SeasonNumber:  1,
+			EpisodeNumber: 2,
+		},
+		{
+			Name:          "Fargo - S01E01.mkv",
+			RelativePath:  "Fargo/Fargo - S01E01.mkv",
+			SeriesName:    "Fargo",
+			SeasonNumber:  1,
+			EpisodeNumber: 1,
+		},
+		{
+			Name:          "Fargo - S01E02.mkv",
+			RelativePath:  "Fargo/Fargo - S01E02.mkv",
+			SeriesName:    "Fargo",
+			SeasonNumber:  1,
+			EpisodeNumber: 2,
+		},
+	}
+
+	fileSystem := FileSystem{
+		FS: fs,
+	}
+
+	l := New(FileSystem{}, fileSystem, &io.MediaFileSystem{})
+	got, err := l.FindEpisodes(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, want, got)
+}
+
+func TestFindEpisodes_SkipsTooDeepNesting(t *testing.T) {
+	ctx := context.Background()
+	fs := fstest.MapFS{
+		"Series/Season 1/Series - S01E01.mkv":       {},
+		"Series/Season 1/Extra/Series - S01E02.mkv": {},
+	}
+
+	want := []EpisodeFile{
+		{
+			Name:          "Series - S01E01.mkv",
+			RelativePath:  "Series/Season 1/Series - S01E01.mkv",
+			SeriesName:    "Series",
+			SeasonNumber:  1,
+			EpisodeNumber: 1,
+		},
+	}
+
+	fileSystem := FileSystem{
+		FS: fs,
+	}
+
+	l := New(FileSystem{}, fileSystem, &io.MediaFileSystem{})
+	got, err := l.FindEpisodes(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.Equal(t, want, got)
+}
+
 func TestMediaLibrary_AddMovie(t *testing.T) {
 	t.Run("error making directory", func(t *testing.T) {
 		ctrl := gomock.NewController(t)

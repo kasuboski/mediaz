@@ -24,8 +24,8 @@ type JobResponse struct {
 
 // JobListResponse represents a list of jobs in API responses
 type JobListResponse struct {
-	Jobs       []JobResponse      `json:"jobs"`
-	Count      int                `json:"count"`
+	Jobs       []JobResponse    `json:"jobs"`
+	Count      int              `json:"count"`
 	Pagination *pagination.Meta `json:"pagination,omitempty"`
 }
 
