@@ -35,7 +35,7 @@ import (
 func Test_Manager_reconcileMissingMovie(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
-	store, err := mediaSqlite.New(":memory:")
+	store, err := mediaSqlite.New(context.Background(), ":memory:")
 	require.NoError(t, err)
 
 	schemas, err := storage.ReadSchemaFiles("../storage/sqlite/schema/schema.sql", "../storage/sqlite/schema/defaults.sql")
@@ -328,7 +328,7 @@ func Test_Manager_reconcileDiscoveredMovie(t *testing.T) {
 func Test_Manager_reconcileUnreleasedMovie(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
-	store, err := mediaSqlite.New(":memory:")
+	store, err := mediaSqlite.New(context.Background(), ":memory:")
 	require.NoError(t, err)
 
 	schemas, err := storage.ReadSchemaFiles("../storage/sqlite/schema/schema.sql", "../storage/sqlite/schema/defaults.sql")

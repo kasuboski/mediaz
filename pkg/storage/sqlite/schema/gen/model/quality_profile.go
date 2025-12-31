@@ -10,6 +10,6 @@ package model
 type QualityProfile struct {
 	ID              int32 `sql:"primary_key"`
 	Name            string
-	CutoffQualityID int32
+	CutoffQualityID *int32
 	UpgradeAllowed  bool
 }

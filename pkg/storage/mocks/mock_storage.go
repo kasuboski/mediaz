@@ -242,6 +242,20 @@ func (mr *MockStorageMockRecorder) CreateQualityProfileItem(ctx, item any) *gomo
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateQualityProfileItem", reflect.TypeOf((*MockStorage)(nil).CreateQualityProfileItem), ctx, item)
 }
 
+// CreateQualityProfileItems mocks base method.
+func (m *MockStorage) CreateQualityProfileItems(ctx context.Context, items []model.QualityProfileItem) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateQualityProfileItems", ctx, items)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// CreateQualityProfileItems indicates an expected call of CreateQualityProfileItems.
+func (mr *MockStorageMockRecorder) CreateQualityProfileItems(ctx, items any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateQualityProfileItems", reflect.TypeOf((*MockStorage)(nil).CreateQualityProfileItems), ctx, items)
+}
+
 // CreateSeason mocks base method.
 func (m *MockStorage) CreateSeason(ctx context.Context, season storage.Season, initialState storage.SeasonState) (int64, error) {
 	m.ctrl.T.Helper()
@@ -468,6 +482,20 @@ func (m *MockStorage) DeleteQualityProfileItem(ctx context.Context, id int64) er
 func (mr *MockStorageMockRecorder) DeleteQualityProfileItem(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteQualityProfileItem", reflect.TypeOf((*MockStorage)(nil).DeleteQualityProfileItem), ctx, id)
+}
+
+// DeleteQualityProfileItemsByProfileID mocks base method.
+func (m *MockStorage) DeleteQualityProfileItemsByProfileID(ctx context.Context, profileID int64) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteQualityProfileItemsByProfileID", ctx, profileID)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteQualityProfileItemsByProfileID indicates an expected call of DeleteQualityProfileItemsByProfileID.
+func (mr *MockStorageMockRecorder) DeleteQualityProfileItemsByProfileID(ctx, profileID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteQualityProfileItemsByProfileID", reflect.TypeOf((*MockStorage)(nil).DeleteQualityProfileItemsByProfileID), ctx, profileID)
 }
 
 // DeleteSeason mocks base method.
@@ -1226,6 +1254,20 @@ func (mr *MockStorageMockRecorder) ListSeriesMetadata(ctx any, where ...any) *go
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListSeriesMetadata", reflect.TypeOf((*MockStorage)(nil).ListSeriesMetadata), varargs...)
 }
 
+// RunMigrations mocks base method.
+func (m *MockStorage) RunMigrations(ctx context.Context) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RunMigrations", ctx)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// RunMigrations indicates an expected call of RunMigrations.
+func (mr *MockStorageMockRecorder) RunMigrations(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RunMigrations", reflect.TypeOf((*MockStorage)(nil).RunMigrations), ctx)
+}
+
 // UpdateDownloadClient mocks base method.
 func (m *MockStorage) UpdateDownloadClient(ctx context.Context, id int64, client model.DownloadClient) error {
 	m.ctrl.T.Helper()
@@ -1336,6 +1378,34 @@ func (m *MockStorage) UpdateMovieState(ctx context.Context, id int64, state stor
 func (mr *MockStorageMockRecorder) UpdateMovieState(ctx, id, state, metadata any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateMovieState", reflect.TypeOf((*MockStorage)(nil).UpdateMovieState), ctx, id, state, metadata)
+}
+
+// UpdateQualityDefinition mocks base method.
+func (m *MockStorage) UpdateQualityDefinition(ctx context.Context, id int64, definition model.QualityDefinition) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateQualityDefinition", ctx, id, definition)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateQualityDefinition indicates an expected call of UpdateQualityDefinition.
+func (mr *MockStorageMockRecorder) UpdateQualityDefinition(ctx, id, definition any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateQualityDefinition", reflect.TypeOf((*MockStorage)(nil).UpdateQualityDefinition), ctx, id, definition)
+}
+
+// UpdateQualityProfile mocks base method.
+func (m *MockStorage) UpdateQualityProfile(ctx context.Context, id int64, profile model.QualityProfile) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateQualityProfile", ctx, id, profile)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateQualityProfile indicates an expected call of UpdateQualityProfile.
+func (mr *MockStorageMockRecorder) UpdateQualityProfile(ctx, id, profile any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateQualityProfile", reflect.TypeOf((*MockStorage)(nil).UpdateQualityProfile), ctx, id, profile)
 }
 
 // UpdateSeasonState mocks base method.
@@ -1529,6 +1599,20 @@ func (mr *MockQualityStorageMockRecorder) CreateQualityProfileItem(ctx, item any
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateQualityProfileItem", reflect.TypeOf((*MockQualityStorage)(nil).CreateQualityProfileItem), ctx, item)
 }
 
+// CreateQualityProfileItems mocks base method.
+func (m *MockQualityStorage) CreateQualityProfileItems(ctx context.Context, items []model.QualityProfileItem) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateQualityProfileItems", ctx, items)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// CreateQualityProfileItems indicates an expected call of CreateQualityProfileItems.
+func (mr *MockQualityStorageMockRecorder) CreateQualityProfileItems(ctx, items any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateQualityProfileItems", reflect.TypeOf((*MockQualityStorage)(nil).CreateQualityProfileItems), ctx, items)
+}
+
 // DeleteQualityDefinition mocks base method.
 func (m *MockQualityStorage) DeleteQualityDefinition(ctx context.Context, id int64) error {
 	m.ctrl.T.Helper()
@@ -1569,6 +1653,20 @@ func (m *MockQualityStorage) DeleteQualityProfileItem(ctx context.Context, id in
 func (mr *MockQualityStorageMockRecorder) DeleteQualityProfileItem(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteQualityProfileItem", reflect.TypeOf((*MockQualityStorage)(nil).DeleteQualityProfileItem), ctx, id)
+}
+
+// DeleteQualityProfileItemsByProfileID mocks base method.
+func (m *MockQualityStorage) DeleteQualityProfileItemsByProfileID(ctx context.Context, profileID int64) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteQualityProfileItemsByProfileID", ctx, profileID)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteQualityProfileItemsByProfileID indicates an expected call of DeleteQualityProfileItemsByProfileID.
+func (mr *MockQualityStorageMockRecorder) DeleteQualityProfileItemsByProfileID(ctx, profileID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteQualityProfileItemsByProfileID", reflect.TypeOf((*MockQualityStorage)(nil).DeleteQualityProfileItemsByProfileID), ctx, profileID)
 }
 
 // GetQualityDefinition mocks base method.
@@ -1664,6 +1762,34 @@ func (mr *MockQualityStorageMockRecorder) ListQualityProfiles(ctx any, where ...
 	mr.mock.ctrl.T.Helper()
 	varargs := append([]any{ctx}, where...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListQualityProfiles", reflect.TypeOf((*MockQualityStorage)(nil).ListQualityProfiles), varargs...)
+}
+
+// UpdateQualityDefinition mocks base method.
+func (m *MockQualityStorage) UpdateQualityDefinition(ctx context.Context, id int64, definition model.QualityDefinition) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateQualityDefinition", ctx, id, definition)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateQualityDefinition indicates an expected call of UpdateQualityDefinition.
+func (mr *MockQualityStorageMockRecorder) UpdateQualityDefinition(ctx, id, definition any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateQualityDefinition", reflect.TypeOf((*MockQualityStorage)(nil).UpdateQualityDefinition), ctx, id, definition)
+}
+
+// UpdateQualityProfile mocks base method.
+func (m *MockQualityStorage) UpdateQualityProfile(ctx context.Context, id int64, profile model.QualityProfile) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateQualityProfile", ctx, id, profile)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateQualityProfile indicates an expected call of UpdateQualityProfile.
+func (mr *MockQualityStorageMockRecorder) UpdateQualityProfile(ctx, id, profile any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateQualityProfile", reflect.TypeOf((*MockQualityStorage)(nil).UpdateQualityProfile), ctx, id, profile)
 }
 
 // MockMovieStorage is a mock of MovieStorage interface.

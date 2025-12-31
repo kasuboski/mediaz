@@ -51,9 +51,9 @@ VALUES
 INSERT
     OR IGNORE INTO quality_profile (id, name, cutoff_quality_id, upgrade_allowed)
 VALUES
-    (1, 'Standard Definition', 2, TRUE),
-    (2, 'High Definition', 8, TRUE),
-    (3, 'Ultra High Definition', 13, FALSE);
+    (1, 'Standard Definition', NULL, FALSE),
+    (2, 'High Definition', NULL, FALSE),
+    (3, 'Ultra High Definition', NULL, FALSE);
 
 INSERT
     OR IGNORE INTO quality_profile_item (profile_id, quality_id)
@@ -75,9 +75,9 @@ VALUES
 INSERT
     OR IGNORE INTO quality_profile (id, name, cutoff_quality_id, upgrade_allowed)
 VALUES
-    (4, 'Standard Definition', 16, TRUE),
-    (5, 'High Definition', 23, TRUE),
-    (6, 'Ultra High Definition', 27, FALSE);
+    (4, 'Standard Definition', NULL, FALSE),
+    (5, 'High Definition', NULL, FALSE),
+    (6, 'Ultra High Definition', NULL, FALSE);
 
 INSERT
     OR IGNORE INTO quality_profile_item (profile_id, quality_id)

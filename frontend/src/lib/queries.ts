@@ -12,12 +12,17 @@ import {
   downloadClientsApi,
   indexersApi,
   qualityProfilesApi,
+  qualityDefinitionsApi,
   type JobType,
   type CreateDownloadClientRequest,
   type UpdateDownloadClientRequest,
   type IndexerRequest,
   type AddMovieRequest,
   type AddSeriesRequest,
+  type CreateQualityProfileRequest,
+  type UpdateQualityProfileRequest,
+  type CreateQualityDefinitionRequest,
+  type UpdateQualityDefinitionRequest,
   type PaginationParams,
 } from './api';
 
@@ -59,7 +64,14 @@ export const queryKeys = {
   },
   qualityProfiles: {
     all: ['qualityProfiles'] as const,
-    list: () => [...queryKeys.qualityProfiles.all, 'list'] as const,
+    lists: () => [...queryKeys.qualityProfiles.all, 'list'] as const,
+    list: (type?: 'movie' | 'series') => [...queryKeys.qualityProfiles.lists(), type] as const,
+    detail: (id: number) => [...queryKeys.qualityProfiles.all, 'detail', id] as const,
+  },
+  qualityDefinitions: {
+    all: ['qualityDefinitions'] as const,
+    list: () => [...queryKeys.qualityDefinitions.all, 'list'] as const,
+    detail: (id: number) => [...queryKeys.qualityDefinitions.all, 'detail', id] as const,
   },
 } as const;
 
@@ -142,7 +154,8 @@ export function useJobs(params?: PaginationParams) {
   return useQuery({
     queryKey: [...queryKeys.jobs.list(), params?.page ?? 1, params?.pageSize ?? 0],
     queryFn: () => jobsApi.listJobs(params),
-    refetchInterval: (data) => {
+    refetchInterval: (query) => {
+      const data = query.state.data;
       if (!data?.jobs || !Array.isArray(data.jobs)) {
         return false;
       }
@@ -298,33 +311,113 @@ export function useDeleteIndexer() {
   });
 }
 
-/**
- * Hook to fetch quality profiles
- */
-export function useQualityProfiles() {
+export function useQualityProfiles(type?: 'movie' | 'series') {
   return useQuery({
-    queryKey: queryKeys.qualityProfiles.list(),
-    queryFn: qualityProfilesApi.listProfiles,
-    staleTime: 10 * 60 * 1000, // 10 minutes
+    queryKey: queryKeys.qualityProfiles.list(type),
+    queryFn: () => qualityProfilesApi.listProfiles(type),
+    staleTime: 10 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
   });
 }
 
 export function useMovieQualityProfiles() {
+  return useQualityProfiles('movie');
+}
+
+export function useSeriesQualityProfiles() {
+  return useQualityProfiles('series');
+}
+
+export function useQualityProfile(id: number) {
   return useQuery({
-    queryKey: [...queryKeys.qualityProfiles.all, 'movie'],
-    queryFn: () => qualityProfilesApi.listProfiles('movie'),
+    queryKey: queryKeys.qualityProfiles.detail(id),
+    queryFn: () => qualityProfilesApi.getProfile(id),
+    staleTime: 10 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    enabled: !!id,
+  });
+}
+
+export function useQualityDefinitions() {
+  return useQuery({
+    queryKey: queryKeys.qualityDefinitions.list(),
+    queryFn: qualityDefinitionsApi.listDefinitions,
     staleTime: 10 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
   });
 }
 
-export function useSeriesQualityProfiles() {
-  return useQuery({
-    queryKey: [...queryKeys.qualityProfiles.all, 'series'],
-    queryFn: () => qualityProfilesApi.listProfiles('series'),
-    staleTime: 10 * 60 * 1000,
-    gcTime: 30 * 60 * 1000,
+export function useCreateQualityProfile() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (request: CreateQualityProfileRequest) =>
+      qualityProfilesApi.createProfile(request),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.qualityProfiles.lists() });
+    },
+  });
+}
+
+export function useUpdateQualityProfile() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, request }: { id: number; request: UpdateQualityProfileRequest }) =>
+      qualityProfilesApi.updateProfile(id, request),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.qualityProfiles.lists() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.qualityProfiles.detail(variables.id) });
+    },
+  });
+}
+
+export function useDeleteQualityProfile() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: number) => qualityProfilesApi.deleteProfile(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.qualityProfiles.lists() });
+    },
+  });
+}
+
+export function useCreateQualityDefinition() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (request: CreateQualityDefinitionRequest) =>
+      qualityDefinitionsApi.createDefinition(request),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.qualityDefinitions.list() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.qualityProfiles.lists() });
+    },
+  });
+}
+
+export function useUpdateQualityDefinition() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, request }: { id: number; request: UpdateQualityDefinitionRequest }) =>
+      qualityDefinitionsApi.updateDefinition(id, request),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.qualityDefinitions.list() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.qualityProfiles.lists() });
+    },
+  });
+}
+
+export function useDeleteQualityDefinition() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: number) => qualityDefinitionsApi.deleteDefinition(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.qualityDefinitions.list() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.qualityProfiles.lists() });
+    },
   });
 }
 

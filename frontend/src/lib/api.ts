@@ -190,8 +190,18 @@ export interface TVDetail {
  * Quality profile request/response types
  */
 export interface QualityDefinition {
+  ID: number;
+  Name: string;
+  MediaType: string;
+  PreferredSize: number;
+  MinSize: number;
+  MaxSize: number;
+}
+
+export interface ProfileQuality {
+  id: number;
   name: string;
-  type: string; // "movie" or "episode"
+  type: string;
   preferredSize: number;
   minSize: number;
   maxSize: number;
@@ -200,9 +210,48 @@ export interface QualityDefinition {
 export interface QualityProfile {
   id: number;
   name: string;
-  cutoff_quality_id: number;
+  cutoff_quality_id: number | null;
   upgradeAllowed: boolean;
-  qualities: QualityDefinition[];
+  qualities: ProfileQuality[];
+}
+
+export interface CreateQualityProfileRequest {
+  name: string;
+  cutoffQualityId: number | null;
+  upgradeAllowed: boolean;
+  qualityIds: number[];
+}
+
+export interface UpdateQualityProfileRequest {
+  name: string;
+  cutoffQualityId: number | null;
+  upgradeAllowed: boolean;
+  qualityIds: number[];
+}
+
+export interface CreateQualityDefinitionRequest {
+  name: string;
+  type: 'movie' | 'episode';
+  preferredSize: number;
+  minSize: number;
+  maxSize: number;
+}
+
+export interface UpdateQualityDefinitionRequest {
+  name: string;
+  type: 'movie' | 'episode';
+  preferredSize: number;
+  minSize: number;
+  maxSize: number;
+}
+
+export interface PendingQualityDefinition {
+  tempId: string;
+  name: string;
+  type: 'movie' | 'episode';
+  preferredSize: number;
+  minSize: number;
+  maxSize: number;
 }
 
 /**
@@ -725,6 +774,64 @@ export const qualityProfilesApi = {
       ? `/quality/profiles?type=${mediaType}`
       : '/quality/profiles';
     return apiRequest<QualityProfile[]>(endpoint);
+  },
+
+  async getProfile(id: number): Promise<QualityProfile> {
+    return apiRequest<QualityProfile>(`/quality/profiles/${id}`);
+  },
+
+  async createProfile(request: CreateQualityProfileRequest): Promise<QualityProfile> {
+    return apiRequest<QualityProfile>('/quality/profiles', {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
+  },
+
+  async updateProfile(id: number, request: UpdateQualityProfileRequest): Promise<QualityProfile> {
+    return apiRequest<QualityProfile>(`/quality/profiles/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(request),
+    });
+  },
+
+  async deleteProfile(id: number): Promise<void> {
+    return apiRequest<void>(`/quality/profiles/${id}`, {
+      method: 'DELETE',
+    });
+  },
+};
+
+/**
+ * Quality Definitions API
+ */
+export const qualityDefinitionsApi = {
+  async listDefinitions(): Promise<QualityDefinition[]> {
+    return apiRequest<QualityDefinition[]>('/quality/definitions');
+  },
+
+  async getDefinition(id: number): Promise<QualityDefinition> {
+    return apiRequest<QualityDefinition>(`/quality/definitions/${id}`);
+  },
+
+  async createDefinition(request: CreateQualityDefinitionRequest): Promise<QualityDefinition> {
+    return apiRequest<QualityDefinition>('/quality/definitions', {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
+  },
+
+  async updateDefinition(id: number, request: UpdateQualityDefinitionRequest): Promise<QualityDefinition> {
+    return apiRequest<QualityDefinition>(`/quality/definitions/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(request),
+    });
+  },
+
+  async deleteDefinition(id: number): Promise<void> {
+    return apiRequest<void>('/quality/definitions', {
+      method: 'DELETE',
+      body: JSON.stringify({ id }),
+    });
   },
 };
 
