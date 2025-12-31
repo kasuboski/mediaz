@@ -24,7 +24,7 @@ func TestEpisodeFileFromPath(t *testing.T) {
 			path:           "Emma/S01E01 - Episode 1 Bluray-1080p.mkv",
 			expectedName:   "S01E01 - Episode 1 Bluray-1080p.mkv",
 			expectedSeries: "Emma",
-			expectedSeason: 0,
+			expectedSeason: 1,
 			desc:           "Flat structure: Series/Episode (no season directory)",
 		},
 		{
@@ -38,7 +38,7 @@ func TestEpisodeFileFromPath(t *testing.T) {
 			path:           "Fisk/S02E03 - Pancakes & Prayer WEBDL-1080p.mkv",
 			expectedName:   "S02E03 - Pancakes & Prayer WEBDL-1080p.mkv",
 			expectedSeries: "Fisk",
-			expectedSeason: 0,
+			expectedSeason: 2,
 			desc:           "Flat structure: Another real-world case",
 		},
 	}
@@ -130,6 +130,42 @@ func TestExtractEpisodeNumber(t *testing.T) {
 	}
 }
 
+func TestExtractSeasonNumber(t *testing.T) {
+	tests := []struct {
+		filename string
+		dirName  string
+		expected int
+		desc     string
+	}{
+		{"Fargo - S01E01 - The Crocodile's Dilemma WEBDL-1080p.mkv", "Fargo", 1, "Fargo S01E01 flat structure"},
+		{"Fargo - S01E02 - The Rooster Prince WEBDL-1080p.mkv", "Fargo", 1, "Fargo S01E02 flat structure"},
+		{"Show Name S02E05 Episode Title.mkv", "Show Name", 2, "S02E05 format without season directory"},
+		{"series.S03E12.title.avi", "Series", 3, "S03E12 format with dots"},
+		{"Show Name 2x05 Episode Title.avi", "Show Name", 2, "2x05 format"},
+		{"Show Name 1x01 Episode Title.avi", "Show Name", 1, "1x05 format"},
+		{"Show.Name.10x05.720p.HDTV.mkv", "Show Name", 10, "10x05 format double digit season"},
+		{"Episode Title.mkv", "Season 1", 1, "Season 1 directory"},
+		{"Episode Title.mkv", "Season 01", 1, "Season 01 directory with leading zero"},
+		{"Episode Title.mkv", "Season 10", 10, "Season 10 directory double digit"},
+		{"Episode Title.mkv", "season 2", 2, "season 2 directory lowercase"},
+		{"Episode Title.mkv", "SEASON 5", 5, "SEASON 5 directory uppercase"},
+		{"Doctor Who - s01e01.mp4", "Season 01", 1, "Season directory takes precedence over filename"},
+		{"Random File.mkv", "Random Dir", 0, "No season info in filename or directory"},
+		{"Episode.mkv", ".", 0, "Root directory no season info"},
+		{"S00E01.mkv", "Show", 0, "S00E01 should return 0 (invalid season)"},
+		{"0x01.mkv", "Show", 0, "0x01 should return 0 (invalid season)"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.desc, func(t *testing.T) {
+			result := extractSeasonNumber(tt.filename, tt.dirName)
+			if result != tt.expected {
+				t.Errorf("extractSeasonNumber(%q, %q) = %d, want %d", tt.filename, tt.dirName, result, tt.expected)
+			}
+		})
+	}
+}
+
 func TestEpisodeFileFromPathWithEpisodeNumbers(t *testing.T) {
 	tests := []struct {
 		path            string
@@ -155,7 +191,7 @@ func TestEpisodeFileFromPathWithEpisodeNumbers(t *testing.T) {
 		{
 			path:            "Over the Garden Wall/S01E01 - The Old Grist Mill Bluray-1080p.mkv",
 			expectedEpisode: 1,
-			expectedSeason:  0,
+			expectedSeason:  1,
 			expectedSeries:  "Over the Garden Wall",
 			desc:            "No season directory but S01E01 in filename - should extract series name correctly",
 		},
@@ -183,14 +219,14 @@ func TestEpisodeFileFromPathWithEpisodeNumbers(t *testing.T) {
 		{
 			path:            "Emma/S01E01 - Episode 1 Bluray-1080p.mkv",
 			expectedEpisode: 1,
-			expectedSeason:  0,
+			expectedSeason:  1,
 			expectedSeries:  "Emma",
 			desc:            "Emma series with direct file in series directory (real problematic case)",
 		},
 		{
 			path:            "Fisk/S01E01 - Portrait of a Lady WEBDL-1080p.mkv",
 			expectedEpisode: 1,
-			expectedSeason:  0,
+			expectedSeason:  1,
 			expectedSeries:  "Fisk",
 			desc:            "Fisk series with direct file in series directory (real problematic case)",
 		},

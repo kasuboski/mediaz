@@ -19,7 +19,11 @@ type EpisodeFile struct {
 }
 
 var (
-	seasonDirRe = regexp.MustCompile(`(?i)^season\s*(\d+)`)
+	seasonDirRe    = regexp.MustCompile(`(?i)^season\s*(\d+)`)
+	seasonPatterns = []*regexp.Regexp{
+		regexp.MustCompile(`(?i)s(\d+)e\d+`),
+		regexp.MustCompile(`(?i)(\d+)x\d+`),
+	}
 	// Episode number extraction patterns, ordered by preference
 	episodePatterns = []*regexp.Regexp{
 		// S01E05 or s01e05 format
@@ -52,15 +56,7 @@ func EpisodeFileFromPath(path string) EpisodeFile {
 		series = sanitizeName(dirName(filepath.Dir(path)))
 	}
 
-	season := 0
-	parent := dirName(path)
-	if m := seasonDirRe.FindStringSubmatch(parent); len(m) == 2 {
-		if n, err := strconv.Atoi(strings.TrimLeft(m[1], "0")); err == nil {
-			season = n
-		}
-	}
-
-	// Extract episode number from filename
+	season := extractSeasonNumber(name, dirName(path))
 	episode := extractEpisodeNumber(name)
 
 	return EpisodeFile{
@@ -70,6 +66,27 @@ func EpisodeFileFromPath(path string) EpisodeFile {
 		SeasonNumber:  season,
 		EpisodeNumber: episode,
 	}
+}
+
+func extractSeasonNumber(filename, dirName string) int {
+	if m := seasonDirRe.FindStringSubmatch(dirName); len(m) == 2 {
+		if n, err := strconv.Atoi(strings.TrimLeft(m[1], "0")); err == nil {
+			return n
+		}
+	}
+
+	name := strings.TrimSuffix(filename, filepath.Ext(filename))
+	for _, pattern := range seasonPatterns {
+		if matches := pattern.FindStringSubmatch(name); len(matches) >= 2 {
+			if season, err := strconv.Atoi(strings.TrimLeft(matches[1], "0")); err == nil {
+				if season > 0 {
+					return season
+				}
+			}
+		}
+	}
+
+	return 0
 }
 
 // extractEpisodeNumber extracts episode number from filename using various patterns
