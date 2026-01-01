@@ -599,6 +599,21 @@ func (mr *MockStorageMockRecorder) GetEpisodeByEpisodeFileID(ctx, fileID any) *g
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetEpisodeByEpisodeFileID", reflect.TypeOf((*MockStorage)(nil).GetEpisodeByEpisodeFileID), ctx, fileID)
 }
 
+// GetEpisodeFile mocks base method.
+func (m *MockStorage) GetEpisodeFile(ctx context.Context, id int32) (*model.EpisodeFile, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetEpisodeFile", ctx, id)
+	ret0, _ := ret[0].(*model.EpisodeFile)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetEpisodeFile indicates an expected call of GetEpisodeFile.
+func (mr *MockStorageMockRecorder) GetEpisodeFile(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetEpisodeFile", reflect.TypeOf((*MockStorage)(nil).GetEpisodeFile), ctx, id)
+}
+
 // GetEpisodeFiles mocks base method.
 func (m *MockStorage) GetEpisodeFiles(ctx context.Context, id int64) ([]*model.EpisodeFile, error) {
 	m.ctrl.T.Helper()
@@ -1294,6 +1309,20 @@ func (m *MockStorage) UpdateEpisodeEpisodeFileID(ctx context.Context, id, fileID
 func (mr *MockStorageMockRecorder) UpdateEpisodeEpisodeFileID(ctx, id, fileID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateEpisodeEpisodeFileID", reflect.TypeOf((*MockStorage)(nil).UpdateEpisodeEpisodeFileID), ctx, id, fileID)
+}
+
+// UpdateEpisodeFile mocks base method.
+func (m *MockStorage) UpdateEpisodeFile(ctx context.Context, id int32, episodeFile model.EpisodeFile) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateEpisodeFile", ctx, id, episodeFile)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateEpisodeFile indicates an expected call of UpdateEpisodeFile.
+func (mr *MockStorageMockRecorder) UpdateEpisodeFile(ctx, id, episodeFile any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateEpisodeFile", reflect.TypeOf((*MockStorage)(nil).UpdateEpisodeFile), ctx, id, episodeFile)
 }
 
 // UpdateEpisodeState mocks base method.
@@ -2517,6 +2546,21 @@ func (mr *MockSeriesStorageMockRecorder) GetEpisodeByEpisodeFileID(ctx, fileID a
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetEpisodeByEpisodeFileID", reflect.TypeOf((*MockSeriesStorage)(nil).GetEpisodeByEpisodeFileID), ctx, fileID)
 }
 
+// GetEpisodeFile mocks base method.
+func (m *MockSeriesStorage) GetEpisodeFile(ctx context.Context, id int32) (*model.EpisodeFile, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetEpisodeFile", ctx, id)
+	ret0, _ := ret[0].(*model.EpisodeFile)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetEpisodeFile indicates an expected call of GetEpisodeFile.
+func (mr *MockSeriesStorageMockRecorder) GetEpisodeFile(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetEpisodeFile", reflect.TypeOf((*MockSeriesStorage)(nil).GetEpisodeFile), ctx, id)
+}
+
 // GetEpisodeFiles mocks base method.
 func (m *MockSeriesStorage) GetEpisodeFiles(ctx context.Context, id int64) ([]*model.EpisodeFile, error) {
 	m.ctrl.T.Helper()
@@ -2691,6 +2735,20 @@ func (m *MockSeriesStorage) UpdateEpisodeEpisodeFileID(ctx context.Context, id, 
 func (mr *MockSeriesStorageMockRecorder) UpdateEpisodeEpisodeFileID(ctx, id, fileID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateEpisodeEpisodeFileID", reflect.TypeOf((*MockSeriesStorage)(nil).UpdateEpisodeEpisodeFileID), ctx, id, fileID)
+}
+
+// UpdateEpisodeFile mocks base method.
+func (m *MockSeriesStorage) UpdateEpisodeFile(ctx context.Context, id int32, episodeFile model.EpisodeFile) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateEpisodeFile", ctx, id, episodeFile)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateEpisodeFile indicates an expected call of UpdateEpisodeFile.
+func (mr *MockSeriesStorageMockRecorder) UpdateEpisodeFile(ctx, id, episodeFile any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateEpisodeFile", reflect.TypeOf((*MockSeriesStorage)(nil).UpdateEpisodeFile), ctx, id, episodeFile)
 }
 
 // UpdateEpisodeState mocks base method.

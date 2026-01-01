@@ -39,7 +39,7 @@ var (
 	}
 )
 
-func EpisodeFileFromPath(path string) EpisodeFile {
+func EpisodeFileFromPath(path string, libraryRoot ...string) EpisodeFile {
 	name := sanitizeName(filepath.Base(path))
 
 	// Extract series name from path structure
@@ -59,9 +59,15 @@ func EpisodeFileFromPath(path string) EpisodeFile {
 	season := extractSeasonNumber(name, dirName(path))
 	episode := extractEpisodeNumber(name)
 
+	var absolutePath string
+	if len(libraryRoot) > 0 && libraryRoot[0] != "" {
+		absolutePath = filepath.Join(libraryRoot[0], path)
+	}
+
 	return EpisodeFile{
 		Name:          name,
 		RelativePath:  path,
+		AbsolutePath:  absolutePath,
 		SeriesName:    series,
 		SeasonNumber:  season,
 		EpisodeNumber: episode,

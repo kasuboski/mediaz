@@ -3,6 +3,7 @@ package manager
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/go-jet/jet/v2/sqlite"
@@ -34,37 +35,9 @@ func (m MediaManager) IndexSeriesLibrary(ctx context.Context) error {
 	}
 
 	for _, discoveredFile := range discoveredFiles {
-		isTracked := false
-		for _, ef := range episodeFiles {
-			if ef == nil {
-				continue
-			}
-			if ef.RelativePath != nil && strings.EqualFold(*ef.RelativePath, discoveredFile.RelativePath) {
-				log.Debug("discovered file relative path matches monitored episode file relative path",
-					zap.String("discovered file relative path", discoveredFile.RelativePath),
-					zap.String("monitored file relative path", *ef.RelativePath))
-				isTracked = true
-				break
-			}
-			if ef.OriginalFilePath != nil && strings.EqualFold(*ef.OriginalFilePath, discoveredFile.AbsolutePath) {
-				log.Debug("discovered file absolute path matches monitored episode file original path",
-					zap.String("discovered file absolute path", discoveredFile.AbsolutePath),
-					zap.String("monitored file original path", *ef.OriginalFilePath))
-				isTracked = true
-				break
-			}
-		}
-
-		if isTracked {
-			continue
-		}
-
-		ef := modelEpisodeFile(discoveredFile)
-		log.Debug("discovered new episode file", zap.String("path", discoveredFile.RelativePath))
-		_, err := m.storage.CreateEpisodeFile(ctx, ef)
-		if err != nil {
-			log.Errorf("couldn't store episode file: %w", err)
-			continue
+		matchedID, matchedPath := matchEpisodeFile(discoveredFile, episodeFiles, log)
+		if err := m.upsertEpisodeFile(ctx, discoveredFile, matchedID, matchedPath); err != nil {
+			log.Errorf("failed to upsert episode file: %v", err)
 		}
 	}
 
@@ -87,6 +60,7 @@ func (m MediaManager) IndexSeriesLibrary(ctx context.Context) error {
 			}
 		}
 		if df.SeriesName == "" {
+			log.Warnf("skipping episode file because series name is empty after matching", zap.String("episode_file_relative_path", *f.RelativePath))
 			continue
 		}
 
@@ -219,4 +193,76 @@ func modelEpisodeFile(df library.EpisodeFile) model.EpisodeFile {
 		RelativePath:     &df.RelativePath,
 		Size:             df.Size,
 	}
+}
+
+func matchEpisodeFile(discoveredFile library.EpisodeFile, episodeFiles []*model.EpisodeFile, log *zap.SugaredLogger) (int32, string) {
+	for _, ef := range episodeFiles {
+		if ef == nil {
+			continue
+		}
+
+		hasRelativePath := ef.RelativePath != nil && *ef.RelativePath != ""
+		if hasRelativePath && strings.EqualFold(*ef.RelativePath, discoveredFile.RelativePath) {
+			log.Debug("discovered file relative path matches monitored episode file relative path",
+				zap.String("discovered file relative path", discoveredFile.RelativePath),
+				zap.String("monitored file relative path", *ef.RelativePath))
+			var path string
+			if ef.OriginalFilePath != nil {
+				path = *ef.OriginalFilePath
+			}
+			return ef.ID, path
+		}
+
+		hasAbsolutePath := ef.OriginalFilePath != nil && *ef.OriginalFilePath != ""
+		hasDiscoveredAbsolutePath := discoveredFile.AbsolutePath != ""
+		if hasAbsolutePath && hasDiscoveredAbsolutePath && strings.EqualFold(*ef.OriginalFilePath, discoveredFile.AbsolutePath) {
+			log.Debug("discovered file absolute path matches monitored episode file original path",
+				zap.String("discovered file absolute path", discoveredFile.AbsolutePath),
+				zap.String("monitored file original path", *ef.OriginalFilePath))
+			return ef.ID, *ef.OriginalFilePath
+		}
+	}
+
+	return 0, ""
+}
+
+func (m *MediaManager) upsertEpisodeFile(ctx context.Context, discoveredFile library.EpisodeFile, matchedID int32, matchedPath string) error {
+	log := logger.FromCtx(ctx)
+
+	if matchedID == 0 {
+		ef := modelEpisodeFile(discoveredFile)
+		log.Debug("discovered new episode file", zap.String("path", discoveredFile.RelativePath))
+		_, err := m.storage.CreateEpisodeFile(ctx, ef)
+		if err != nil {
+			return fmt.Errorf("couldn't store episode file: %w", err)
+		}
+		return nil
+	}
+
+	if matchedPath == "" || discoveredFile.AbsolutePath == "" {
+		return nil
+	}
+
+	if strings.EqualFold(matchedPath, discoveredFile.AbsolutePath) {
+		return nil
+	}
+
+	log.Infow("updating episode file absolute path",
+		"episode_file_id", matchedID,
+		"relative_path", discoveredFile.RelativePath,
+		"old_absolute_path", matchedPath,
+		"new_absolute_path", discoveredFile.AbsolutePath)
+
+	existingFile, err := m.storage.GetEpisodeFile(ctx, matchedID)
+	if err != nil {
+		return fmt.Errorf("failed to get episode file for update: %w", err)
+	}
+
+	existingFile.OriginalFilePath = &discoveredFile.AbsolutePath
+	err = m.storage.UpdateEpisodeFile(ctx, matchedID, *existingFile)
+	if err != nil {
+		return fmt.Errorf("failed to update episode file absolute path: %w", err)
+	}
+
+	return nil
 }
