@@ -266,7 +266,7 @@ func (l *MediaLibrary) FindEpisodes(ctx context.Context) ([]EpisodeFile, error) 
 			return nil
 		}
 
-		e := l.episodeFileFromPath(path)
+		e := EpisodeFileFromPath(path, l.tv.Path)
 		if info, err := d.Info(); err == nil {
 			e.Size = info.Size()
 		}
@@ -280,31 +280,6 @@ func (l *MediaLibrary) FindEpisodes(ctx context.Context) ([]EpisodeFile, error) 
 	}
 
 	return episodes, nil
-}
-
-func (l *MediaLibrary) episodeFileFromPath(path string) EpisodeFile {
-	name := sanitizeName(filepath.Base(path))
-
-	pathParts := strings.Split(path, string(filepath.Separator))
-	var series string
-	if len(pathParts) >= 2 {
-		series = sanitizeName(pathParts[0])
-	} else {
-		series = sanitizeName(dirName(filepath.Dir(path)))
-	}
-
-	season := extractSeasonNumber(name, dirName(path))
-	episode := extractEpisodeNumber(name)
-	absolutePath := filepath.Join(l.tv.Path, path)
-
-	return EpisodeFile{
-		Name:          name,
-		RelativePath:  path,
-		AbsolutePath:  absolutePath,
-		SeriesName:    series,
-		SeasonNumber:  season,
-		EpisodeNumber: episode,
-	}
 }
 
 func levelsOfNesting(path string) int {

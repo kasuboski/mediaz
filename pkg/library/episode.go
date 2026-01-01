@@ -60,7 +60,7 @@ func EpisodeFileFromPath(path string, libraryRoot ...string) EpisodeFile {
 	episode := extractEpisodeNumber(name)
 
 	var absolutePath string
-	if len(libraryRoot) > 0 && libraryRoot[0] != "" {
+	if len(libraryRoot) > 0 {
 		absolutePath = filepath.Join(libraryRoot[0], path)
 	}
 
