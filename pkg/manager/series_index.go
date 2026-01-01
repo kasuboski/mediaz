@@ -227,29 +227,40 @@ func matchEpisodeFile(discoveredFile library.EpisodeFile, episodeFiles []*model.
 }
 
 func (m *MediaManager) upsertEpisodeFile(ctx context.Context, discoveredFile library.EpisodeFile, matchedID int32, matchedPath string) error {
-	log := logger.FromCtx(ctx)
+	log := logger.FromCtx(ctx).With(
+		zap.String("relative_path", discoveredFile.RelativePath),
+		zap.String("discovered_absolute_path", discoveredFile.AbsolutePath),
+		zap.Int32("matched_id", matchedID))
 
 	if matchedID == 0 {
 		ef := modelEpisodeFile(discoveredFile)
-		log.Debug("discovered new episode file", zap.String("path", discoveredFile.RelativePath))
+		log.Debug("creating new episode file", zap.Int64("size", discoveredFile.Size))
 		_, err := m.storage.CreateEpisodeFile(ctx, ef)
 		if err != nil {
 			return fmt.Errorf("couldn't store episode file: %w", err)
 		}
+		log.Debug("successfully created episode file")
 		return nil
 	}
 
-	if matchedPath == "" || discoveredFile.AbsolutePath == "" {
+	log.Debug("episode file matched existing record", zap.String("matched_path", matchedPath))
+
+	if matchedPath == "" {
+		log.Debug("skipping update: matched path is empty")
+		return nil
+	}
+
+	if discoveredFile.AbsolutePath == "" {
+		log.Debug("skipping update: discovered absolute path is empty")
 		return nil
 	}
 
 	if strings.EqualFold(matchedPath, discoveredFile.AbsolutePath) {
+		log.Debug("absolute paths match, no update needed")
 		return nil
 	}
 
 	log.Infow("updating episode file absolute path",
-		"episode_file_id", matchedID,
-		"relative_path", discoveredFile.RelativePath,
 		"old_absolute_path", matchedPath,
 		"new_absolute_path", discoveredFile.AbsolutePath)
 
@@ -263,6 +274,8 @@ func (m *MediaManager) upsertEpisodeFile(ctx context.Context, discoveredFile lib
 	if err != nil {
 		return fmt.Errorf("failed to update episode file absolute path: %w", err)
 	}
+
+	log.Debug("successfully updated episode file absolute path")
 
 	return nil
 }
