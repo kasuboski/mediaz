@@ -146,8 +146,12 @@ func (s *SQLite) ListSeries(ctx context.Context, where ...sqlite.BoolExpression)
 				INNER_JOIN(
 					table.SeriesTransition,
 					table.Series.ID.EQ(table.SeriesTransition.SeriesID).
-						AND(table.SeriesTransition.MostRecent.EQ(sqlite.Bool(true)))),
-		)
+						AND(table.SeriesTransition.MostRecent.EQ(sqlite.Bool(true)))).
+				LEFT_JOIN(
+					table.SeriesMetadata,
+					table.Series.SeriesMetadataID.EQ(table.SeriesMetadata.ID)),
+		).
+		ORDER_BY(table.SeriesMetadata.Title.ASC())
 
 	for _, w := range where {
 		stmt = stmt.WHERE(w)
@@ -573,6 +577,31 @@ func (s *SQLite) GetEpisodeFiles(ctx context.Context, id int64) ([]*model.Episod
 	}
 
 	return result, err
+}
+
+func (s *SQLite) GetEpisodeFile(ctx context.Context, id int32) (*model.EpisodeFile, error) {
+	stmt := table.EpisodeFile.
+		SELECT(table.EpisodeFile.AllColumns).
+		FROM(table.EpisodeFile).
+		WHERE(table.EpisodeFile.ID.EQ(sqlite.Int32(id)))
+
+	var result model.EpisodeFile
+	err := stmt.QueryContext(ctx, s.db, &result)
+	if err != nil {
+		return nil, err
+	}
+
+	return &result, nil
+}
+
+func (s *SQLite) UpdateEpisodeFile(ctx context.Context, id int32, file model.EpisodeFile) error {
+	stmt := table.EpisodeFile.
+		UPDATE(table.EpisodeFile.MutableColumns).
+		MODEL(file).
+		WHERE(table.EpisodeFile.ID.EQ(sqlite.Int32(id)))
+
+	_, err := stmt.ExecContext(ctx, s.db)
+	return err
 }
 
 // CreateEpisodeFile stores an episode file

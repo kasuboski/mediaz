@@ -302,8 +302,10 @@ type SeriesStorage interface {
 	UpdateEpisodeState(ctx context.Context, id int64, state EpisodeState, metadata *TransitionStateMetadata) error
 	LinkEpisodeMetadata(ctx context.Context, episodeID int64, seasonID int32, episodeMetadataID int32) error
 
+	GetEpisodeFile(ctx context.Context, id int32) (*model.EpisodeFile, error)
 	GetEpisodeFiles(ctx context.Context, id int64) ([]*model.EpisodeFile, error)
 	CreateEpisodeFile(ctx context.Context, episodeFile model.EpisodeFile) (int64, error)
+	UpdateEpisodeFile(ctx context.Context, id int32, episodeFile model.EpisodeFile) error
 	DeleteEpisodeFile(ctx context.Context, id int64) error
 	ListEpisodeFiles(ctx context.Context) ([]*model.EpisodeFile, error)
 }

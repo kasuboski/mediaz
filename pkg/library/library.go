@@ -243,23 +243,34 @@ func (l *MediaLibrary) FindEpisodes(ctx context.Context) ([]EpisodeFile, error) 
 		nesting := levelsOfNesting(path)
 		if d.IsDir() {
 			if seasonDirRe.MatchString(d.Name()) {
+				log.Debugw("found season directory", "path", path, "dir_name", d.Name())
 				return nil
 			}
 			if nesting >= 1 {
-				log.Debugw("skipping", "dir", d.Name(), "reason", "not a season directory")
+				log.Debugw("skipping", "dir", d.Name(), "reason", "not a season directory", "nesting", nesting)
 				return fs.SkipDir
 			}
 			return nil
 		}
 
-		if !match || nesting == 0 || !isVideoFile(path) {
+		if !match {
+			log.Debugw("skipping file", "path", path, "reason", "doesn't match episode pattern")
+			return nil
+		}
+		if nesting == 0 {
+			log.Debugw("skipping file", "path", path, "reason", "nesting is 0")
+			return nil
+		}
+		if !isVideoFile(path) {
+			log.Debugw("skipping file", "path", path, "reason", "not a video file")
 			return nil
 		}
 
-		e := EpisodeFileFromPath(path)
+		e := EpisodeFileFromPath(path, l.tv.Path)
 		if info, err := d.Info(); err == nil {
 			e.Size = info.Size()
 		}
+		log.Infow("found episode file", "path", path, "series", e.SeriesName, "season", e.SeasonNumber, "episode", e.EpisodeNumber, "absolute_path", e.AbsolutePath)
 		episodes = append(episodes, e)
 		return nil
 	})

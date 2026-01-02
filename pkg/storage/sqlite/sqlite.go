@@ -256,12 +256,12 @@ func (s *SQLite) ListMovies(ctx context.Context) ([]*storage.Movie, error) {
 			table.MovieTransition.DownloadID,
 			table.MovieTransition.MostRecent).
 		FROM(
-			table.Movie.INNER_JOIN(
-				table.MovieTransition,
-				table.Movie.ID.EQ(table.MovieTransition.MovieID))).
+			table.Movie.
+				INNER_JOIN(table.MovieTransition, table.Movie.ID.EQ(table.MovieTransition.MovieID)).
+				LEFT_JOIN(table.MovieMetadata, table.Movie.MovieMetadataID.EQ(table.MovieMetadata.ID))).
 		WHERE(
 			table.MovieTransition.MostRecent.EQ(sqlite.Bool(true))).
-		ORDER_BY(table.Movie.Added.ASC())
+		ORDER_BY(table.MovieMetadata.Title.ASC())
 
 	err := stmt.QueryContext(ctx, s.db, &movies)
 	return movies, err
