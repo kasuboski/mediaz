@@ -15,13 +15,14 @@ import (
 	"github.com/kasuboski/mediaz/pkg/download"
 	downloadMock "github.com/kasuboski/mediaz/pkg/download/mocks"
 	mhttpMock "github.com/kasuboski/mediaz/pkg/http/mocks"
+	"github.com/kasuboski/mediaz/pkg/indexer"
+	indexerMock "github.com/kasuboski/mediaz/pkg/indexer/mocks"
 	mio "github.com/kasuboski/mediaz/pkg/io"
 	"github.com/kasuboski/mediaz/pkg/library"
 	mockLibrary "github.com/kasuboski/mediaz/pkg/library/mocks"
 	"github.com/kasuboski/mediaz/pkg/prowlarr"
-	prowlMock "github.com/kasuboski/mediaz/pkg/prowlarr/mocks"
 	"github.com/kasuboski/mediaz/pkg/storage"
-	"github.com/kasuboski/mediaz/pkg/storage/mocks"
+	storageMocks "github.com/kasuboski/mediaz/pkg/storage/mocks"
 	mediaSqlite "github.com/kasuboski/mediaz/pkg/storage/sqlite"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/table"
@@ -45,8 +46,7 @@ func Test_Manager_reconcileMissingMovie(t *testing.T) {
 	err = store.Init(ctx, schemas...)
 	require.NoError(t, err)
 
-	prowlarrMock := prowlMock.NewMockClientInterface(ctrl)
-	indexers := []Indexer{{ID: 1, Name: "test", Priority: 1}, {ID: 3, Name: "test2", Priority: 10}}
+	indexers := []model.Indexer{{ID: 1, Name: "test", Priority: 1}, {ID: 3, Name: "test2", Priority: 10}}
 
 	bigSeeders := nullable.NewNullNullable[int32]()
 	bigSeeders.Set(23)
@@ -66,11 +66,12 @@ func Test_Manager_reconcileMissingMovie(t *testing.T) {
 	nzbMovie := &prowlarr.ReleaseResource{ID: ptr(int32(1225)), Title: nullable.NewNullableWithValue("test movie - nzb"), Size: sizeGBToBytes(23), Seeders: smallestSeeders, Protocol: usenetProto}
 
 	releases := []*prowlarr.ReleaseResource{doNotWantRelease, wantRelease, smallMovie, nzbMovie}
-	prowlarrMock.EXPECT().GetAPIV1Search(gomock.Any(), gomock.Any()).Return(searchIndexersResponse(t, releases), nil).Times(len(indexers))
 
-	pClient, err := prowlarr.New(":", "1234")
-	pClient.ClientInterface = prowlarrMock
-	require.NoError(t, err)
+	mockIndexerSource := indexerMock.NewMockIndexerSource(ctrl)
+	mockIndexerSource.EXPECT().Search(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(releases, nil).AnyTimes()
+
+	indexerFactory := indexerMock.NewMockFactory(ctrl)
+	indexerFactory.EXPECT().NewIndexerSource(gomock.Any()).Return(mockIndexerSource, nil).AnyTimes()
 
 	releaseDate := time.Now().AddDate(0, 0, -1).Format(tmdb.ReleaseDateFormat)
 
@@ -115,8 +116,27 @@ func Test_Manager_reconcileMissingMovie(t *testing.T) {
 		&mio.MediaFileSystem{},
 	)
 
-	m := New(tClient, pClient, lib, store, mockFactory, config.Manager{}, config.Config{})
+	m := New(tClient, indexerFactory, lib, store, mockFactory, config.Manager{}, config.Config{})
 	require.NotNil(t, m)
+
+	sourceID, err := store.CreateIndexerSource(ctx, model.IndexerSource{
+		Name:           "test-source",
+		Implementation: "prowlarr",
+		Scheme:         "http",
+		Host:           "test",
+		Enabled:        true,
+	})
+	require.NoError(t, err)
+
+	sourceIndexers := []indexer.SourceIndexer{
+		{ID: 1, Name: "test", Priority: 1},
+		{ID: 3, Name: "test2", Priority: 10},
+	}
+	m.indexerCache.Set(sourceID, indexerCacheEntry{
+		Indexers:   sourceIndexers,
+		SourceName: "test-source",
+		SourceURI:  "http://test",
+	})
 
 	req := AddMovieRequest{
 		TMDBID:           1234,
@@ -144,7 +164,7 @@ func Test_Manager_reconcileDiscoveredMovie(t *testing.T) {
 	t.Run("single result", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 
-		store := mocks.NewMockStorage(ctrl)
+		store := storageMocks.NewMockStorage(ctrl)
 		tmdbHttpMock := mhttpMock.NewMockHTTPClient(ctrl)
 
 		// Mock search response
@@ -196,7 +216,7 @@ func Test_Manager_reconcileDiscoveredMovie(t *testing.T) {
 	t.Run("no results", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 
-		store := mocks.NewMockStorage(ctrl)
+		store := storageMocks.NewMockStorage(ctrl)
 		tmdbHttpMock := mhttpMock.NewMockHTTPClient(ctrl)
 
 		// Mock search response with no results
@@ -235,7 +255,7 @@ func Test_Manager_reconcileDiscoveredMovie(t *testing.T) {
 	t.Run("multiple results", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 
-		store := mocks.NewMockStorage(ctrl)
+		store := storageMocks.NewMockStorage(ctrl)
 		tmdbHttpMock := mhttpMock.NewMockHTTPClient(ctrl)
 
 		// Mock search response with multiple results
@@ -291,7 +311,7 @@ func Test_Manager_reconcileDiscoveredMovie(t *testing.T) {
 	t.Run("has metadata", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 
-		store := mocks.NewMockStorage(ctrl)
+		store := storageMocks.NewMockStorage(ctrl)
 		tmdbHttpMock := mhttpMock.NewMockHTTPClient(ctrl)
 
 		tClient, err := tmdb.New("https://api.themoviedb.org", "1234", tmdb.WithHTTPClient(tmdbHttpMock))
@@ -338,12 +358,9 @@ func Test_Manager_reconcileUnreleasedMovie(t *testing.T) {
 	err = store.Init(ctx, schemas...)
 	require.NoError(t, err)
 
-	prowlarrMock := prowlMock.NewMockClientInterface(ctrl)
-	indexers := []Indexer{{ID: 1, Name: "test", Priority: 1}, {ID: 3, Name: "test2", Priority: 10}}
+	indexers := []model.Indexer{{ID: 1, Name: "test", Priority: 1}, {ID: 3, Name: "test2", Priority: 10}}
 
-	pClient, err := prowlarr.New(":", "1234")
-	pClient.ClientInterface = prowlarrMock
-	require.NoError(t, err)
+	indexerFactory := indexerMock.NewMockFactory(ctrl)
 
 	releaseDate := time.Now().AddDate(0, 0, +5).Format(tmdb.ReleaseDateFormat)
 
@@ -379,7 +396,7 @@ func Test_Manager_reconcileUnreleasedMovie(t *testing.T) {
 		&mio.MediaFileSystem{},
 	)
 
-	m := New(tClient, pClient, lib, store, mockFactory, config.Manager{}, config.Config{})
+	m := New(tClient, indexerFactory, lib, store, mockFactory, config.Manager{}, config.Config{})
 	require.NotNil(t, m)
 
 	req := AddMovieRequest{

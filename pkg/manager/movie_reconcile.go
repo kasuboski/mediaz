@@ -28,7 +28,7 @@ type ReconcileSnapshot struct {
 	time              time.Time
 	downloadProtocols map[string]struct{}
 	downloadClients   []*model.DownloadClient
-	indexers          []Indexer
+	indexers          []model.Indexer
 	indexerIDs        []int32
 	mu                sync.Mutex
 }
@@ -45,7 +45,7 @@ func (r *ReconcileSnapshot) GetDownloadClient(id int32) *model.DownloadClient {
 	return nil
 }
 
-func newReconcileSnapshot(indexers []Indexer, downloadClients []*model.DownloadClient) *ReconcileSnapshot {
+func newReconcileSnapshot(indexers []model.Indexer, downloadClients []*model.DownloadClient) *ReconcileSnapshot {
 	ids := make([]int32, 0)
 	for i := range indexers {
 		ids = append(ids, indexers[i].ID)
@@ -81,7 +81,7 @@ func (r *ReconcileSnapshot) GetIndexerIDs() []int32 {
 	return r.indexerIDs
 }
 
-func (r *ReconcileSnapshot) GetIndexers() []Indexer {
+func (r *ReconcileSnapshot) GetIndexers() []model.Indexer {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	return r.indexers
@@ -95,7 +95,7 @@ func (m MediaManager) ReconcileMovies(ctx context.Context) error {
 		return err
 	}
 
-	snapshot := newReconcileSnapshot(make([]Indexer, 0), dcs)
+	snapshot := newReconcileSnapshot(make([]model.Indexer, 0), dcs)
 
 	err = m.ReconcileMissingMovies(ctx, snapshot)
 	if err != nil {

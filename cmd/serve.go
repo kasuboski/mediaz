@@ -7,11 +7,11 @@ import (
 	"github.com/kasuboski/mediaz/config"
 	"github.com/kasuboski/mediaz/pkg/download"
 	mhttp "github.com/kasuboski/mediaz/pkg/http"
+	"github.com/kasuboski/mediaz/pkg/indexer"
 	mio "github.com/kasuboski/mediaz/pkg/io"
 	"github.com/kasuboski/mediaz/pkg/library"
 	"github.com/kasuboski/mediaz/pkg/logger"
 	"github.com/kasuboski/mediaz/pkg/manager"
-	"github.com/kasuboski/mediaz/pkg/prowlarr"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite"
 	"github.com/kasuboski/mediaz/pkg/tmdb"
 	"github.com/kasuboski/mediaz/server"
@@ -42,10 +42,7 @@ var serveCmd = &cobra.Command{
 			log.Fatal("failed to create tmdb client", zap.Error(err))
 		}
 
-		prowlarrClient, err := prowlarr.New(cfg.Prowlarr.URI, cfg.Prowlarr.APIKey)
-		if err != nil {
-			log.Fatal("failed to create client", zap.Error(err))
-		}
+		indexerFactory := indexer.NewIndexerSourceFactory()
 
 		store, err := sqlite.New(ctx, cfg.Storage.FilePath)
 		if err != nil {
@@ -72,7 +69,7 @@ var serveCmd = &cobra.Command{
 		)
 
 		factory := download.NewDownloadClientFactory(cfg.Library.DownloadMountDir)
-		manager := manager.New(tmdbClient, prowlarrClient, library, store, factory, cfg.Manager, cfg)
+		manager := manager.New(tmdbClient, indexerFactory, library, store, factory, cfg.Manager, cfg)
 
 		go func() {
 			log.Fatal(manager.Run(ctx))

@@ -15,12 +15,13 @@ import (
 	"github.com/kasuboski/mediaz/config"
 	"github.com/kasuboski/mediaz/pkg/download"
 	downloadMock "github.com/kasuboski/mediaz/pkg/download/mocks"
+	"github.com/kasuboski/mediaz/pkg/indexer"
+	indexerMock "github.com/kasuboski/mediaz/pkg/indexer/mocks"
 	"github.com/kasuboski/mediaz/pkg/library"
 	libraryMocks "github.com/kasuboski/mediaz/pkg/library/mocks"
 	"github.com/kasuboski/mediaz/pkg/prowlarr"
-	prowlMock "github.com/kasuboski/mediaz/pkg/prowlarr/mocks"
 	"github.com/kasuboski/mediaz/pkg/storage"
-	"github.com/kasuboski/mediaz/pkg/storage/mocks"
+	storageMocks "github.com/kasuboski/mediaz/pkg/storage/mocks"
 	mediaSqlite "github.com/kasuboski/mediaz/pkg/storage/sqlite"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/table"
@@ -100,7 +101,7 @@ func TestMediaManager_reconcileMissingEpisodes(t *testing.T) {
 			Scheme:         "http",
 		}
 
-		snapshot := newReconcileSnapshot([]Indexer{{ID: 1}}, []*model.DownloadClient{&downloadClientModel})
+		snapshot := newReconcileSnapshot([]model.Indexer{{ID: 1}}, []*model.DownloadClient{&downloadClientModel})
 
 		mockFactory.EXPECT().NewDownloadClient(downloadClientModel).Return(mockDownloadClient, nil)
 		mockFactory.EXPECT().NewDownloadClient(downloadClientModel).Return(mockDownloadClient, nil)
@@ -263,7 +264,7 @@ func TestMediaManager_reconcileMissingEpisodes(t *testing.T) {
 			Scheme:         "http",
 		}
 
-		snapshot := newReconcileSnapshot([]Indexer{{ID: 1}}, []*model.DownloadClient{&downloadClientModel})
+		snapshot := newReconcileSnapshot([]model.Indexer{{ID: 1}}, []*model.DownloadClient{&downloadClientModel})
 
 		mockFactory.EXPECT().NewDownloadClient(downloadClientModel).Return(mockDownloadClient, nil)
 		mockFactory.EXPECT().NewDownloadClient(downloadClientModel).Return(mockDownloadClient, nil)
@@ -637,7 +638,7 @@ func TestMediaManager_reconcileMissingSeason(t *testing.T) {
 			},
 		}
 
-		snapshot := newReconcileSnapshot([]Indexer{{ID: 1}}, []*model.DownloadClient{&downloadClientModel})
+		snapshot := newReconcileSnapshot([]model.Indexer{{ID: 1}}, []*model.DownloadClient{&downloadClientModel})
 
 		m := New(nil, nil, nil, store, mockFactory, config.Manager{}, config.Config{})
 
@@ -676,7 +677,7 @@ func TestMediaManager_reconcileMissingSeason(t *testing.T) {
 			Scheme:         "http",
 		}
 
-		snapshot := newReconcileSnapshot([]Indexer{{ID: 1}}, []*model.DownloadClient{&downloadClientModel})
+		snapshot := newReconcileSnapshot([]model.Indexer{{ID: 1}}, []*model.DownloadClient{&downloadClientModel})
 
 		mockFactory.EXPECT().NewDownloadClient(downloadClientModel).Return(mockDownloadClient, nil)
 		mockFactory.EXPECT().NewDownloadClient(downloadClientModel).Return(mockDownloadClient, nil)
@@ -890,19 +891,15 @@ func TestMediaManager_ReconcileMissingSeries(t *testing.T) {
 		defer ctrl.Finish()
 
 		ctx := context.Background()
-		store := mocks.NewMockStorage(ctrl)
-		prowlarrMock := prowlMock.NewMockClientInterface(ctrl)
+		store := storageMocks.NewMockStorage(ctrl)
 
-		prowlarrMock.EXPECT().GetAPIV1Indexer(ctx).Return(nil, errors.New("prowlarr not configured"))
 		store.EXPECT().ListIndexers(ctx).Return([]*model.Indexer{}, nil)
 
-		pClient, err := prowlarr.New(":", "1234")
-		pClient.ClientInterface = prowlarrMock
-		require.NoError(t, err)
+		indexerFactory := indexerMock.NewMockFactory(ctrl)
 
-		m := New(nil, pClient, nil, store, nil, config.Manager{}, config.Config{})
-		snapshot := newReconcileSnapshot([]Indexer{}, nil)
-		err = m.ReconcileMissingSeries(ctx, snapshot)
+		m := New(nil, indexerFactory, nil, store, nil, config.Manager{}, config.Config{})
+		snapshot := newReconcileSnapshot([]model.Indexer{}, nil)
+		err := m.ReconcileMissingSeries(ctx, snapshot)
 		require.NoError(t, err)
 	})
 
@@ -911,27 +908,23 @@ func TestMediaManager_ReconcileMissingSeries(t *testing.T) {
 		defer ctrl.Finish()
 
 		ctx := context.Background()
-		store := mocks.NewMockStorage(ctrl)
-		prowlarrMock := prowlMock.NewMockClientInterface(ctrl)
+		store := storageMocks.NewMockStorage(ctrl)
 
 		where := table.SeriesTransition.ToState.EQ(sqlite.String(string(storage.SeriesStateMissing))).
 			AND(table.SeriesTransition.MostRecent.EQ(sqlite.Bool(true))).
 			AND(table.Series.Monitored.EQ(sqlite.Int(1)))
 
-		prowlarrMock.EXPECT().GetAPIV1Indexer(ctx).Return(nil, errors.New("prowlarr not configured"))
 		indexer := &model.Indexer{ID: 1, Name: "test", Priority: 1}
 		store.EXPECT().ListIndexers(ctx).Return([]*model.Indexer{indexer}, nil)
 
 		expectedErr := errors.New("database error")
 		store.EXPECT().ListSeries(ctx, where).Return(nil, expectedErr)
 
-		pClient, err := prowlarr.New(":", "1234")
-		pClient.ClientInterface = prowlarrMock
-		require.NoError(t, err)
+		indexerFactory := indexerMock.NewMockFactory(ctrl)
 
-		m := New(nil, pClient, nil, store, nil, config.Manager{}, config.Config{})
-		snapshot := newReconcileSnapshot([]Indexer{}, nil)
-		err = m.ReconcileMissingSeries(ctx, snapshot)
+		m := New(nil, indexerFactory, nil, store, nil, config.Manager{}, config.Config{})
+		snapshot := newReconcileSnapshot([]model.Indexer{}, nil)
+		err := m.ReconcileMissingSeries(ctx, snapshot)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "couldn't list missing series")
 	})
@@ -955,7 +948,7 @@ func TestMediaManager_ReconcileMissingSeries(t *testing.T) {
 			Scheme:         "http",
 		}
 
-		snapshot := newReconcileSnapshot([]Indexer{{ID: 1}}, []*model.DownloadClient{&downloadClientModel})
+		snapshot := newReconcileSnapshot([]model.Indexer{{ID: 1}}, []*model.DownloadClient{&downloadClientModel})
 
 		mockFactory.EXPECT().NewDownloadClient(downloadClientModel).Return(mockDownloadClient, nil)
 		mockFactory.EXPECT().NewDownloadClient(downloadClientModel).Return(mockDownloadClient, nil)
@@ -1063,24 +1056,41 @@ func TestMediaManager_ReconcileMissingSeries(t *testing.T) {
 			},
 		}
 
-		prowlarrMock := prowlMock.NewMockClientInterface(ctrl)
+		mockIndexerSource := indexerMock.NewMockIndexerSource(ctrl)
+		mockIndexerSource.EXPECT().Search(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(releases, nil).AnyTimes()
 
-		prowlarrMock.EXPECT().GetAPIV1Indexer(ctx).Return(nil, errors.New("prowlarr not configured"))
+		indexerFactory := indexerMock.NewMockFactory(ctrl)
+		indexerFactory.EXPECT().NewIndexerSource(gomock.Any()).Return(mockIndexerSource, nil).AnyTimes()
 
-		prowlarrMock.EXPECT().GetAPIV1Search(gomock.Any(), gomock.Any()).Return(searchIndexersResponse(t, releases), nil).Times(1)
-
-		pClient, err := prowlarr.New(":", "1234")
-		require.NoError(t, err)
-		pClient.ClientInterface = prowlarrMock
-
-		_, err = store.CreateIndexer(ctx, model.Indexer{
-			ID:       1,
-			Name:     "test",
-			Priority: 1,
+		// Create an indexer source in the database
+		sourceID, err := store.CreateIndexerSource(ctx, model.IndexerSource{
+			Name:           "test-source",
+			Implementation: "prowlarr",
+			Scheme:         "http",
+			Host:           "test",
+			Enabled:        true,
 		})
 		require.NoError(t, err)
 
-		m := New(nil, pClient, nil, store, mockFactory, config.Manager{}, config.Config{})
+		// Create indexers linked to the source
+		_, err = store.CreateIndexer(ctx, model.Indexer{
+			IndexerSourceID: ptr(int32(sourceID)),
+			Name:            "test",
+			Priority:        1,
+			URI:             "http://test/indexer1",
+		})
+		require.NoError(t, err)
+
+		m := New(nil, indexerFactory, nil, store, mockFactory, config.Manager{}, config.Config{})
+
+		sourceIndexers := []indexer.SourceIndexer{
+			{ID: 1, Name: "test", Priority: 1},
+		}
+		m.indexerCache.Set(sourceID, indexerCacheEntry{
+			Indexers:   sourceIndexers,
+			SourceName: "test-source",
+			SourceURI:  "http://test",
+		})
 
 		err = m.ReconcileMissingSeries(ctx, snapshot)
 		require.NoError(t, err)
@@ -1111,7 +1121,7 @@ func TestMediaManager_ReconcileContinuingSeries(t *testing.T) {
 		defer ctrl.Finish()
 
 		ctx := context.Background()
-		store := mocks.NewMockStorage(ctrl)
+		store := storageMocks.NewMockStorage(ctrl)
 
 		where := table.SeriesTransition.ToState.IN(
 			sqlite.String(string(storage.SeriesStateContinuing)),
@@ -1131,7 +1141,7 @@ func TestMediaManager_ReconcileContinuingSeries(t *testing.T) {
 		defer ctrl.Finish()
 
 		ctx := context.Background()
-		store := mocks.NewMockStorage(ctrl)
+		store := storageMocks.NewMockStorage(ctrl)
 
 		where := table.SeriesTransition.ToState.IN(
 			sqlite.String(string(storage.SeriesStateContinuing)),
@@ -1180,7 +1190,7 @@ func TestMediaManager_ReconcileContinuingSeries(t *testing.T) {
 			Scheme:         "http",
 		}
 
-		snapshot := newReconcileSnapshot([]Indexer{{ID: 1}}, []*model.DownloadClient{&downloadClientModel})
+		snapshot := newReconcileSnapshot([]model.Indexer{{ID: 1}}, []*model.DownloadClient{&downloadClientModel})
 
 		mockFactory.EXPECT().NewDownloadClient(gomock.Any()).Return(mockDownloadClient, nil).AnyTimes()
 		mockDownloadClient.EXPECT().Add(ctx, gomock.Any()).Return(download.Status{
@@ -1260,14 +1270,13 @@ func TestMediaManager_ReconcileContinuingSeries(t *testing.T) {
 			},
 		}
 
-		prowlarrMock := prowlMock.NewMockClientInterface(ctrl)
-		prowlarrMock.EXPECT().GetAPIV1Search(gomock.Any(), gomock.Any()).Return(searchIndexersResponse(t, releases), nil).AnyTimes()
+		mockIndexerSource := indexerMock.NewMockIndexerSource(ctrl)
+		mockIndexerSource.EXPECT().Search(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(releases, nil).AnyTimes()
 
-		pClient, err := prowlarr.New(":", "1234")
-		require.NoError(t, err)
-		pClient.ClientInterface = prowlarrMock
+		indexerFactory := indexerMock.NewMockFactory(ctrl)
+		indexerFactory.EXPECT().NewIndexerSource(gomock.Any()).Return(mockIndexerSource, nil).AnyTimes()
 
-		m := New(tmdbMock, pClient, nil, store, mockFactory, config.Manager{}, config.Config{})
+		m := New(tmdbMock, indexerFactory, nil, store, mockFactory, config.Manager{}, config.Config{})
 
 		// Just test that the function runs without error
 		err = m.ReconcileContinuingSeries(ctx, snapshot)
@@ -1278,7 +1287,7 @@ func TestMediaManager_ReconcileContinuingSeries(t *testing.T) {
 		ctx := context.Background()
 		store := newStore(t, ctx)
 
-		snapshot := newReconcileSnapshot([]Indexer{{ID: 1}}, []*model.DownloadClient{})
+		snapshot := newReconcileSnapshot([]model.Indexer{{ID: 1}}, []*model.DownloadClient{})
 
 		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
 
@@ -1380,7 +1389,7 @@ func TestMediaManager_ReconcileContinuingSeries(t *testing.T) {
 			require.NoError(t, err)
 		}
 
-		snapshot := newReconcileSnapshot([]Indexer{{ID: 1}}, []*model.DownloadClient{})
+		snapshot := newReconcileSnapshot([]model.Indexer{{ID: 1}}, []*model.DownloadClient{})
 
 		// Set up TMDB mock for metadata refresh
 		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
@@ -1411,15 +1420,13 @@ func TestMediaManager_ReconcileContinuingSeries(t *testing.T) {
 		wpResp := &http.Response{StatusCode: 200, Body: io.NopCloser(bytes.NewBufferString(`{"results":{"US":{"flatrate":[]}}}`))}
 		tmdbMock.EXPECT().TvSeriesWatchProviders(gomock.Any(), int32(100)).Return(wpResp, nil).AnyTimes()
 
-		// Set up prowlarr mock for any searches that might happen
-		prowlarrMock := prowlMock.NewMockClientInterface(ctrl)
-		prowlarrMock.EXPECT().GetAPIV1Search(gomock.Any(), gomock.Any()).Return(searchIndexersResponse(t, []*prowlarr.ReleaseResource{}), nil).AnyTimes()
+		mockIndexerSource := indexerMock.NewMockIndexerSource(ctrl)
+		mockIndexerSource.EXPECT().Search(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return([]*prowlarr.ReleaseResource{}, nil).AnyTimes()
 
-		pClient, err := prowlarr.New(":", "1234")
-		require.NoError(t, err)
-		pClient.ClientInterface = prowlarrMock
+		indexerFactory := indexerMock.NewMockFactory(ctrl)
+		indexerFactory.EXPECT().NewIndexerSource(gomock.Any()).Return(mockIndexerSource, nil).AnyTimes()
 
-		m := New(tmdbMock, pClient, nil, store, nil, config.Manager{}, config.Config{})
+		m := New(tmdbMock, indexerFactory, nil, store, nil, config.Manager{}, config.Config{})
 
 		// Before reconciliation, we should only have 2 episode records
 		episodesBefore, err := store.ListEpisodes(ctx, table.Episode.SeasonID.EQ(sqlite.Int64(seasonID)))
@@ -1705,7 +1712,7 @@ func TestMediaManager_ReconcileDiscoveredEpisodes(t *testing.T) {
 		}
 
 		ctx := context.Background()
-		store := mocks.NewMockStorage(ctrl)
+		store := storageMocks.NewMockStorage(ctrl)
 
 		where := table.EpisodeTransition.ToState.EQ(sqlite.String(string(storage.EpisodeStateDiscovered))).
 			AND(table.EpisodeTransition.MostRecent.EQ(sqlite.Bool(true))).
@@ -1727,7 +1734,7 @@ func TestMediaManager_ReconcileDiscoveredEpisodes(t *testing.T) {
 		}
 
 		ctx := context.Background()
-		store := mocks.NewMockStorage(ctrl)
+		store := storageMocks.NewMockStorage(ctrl)
 
 		where := table.EpisodeTransition.ToState.EQ(sqlite.String(string(storage.EpisodeStateDiscovered))).
 			AND(table.EpisodeTransition.MostRecent.EQ(sqlite.Bool(true))).

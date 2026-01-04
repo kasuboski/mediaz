@@ -17,11 +17,12 @@ type indexerTable struct {
 	sqlite.Table
 
 	// Columns
-	ID       sqlite.ColumnInteger
-	Name     sqlite.ColumnString
-	Priority sqlite.ColumnInteger
-	URI      sqlite.ColumnString
-	APIKey   sqlite.ColumnString
+	ID              sqlite.ColumnInteger
+	IndexerSourceID sqlite.ColumnInteger
+	Name            sqlite.ColumnString
+	Priority        sqlite.ColumnInteger
+	URI             sqlite.ColumnString
+	APIKey          sqlite.ColumnString
 
 	AllColumns     sqlite.ColumnList
 	MutableColumns sqlite.ColumnList
@@ -62,24 +63,26 @@ func newIndexerTable(schemaName, tableName, alias string) *IndexerTable {
 
 func newIndexerTableImpl(schemaName, tableName, alias string) indexerTable {
 	var (
-		IDColumn       = sqlite.IntegerColumn("id")
-		NameColumn     = sqlite.StringColumn("name")
-		PriorityColumn = sqlite.IntegerColumn("priority")
-		URIColumn      = sqlite.StringColumn("uri")
-		APIKeyColumn   = sqlite.StringColumn("api_key")
-		allColumns     = sqlite.ColumnList{IDColumn, NameColumn, PriorityColumn, URIColumn, APIKeyColumn}
-		mutableColumns = sqlite.ColumnList{NameColumn, PriorityColumn, URIColumn, APIKeyColumn}
+		IDColumn              = sqlite.IntegerColumn("id")
+		IndexerSourceIDColumn = sqlite.IntegerColumn("indexer_source_id")
+		NameColumn            = sqlite.StringColumn("name")
+		PriorityColumn        = sqlite.IntegerColumn("priority")
+		URIColumn             = sqlite.StringColumn("uri")
+		APIKeyColumn          = sqlite.StringColumn("api_key")
+		allColumns            = sqlite.ColumnList{IDColumn, IndexerSourceIDColumn, NameColumn, PriorityColumn, URIColumn, APIKeyColumn}
+		mutableColumns        = sqlite.ColumnList{IndexerSourceIDColumn, NameColumn, PriorityColumn, URIColumn, APIKeyColumn}
 	)
 
 	return indexerTable{
 		Table: sqlite.NewTable(schemaName, tableName, alias, allColumns...),
 
 		//Columns
-		ID:       IDColumn,
-		Name:     NameColumn,
-		Priority: PriorityColumn,
-		URI:      URIColumn,
-		APIKey:   APIKeyColumn,
+		ID:              IDColumn,
+		IndexerSourceID: IndexerSourceIDColumn,
+		Name:            NameColumn,
+		Priority:        PriorityColumn,
+		URI:             URIColumn,
+		APIKey:          APIKeyColumn,
 
 		AllColumns:     allColumns,
 		MutableColumns: mutableColumns,

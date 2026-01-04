@@ -23,6 +23,7 @@ type Storage interface {
 	Init(ctx context.Context, schemas ...string) error
 	RunMigrations(ctx context.Context) error
 	IndexerStorage
+	IndexerSourceStorage
 	QualityStorage
 	MovieStorage
 	MovieMetadataStorage
@@ -37,7 +38,15 @@ type IndexerStorage interface {
 	CreateIndexer(ctx context.Context, indexer model.Indexer) (int64, error)
 	UpdateIndexer(ctx context.Context, id int64, indexer model.Indexer) error
 	DeleteIndexer(ctx context.Context, id int64) error
-	ListIndexers(ctx context.Context) ([]*model.Indexer, error)
+	ListIndexers(ctx context.Context, where ...sqlite.BoolExpression) ([]*model.Indexer, error)
+}
+
+type IndexerSourceStorage interface {
+	CreateIndexerSource(ctx context.Context, source model.IndexerSource) (int64, error)
+	GetIndexerSource(ctx context.Context, id int64) (model.IndexerSource, error)
+	ListIndexerSources(ctx context.Context, where ...sqlite.BoolExpression) ([]*model.IndexerSource, error)
+	UpdateIndexerSource(ctx context.Context, id int64, source model.IndexerSource) error
+	DeleteIndexerSource(ctx context.Context, id int64) error
 }
 
 type QualityStorage interface {

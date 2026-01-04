@@ -9,11 +9,11 @@ import (
 
 	"github.com/dustin/go-humanize"
 	"github.com/kasuboski/mediaz/config"
+	"github.com/kasuboski/mediaz/pkg/indexer"
 	mio "github.com/kasuboski/mediaz/pkg/io"
 	"github.com/kasuboski/mediaz/pkg/library"
 	"github.com/kasuboski/mediaz/pkg/logger"
 	"github.com/kasuboski/mediaz/pkg/manager"
-	"github.com/kasuboski/mediaz/pkg/prowlarr"
 	"github.com/kasuboski/mediaz/pkg/storage"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite"
 	"github.com/oapi-codegen/nullable"
@@ -35,33 +35,24 @@ var listIndexerCmd = &cobra.Command{
 			log.Fatalf("failed to read configurations: %v", err)
 		}
 
-		c, err := prowlarr.NewClient(cfg.Prowlarr.URI, prowlarr.WithRequestEditorFn(prowlarr.SetRequestAPIKey((cfg.Prowlarr.APIKey))))
+		ctx := context.TODO()
+
+		indexerFactory := indexer.NewIndexerSourceFactory()
+
+		store, err := sqlite.New(ctx, cfg.Storage.FilePath)
 		if err != nil {
-			log.Fatalf("failed to create client: %v", err)
+			log.Fatal("failed to create storage connection", err)
 		}
 
-		ctx := context.TODO()
-		r, err := c.GetAPIV1Indexer(ctx)
+		m := manager.New(nil, indexerFactory, nil, store, nil, cfg.Manager, cfg)
+
+		indexers, err := m.ListIndexers(ctx)
 		if err != nil {
 			log.Fatalf("failed to list indexers: %v", err)
 		}
 
-		resp, err := prowlarr.ParseGetAPIV1IndexerResponse(r)
-		if err != nil {
-			log.Fatalf("failed to parse indexer response: %v", err)
-		}
-
-		if resp.JSON200 == nil {
-			log.Fatal("no results in response")
-		}
-
-		for _, i := range *resp.JSON200 {
-			name, err := i.Name.Get()
-			if err != nil {
-				continue
-			}
-
-			log.Println(name)
+		for _, i := range indexers {
+			log.Println(i.Name)
 		}
 	},
 }
@@ -81,10 +72,7 @@ var searchIndexerCmd = &cobra.Command{
 			log.Fatalf("failed to read configurations: %v", err)
 		}
 
-		prowlarrClient, err := prowlarr.New(cfg.Prowlarr.URI, cfg.Prowlarr.APIKey)
-		if err != nil {
-			log.Fatalf("failed to create client: %v", err)
-		}
+		indexerFactory := indexer.NewIndexerSourceFactory()
 
 		tmdbClient, err := tmdb.New(cfg.TMDB.URI, cfg.TMDB.APIKey)
 		if err != nil {
@@ -120,7 +108,7 @@ var searchIndexerCmd = &cobra.Command{
 			log.Fatal("failed to init database", zap.Error(err))
 		}
 
-		m := manager.New(tmdbClient, prowlarrClient, library, store, nil, cfg.Manager, cfg)
+		m := manager.New(tmdbClient, indexerFactory, library, store, nil, cfg.Manager, cfg)
 
 		idx, err := m.ListIndexers(ctx)
 		if err != nil {

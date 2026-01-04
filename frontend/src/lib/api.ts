@@ -727,6 +727,7 @@ export const downloadClientsApi = {
 export interface Indexer {
   id: number;
   name: string;
+  source: string;
   priority: number;
   uri: string;
 }
@@ -761,6 +762,79 @@ export const indexersApi = {
     return apiRequest<void>('/indexers', {
       method: 'DELETE',
       body: JSON.stringify({ id }),
+    });
+  },
+};
+
+export interface IndexerSource {
+  id: number;
+  name: string;
+  implementation: string;
+  scheme: string;
+  host: string;
+  port?: number;
+  enabled: boolean;
+}
+
+export interface AddIndexerSourceRequest {
+  name: string;
+  implementation: string;
+  scheme: string;
+  host: string;
+  port?: number;
+  apiKey?: string;
+  enabled: boolean;
+}
+
+export interface UpdateIndexerSourceRequest {
+  name: string;
+  implementation: string;
+  scheme: string;
+  host: string;
+  port?: number;
+  apiKey?: string;
+  enabled: boolean;
+}
+
+export const indexerSourcesApi = {
+  async list(): Promise<IndexerSource[]> {
+    return apiRequest<IndexerSource[]>('/indexer-sources');
+  },
+
+  async create(request: AddIndexerSourceRequest): Promise<IndexerSource> {
+    return apiRequest<IndexerSource>('/indexer-sources', {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
+  },
+
+  async get(id: number): Promise<IndexerSource> {
+    return apiRequest<IndexerSource>(`/indexer-sources/${id}`);
+  },
+
+  async update(id: number, request: UpdateIndexerSourceRequest): Promise<IndexerSource> {
+    return apiRequest<IndexerSource>(`/indexer-sources/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(request),
+    });
+  },
+
+  async delete(id: number): Promise<void> {
+    return apiRequest<void>(`/indexer-sources/${id}`, {
+      method: 'DELETE',
+    });
+  },
+
+  async test(request: AddIndexerSourceRequest): Promise<void> {
+    return apiRequest<void>('/indexer-sources/test', {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
+  },
+
+  async refresh(id: number): Promise<void> {
+    return apiRequest<void>(`/indexer-sources/${id}/refresh`, {
+      method: 'POST',
     });
   },
 };

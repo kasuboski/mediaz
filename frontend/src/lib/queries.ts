@@ -11,12 +11,15 @@ import {
   libraryApi,
   downloadClientsApi,
   indexersApi,
+  indexerSourcesApi,
   qualityProfilesApi,
   qualityDefinitionsApi,
   type JobType,
   type CreateDownloadClientRequest,
   type UpdateDownloadClientRequest,
   type IndexerRequest,
+  type AddIndexerSourceRequest,
+  type UpdateIndexerSourceRequest,
   type AddMovieRequest,
   type AddSeriesRequest,
   type CreateQualityProfileRequest,
@@ -61,6 +64,11 @@ export const queryKeys = {
   indexers: {
     all: ['indexers'] as const,
     list: () => [...queryKeys.indexers.all, 'list'] as const,
+  },
+  indexerSources: {
+    all: ['indexerSources'] as const,
+    list: () => [...queryKeys.indexerSources.all, 'list'] as const,
+    detail: (id: number) => [...queryKeys.indexerSources.all, 'detail', id] as const,
   },
   qualityProfiles: {
     all: ['qualityProfiles'] as const,
@@ -306,6 +314,78 @@ export function useDeleteIndexer() {
   return useMutation({
     mutationFn: (id: number) => indexersApi.delete(id),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.indexers.list() });
+    },
+  });
+}
+
+export function useIndexerSources() {
+  return useQuery({
+    queryKey: queryKeys.indexerSources.list(),
+    queryFn: indexerSourcesApi.list,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useIndexerSource(id: number) {
+  return useQuery({
+    queryKey: queryKeys.indexerSources.detail(id),
+    queryFn: () => indexerSourcesApi.get(id),
+    enabled: !!id,
+  });
+}
+
+export function useCreateIndexerSource() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (request: AddIndexerSourceRequest) => indexerSourcesApi.create(request),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.indexerSources.list() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.indexers.list() });
+    },
+  });
+}
+
+export function useUpdateIndexerSource() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, request }: { id: number; request: UpdateIndexerSourceRequest }) =>
+      indexerSourcesApi.update(id, request),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.indexerSources.list() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.indexerSources.detail(variables.id) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.indexers.list() });
+    },
+  });
+}
+
+export function useDeleteIndexerSource() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: number) => indexerSourcesApi.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.indexerSources.list() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.indexers.list() });
+    },
+  });
+}
+
+export function useTestIndexerSource() {
+  return useMutation({
+    mutationFn: (request: AddIndexerSourceRequest) => indexerSourcesApi.test(request),
+  });
+}
+
+export function useRefreshIndexerSource() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: number) => indexerSourcesApi.refresh(id),
+    onSuccess: (_, id) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.indexerSources.detail(id) });
       queryClient.invalidateQueries({ queryKey: queryKeys.indexers.list() });
     },
   });

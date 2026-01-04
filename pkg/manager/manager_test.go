@@ -18,14 +18,14 @@ import (
 	"github.com/kasuboski/mediaz/config"
 	downloadMock "github.com/kasuboski/mediaz/pkg/download/mocks"
 	mhttpMock "github.com/kasuboski/mediaz/pkg/http/mocks"
+	"github.com/kasuboski/mediaz/pkg/indexer/mocks"
 	mio "github.com/kasuboski/mediaz/pkg/io"
 	"github.com/kasuboski/mediaz/pkg/library"
 	mockLibrary "github.com/kasuboski/mediaz/pkg/library/mocks"
 	"github.com/kasuboski/mediaz/pkg/pagination"
 	"github.com/kasuboski/mediaz/pkg/prowlarr"
-	prowlMock "github.com/kasuboski/mediaz/pkg/prowlarr/mocks"
 	"github.com/kasuboski/mediaz/pkg/storage"
-	"github.com/kasuboski/mediaz/pkg/storage/mocks"
+	storageMocks "github.com/kasuboski/mediaz/pkg/storage/mocks"
 	mediaSqlite "github.com/kasuboski/mediaz/pkg/storage/sqlite"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/table"
@@ -52,8 +52,6 @@ func TestAddMovietoLibrary(t *testing.T) {
 	// create a date in the past
 	releaseDate := time.Now().AddDate(0, 0, -1).Format(tmdb.ReleaseDateFormat)
 
-	prowlarrMock := prowlMock.NewMockClientInterface(ctrl)
-
 	downloadClient := model.DownloadClient{
 		Implementation: "transmission",
 		Type:           "torrent",
@@ -78,9 +76,6 @@ func TestAddMovietoLibrary(t *testing.T) {
 		},
 		&mio.MediaFileSystem{},
 	)
-	pClient, err := prowlarr.New(":", "1234")
-	pClient.ClientInterface = prowlarrMock
-	require.NoError(t, err)
 
 	tmdbHttpMock := mhttpMock.NewMockHTTPClient(ctrl)
 	tmdbHttpMock.EXPECT().Do(gomock.Any()).Return(mediaDetailsResponse("test movie", 120, releaseDate), nil).Times(1)
@@ -88,9 +83,10 @@ func TestAddMovietoLibrary(t *testing.T) {
 	tClient, err := tmdb.New("https://api.themoviedb.org", "1234", tmdb.WithHTTPClient(tmdbHttpMock))
 	require.NoError(t, err)
 
+	indexerFactory := mocks.NewMockFactory(ctrl)
 	mockFactory := downloadMock.NewMockFactory(ctrl)
 
-	m := New(tClient, pClient, lib, store, mockFactory, config.Manager{}, config.Config{})
+	m := New(tClient, indexerFactory, lib, store, mockFactory, config.Manager{}, config.Config{})
 	require.NotNil(t, m)
 
 	req := AddMovieRequest{
@@ -127,7 +123,7 @@ func TestListMoviesInLibrary(t *testing.T) {
 
 	t.Run("no movies in library", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
-		store := mocks.NewMockStorage(ctrl)
+		store := storageMocks.NewMockStorage(ctrl)
 		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
 
 		store.EXPECT().ListMovies(ctx).Return([]*storage.Movie{}, nil)
@@ -139,7 +135,7 @@ func TestListMoviesInLibrary(t *testing.T) {
 
 	t.Run("movies with metadata", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
-		store := mocks.NewMockStorage(ctrl)
+		store := storageMocks.NewMockStorage(ctrl)
 		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
 
 		metadataID := int32(1)
@@ -195,7 +191,7 @@ func TestListMoviesInLibrary(t *testing.T) {
 
 	t.Run("movies without metadata", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
-		store := mocks.NewMockStorage(ctrl)
+		store := storageMocks.NewMockStorage(ctrl)
 		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
 
 		path := "movie1"
@@ -221,7 +217,7 @@ func TestListMoviesInLibrary(t *testing.T) {
 
 	t.Run("error listing movies", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
-		store := mocks.NewMockStorage(ctrl)
+		store := storageMocks.NewMockStorage(ctrl)
 		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
 
 		store.EXPECT().ListMovies(ctx).Return(nil, errors.New("db error"))
@@ -237,7 +233,7 @@ func TestListShowsInLibrary(t *testing.T) {
 
 	t.Run("no shows in library", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
-		store := mocks.NewMockStorage(ctrl)
+		store := storageMocks.NewMockStorage(ctrl)
 		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
 
 		store.EXPECT().ListSeries(ctx).Return([]*storage.Series{}, nil)
@@ -249,7 +245,7 @@ func TestListShowsInLibrary(t *testing.T) {
 
 	t.Run("shows with metadata", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
-		store := mocks.NewMockStorage(ctrl)
+		store := storageMocks.NewMockStorage(ctrl)
 		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
 
 		metadataID := int32(1)
@@ -293,7 +289,7 @@ func TestListShowsInLibrary(t *testing.T) {
 
 	t.Run("shows without metadata", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
-		store := mocks.NewMockStorage(ctrl)
+		store := storageMocks.NewMockStorage(ctrl)
 		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
 
 		path := "Show 1"
@@ -319,7 +315,7 @@ func TestListShowsInLibrary(t *testing.T) {
 
 	t.Run("error listing series", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
-		store := mocks.NewMockStorage(ctrl)
+		store := storageMocks.NewMockStorage(ctrl)
 		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
 
 		store.EXPECT().ListSeries(ctx).Return(nil, errors.New("db error"))
@@ -624,7 +620,7 @@ func TestGetMovieDetailByTMDBID(t *testing.T) {
 
 	t.Run("success - movie not in library", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
-		store := mocks.NewMockStorage(ctrl)
+		store := storageMocks.NewMockStorage(ctrl)
 		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
 
 		releaseDate := time.Date(2023, 1, 15, 0, 0, 0, 0, time.UTC)
@@ -676,7 +672,7 @@ func TestGetMovieDetailByTMDBID(t *testing.T) {
 
 	t.Run("success - movie in library", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
-		store := mocks.NewMockStorage(ctrl)
+		store := storageMocks.NewMockStorage(ctrl)
 		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
 
 		metadata := &model.MovieMetadata{
@@ -718,7 +714,7 @@ func TestGetMovieDetailByTMDBID(t *testing.T) {
 
 	t.Run("success - movie with nil release date", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
-		store := mocks.NewMockStorage(ctrl)
+		store := storageMocks.NewMockStorage(ctrl)
 		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
 
 		metadata := &model.MovieMetadata{
@@ -744,7 +740,7 @@ func TestGetMovieDetailByTMDBID(t *testing.T) {
 
 	t.Run("success - movie with unmonitored status", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
-		store := mocks.NewMockStorage(ctrl)
+		store := storageMocks.NewMockStorage(ctrl)
 		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
 
 		metadata := &model.MovieMetadata{
@@ -779,7 +775,7 @@ func TestGetMovieDetailByTMDBID(t *testing.T) {
 
 	t.Run("error - GetMovieMetadata fails", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
-		store := mocks.NewMockStorage(ctrl)
+		store := storageMocks.NewMockStorage(ctrl)
 		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
 
 		expectedErr := errors.New("metadata fetch error")
@@ -793,7 +789,7 @@ func TestGetMovieDetailByTMDBID(t *testing.T) {
 
 	t.Run("success - storage error non-NotFound is logged but not returned", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
-		store := mocks.NewMockStorage(ctrl)
+		store := storageMocks.NewMockStorage(ctrl)
 		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
 
 		metadata := &model.MovieMetadata{
@@ -1002,7 +998,7 @@ func TestGetTVDetailByTMDBID(t *testing.T) {
 
 	t.Run("success - TV show not in library", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
-		store := mocks.NewMockStorage(ctrl)
+		store := storageMocks.NewMockStorage(ctrl)
 		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
 
 		m := New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
@@ -1072,7 +1068,7 @@ func TestGetTVDetailByTMDBID(t *testing.T) {
 
 	t.Run("success - TV show in library", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
-		store := mocks.NewMockStorage(ctrl)
+		store := storageMocks.NewMockStorage(ctrl)
 		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
 
 		m := New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
@@ -1134,7 +1130,7 @@ func TestGetTVDetailByTMDBID(t *testing.T) {
 
 	t.Run("error - GetSeriesMetadata fails", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
-		store := mocks.NewMockStorage(ctrl)
+		store := storageMocks.NewMockStorage(ctrl)
 		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
 
 		m := New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
@@ -1150,7 +1146,7 @@ func TestGetTVDetailByTMDBID(t *testing.T) {
 
 	t.Run("error - TMDB API call fails", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
-		store := mocks.NewMockStorage(ctrl)
+		store := storageMocks.NewMockStorage(ctrl)
 		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
 
 		m := New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
@@ -1177,7 +1173,7 @@ func TestGetTVDetailByTMDBID(t *testing.T) {
 
 	t.Run("success - storage error non-NotFound is logged but not returned", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
-		store := mocks.NewMockStorage(ctrl)
+		store := storageMocks.NewMockStorage(ctrl)
 		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
 
 		m := New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
@@ -1218,7 +1214,7 @@ func TestGetTVDetailByTMDBID(t *testing.T) {
 
 	t.Run("error - TMDB returns empty FirstAirDate", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
-		store := mocks.NewMockStorage(ctrl)
+		store := storageMocks.NewMockStorage(ctrl)
 		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
 
 		m := New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
@@ -1309,7 +1305,7 @@ func TestMediaManager_AddSeriesToLibrary(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		ctx := context.Background()
 
-		store := mocks.NewMockStorage(ctrl)
+		store := storageMocks.NewMockStorage(ctrl)
 		store.EXPECT().GetQualityProfile(gomock.Any(), int64(1)).Return(storage.QualityProfile{}, errors.New("expected testing error"))
 
 		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
