@@ -104,6 +104,14 @@ func (s *Server) Serve(port int) error {
 	v1.HandleFunc("/indexers/{id}", s.UpdateIndexer()).Methods(http.MethodPut)
 	v1.HandleFunc("/indexers", s.DeleteIndexer()).Methods(http.MethodDelete)
 
+	v1.HandleFunc("/indexer-sources", s.ListIndexerSources()).Methods(http.MethodGet)
+	v1.HandleFunc("/indexer-sources", s.CreateIndexerSource()).Methods(http.MethodPost)
+	v1.HandleFunc("/indexer-sources/{id}", s.GetIndexerSource()).Methods(http.MethodGet)
+	v1.HandleFunc("/indexer-sources/{id}", s.UpdateIndexerSource()).Methods(http.MethodPut)
+	v1.HandleFunc("/indexer-sources/{id}", s.DeleteIndexerSource()).Methods(http.MethodDelete)
+	v1.HandleFunc("/indexer-sources/test", s.TestIndexerSource()).Methods(http.MethodPost)
+	v1.HandleFunc("/indexer-sources/{id}/refresh", s.RefreshIndexerSource()).Methods(http.MethodPost)
+
 	v1.HandleFunc("/download/clients", s.ListDownloadClients()).Methods(http.MethodGet)
 	v1.HandleFunc("/download/clients/{id}", s.GetDownloadClient()).Methods(http.MethodGet)
 	v1.HandleFunc("/download/clients/test", s.TestDownloadClient()).Methods(http.MethodPost)

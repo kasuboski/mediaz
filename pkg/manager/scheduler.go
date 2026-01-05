@@ -23,6 +23,7 @@ const (
 	MovieReconcile  JobType = "MovieReconcile"
 	SeriesIndex     JobType = "SeriesIndex"
 	SeriesReconcile JobType = "SeriesReconcile"
+	IndexerSync     JobType = "IndexerSync"
 )
 
 type JobExecutor func(ctx context.Context, jobID int64) error
@@ -59,6 +60,9 @@ func (s *Scheduler) Run(ctx context.Context) error {
 	seriesReconcileTicker := time.NewTicker(s.config.Jobs.SeriesReconcile)
 	defer seriesReconcileTicker.Stop()
 
+	indexerSyncTicker := time.NewTicker(s.config.Jobs.IndexerSync)
+	defer indexerSyncTicker.Stop()
+
 	go s.processPendingJobs(ctx)
 
 	for {
@@ -92,6 +96,8 @@ func (s *Scheduler) Run(ctx context.Context) error {
 			_, _ = s.createPendingJob(ctx, SeriesIndex)
 		case <-seriesReconcileTicker.C:
 			_, _ = s.createPendingJob(ctx, SeriesReconcile)
+		case <-indexerSyncTicker.C:
+			_, _ = s.createPendingJob(ctx, IndexerSync)
 		}
 	}
 }

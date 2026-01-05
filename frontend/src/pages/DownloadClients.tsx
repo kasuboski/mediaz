@@ -56,17 +56,11 @@ export default function DownloadClients() {
 
   return (
     <div className="container mx-auto px-6 py-8">
-      <div className="mb-8 flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground mb-2">Download Clients</h1>
-          <p className="text-muted-foreground">
-            Manage download clients
-          </p>
-        </div>
-        <Button onClick={handleAddClient} className="bg-gradient-primary hover:opacity-90">
-          <Plus className="mr-2 h-4 w-4" />
-          Add Download Client
-        </Button>
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-foreground mb-2">Download Clients</h1>
+        <p className="text-muted-foreground">
+          Manage download clients
+        </p>
       </div>
 
       {isLoading && (
@@ -109,7 +103,13 @@ export default function DownloadClients() {
       {!isLoading && !error && clients && clients.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>Configured Clients</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle>Configured Clients</CardTitle>
+              <Button onClick={handleAddClient} className="bg-gradient-primary hover:opacity-90">
+                <Plus className="mr-2 h-4 w-4" />
+                Add Download Client
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             <Table>

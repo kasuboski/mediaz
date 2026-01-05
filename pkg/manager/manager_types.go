@@ -161,6 +161,7 @@ type AddSeriesRequest struct {
 type IndexerResponse struct {
 	ID       int32  `json:"id"`
 	Name     string `json:"name"`
+	Source   string `json:"source"`
 	Priority int32  `json:"priority"`
 	URI      string `json:"uri"`
 }

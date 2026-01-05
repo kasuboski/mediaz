@@ -8,9 +8,10 @@
 package model
 
 type Indexer struct {
-	ID       int32 `sql:"primary_key"`
-	Name     string
-	Priority int32
-	URI      string
-	APIKey   *string
+	ID              int32 `sql:"primary_key"`
+	IndexerSourceID *int32
+	Name            string
+	Priority        int32
+	URI             string
+	APIKey          *string
 }

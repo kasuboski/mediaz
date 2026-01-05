@@ -150,13 +150,8 @@ export function IndexerDialog({ open, onOpenChange, indexer }: IndexerDialogProp
               type="password"
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
-              placeholder={indexer ? 'Enter to update' : ''}
+              placeholder={''}
             />
-            {indexer && (
-              <p className="text-sm text-muted-foreground">
-                Leave empty to keep existing API key
-              </p>
-            )}
           </div>
         </div>
 

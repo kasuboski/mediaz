@@ -43,10 +43,6 @@ func TestNew(t *testing.T) {
 				URI:    "https://my-host",
 				APIKey: "my-api-key",
 			},
-			Prowlarr: Prowlarr{
-				URI:    "https://my-prowlarr-host",
-				APIKey: "my-prowlarr-api-key",
-			},
 			Manager: Manager{
 				Jobs: Jobs{
 					MovieIndex:     time.Minute * 15,
@@ -65,7 +61,6 @@ func TestNew(t *testing.T) {
 		cu.SetConfigFile("")
 		cu.SetDefault("tmdb.uri", "https://api.themoviedb.org")
 		cu.SetDefault("tmdb.apiKey", "fake-key")
-		cu.SetDefault("prowlarr.uri", "http://localhost")
 		cu.SetDefault("manager.jobs.movieIndex", time.Minute*15)
 		cu.SetDefault("manager.jobs.movieReconcile", time.Minute*10)
 		c, err := New(cu)
@@ -77,9 +72,6 @@ func TestNew(t *testing.T) {
 			TMDB: TMDB{
 				URI:    "https://api.themoviedb.org",
 				APIKey: "fake-key",
-			},
-			Prowlarr: Prowlarr{
-				URI: "http://localhost",
 			},
 			Manager: Manager{
 				Jobs: Jobs{

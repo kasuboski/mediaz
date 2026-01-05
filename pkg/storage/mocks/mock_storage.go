@@ -137,6 +137,21 @@ func (mr *MockStorageMockRecorder) CreateIndexer(ctx, indexer any) *gomock.Call 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateIndexer", reflect.TypeOf((*MockStorage)(nil).CreateIndexer), ctx, indexer)
 }
 
+// CreateIndexerSource mocks base method.
+func (m *MockStorage) CreateIndexerSource(ctx context.Context, source model.IndexerSource) (int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateIndexerSource", ctx, source)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CreateIndexerSource indicates an expected call of CreateIndexerSource.
+func (mr *MockStorageMockRecorder) CreateIndexerSource(ctx, source any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateIndexerSource", reflect.TypeOf((*MockStorage)(nil).CreateIndexerSource), ctx, source)
+}
+
 // CreateJob mocks base method.
 func (m *MockStorage) CreateJob(ctx context.Context, job storage.Job, initialState storage.JobState) (int64, error) {
 	m.ctrl.T.Helper()
@@ -384,6 +399,20 @@ func (m *MockStorage) DeleteIndexer(ctx context.Context, id int64) error {
 func (mr *MockStorageMockRecorder) DeleteIndexer(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteIndexer", reflect.TypeOf((*MockStorage)(nil).DeleteIndexer), ctx, id)
+}
+
+// DeleteIndexerSource mocks base method.
+func (m *MockStorage) DeleteIndexerSource(ctx context.Context, id int64) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteIndexerSource", ctx, id)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteIndexerSource indicates an expected call of DeleteIndexerSource.
+func (mr *MockStorageMockRecorder) DeleteIndexerSource(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteIndexerSource", reflect.TypeOf((*MockStorage)(nil).DeleteIndexerSource), ctx, id)
 }
 
 // DeleteJob mocks base method.
@@ -642,6 +671,21 @@ func (m *MockStorage) GetEpisodeMetadata(ctx context.Context, where sqlite.BoolE
 func (mr *MockStorageMockRecorder) GetEpisodeMetadata(ctx, where any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetEpisodeMetadata", reflect.TypeOf((*MockStorage)(nil).GetEpisodeMetadata), ctx, where)
+}
+
+// GetIndexerSource mocks base method.
+func (m *MockStorage) GetIndexerSource(ctx context.Context, id int64) (model.IndexerSource, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetIndexerSource", ctx, id)
+	ret0, _ := ret[0].(model.IndexerSource)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetIndexerSource indicates an expected call of GetIndexerSource.
+func (mr *MockStorageMockRecorder) GetIndexerSource(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetIndexerSource", reflect.TypeOf((*MockStorage)(nil).GetIndexerSource), ctx, id)
 }
 
 // GetJob mocks base method.
@@ -1044,19 +1088,44 @@ func (mr *MockStorageMockRecorder) ListEpisodes(ctx any, where ...any) *gomock.C
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListEpisodes", reflect.TypeOf((*MockStorage)(nil).ListEpisodes), varargs...)
 }
 
-// ListIndexers mocks base method.
-func (m *MockStorage) ListIndexers(ctx context.Context) ([]*model.Indexer, error) {
+// ListIndexerSources mocks base method.
+func (m *MockStorage) ListIndexerSources(ctx context.Context, where ...sqlite.BoolExpression) ([]*model.IndexerSource, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListIndexers", ctx)
+	varargs := []any{ctx}
+	for _, a := range where {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "ListIndexerSources", varargs...)
+	ret0, _ := ret[0].([]*model.IndexerSource)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListIndexerSources indicates an expected call of ListIndexerSources.
+func (mr *MockStorageMockRecorder) ListIndexerSources(ctx any, where ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{ctx}, where...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListIndexerSources", reflect.TypeOf((*MockStorage)(nil).ListIndexerSources), varargs...)
+}
+
+// ListIndexers mocks base method.
+func (m *MockStorage) ListIndexers(ctx context.Context, where ...sqlite.BoolExpression) ([]*model.Indexer, error) {
+	m.ctrl.T.Helper()
+	varargs := []any{ctx}
+	for _, a := range where {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "ListIndexers", varargs...)
 	ret0, _ := ret[0].([]*model.Indexer)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListIndexers indicates an expected call of ListIndexers.
-func (mr *MockStorageMockRecorder) ListIndexers(ctx any) *gomock.Call {
+func (mr *MockStorageMockRecorder) ListIndexers(ctx any, where ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListIndexers", reflect.TypeOf((*MockStorage)(nil).ListIndexers), ctx)
+	varargs := append([]any{ctx}, where...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListIndexers", reflect.TypeOf((*MockStorage)(nil).ListIndexers), varargs...)
 }
 
 // ListJobs mocks base method.
@@ -1353,6 +1422,20 @@ func (mr *MockStorageMockRecorder) UpdateIndexer(ctx, id, indexer any) *gomock.C
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateIndexer", reflect.TypeOf((*MockStorage)(nil).UpdateIndexer), ctx, id, indexer)
 }
 
+// UpdateIndexerSource mocks base method.
+func (m *MockStorage) UpdateIndexerSource(ctx context.Context, id int64, source model.IndexerSource) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateIndexerSource", ctx, id, source)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateIndexerSource indicates an expected call of UpdateIndexerSource.
+func (mr *MockStorageMockRecorder) UpdateIndexerSource(ctx, id, source any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateIndexerSource", reflect.TypeOf((*MockStorage)(nil).UpdateIndexerSource), ctx, id, source)
+}
+
 // UpdateJobState mocks base method.
 func (m *MockStorage) UpdateJobState(ctx context.Context, id int64, state storage.JobState, errorMsg *string) error {
 	m.ctrl.T.Helper()
@@ -1532,18 +1615,23 @@ func (mr *MockIndexerStorageMockRecorder) DeleteIndexer(ctx, id any) *gomock.Cal
 }
 
 // ListIndexers mocks base method.
-func (m *MockIndexerStorage) ListIndexers(ctx context.Context) ([]*model.Indexer, error) {
+func (m *MockIndexerStorage) ListIndexers(ctx context.Context, where ...sqlite.BoolExpression) ([]*model.Indexer, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListIndexers", ctx)
+	varargs := []any{ctx}
+	for _, a := range where {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "ListIndexers", varargs...)
 	ret0, _ := ret[0].([]*model.Indexer)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListIndexers indicates an expected call of ListIndexers.
-func (mr *MockIndexerStorageMockRecorder) ListIndexers(ctx any) *gomock.Call {
+func (mr *MockIndexerStorageMockRecorder) ListIndexers(ctx any, where ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListIndexers", reflect.TypeOf((*MockIndexerStorage)(nil).ListIndexers), ctx)
+	varargs := append([]any{ctx}, where...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListIndexers", reflect.TypeOf((*MockIndexerStorage)(nil).ListIndexers), varargs...)
 }
 
 // UpdateIndexer mocks base method.
@@ -1558,6 +1646,107 @@ func (m *MockIndexerStorage) UpdateIndexer(ctx context.Context, id int64, indexe
 func (mr *MockIndexerStorageMockRecorder) UpdateIndexer(ctx, id, indexer any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateIndexer", reflect.TypeOf((*MockIndexerStorage)(nil).UpdateIndexer), ctx, id, indexer)
+}
+
+// MockIndexerSourceStorage is a mock of IndexerSourceStorage interface.
+type MockIndexerSourceStorage struct {
+	ctrl     *gomock.Controller
+	recorder *MockIndexerSourceStorageMockRecorder
+}
+
+// MockIndexerSourceStorageMockRecorder is the mock recorder for MockIndexerSourceStorage.
+type MockIndexerSourceStorageMockRecorder struct {
+	mock *MockIndexerSourceStorage
+}
+
+// NewMockIndexerSourceStorage creates a new mock instance.
+func NewMockIndexerSourceStorage(ctrl *gomock.Controller) *MockIndexerSourceStorage {
+	mock := &MockIndexerSourceStorage{ctrl: ctrl}
+	mock.recorder = &MockIndexerSourceStorageMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockIndexerSourceStorage) EXPECT() *MockIndexerSourceStorageMockRecorder {
+	return m.recorder
+}
+
+// CreateIndexerSource mocks base method.
+func (m *MockIndexerSourceStorage) CreateIndexerSource(ctx context.Context, source model.IndexerSource) (int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateIndexerSource", ctx, source)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CreateIndexerSource indicates an expected call of CreateIndexerSource.
+func (mr *MockIndexerSourceStorageMockRecorder) CreateIndexerSource(ctx, source any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateIndexerSource", reflect.TypeOf((*MockIndexerSourceStorage)(nil).CreateIndexerSource), ctx, source)
+}
+
+// DeleteIndexerSource mocks base method.
+func (m *MockIndexerSourceStorage) DeleteIndexerSource(ctx context.Context, id int64) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteIndexerSource", ctx, id)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteIndexerSource indicates an expected call of DeleteIndexerSource.
+func (mr *MockIndexerSourceStorageMockRecorder) DeleteIndexerSource(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteIndexerSource", reflect.TypeOf((*MockIndexerSourceStorage)(nil).DeleteIndexerSource), ctx, id)
+}
+
+// GetIndexerSource mocks base method.
+func (m *MockIndexerSourceStorage) GetIndexerSource(ctx context.Context, id int64) (model.IndexerSource, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetIndexerSource", ctx, id)
+	ret0, _ := ret[0].(model.IndexerSource)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetIndexerSource indicates an expected call of GetIndexerSource.
+func (mr *MockIndexerSourceStorageMockRecorder) GetIndexerSource(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetIndexerSource", reflect.TypeOf((*MockIndexerSourceStorage)(nil).GetIndexerSource), ctx, id)
+}
+
+// ListIndexerSources mocks base method.
+func (m *MockIndexerSourceStorage) ListIndexerSources(ctx context.Context, where ...sqlite.BoolExpression) ([]*model.IndexerSource, error) {
+	m.ctrl.T.Helper()
+	varargs := []any{ctx}
+	for _, a := range where {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "ListIndexerSources", varargs...)
+	ret0, _ := ret[0].([]*model.IndexerSource)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListIndexerSources indicates an expected call of ListIndexerSources.
+func (mr *MockIndexerSourceStorageMockRecorder) ListIndexerSources(ctx any, where ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{ctx}, where...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListIndexerSources", reflect.TypeOf((*MockIndexerSourceStorage)(nil).ListIndexerSources), varargs...)
+}
+
+// UpdateIndexerSource mocks base method.
+func (m *MockIndexerSourceStorage) UpdateIndexerSource(ctx context.Context, id int64, source model.IndexerSource) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateIndexerSource", ctx, id, source)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateIndexerSource indicates an expected call of UpdateIndexerSource.
+func (mr *MockIndexerSourceStorageMockRecorder) UpdateIndexerSource(ctx, id, source any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateIndexerSource", reflect.TypeOf((*MockIndexerSourceStorage)(nil).UpdateIndexerSource), ctx, id, source)
 }
 
 // MockQualityStorage is a mock of QualityStorage interface.
