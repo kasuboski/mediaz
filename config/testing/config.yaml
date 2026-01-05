@@ -1,9 +1,6 @@
 tmdb:
   uri: https://my-host
   apiKey: my-api-key
-prowlarr:
-  uri: https://my-prowlarr-host
-  apiKey: my-prowlarr-api-key
 manager:
   jobs:
     movieIndex: 15m

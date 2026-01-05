@@ -138,6 +138,7 @@ func TestFindEpisodes_FlatStructure(t *testing.T) {
 		{
 			Name:          "Fargo - S01E01 - The Crocodile's Dilemma WEBDL-1080p.mkv",
 			RelativePath:  "Fargo/Fargo - S01E01 - The Crocodile's Dilemma WEBDL-1080p.mkv",
+			AbsolutePath:  "Fargo/Fargo - S01E01 - The Crocodile's Dilemma WEBDL-1080p.mkv",
 			SeriesName:    "Fargo",
 			SeasonNumber:  1,
 			EpisodeNumber: 1,
@@ -145,6 +146,7 @@ func TestFindEpisodes_FlatStructure(t *testing.T) {
 		{
 			Name:          "Fargo - S01E02 - The Rooster Prince WEBDL-1080p.mkv",
 			RelativePath:  "Fargo/Fargo - S01E02 - The Rooster Prince WEBDL-1080p.mkv",
+			AbsolutePath:  "Fargo/Fargo - S01E02 - The Rooster Prince WEBDL-1080p.mkv",
 			SeriesName:    "Fargo",
 			SeasonNumber:  1,
 			EpisodeNumber: 2,
@@ -152,6 +154,7 @@ func TestFindEpisodes_FlatStructure(t *testing.T) {
 		{
 			Name:          "Fargo - S01E03 - A Muddy Road WEBDL-1080p.mkv",
 			RelativePath:  "Fargo/Fargo - S01E03 - A Muddy Road WEBDL-1080p.mkv",
+			AbsolutePath:  "Fargo/Fargo - S01E03 - A Muddy Road WEBDL-1080p.mkv",
 			SeriesName:    "Fargo",
 			SeasonNumber:  1,
 			EpisodeNumber: 3,
@@ -182,6 +185,7 @@ func TestFindEpisodes_SeasonSubdirectory(t *testing.T) {
 		{
 			Name:          "Arcane (2021) - S01E01 - Welcome to the Playground.mkv",
 			RelativePath:  "Arcane/Season 1/Arcane (2021) - S01E01 - Welcome to the Playground.mkv",
+			AbsolutePath:  "Arcane/Season 1/Arcane (2021) - S01E01 - Welcome to the Playground.mkv",
 			SeriesName:    "Arcane",
 			SeasonNumber:  1,
 			EpisodeNumber: 1,
@@ -189,6 +193,7 @@ func TestFindEpisodes_SeasonSubdirectory(t *testing.T) {
 		{
 			Name:          "Arcane (2021) - S01E02 - Some Mysteries.mkv",
 			RelativePath:  "Arcane/Season 1/Arcane (2021) - S01E02 - Some Mysteries.mkv",
+			AbsolutePath:  "Arcane/Season 1/Arcane (2021) - S01E02 - Some Mysteries.mkv",
 			SeriesName:    "Arcane",
 			SeasonNumber:  1,
 			EpisodeNumber: 2,
@@ -221,6 +226,7 @@ func TestFindEpisodes_MixedStructures(t *testing.T) {
 		{
 			Name:          "Arcane - S01E01.mkv",
 			RelativePath:  "Arcane/Season 1/Arcane - S01E01.mkv",
+			AbsolutePath:  "Arcane/Season 1/Arcane - S01E01.mkv",
 			SeriesName:    "Arcane",
 			SeasonNumber:  1,
 			EpisodeNumber: 1,
@@ -228,6 +234,7 @@ func TestFindEpisodes_MixedStructures(t *testing.T) {
 		{
 			Name:          "Arcane - S01E02.mkv",
 			RelativePath:  "Arcane/Season 1/Arcane - S01E02.mkv",
+			AbsolutePath:  "Arcane/Season 1/Arcane - S01E02.mkv",
 			SeriesName:    "Arcane",
 			SeasonNumber:  1,
 			EpisodeNumber: 2,
@@ -235,6 +242,7 @@ func TestFindEpisodes_MixedStructures(t *testing.T) {
 		{
 			Name:          "Fargo - S01E01.mkv",
 			RelativePath:  "Fargo/Fargo - S01E01.mkv",
+			AbsolutePath:  "Fargo/Fargo - S01E01.mkv",
 			SeriesName:    "Fargo",
 			SeasonNumber:  1,
 			EpisodeNumber: 1,
@@ -242,6 +250,7 @@ func TestFindEpisodes_MixedStructures(t *testing.T) {
 		{
 			Name:          "Fargo - S01E02.mkv",
 			RelativePath:  "Fargo/Fargo - S01E02.mkv",
+			AbsolutePath:  "Fargo/Fargo - S01E02.mkv",
 			SeriesName:    "Fargo",
 			SeasonNumber:  1,
 			EpisodeNumber: 2,
@@ -272,6 +281,7 @@ func TestFindEpisodes_SkipsTooDeepNesting(t *testing.T) {
 		{
 			Name:          "Series - S01E01.mkv",
 			RelativePath:  "Series/Season 1/Series - S01E01.mkv",
+			AbsolutePath:  "Series/Season 1/Series - S01E01.mkv",
 			SeriesName:    "Series",
 			SeasonNumber:  1,
 			EpisodeNumber: 1,

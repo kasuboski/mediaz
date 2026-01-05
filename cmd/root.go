@@ -55,9 +55,6 @@ func initConfig() {
 	viper.SetDefault("tmdb.uri", "https://api.themoviedb.org")
 	viper.SetDefault("tmdb.apiKey", "")
 
-	viper.SetDefault("prowlarr.uri", "")
-	viper.SetDefault("prowlarr.apiKey", "")
-
 	viper.SetDefault("server.port", 8080)
 	viper.SetDefault("server.distDir", "./frontend/dist")
 
@@ -73,4 +70,6 @@ func initConfig() {
 
 	viper.SetDefault("manager.jobs.seriesIndex", defaultJobTicker)
 	viper.SetDefault("manager.jobs.seriesReconcile", defaultJobTicker)
+
+	viper.SetDefault("manager.jobs.indexerSync", "1h")
 }

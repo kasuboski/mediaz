@@ -27,7 +27,7 @@ func (m MediaManager) ReconcileSeries(ctx context.Context) error {
 		return err
 	}
 
-	snapshot := newReconcileSnapshot(make([]Indexer, 0), dcs)
+	snapshot := newReconcileSnapshot(make([]model.Indexer, 0), dcs)
 
 	err = m.ReconcileMissingSeries(ctx, snapshot)
 	if err != nil {

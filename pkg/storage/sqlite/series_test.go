@@ -244,6 +244,134 @@ func TestEpisodeFileStorage(t *testing.T) {
 	assert.ErrorIs(t, err, storage.ErrNotFound)
 }
 
+func TestGetEpisodeFile(t *testing.T) {
+	t.Run("get episode file by id", func(t *testing.T) {
+		ctx := context.Background()
+		store := initSqlite(t, ctx)
+		require.NotNil(t, store)
+
+		file := model.EpisodeFile{
+			Quality:          "HD",
+			Size:             2048,
+			RelativePath:     ptr("series/episode.mp4"),
+			OriginalFilePath: ptr("/tv/series/episode.mp4"),
+		}
+
+		id, err := store.CreateEpisodeFile(ctx, file)
+		require.NoError(t, err)
+		require.Greater(t, id, int64(0))
+
+		retrieved, err := store.GetEpisodeFile(ctx, int32(id))
+		require.NoError(t, err)
+		require.NotNil(t, retrieved)
+
+		assert.Equal(t, file.Quality, retrieved.Quality)
+		assert.Equal(t, file.Size, retrieved.Size)
+		assert.Equal(t, file.RelativePath, retrieved.RelativePath)
+		assert.Equal(t, file.OriginalFilePath, retrieved.OriginalFilePath)
+	})
+
+	t.Run("get non-existent episode file", func(t *testing.T) {
+		ctx := context.Background()
+		store := initSqlite(t, ctx)
+		require.NotNil(t, store)
+
+		_, err := store.GetEpisodeFile(ctx, 99999)
+		assert.Error(t, err)
+	})
+}
+
+func TestUpdateEpisodeFile(t *testing.T) {
+	t.Run("update episode file absolute path", func(t *testing.T) {
+		ctx := context.Background()
+		store := initSqlite(t, ctx)
+		require.NotNil(t, store)
+
+		file := model.EpisodeFile{
+			Quality:          "HD",
+			Size:             1024,
+			RelativePath:     ptr("series/episode1.mp4"),
+			OriginalFilePath: ptr("/old/path/tv/series/episode1.mp4"),
+		}
+
+		id, err := store.CreateEpisodeFile(ctx, file)
+		require.NoError(t, err)
+		require.Greater(t, id, int64(0))
+
+		retrieved, err := store.GetEpisodeFile(ctx, int32(id))
+		require.NoError(t, err)
+		require.NotNil(t, retrieved)
+
+		newAbsolutePath := "/new/path/tv/series/episode1.mp4"
+		retrieved.OriginalFilePath = &newAbsolutePath
+
+		err = store.UpdateEpisodeFile(ctx, int32(id), *retrieved)
+		require.NoError(t, err)
+
+		updated, err := store.GetEpisodeFile(ctx, int32(id))
+		require.NoError(t, err)
+		require.NotNil(t, updated)
+
+		assert.Equal(t, newAbsolutePath, *updated.OriginalFilePath)
+		assert.Equal(t, file.RelativePath, updated.RelativePath)
+		assert.Equal(t, file.Quality, updated.Quality)
+		assert.Equal(t, file.Size, updated.Size)
+	})
+
+	t.Run("update episode file quality and size", func(t *testing.T) {
+		ctx := context.Background()
+		store := initSqlite(t, ctx)
+		require.NotNil(t, store)
+
+		file := model.EpisodeFile{
+			Quality:          "SD",
+			Size:             512,
+			RelativePath:     ptr("series/episode2.mp4"),
+			OriginalFilePath: ptr("/tv/series/episode2.mp4"),
+		}
+
+		id, err := store.CreateEpisodeFile(ctx, file)
+		require.NoError(t, err)
+		require.Greater(t, id, int64(0))
+
+		retrieved, err := store.GetEpisodeFile(ctx, int32(id))
+		require.NoError(t, err)
+		require.NotNil(t, retrieved)
+
+		retrieved.Quality = "UHD"
+		retrieved.Size = 4096
+
+		err = store.UpdateEpisodeFile(ctx, int32(id), *retrieved)
+		require.NoError(t, err)
+
+		updated, err := store.GetEpisodeFile(ctx, int32(id))
+		require.NoError(t, err)
+		require.NotNil(t, updated)
+
+		assert.Equal(t, "UHD", updated.Quality)
+		assert.Equal(t, int64(4096), updated.Size)
+		assert.Equal(t, file.RelativePath, updated.RelativePath)
+		assert.Equal(t, file.OriginalFilePath, updated.OriginalFilePath)
+	})
+
+	t.Run("update non-existent episode file", func(t *testing.T) {
+		ctx := context.Background()
+		store := initSqlite(t, ctx)
+		require.NotNil(t, store)
+
+		nonExistentFile := model.EpisodeFile{
+			ID:               99999,
+			Quality:          "HD",
+			Size:             1024,
+			RelativePath:     ptr("series/episode.mp4"),
+			OriginalFilePath: ptr("/tv/series/episode.mp4"),
+		}
+
+		err := store.UpdateEpisodeFile(ctx, 99999, nonExistentFile)
+		assert.NoError(t, err)
+	})
+}
+
 func TestSeriesMetadataStorage(t *testing.T) {
 	ctx := context.Background()
 	store := initSqlite(t, ctx)

@@ -4,67 +4,79 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
-import type { DownloadClient, CreateDownloadClientRequest } from '@/lib/api';
-import { useCreateDownloadClient, useUpdateDownloadClient, useTestDownloadClient } from '@/lib/queries';
+import type { IndexerSource, AddIndexerSourceRequest } from '@/lib/api';
+import { useCreateIndexerSource, useUpdateIndexerSource, useTestIndexerSource } from '@/lib/queries';
 
-interface DownloadClientDialogProps {
+interface IndexerSourceDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  client?: DownloadClient | null;
+  source?: IndexerSource | null;
 }
 
-export function DownloadClientDialog({ open, onOpenChange, client }: DownloadClientDialogProps) {
-  const [implementation, setImplementation] = useState<string>('transmission');
+export function IndexerSourceDialog({ open, onOpenChange, source }: IndexerSourceDialogProps) {
+  const [name, setName] = useState<string>('');
+  const [implementation, setImplementation] = useState<string>('prowlarr');
   const [scheme, setScheme] = useState<string>('http');
   const [host, setHost] = useState<string>('');
   const [port, setPort] = useState<string>('');
   const [apiKey, setApiKey] = useState<string>('');
+  const [enabled, setEnabled] = useState<boolean>(true);
   const [testStatus, setTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
 
-  const createClient = useCreateDownloadClient();
-  const updateClient = useUpdateDownloadClient();
-  const testConnection = useTestDownloadClient();
+  const createSource = useCreateIndexerSource();
+  const updateSource = useUpdateIndexerSource();
+  const testConnection = useTestIndexerSource();
 
   useEffect(() => {
     if (open) {
-      if (client) {
-        setImplementation(client.Implementation);
-        setScheme(client.Scheme);
-        setHost(client.Host);
-        setPort(client.Port ? client.Port.toString() : '');
+      if (source) {
+        setName(source.name);
+        setImplementation(source.implementation);
+        setScheme(source.scheme);
+        setHost(source.host);
+        setPort(source.port ? source.port.toString() : '');
         setApiKey('');
+        setEnabled(source.enabled);
       } else {
-        setImplementation('transmission');
+        setName('');
+        setImplementation('prowlarr');
         setScheme('http');
         setHost('');
         setPort('');
         setApiKey('');
+        setEnabled(true);
       }
       setTestStatus('idle');
     }
-  }, [open, client]);
+  }, [open, source]);
 
   const handleTestConnection = async () => {
+    if (!name) {
+      toast.error('Name is required');
+      return;
+    }
     if (!host) {
       toast.error('Host is required');
       return;
     }
-    if (implementation === 'sabnzbd' && !apiKey && !client) {
-      toast.error('API key is required for SABnzbd');
+    if (!apiKey && !source) {
+      toast.error('API key is required');
       return;
     }
 
     setTestStatus('testing');
 
-    const request: CreateDownloadClientRequest = {
-      type: implementation === 'transmission' ? 'torrent' : 'usenet',
+    const request: AddIndexerSourceRequest = {
+      name,
       implementation,
       scheme,
       host,
-      port: port ? parseInt(port) : 0,
-      apiKey: implementation === 'sabnzbd' ? (apiKey || client?.APIKey || null) : null,
+      port: port ? parseInt(port) : undefined,
+      apiKey: apiKey || undefined,
+      enabled,
     };
 
     try {
@@ -78,22 +90,27 @@ export function DownloadClientDialog({ open, onOpenChange, client }: DownloadCli
   };
 
   const handleSubmit = async () => {
+    if (!name) {
+      toast.error('Name is required');
+      return;
+    }
     if (!host) {
       toast.error('Host is required');
       return;
     }
-    if (implementation === 'sabnzbd' && !apiKey && !client) {
-      toast.error('API key is required for SABnzbd');
+    if (!apiKey && !source) {
+      toast.error('API key is required');
       return;
     }
 
-    const request: CreateDownloadClientRequest = {
-      type: implementation === 'transmission' ? 'torrent' : 'usenet',
+    const request: AddIndexerSourceRequest = {
+      name,
       implementation,
       scheme,
       host,
-      port: port ? parseInt(port) : 0,
-      apiKey: implementation === 'sabnzbd' ? (apiKey || null) : null,
+      port: port ? parseInt(port) : undefined,
+      apiKey: apiKey || undefined,
+      enabled,
     };
 
     setTestStatus('testing');
@@ -107,12 +124,12 @@ export function DownloadClientDialog({ open, onOpenChange, client }: DownloadCli
     }
 
     try {
-      if (client) {
-        await updateClient.mutateAsync({ id: client.ID, request: { ...request, id: client.ID } });
-        toast.success('Download client updated');
+      if (source) {
+        await updateSource.mutateAsync({ id: source.id, request });
+        toast.success('Indexer source updated');
       } else {
-        await createClient.mutateAsync(request);
-        toast.success('Download client created');
+        await createSource.mutateAsync(request);
+        toast.success('Indexer source created');
       }
       onOpenChange(false);
     } catch (error) {
@@ -120,25 +137,34 @@ export function DownloadClientDialog({ open, onOpenChange, client }: DownloadCli
     }
   };
 
-  const isLoading = createClient.isPending || updateClient.isPending;
+  const isLoading = createSource.isPending || updateSource.isPending;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>{client ? 'Edit Download Client' : 'Add Download Client'}</DialogTitle>
+          <DialogTitle>{source ? 'Edit Indexer Source' : 'Add Indexer Source'}</DialogTitle>
         </DialogHeader>
 
         <div className="grid gap-4 py-4">
           <div className="grid gap-2">
+            <Label htmlFor="name">Name</Label>
+            <Input
+              id="name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="My Prowlarr"
+            />
+          </div>
+
+          <div className="grid gap-2">
             <Label htmlFor="implementation">Implementation</Label>
-            <Select value={implementation} defaultValue="transmission" onValueChange={setImplementation} disabled={!!client}>
+            <Select value={implementation} defaultValue="prowlarr" onValueChange={setImplementation} disabled={!!source}>
               <SelectTrigger id="implementation">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="transmission">Transmission (BitTorrent)</SelectItem>
-                <SelectItem value="sabnzbd">SABnzbd (Usenet)</SelectItem>
+                <SelectItem value="prowlarr">Prowlarr</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -162,7 +188,7 @@ export function DownloadClientDialog({ open, onOpenChange, client }: DownloadCli
               id="host"
               value={host}
               onChange={(e) => setHost(e.target.value)}
-              placeholder="transmission.my-domain.com or 192.168.1.100"
+              placeholder="prowlarr.my-domain.com or 192.168.1.100"
             />
           </div>
 
@@ -175,23 +201,29 @@ export function DownloadClientDialog({ open, onOpenChange, client }: DownloadCli
               pattern="[0-9]*"
               value={port}
               onChange={(e) => setPort(e.target.value)}
-              placeholder={implementation === 'transmission' ? '9091' : '8080'}
+              placeholder="9696"
             />
           </div>
 
-          {implementation === 'sabnzbd' && (
-            <div className="grid gap-2">
-              <Label htmlFor="apiKey">API Key</Label>
-              <Input
-                id="apiKey"
-                type="password"
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                placeholder={client ? '' : 'required for SABnzbd'}
-              />
-            </div>
-          )}
+          <div className="grid gap-2">
+            <Label htmlFor="apiKey">API Key</Label>
+            <Input
+              id="apiKey"
+              type="password"
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+              placeholder={source ? '' : 'required'}
+            />
+          </div>
 
+          <div className="flex items-center justify-between">
+            <Label htmlFor="enabled" className="cursor-pointer">Enabled</Label>
+            <Switch
+              id="enabled"
+              checked={enabled}
+              onCheckedChange={setEnabled}
+            />
+          </div>
         </div>
 
         <DialogFooter>
@@ -202,7 +234,7 @@ export function DownloadClientDialog({ open, onOpenChange, client }: DownloadCli
             type="button"
             variant="outline"
             onClick={handleTestConnection}
-            disabled={testStatus === 'testing' || !host || isLoading}
+            disabled={testStatus === 'testing' || !host || !name || isLoading}
           >
             {testStatus === 'testing' && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {testStatus === 'success' && <CheckCircle className="mr-2 h-4 w-4 text-green-500" />}
@@ -211,7 +243,7 @@ export function DownloadClientDialog({ open, onOpenChange, client }: DownloadCli
           </Button>
           <Button onClick={handleSubmit} disabled={isLoading || testStatus === 'testing'}>
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {client ? 'Update' : 'Create'}
+            {source ? 'Update' : 'Create'}
           </Button>
         </DialogFooter>
       </DialogContent>

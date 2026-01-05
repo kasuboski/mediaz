@@ -14,7 +14,9 @@ import (
 	"github.com/go-jet/jet/v2/qrm"
 	"github.com/go-jet/jet/v2/sqlite"
 	"github.com/kasuboski/mediaz/config"
+	"github.com/kasuboski/mediaz/pkg/cache"
 	"github.com/kasuboski/mediaz/pkg/download"
+	"github.com/kasuboski/mediaz/pkg/indexer"
 	"github.com/kasuboski/mediaz/pkg/library"
 	"github.com/kasuboski/mediaz/pkg/logger"
 	"github.com/kasuboski/mediaz/pkg/pagination"
@@ -28,26 +30,28 @@ import (
 )
 
 type MediaManager struct {
-	tmdb      tmdb.ITmdb
-	indexer   IndexerStore
-	library   library.Library
-	storage   storage.Storage
-	factory   download.Factory
-	config    config.Config
-	configs   config.Manager
-	scheduler *Scheduler
+	tmdb           tmdb.ITmdb
+	indexerFactory indexer.Factory
+	indexerCache   *cache.Cache[int64, indexerCacheEntry]
+	library        library.Library
+	storage        storage.Storage
+	factory        download.Factory
+	config         config.Config
+	configs        config.Manager
+	scheduler      *Scheduler
 }
 
-func New(tmbdClient tmdb.ITmdb, prowlarrClient prowlarr.IProwlarr, library library.Library, storage storage.Storage, factory download.Factory, managerConfigs config.Manager, fullConfig config.Config) MediaManager {
+func New(tmbdClient tmdb.ITmdb, indexerFactory indexer.Factory, library library.Library, storage storage.Storage, factory download.Factory, managerConfigs config.Manager, fullConfig config.Config) MediaManager {
 
 	m := MediaManager{
-		tmdb:    tmbdClient,
-		indexer: NewIndexerStore(prowlarrClient, storage),
-		library: library,
-		storage: storage,
-		factory: factory,
-		config:  fullConfig,
-		configs: managerConfigs,
+		tmdb:           tmbdClient,
+		indexerFactory: indexerFactory,
+		indexerCache:   cache.New[int64, indexerCacheEntry](),
+		library:        library,
+		storage:        storage,
+		factory:        factory,
+		config:         fullConfig,
+		configs:        managerConfigs,
 	}
 
 	executors := map[JobType]JobExecutor{
@@ -62,6 +66,9 @@ func New(tmbdClient tmdb.ITmdb, prowlarrClient prowlarr.IProwlarr, library libra
 		},
 		SeriesIndex: func(ctx context.Context, jobID int64) error {
 			return m.IndexSeriesLibrary(ctx)
+		},
+		IndexerSync: func(ctx context.Context, jobID int64) error {
+			return m.RefreshAllIndexerSources(ctx)
 		},
 	}
 
@@ -542,23 +549,81 @@ func parseMediaResult(res *http.Response) (*SearchMediaResponse, error) {
 	return results, err
 }
 
-func (m MediaManager) listIndexersInternal(ctx context.Context) ([]Indexer, error) {
-	log := logger.FromCtx(ctx)
+func (m MediaManager) listIndexersInternal(ctx context.Context) ([]model.Indexer, error) {
+	var all []model.Indexer
 
-	if err := m.indexer.FetchIndexers(ctx); err != nil {
-		log.Error("couldn't fetch indexer", err)
+	keys := m.indexerCache.Keys()
+	for _, sourceID := range keys {
+		cached, ok := m.indexerCache.Get(sourceID)
+		if !ok {
+			continue
+		}
+
+		for _, idx := range cached.Indexers {
+			all = append(all, model.Indexer{
+				ID:               idx.ID,
+				IndexerSourceID:  ptr(int32(sourceID)),
+				Name:             idx.Name,
+				Priority:         idx.Priority,
+				URI:              idx.URI,
+				APIKey:           nil,
+			})
+		}
 	}
-	return m.indexer.ListIndexers(ctx)
-}
 
-// ListIndexers lists all managed indexers
-func (m MediaManager) ListIndexers(ctx context.Context) ([]IndexerResponse, error) {
-	indexers, err := m.storage.ListIndexers(ctx)
+	dbIndexers, err := m.storage.ListIndexers(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	return toIndexerResponses(indexers...), nil
+	for _, idx := range dbIndexers {
+		if idx.IndexerSourceID == nil {
+			all = append(all, *idx)
+		}
+	}
+
+	return all, nil
+}
+
+func (m MediaManager) ListIndexers(ctx context.Context) ([]IndexerResponse, error) {
+	var all []IndexerResponse
+
+	keys := m.indexerCache.Keys()
+	for _, sourceID := range keys {
+		cached, ok := m.indexerCache.Get(sourceID)
+		if !ok {
+			continue
+		}
+
+		for _, idx := range cached.Indexers {
+			all = append(all, IndexerResponse{
+				ID:       idx.ID,
+				Name:     idx.Name,
+				Source:   cached.SourceName,
+				Priority: idx.Priority,
+				URI:      idx.URI,
+			})
+		}
+	}
+
+	dbIndexers, err := m.storage.ListIndexers(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, idx := range dbIndexers {
+		if idx.IndexerSourceID == nil {
+			all = append(all, IndexerResponse{
+				ID:       idx.ID,
+				Name:     idx.Name,
+				Source:   "Internal",
+				Priority: idx.Priority,
+				URI:      idx.URI,
+			})
+		}
+	}
+
+	return all, nil
 }
 
 func (m MediaManager) ListShowsInLibrary(ctx context.Context) ([]LibraryShow, error) {
@@ -622,6 +687,10 @@ func (m MediaManager) ListMoviesInLibrary(ctx context.Context) ([]LibraryMovie, 
 
 func (m MediaManager) Run(ctx context.Context) error {
 	log := logger.FromCtx(ctx)
+
+	if err := m.RefreshAllIndexerSources(ctx); err != nil {
+		log.Warn("failed to refresh indexer sources on startup", zap.Error(err))
+	}
 
 	go m.scheduler.Run(ctx)
 
@@ -920,31 +989,97 @@ func (m MediaManager) AddSeriesToLibrary(ctx context.Context, request AddSeriesR
 }
 
 func (m MediaManager) SearchIndexers(ctx context.Context, indexers, categories []int32, query string) ([]*prowlarr.ReleaseResource, error) {
+	log := logger.FromCtx(ctx)
+
+	sourceIndexers := make(map[int64][]int32)
+
+	keys := m.indexerCache.Keys()
+	for _, sourceID := range keys {
+		cached, ok := m.indexerCache.Get(sourceID)
+		if !ok {
+			continue
+		}
+
+		for _, idx := range cached.Indexers {
+			for _, id := range indexers {
+				if idx.ID == id {
+					sourceIndexers[sourceID] = append(sourceIndexers[sourceID], id)
+				}
+			}
+		}
+	}
+
+	if len(sourceIndexers) == 0 {
+		return nil, fmt.Errorf("no indexer sources found for requested indexers")
+	}
+
+	type result struct {
+		releases []*prowlarr.ReleaseResource
+		err      error
+	}
+
+	resultChan := make(chan result, len(sourceIndexers))
 	var wg sync.WaitGroup
 
-	var indexerError error
-	releases := make([]*prowlarr.ReleaseResource, 0, 50)
-	for _, indexer := range indexers {
+	for sourceID, idxIDs := range sourceIndexers {
 		wg.Add(1)
-		go func() {
+		go func(srcID int64, indexerIDs []int32) {
 			defer wg.Done()
-			res, err := m.indexer.searchIndexer(ctx, indexer, categories, query)
-			if err != nil {
-				indexerError = errors.Join(indexerError, err)
-				return
-			}
-
-			releases = append(releases, res...)
-		}()
-	}
-	wg.Wait()
-
-	if len(releases) == 0 && indexerError != nil {
-		// only return an error if no releases found and there was an error
-		return nil, indexerError
+			releases, err := m.searchIndexerSource(ctx, srcID, indexerIDs, categories, query)
+			resultChan <- result{releases: releases, err: err}
+		}(sourceID, idxIDs)
 	}
 
-	return releases, nil
+	go func() {
+		wg.Wait()
+		close(resultChan)
+	}()
+
+	var allReleases []*prowlarr.ReleaseResource
+	var searchErr error
+
+	for res := range resultChan {
+		if res.err != nil {
+			log.Error("source search failed", zap.Error(res.err))
+			searchErr = errors.Join(searchErr, res.err)
+			continue
+		}
+		allReleases = append(allReleases, res.releases...)
+	}
+
+	if len(allReleases) == 0 && searchErr != nil {
+		return nil, searchErr
+	}
+
+	return allReleases, nil
+}
+
+func (m MediaManager) searchIndexerSource(ctx context.Context, sourceID int64, indexerIDs, categories []int32, query string) ([]*prowlarr.ReleaseResource, error) {
+	log := logger.FromCtx(ctx)
+
+	sourceConfig, err := m.storage.GetIndexerSource(ctx, sourceID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get source: %w", err)
+	}
+
+	source, err := m.indexerFactory.NewIndexerSource(sourceConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create source: %w", err)
+	}
+
+	var sourceReleases []*prowlarr.ReleaseResource
+	for _, indexerID := range indexerIDs {
+		releases, err := source.Search(ctx, indexerID, categories, query)
+		if err != nil {
+			log.Error("indexer search failed",
+				zap.Int32("indexerID", indexerID),
+				zap.Error(err))
+			continue
+		}
+		sourceReleases = append(sourceReleases, releases...)
+	}
+
+	return sourceReleases, nil
 }
 
 func (m MediaManager) AddIndexer(ctx context.Context, request AddIndexerRequest) (IndexerResponse, error) {
@@ -1012,6 +1147,15 @@ func isReleased(now time.Time, releaseDate *time.Time) bool {
 		return false
 	}
 	return now.After(*releaseDate)
+}
+
+func toIndexerResponse(indexer model.Indexer) IndexerResponse {
+	return IndexerResponse{
+		ID:       indexer.ID,
+		Name:     indexer.Name,
+		Priority: indexer.Priority,
+		URI:      indexer.URI,
+	}
 }
 
 func ptr[A any](thing A) *A {

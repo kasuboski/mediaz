@@ -7,13 +7,12 @@ import (
 )
 
 type Config struct {
-	ConfigFilePath string   `json:"configFilePath" yaml:"configFilePath" mapstructure:"configFilePath"`
-	TMDB           TMDB     `json:"tmdb" yaml:"tmdb" mapstructure:"tmdb"`
-	Prowlarr       Prowlarr `json:"prowlarr" yaml:"prowlarr" mapstructure:"prowlarr"`
-	Library        Library  `json:"library" yaml:"library" mapstructure:"library"`
-	Storage        Storage  `json:"storage" yaml:"storage" mapstructure:"storage"`
-	Server         Server   `json:"server" yaml:"server" mapstructure:"server"`
-	Manager        Manager  `json:"manager" yaml:"manager" mapstructure:"manager"`
+	ConfigFilePath string  `json:"configFilePath" yaml:"configFilePath" mapstructure:"configFilePath"`
+	TMDB           TMDB    `json:"tmdb" yaml:"tmdb" mapstructure:"tmdb"`
+	Library        Library `json:"library" yaml:"library" mapstructure:"library"`
+	Storage        Storage `json:"storage" yaml:"storage" mapstructure:"storage"`
+	Server         Server  `json:"server" yaml:"server" mapstructure:"server"`
+	Manager        Manager `json:"manager" yaml:"manager" mapstructure:"manager"`
 }
 
 type TMDB struct {
@@ -34,11 +33,6 @@ type Library struct {
 	DownloadMountDir string `json:"downloadMountDir" yaml:"downloadMountDir" mapstructure:"downloadMountDir"`
 }
 
-type Prowlarr struct {
-	URI    string `json:"uri" yaml:"uri" mapstructure:"uri"`
-	APIKey string `json:"apiKey" yaml:"apiKey" mapstructure:"apiKey"`
-}
-
 // Storage configuration is assumed to be for sqlite database only currently
 type Storage struct {
 	FilePath          string   `json:"filePath" yaml:"filePath" mapstructure:"filePath"`
@@ -56,6 +50,7 @@ type Jobs struct {
 	MovieIndex      time.Duration `json:"movieIndex" yaml:"movieIndex" mapstructure:"movieIndex"`
 	SeriesReconcile time.Duration `json:"seriesReconcile" yaml:"seriesReconcile" mapstructure:"seriesReconcile"`
 	SeriesIndex     time.Duration `json:"seriesIndex" yaml:"seriesIndex" mapstructure:"seriesIndex"`
+	IndexerSync     time.Duration `json:"indexerSync" yaml:"indexerSync" mapstructure:"indexerSync"`
 }
 
 type ConfigUnmarshaler interface {

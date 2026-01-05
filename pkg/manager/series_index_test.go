@@ -190,4 +190,203 @@ func TestIndexSeriesLibrary(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, series, 1)
 	})
+
+	t.Run("updates absolute path when library moves", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		ctx := context.Background()
+
+		store := newStore(t, ctx)
+		mockLibrary := mockLibrary.NewMockLibrary(ctrl)
+
+		fileID, err := store.CreateEpisodeFile(ctx, model.EpisodeFile{
+			Size:             1024,
+			RelativePath:     ptr("Fargo/Fargo - S01E01.mkv"),
+			OriginalFilePath: ptr("/old/library/tv/Fargo/Fargo - S01E01.mkv"),
+		})
+		require.NoError(t, err)
+
+		discoveredFiles := []library.EpisodeFile{
+			{
+				RelativePath:  "Fargo/Fargo - S01E01.mkv",
+				AbsolutePath:  "/new/library/tv/Fargo/Fargo - S01E01.mkv",
+				SeriesName:    "Fargo",
+				SeasonNumber:  1,
+				EpisodeNumber: 1,
+				Size:          1024,
+			},
+		}
+
+		mockLibrary.EXPECT().FindEpisodes(ctx).Times(1).Return(discoveredFiles, nil)
+
+		m := New(nil, nil, mockLibrary, store, nil, config.Manager{}, config.Config{})
+		require.NotNil(t, m)
+
+		err = m.IndexSeriesLibrary(ctx)
+		assert.NoError(t, err)
+
+		episodeFiles, err := store.ListEpisodeFiles(ctx)
+		require.NoError(t, err)
+		assert.Len(t, episodeFiles, 1, "Should still have 1 file, not duplicate")
+
+		updatedFile, err := store.GetEpisodeFile(ctx, int32(fileID))
+		require.NoError(t, err)
+		assert.Equal(t, "/new/library/tv/Fargo/Fargo - S01E01.mkv", *updatedFile.OriginalFilePath, "Absolute path should be updated")
+		assert.Equal(t, "Fargo/Fargo - S01E01.mkv", *updatedFile.RelativePath, "Relative path should remain the same")
+	})
+
+	t.Run("does not update when paths match", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		ctx := context.Background()
+
+		store := newStore(t, ctx)
+		mockLibrary := mockLibrary.NewMockLibrary(ctrl)
+
+		fileID, err := store.CreateEpisodeFile(ctx, model.EpisodeFile{
+			Size:             1024,
+			RelativePath:     ptr("Fargo/Fargo - S01E01.mkv"),
+			OriginalFilePath: ptr("/library/tv/Fargo/Fargo - S01E01.mkv"),
+		})
+		require.NoError(t, err)
+
+		discoveredFiles := []library.EpisodeFile{
+			{
+				RelativePath:  "Fargo/Fargo - S01E01.mkv",
+				AbsolutePath:  "/library/tv/Fargo/Fargo - S01E01.mkv",
+				SeriesName:    "Fargo",
+				SeasonNumber:  1,
+				EpisodeNumber: 1,
+				Size:          1024,
+			},
+		}
+
+		mockLibrary.EXPECT().FindEpisodes(ctx).Times(1).Return(discoveredFiles, nil)
+
+		m := New(nil, nil, mockLibrary, store, nil, config.Manager{}, config.Config{})
+		require.NotNil(t, m)
+
+		err = m.IndexSeriesLibrary(ctx)
+		assert.NoError(t, err)
+
+		updatedFile, err := store.GetEpisodeFile(ctx, int32(fileID))
+		require.NoError(t, err)
+		assert.Equal(t, "/library/tv/Fargo/Fargo - S01E01.mkv", *updatedFile.OriginalFilePath, "Path should remain unchanged")
+	})
+
+	t.Run("handles multiple files with mixed scenarios", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		ctx := context.Background()
+
+		store := newStore(t, ctx)
+		mockLibrary := mockLibrary.NewMockLibrary(ctrl)
+
+		existingFileID, err := store.CreateEpisodeFile(ctx, model.EpisodeFile{
+			Size:             1024,
+			RelativePath:     ptr("Fargo/Fargo - S01E01.mkv"),
+			OriginalFilePath: ptr("/old/path/tv/Fargo/Fargo - S01E01.mkv"),
+		})
+		require.NoError(t, err)
+
+		movedFileID, err := store.CreateEpisodeFile(ctx, model.EpisodeFile{
+			Size:             2048,
+			RelativePath:     ptr("Fargo/Fargo - S01E02.mkv"),
+			OriginalFilePath: ptr("/old/path/tv/Fargo/Fargo - S01E02.mkv"),
+		})
+		require.NoError(t, err)
+
+		discoveredFiles := []library.EpisodeFile{
+			{
+				RelativePath:  "Fargo/Fargo - S01E01.mkv",
+				AbsolutePath:  "/old/path/tv/Fargo/Fargo - S01E01.mkv",
+				SeriesName:    "Fargo",
+				SeasonNumber:  1,
+				EpisodeNumber: 1,
+				Size:          1024,
+			},
+			{
+				RelativePath:  "Fargo/Fargo - S01E02.mkv",
+				AbsolutePath:  "/new/path/tv/Fargo/Fargo - S01E02.mkv",
+				SeriesName:    "Fargo",
+				SeasonNumber:  1,
+				EpisodeNumber: 2,
+				Size:          2048,
+			},
+			{
+				RelativePath:  "Fargo/Fargo - S01E03.mkv",
+				AbsolutePath:  "/new/path/tv/Fargo/Fargo - S01E03.mkv",
+				SeriesName:    "Fargo",
+				SeasonNumber:  1,
+				EpisodeNumber: 3,
+				Size:          3072,
+			},
+		}
+
+		mockLibrary.EXPECT().FindEpisodes(ctx).Times(1).Return(discoveredFiles, nil)
+
+		m := New(nil, nil, mockLibrary, store, nil, config.Manager{}, config.Config{})
+		require.NotNil(t, m)
+
+		err = m.IndexSeriesLibrary(ctx)
+		assert.NoError(t, err)
+
+		episodeFiles, err := store.ListEpisodeFiles(ctx)
+		require.NoError(t, err)
+		assert.Len(t, episodeFiles, 3, "Should have 3 files: 2 existing + 1 new")
+
+		unchangedFile, err := store.GetEpisodeFile(ctx, int32(existingFileID))
+		require.NoError(t, err)
+		assert.Equal(t, "/old/path/tv/Fargo/Fargo - S01E01.mkv", *unchangedFile.OriginalFilePath, "File with same path should not be updated")
+
+		movedFile, err := store.GetEpisodeFile(ctx, int32(movedFileID))
+		require.NoError(t, err)
+		assert.Equal(t, "/new/path/tv/Fargo/Fargo - S01E02.mkv", *movedFile.OriginalFilePath, "File with new path should be updated")
+
+		var newFile *model.EpisodeFile
+		for _, f := range episodeFiles {
+			if *f.RelativePath == "Fargo/Fargo - S01E03.mkv" {
+				newFile = f
+				break
+			}
+		}
+		require.NotNil(t, newFile, "Should find new file")
+		assert.Equal(t, "/new/path/tv/Fargo/Fargo - S01E03.mkv", *newFile.OriginalFilePath, "New file should have correct path")
+		assert.Equal(t, int64(3072), newFile.Size, "New file should have correct size")
+	})
+
+	t.Run("does not match on empty paths", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		ctx := context.Background()
+
+		store := newStore(t, ctx)
+		mockLibrary := mockLibrary.NewMockLibrary(ctrl)
+
+		_, err := store.CreateEpisodeFile(ctx, model.EpisodeFile{
+			Size:             1024,
+			RelativePath:     ptr(""),
+			OriginalFilePath: ptr(""),
+		})
+		require.NoError(t, err)
+
+		discoveredFiles := []library.EpisodeFile{
+			{
+				RelativePath:  "Fargo/Fargo - S01E01.mkv",
+				AbsolutePath:  "/path/tv/Fargo/Fargo - S01E01.mkv",
+				SeriesName:    "Fargo",
+				SeasonNumber:  1,
+				EpisodeNumber: 1,
+				Size:          2048,
+			},
+		}
+
+		mockLibrary.EXPECT().FindEpisodes(ctx).Times(1).Return(discoveredFiles, nil)
+
+		m := New(nil, nil, mockLibrary, store, nil, config.Manager{}, config.Config{})
+		require.NotNil(t, m)
+
+		err = m.IndexSeriesLibrary(ctx)
+		assert.NoError(t, err)
+
+		episodeFiles, err := store.ListEpisodeFiles(ctx)
+		require.NoError(t, err)
+		assert.Len(t, episodeFiles, 2, "Should create new file instead of matching empty path")
+	})
 }

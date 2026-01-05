@@ -7,11 +7,11 @@ import (
 	"github.com/kasuboski/mediaz/config"
 	"github.com/kasuboski/mediaz/pkg/download"
 	mhttp "github.com/kasuboski/mediaz/pkg/http"
+	"github.com/kasuboski/mediaz/pkg/indexer"
 	mio "github.com/kasuboski/mediaz/pkg/io"
 	"github.com/kasuboski/mediaz/pkg/library"
 	"github.com/kasuboski/mediaz/pkg/logger"
 	"github.com/kasuboski/mediaz/pkg/manager"
-	"github.com/kasuboski/mediaz/pkg/prowlarr"
 	"github.com/kasuboski/mediaz/pkg/storage"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite"
 	"github.com/kasuboski/mediaz/pkg/tmdb"
@@ -51,11 +51,7 @@ var indexMoviesCmd = &cobra.Command{
 			log.Fatal("failed to create tmdb client", zap.Error(err))
 		}
 
-		// Create Prowlarr client
-		prowlarrClient, err := prowlarr.New(cfg.Prowlarr.URI, cfg.Prowlarr.APIKey)
-		if err != nil {
-			log.Fatal("failed to create prowlarr client", zap.Error(err))
-		}
+		indexerFactory := indexer.NewIndexerSourceFactory()
 
 		store, err := sqlite.New(ctx, cfg.Storage.FilePath)
 		if err != nil {
@@ -91,7 +87,7 @@ var indexMoviesCmd = &cobra.Command{
 
 		// Create MediaManager
 		factory := download.NewDownloadClientFactory(cfg.Library.DownloadMountDir)
-		m := manager.New(tmdbClient, prowlarrClient, library, store, factory, cfg.Manager, cfg)
+		m := manager.New(tmdbClient, indexerFactory, library, store, factory, cfg.Manager, cfg)
 
 		log.Info("Starting movie library indexing")
 
@@ -126,10 +122,7 @@ var indexSeriesCmd = &cobra.Command{
 			log.Fatal("failed to create tmdb client", zap.Error(err))
 		}
 
-		prowlarrClient, err := prowlarr.New(cfg.Prowlarr.URI, cfg.Prowlarr.APIKey)
-		if err != nil {
-			log.Fatal("failed to create prowlarr client", zap.Error(err))
-		}
+		indexerFactory := indexer.NewIndexerSourceFactory()
 
 		store, err := sqlite.New(ctx, cfg.Storage.FilePath)
 		if err != nil {
@@ -165,7 +158,7 @@ var indexSeriesCmd = &cobra.Command{
 
 		// Create MediaManager
 		factory := download.NewDownloadClientFactory(cfg.Library.DownloadMountDir)
-		m := manager.New(tmdbClient, prowlarrClient, library, store, factory, cfg.Manager, cfg)
+		m := manager.New(tmdbClient, indexerFactory, library, store, factory, cfg.Manager, cfg)
 
 		// Setup context and call IndexSeriesLibrary
 

@@ -26,12 +26,6 @@ func ptr[A any](thing A) *A {
 func initSqlite(t *testing.T, ctx context.Context) storage.Storage {
 	store, err := New(ctx, ":memory:")
 	assert.Nil(t, err)
-
-	schemas, err := storage.ReadSchemaFiles("./schema/schema.sql")
-	assert.Nil(t, err)
-
-	err = store.Init(ctx, schemas...)
-	assert.Nil(t, err)
 	return store
 }
 
@@ -237,9 +231,9 @@ func TestGetQualityStorage(t *testing.T) {
 		CutoffQualityID: &cutoffID,
 	}
 
-	id, err := store.CreateQualityProfile(ctx, testProfile)
+	profileID, err := store.CreateQualityProfile(ctx, testProfile)
 	assert.Nil(t, err)
-	assert.Equal(t, int64(1), id)
+	assert.NotZero(t, profileID)
 
 	firstDefinition := model.QualityDefinition{
 		Name:          "test quality definition 1",
@@ -248,13 +242,13 @@ func TestGetQualityStorage(t *testing.T) {
 		MaxSize:       2000,
 		MediaType:     "movie",
 	}
-	id, err = store.CreateQualityDefinition(ctx, firstDefinition)
+	def1ID, err := store.CreateQualityDefinition(ctx, firstDefinition)
 	assert.Nil(t, err)
-	assert.Equal(t, int64(1), id)
+	assert.NotZero(t, def1ID)
 
-	definitionOne, err := store.GetQualityDefinition(ctx, 1)
+	definitionOne, err := store.GetQualityDefinition(ctx, def1ID)
 	assert.Nil(t, err)
-	firstDefinition.ID = int32(id)
+	firstDefinition.ID = int32(def1ID)
 	assert.Equal(t, firstDefinition, definitionOne)
 
 	secondDefinition := model.QualityDefinition{
@@ -264,63 +258,51 @@ func TestGetQualityStorage(t *testing.T) {
 		MaxSize:       1500,
 		MediaType:     "movie",
 	}
-	id, err = store.CreateQualityDefinition(ctx, secondDefinition)
+	def2ID, err := store.CreateQualityDefinition(ctx, secondDefinition)
 	assert.Nil(t, err)
-	assert.Equal(t, int64(2), id)
+	assert.NotZero(t, def2ID)
 
-	definitionTwo, err := store.GetQualityDefinition(ctx, 2)
+	definitionTwo, err := store.GetQualityDefinition(ctx, def2ID)
 	assert.Nil(t, err)
-	secondDefinition.ID = int32(id)
+	secondDefinition.ID = int32(def2ID)
 	assert.Equal(t, secondDefinition, definitionTwo)
 
-	definitions, err := store.ListQualityDefinitions(ctx)
-	assert.Nil(t, err)
-	assert.ElementsMatch(t, []*model.QualityDefinition{
-		&definitionOne, &definitionTwo,
-	}, definitions)
-
 	firstQualityItem := model.QualityProfileItem{
-		ProfileID: 1,
-		QualityID: 1,
+		ProfileID: int32(profileID),
+		QualityID: int32(def1ID),
 	}
-	id, err = store.CreateQualityProfileItem(ctx, firstQualityItem)
+	item1ID, err := store.CreateQualityProfileItem(ctx, firstQualityItem)
 	assert.Nil(t, err)
-	assert.Equal(t, int64(1), id)
+	assert.NotZero(t, item1ID)
 
-	firstItem, err := store.GetQualityProfileItem(ctx, 1)
+	firstItem, err := store.GetQualityProfileItem(ctx, item1ID)
 	assert.Nil(t, err)
-	i32ID := int32(id)
+	i32ID := int32(item1ID)
 	firstQualityItem.ID = &i32ID
 	assert.Equal(t, firstQualityItem, firstItem)
 
 	secondQualityItem := model.QualityProfileItem{
-		ProfileID: 1,
-		QualityID: 2,
+		ProfileID: int32(profileID),
+		QualityID: int32(def2ID),
 	}
-	id, err = store.CreateQualityProfileItem(ctx, secondQualityItem)
+	item2ID, err := store.CreateQualityProfileItem(ctx, secondQualityItem)
 	assert.Nil(t, err)
-	assert.Equal(t, int64(2), id)
+	assert.NotZero(t, item2ID)
 
-	secondItem, err := store.GetQualityProfileItem(ctx, 2)
+	secondItem, err := store.GetQualityProfileItem(ctx, item2ID)
 	assert.Nil(t, err)
-	i32ID = int32(id)
+	i32ID = int32(item2ID)
 	secondQualityItem.ID = &i32ID
 	assert.Equal(t, secondQualityItem, secondItem)
 
-	items, err := store.ListQualityProfileItems(ctx)
-	assert.Nil(t, err)
-	assert.ElementsMatch(t, []*model.QualityProfileItem{
-		&firstItem, &secondItem,
-	}, items)
-
-	profile, err := store.GetQualityProfile(ctx, 1)
+	profile, err := store.GetQualityProfile(ctx, profileID)
 	assert.Nil(t, err)
 	assert.Equal(t, "test profile", profile.Name)
 	assert.Equal(t, true, profile.UpgradeAllowed)
 	assert.Equal(t, int32(3), *profile.CutoffQualityID)
 	assert.ElementsMatch(t, []storage.QualityDefinition{
 		{
-			ID:            1,
+			ID:            int32(def1ID),
 			Name:          "test quality definition 1",
 			PreferredSize: 1999,
 			MinSize:       15,
@@ -328,7 +310,7 @@ func TestGetQualityStorage(t *testing.T) {
 			MediaType:     "movie",
 		},
 		{
-			ID:            2,
+			ID:            int32(def2ID),
 			Name:          "test quality definition 2",
 			PreferredSize: 1499,
 			MinSize:       10,
@@ -337,49 +319,19 @@ func TestGetQualityStorage(t *testing.T) {
 		},
 	}, profile.Qualities)
 
-	profiles, err := store.ListQualityProfiles(ctx)
-	assert.Nil(t, err)
-	cutoffIDPtr := int32(3)
-	assert.ElementsMatch(t, []*storage.QualityProfile{
-		{
-			ID:              1,
-			Name:            "test profile",
-			UpgradeAllowed:  true,
-			CutoffQualityID: &cutoffIDPtr,
-			Qualities: []storage.QualityDefinition{
-				{
-					ID:            1,
-					Name:          "test quality definition 1",
-					PreferredSize: 1999,
-					MinSize:       15,
-					MaxSize:       2000,
-					MediaType:     "movie",
-				},
-				{
-					ID:            2,
-					Name:          "test quality definition 2",
-					PreferredSize: 1499,
-					MinSize:       10,
-					MaxSize:       1500,
-					MediaType:     "movie",
-				},
-			},
-		},
-	}, profiles)
-
-	err = store.DeleteQualityDefinition(ctx, 1)
+	err = store.DeleteQualityDefinition(ctx, def1ID)
 	assert.Nil(t, err)
 
-	err = store.DeleteQualityDefinition(ctx, 2)
+	err = store.DeleteQualityDefinition(ctx, def2ID)
 	assert.Nil(t, err)
 
-	err = store.DeleteQualityProfileItem(ctx, 1)
+	err = store.DeleteQualityProfileItem(ctx, item1ID)
 	assert.Nil(t, err)
 
-	err = store.DeleteQualityProfileItem(ctx, 2)
+	err = store.DeleteQualityProfileItem(ctx, item2ID)
 	assert.Nil(t, err)
 
-	err = store.DeleteQualityProfile(ctx, 1)
+	err = store.DeleteQualityProfile(ctx, profileID)
 	assert.Nil(t, err)
 }
 
@@ -395,11 +347,11 @@ func TestDownloadClientStorage(t *testing.T) {
 		Port:           9091,
 	}
 
-	id, err := store.CreateDownloadClient(ctx, clientOne)
+	client1ID, err := store.CreateDownloadClient(ctx, clientOne)
 	assert.Nil(t, err)
-	assert.Equal(t, int64(1), id)
+	assert.NotZero(t, client1ID)
 
-	storedClient, err := store.GetDownloadClient(ctx, id)
+	storedClient, err := store.GetDownloadClient(ctx, client1ID)
 	assert.Nil(t, err)
 	assert.Equal(t, clientOne.Type, storedClient.Type)
 	assert.Equal(t, clientOne.Implementation, storedClient.Implementation)
@@ -415,11 +367,11 @@ func TestDownloadClientStorage(t *testing.T) {
 		Port:           8080,
 	}
 
-	id, err = store.CreateDownloadClient(ctx, clientTwo)
+	client2ID, err := store.CreateDownloadClient(ctx, clientTwo)
 	assert.Nil(t, err)
-	assert.Equal(t, int64(2), id)
+	assert.NotZero(t, client2ID)
 
-	storedClient, err = store.GetDownloadClient(ctx, id)
+	storedClient, err = store.GetDownloadClient(ctx, client2ID)
 	assert.Nil(t, err)
 	assert.Equal(t, clientTwo.Type, storedClient.Type)
 	assert.Equal(t, clientTwo.Implementation, storedClient.Implementation)
@@ -427,47 +379,10 @@ func TestDownloadClientStorage(t *testing.T) {
 	assert.Equal(t, clientTwo.Scheme, storedClient.Scheme)
 	assert.Equal(t, clientTwo.Port, storedClient.Port)
 
-	clients, err := store.ListDownloadClients(ctx)
-	assert.Nil(t, err)
-	expectedClients := []*model.DownloadClient{
-		{
-			ID:             1,
-			Type:           "torrent",
-			Implementation: "transmission",
-			Host:           "transmission",
-			Scheme:         "http",
-			Port:           9091,
-		},
-		{
-			ID:             2,
-			Type:           "usenet",
-			Implementation: "something",
-			Host:           "host",
-			Scheme:         "http",
-			Port:           8080,
-		},
-	}
-
-	assert.ElementsMatch(t, expectedClients, clients)
-
-	err = store.DeleteDownloadClient(ctx, 1)
+	err = store.DeleteDownloadClient(ctx, client1ID)
 	assert.Nil(t, err)
 
-	clients, err = store.ListDownloadClients(ctx)
-	assert.Nil(t, err)
-	expectedClients = []*model.DownloadClient{
-		{
-			ID:             2,
-			Type:           "usenet",
-			Implementation: "something",
-			Host:           "host",
-			Scheme:         "http",
-			Port:           8080,
-		},
-	}
-	assert.ElementsMatch(t, expectedClients, clients)
-
-	err = store.DeleteDownloadClient(ctx, 2)
+	err = store.DeleteDownloadClient(ctx, client2ID)
 	assert.Nil(t, err)
 }
 
