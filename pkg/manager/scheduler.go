@@ -46,59 +46,192 @@ func NewScheduler(storage storage.Storage, config config.Manager, executors map[
 }
 
 func (s *Scheduler) Run(ctx context.Context) error {
-	log := logger.FromCtx(ctx)
-
-	movieIndexTicker := time.NewTicker(s.config.Jobs.MovieIndex)
-	defer movieIndexTicker.Stop()
-
-	movieReconcileTicker := time.NewTicker(s.config.Jobs.MovieReconcile)
-	defer movieReconcileTicker.Stop()
-
-	seriesIndexTicker := time.NewTicker(s.config.Jobs.SeriesIndex)
-	defer seriesIndexTicker.Stop()
-
-	seriesReconcileTicker := time.NewTicker(s.config.Jobs.SeriesReconcile)
-	defer seriesReconcileTicker.Stop()
-
-	indexerSyncTicker := time.NewTicker(s.config.Jobs.IndexerSync)
-	defer indexerSyncTicker.Stop()
-
 	go s.processPendingJobs(ctx)
+	go s.runPruning(ctx)
+	return s.runJobScheduling(ctx)
+}
+
+func (s *Scheduler) runPruning(ctx context.Context) {
+	if s.config.Jobs.CleanupPeriod == -1 {
+		return
+	}
+
+	ticker := time.NewTicker(time.Hour)
+	defer ticker.Stop()
 
 	for {
 		select {
 		case <-ctx.Done():
-			log.Debug("scheduler context cancelled")
-
-			jobIDs := s.runningJobs.Keys()
-
-			var wg sync.WaitGroup
-			for _, id := range jobIDs {
-				wg.Add(1)
-				go func(ctx context.Context, jobID int64) {
-					defer wg.Done()
-					if err := s.CancelJob(ctx, jobID); err != nil {
-						log.Warn("failed to cancel job on context cancellation",
-							zap.Int64("job_id", jobID),
-							zap.Error(err))
-					}
-				}(ctx, id)
-			}
-
-			wg.Wait()
-			log.Debug("all jobs cancelled on context cancellation", zap.Int("count", len(jobIDs)))
-			return nil
-		case <-movieIndexTicker.C:
-			_, _ = s.createPendingJob(ctx, MovieIndex)
-		case <-movieReconcileTicker.C:
-			_, _ = s.createPendingJob(ctx, MovieReconcile)
-		case <-seriesIndexTicker.C:
-			_, _ = s.createPendingJob(ctx, SeriesIndex)
-		case <-seriesReconcileTicker.C:
-			_, _ = s.createPendingJob(ctx, SeriesReconcile)
-		case <-indexerSyncTicker.C:
-			_, _ = s.createPendingJob(ctx, IndexerSync)
+			return
+		case <-ticker.C:
+			s.pruneOldJobs(ctx)
 		}
+	}
+}
+
+func (s *Scheduler) pruneOldJobs(ctx context.Context) {
+	log := logger.FromCtx(ctx)
+
+	cutoff := time.Now().Add(-s.config.Jobs.CleanupPeriod)
+
+	jobTypes := []JobType{MovieIndex, MovieReconcile, SeriesIndex, SeriesReconcile, IndexerSync}
+	jobIDsToPreserve := make([]int32, 0)
+
+	for _, jobType := range jobTypes {
+		where := sqlite.AND(
+			table.Job.Type.EQ(sqlite.String(string(jobType))),
+			table.JobTransition.MostRecent.EQ(sqlite.Bool(true)),
+		)
+		jobs, err := s.storage.ListJobs(ctx, 0, s.config.Jobs.MinJobsToKeep, where)
+		if err != nil {
+			log.Error("failed to list jobs for preservation",
+				zap.String("type", string(jobType)),
+				zap.Error(err))
+			continue
+		}
+
+		for _, job := range jobs {
+			jobIDsToPreserve = append(jobIDsToPreserve, job.ID)
+		}
+	}
+
+	log.Info("jobs to preserve",
+		zap.Int("count", len(jobIDsToPreserve)),
+		zap.Any("ids", jobIDsToPreserve))
+
+	whereConditions := []sqlite.BoolExpression{
+		table.Job.CreatedAt.LT(sqlite.TimestampExp(sqlite.String(cutoff.Format(time.DateTime)))),
+	}
+	if len(jobIDsToPreserve) > 0 {
+		ids := make([]sqlite.Expression, len(jobIDsToPreserve))
+		for i, id := range jobIDsToPreserve {
+			ids[i] = sqlite.Int32(id)
+		}
+		whereConditions = append(whereConditions,
+			table.Job.ID.NOT_IN(ids...),
+		)
+	}
+
+	deleted, err := s.storage.DeleteJobs(ctx, whereConditions...)
+	if err != nil {
+		log.Error("failed to prune old jobs", zap.Error(err))
+		return
+	}
+
+	if deleted > 0 {
+		log.Info("pruned old jobs", zap.Int64("count", deleted))
+	}
+}
+
+func (s *Scheduler) runJobScheduling(ctx context.Context) error {
+	ticker := time.NewTicker(s.config.Jobs.JobScheduleInterval)
+	defer ticker.Stop()
+
+	jobTypes := []JobType{MovieIndex, MovieReconcile, SeriesIndex, SeriesReconcile, IndexerSync}
+
+	for {
+		select {
+		case <-ctx.Done():
+			return s.shutdownJobs(ctx)
+		case <-ticker.C:
+			for _, jobType := range jobTypes {
+				s.checkAndScheduleJob(ctx, jobType)
+			}
+		}
+	}
+}
+
+func (s *Scheduler) shutdownJobs(ctx context.Context) error {
+	log := logger.FromCtx(ctx)
+	log.Debug("scheduler context cancelled")
+
+	jobIDs := s.runningJobs.Keys()
+
+	var wg sync.WaitGroup
+	for _, id := range jobIDs {
+		wg.Add(1)
+		go func(ctx context.Context, jobID int64) {
+			defer wg.Done()
+			if err := s.CancelJob(ctx, jobID); err != nil {
+				log.Warn("failed to cancel job on context cancellation",
+					zap.Int64("job_id", jobID),
+					zap.Error(err))
+			}
+		}(ctx, id)
+	}
+
+	wg.Wait()
+	log.Debug("all jobs cancelled on context cancellation", zap.Int("count", len(jobIDs)))
+	return nil
+}
+
+func (s *Scheduler) checkAndScheduleJob(ctx context.Context, jobType JobType) {
+	log := logger.FromCtx(ctx).With(zap.String("job_type", string(jobType)))
+
+	interval := s.getIntervalForJobType(jobType)
+
+	where := sqlite.AND(
+		table.Job.Type.EQ(sqlite.String(string(jobType))),
+		table.JobTransition.MostRecent.EQ(sqlite.Bool(true)),
+	)
+	jobs, err := s.storage.ListJobs(ctx, 0, 1, where)
+
+	if err != nil {
+		log.Error("failed to get last job", zap.Error(err))
+		return
+	}
+
+	if len(jobs) == 0 {
+		log.Debug("no previous jobs found, scheduling immediately")
+		_, err := s.createPendingJob(ctx, jobType)
+		if err != nil {
+			log.Error("failed to create pending job", zap.Error(err))
+		}
+		return
+	}
+
+	lastJob := jobs[0]
+
+	switch lastJob.State {
+	case storage.JobStatePending, storage.JobStateRunning:
+		log.Debug("job already pending or running, not scheduling",
+			zap.String("state", string(lastJob.State)))
+		return
+	case storage.JobStateDone, storage.JobStateError, storage.JobStateCancelled:
+		timeSinceLastJob := time.Since(*lastJob.CreatedAt)
+
+		if timeSinceLastJob >= interval {
+			log.Debug("interval elapsed, scheduling job",
+				zap.Duration("time_since_last", timeSinceLastJob),
+				zap.Duration("interval", interval))
+			_, err := s.createPendingJob(ctx, jobType)
+			if err != nil {
+				log.Error("failed to create pending job", zap.Error(err))
+			}
+			return
+		}
+
+		log.Debug("interval not elapsed yet",
+			zap.Duration("time_since_last", timeSinceLastJob),
+			zap.Duration("interval", interval),
+			zap.Duration("time_remaining", interval-timeSinceLastJob))
+	}
+}
+
+func (s *Scheduler) getIntervalForJobType(jobType JobType) time.Duration {
+	switch jobType {
+	case MovieIndex:
+		return s.config.Jobs.MovieIndex
+	case MovieReconcile:
+		return s.config.Jobs.MovieReconcile
+	case SeriesIndex:
+		return s.config.Jobs.SeriesIndex
+	case SeriesReconcile:
+		return s.config.Jobs.SeriesReconcile
+	case IndexerSync:
+		return s.config.Jobs.IndexerSync
+	default:
+		return 10 * time.Minute
 	}
 }
 

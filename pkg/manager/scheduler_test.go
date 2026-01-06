@@ -588,3 +588,349 @@ func TestToJobResponse(t *testing.T) {
 		assert.Equal(t, errorMsg, *response.Error)
 	})
 }
+
+func TestScheduler_checkAndScheduleJob(t *testing.T) {
+	t.Run("no previous jobs schedules immediately", func(t *testing.T) {
+		store, err := mediaSqlite.New(context.Background(), ":memory:")
+		require.NoError(t, err)
+
+		err = store.RunMigrations(context.Background())
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		cfg := config.Manager{
+			Jobs: config.Jobs{
+				MovieIndex: 10 * time.Minute,
+			},
+		}
+
+		scheduler := NewScheduler(store, cfg, make(map[JobType]JobExecutor))
+
+		scheduler.checkAndScheduleJob(ctx, MovieIndex)
+
+		jobs, err := scheduler.listPendingJobsByType(ctx, MovieIndex)
+		require.NoError(t, err)
+		assert.Len(t, jobs, 1, "should create pending job when no previous jobs exist")
+	})
+
+	t.Run("interval elapsed schedules new job", func(t *testing.T) {
+		store, err := mediaSqlite.New(context.Background(), ":memory:")
+		require.NoError(t, err)
+
+		err = store.RunMigrations(context.Background())
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		cfg := config.Manager{
+			Jobs: config.Jobs{
+				MovieIndex: 1 * time.Millisecond,
+			},
+		}
+
+		scheduler := NewScheduler(store, cfg, make(map[JobType]JobExecutor))
+
+		jobID, err := scheduler.createPendingJob(ctx, MovieIndex)
+		require.NoError(t, err)
+
+		err = store.UpdateJobState(ctx, jobID, storage.JobStateRunning, nil)
+		require.NoError(t, err)
+
+		err = store.UpdateJobState(ctx, jobID, storage.JobStateDone, nil)
+		require.NoError(t, err)
+
+		time.Sleep(2 * time.Millisecond)
+
+		scheduler.checkAndScheduleJob(ctx, MovieIndex)
+
+		jobs, err := scheduler.listPendingJobsByType(ctx, MovieIndex)
+		require.NoError(t, err)
+		assert.Len(t, jobs, 1, "should create new job when interval has elapsed")
+	})
+
+	t.Run("interval not elapsed does not schedule", func(t *testing.T) {
+		store, err := mediaSqlite.New(context.Background(), ":memory:")
+		require.NoError(t, err)
+
+		err = store.RunMigrations(context.Background())
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		cfg := config.Manager{
+			Jobs: config.Jobs{
+				MovieIndex: 1 * time.Hour,
+			},
+		}
+
+		scheduler := NewScheduler(store, cfg, make(map[JobType]JobExecutor))
+
+		jobID, err := scheduler.createPendingJob(ctx, MovieIndex)
+		require.NoError(t, err)
+
+		err = store.UpdateJobState(ctx, jobID, storage.JobStateRunning, nil)
+		require.NoError(t, err)
+
+		err = store.UpdateJobState(ctx, jobID, storage.JobStateDone, nil)
+		require.NoError(t, err)
+
+		scheduler.checkAndScheduleJob(ctx, MovieIndex)
+
+		jobs, err := scheduler.listPendingJobsByType(ctx, MovieIndex)
+		require.NoError(t, err)
+		assert.Len(t, jobs, 0, "should not create new job when interval has not elapsed")
+	})
+
+	t.Run("considers error state as completed", func(t *testing.T) {
+		store, err := mediaSqlite.New(context.Background(), ":memory:")
+		require.NoError(t, err)
+
+		err = store.RunMigrations(context.Background())
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		cfg := config.Manager{
+			Jobs: config.Jobs{
+				MovieIndex: 1 * time.Millisecond,
+			},
+		}
+
+		scheduler := NewScheduler(store, cfg, make(map[JobType]JobExecutor))
+
+		jobID, err := scheduler.createPendingJob(ctx, MovieIndex)
+		require.NoError(t, err)
+
+		err = store.UpdateJobState(ctx, jobID, storage.JobStateRunning, nil)
+		require.NoError(t, err)
+
+		errMsg := "test error"
+		err = store.UpdateJobState(ctx, jobID, storage.JobStateError, &errMsg)
+		require.NoError(t, err)
+
+		time.Sleep(2 * time.Millisecond)
+
+		scheduler.checkAndScheduleJob(ctx, MovieIndex)
+
+		jobs, err := scheduler.listPendingJobsByType(ctx, MovieIndex)
+		require.NoError(t, err)
+		assert.Len(t, jobs, 1, "should schedule new job after error state")
+	})
+
+	t.Run("considers cancelled state as completed", func(t *testing.T) {
+		store, err := mediaSqlite.New(context.Background(), ":memory:")
+		require.NoError(t, err)
+
+		err = store.RunMigrations(context.Background())
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		cfg := config.Manager{
+			Jobs: config.Jobs{
+				MovieIndex: 1 * time.Millisecond,
+			},
+		}
+
+		scheduler := NewScheduler(store, cfg, make(map[JobType]JobExecutor))
+
+		jobID, err := scheduler.createPendingJob(ctx, MovieIndex)
+		require.NoError(t, err)
+
+		err = store.UpdateJobState(ctx, jobID, storage.JobStateCancelled, nil)
+		require.NoError(t, err)
+
+		time.Sleep(2 * time.Millisecond)
+
+		scheduler.checkAndScheduleJob(ctx, MovieIndex)
+
+		jobs, err := scheduler.listPendingJobsByType(ctx, MovieIndex)
+		require.NoError(t, err)
+		assert.Len(t, jobs, 1, "should schedule new job after cancelled state")
+	})
+
+	t.Run("ignores running jobs", func(t *testing.T) {
+		store, err := mediaSqlite.New(context.Background(), ":memory:")
+		require.NoError(t, err)
+
+		err = store.RunMigrations(context.Background())
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		cfg := config.Manager{
+			Jobs: config.Jobs{
+				MovieIndex: 1 * time.Millisecond,
+			},
+		}
+
+		scheduler := NewScheduler(store, cfg, make(map[JobType]JobExecutor))
+
+		oldJobID, err := scheduler.createPendingJob(ctx, MovieIndex)
+		require.NoError(t, err)
+
+		err = store.UpdateJobState(ctx, oldJobID, storage.JobStateRunning, nil)
+		require.NoError(t, err)
+
+		err = store.UpdateJobState(ctx, oldJobID, storage.JobStateDone, nil)
+		require.NoError(t, err)
+
+		currentJobID, err := scheduler.createPendingJob(ctx, MovieIndex)
+		require.NoError(t, err)
+
+		err = store.UpdateJobState(ctx, currentJobID, storage.JobStateRunning, nil)
+		require.NoError(t, err)
+
+		time.Sleep(2 * time.Millisecond)
+
+		scheduler.checkAndScheduleJob(ctx, MovieIndex)
+
+		jobs, err := scheduler.listPendingJobsByType(ctx, MovieIndex)
+		require.NoError(t, err)
+		assert.Len(t, jobs, 1, "should create new job even when running job exists")
+	})
+}
+
+func TestScheduler_pruneOldJobs(t *testing.T) {
+	t.Run("prunes jobs older than retention period", func(t *testing.T) {
+		store, err := mediaSqlite.New(context.Background(), ":memory:")
+		require.NoError(t, err)
+
+		err = store.RunMigrations(context.Background())
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		cfg := config.Manager{
+			Jobs: config.Jobs{
+				CleanupPeriod: 1 * time.Hour,
+				MinJobsToKeep: 2,
+			},
+		}
+
+		scheduler := NewScheduler(store, cfg, make(map[JobType]JobExecutor))
+
+		for i := 0; i < 5; i++ {
+			jobID, err := scheduler.createPendingJob(ctx, MovieIndex)
+			require.NoError(t, err)
+			err = store.UpdateJobState(ctx, jobID, storage.JobStateRunning, nil)
+			require.NoError(t, err)
+			err = store.UpdateJobState(ctx, jobID, storage.JobStateDone, nil)
+			require.NoError(t, err)
+		}
+
+		allJobs, err := store.ListJobs(ctx, 0, 0)
+		require.NoError(t, err)
+		assert.Len(t, allJobs, 5)
+
+		scheduler.pruneOldJobs(ctx)
+
+		remainingJobs, err := store.ListJobs(ctx, 0, 0)
+		require.NoError(t, err)
+		assert.Equal(t, len(remainingJobs), 2, "should preserve at least minimum jobs")
+	})
+
+	t.Run("preserves minimum jobs per type", func(t *testing.T) {
+		store, err := mediaSqlite.New(context.Background(), ":memory:")
+		require.NoError(t, err)
+
+		err = store.RunMigrations(context.Background())
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		cfg := config.Manager{
+			Jobs: config.Jobs{
+				CleanupPeriod: 0,
+				MinJobsToKeep: 1,
+			},
+		}
+
+		scheduler := NewScheduler(store, cfg, make(map[JobType]JobExecutor))
+
+		jobID, err := scheduler.createPendingJob(ctx, MovieIndex)
+		require.NoError(t, err)
+		err = store.UpdateJobState(ctx, jobID, storage.JobStateRunning, nil)
+		require.NoError(t, err)
+		err = store.UpdateJobState(ctx, jobID, storage.JobStateDone, nil)
+		require.NoError(t, err)
+
+		scheduler.pruneOldJobs(ctx)
+
+		remainingJobs, err := store.ListJobs(ctx, 0, 0)
+		require.NoError(t, err)
+		require.Len(t, remainingJobs, 1)
+		assert.Equal(t, jobID, int64(remainingJobs[0].ID))
+	})
+
+	t.Run("cleanup disabled with -1 does nothing", func(t *testing.T) {
+		store, err := mediaSqlite.New(context.Background(), ":memory:")
+		require.NoError(t, err)
+
+		err = store.RunMigrations(context.Background())
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		cfg := config.Manager{
+			Jobs: config.Jobs{
+				CleanupPeriod: -1,
+				MinJobsToKeep: 0,
+			},
+		}
+
+		scheduler := NewScheduler(store, cfg, make(map[JobType]JobExecutor))
+
+		jobID, err := scheduler.createPendingJob(ctx, MovieIndex)
+		require.NoError(t, err)
+		err = store.UpdateJobState(ctx, jobID, storage.JobStateRunning, nil)
+		require.NoError(t, err)
+		err = store.UpdateJobState(ctx, jobID, storage.JobStateDone, nil)
+		require.NoError(t, err)
+
+		called := false
+		origRunPruning := func(_ context.Context) {
+			if cfg.Jobs.CleanupPeriod == -1 {
+				return
+			}
+			called = true
+		}
+		origRunPruning(ctx)
+
+		assert.False(t, called, "pruning should not run when cleanup period is -1")
+
+		remainingJobs, err := store.ListJobs(ctx, 0, 0)
+		require.NoError(t, err)
+		require.Len(t, remainingJobs, 1)
+		assert.Equal(t, jobID, int64(remainingJobs[0].ID))
+	})
+}
+
+func TestScheduler_getIntervalForJobType(t *testing.T) {
+	cfg := config.Manager{
+		Jobs: config.Jobs{
+			MovieIndex:      1 * time.Minute,
+			MovieReconcile:  2 * time.Minute,
+			SeriesIndex:     3 * time.Minute,
+			SeriesReconcile: 4 * time.Minute,
+			IndexerSync:     5 * time.Minute,
+		},
+	}
+
+	scheduler := NewScheduler(nil, cfg, nil)
+
+	tests := []struct {
+		jobType  JobType
+		expected time.Duration
+	}{
+		{MovieIndex, 1 * time.Minute},
+		{MovieReconcile, 2 * time.Minute},
+		{SeriesIndex, 3 * time.Minute},
+		{SeriesReconcile, 4 * time.Minute},
+		{IndexerSync, 5 * time.Minute},
+	}
+
+	for _, tt := range tests {
+		t.Run(string(tt.jobType), func(t *testing.T) {
+			interval := scheduler.getIntervalForJobType(tt.jobType)
+			assert.Equal(t, tt.expected, interval)
+		})
+	}
+
+	t.Run("unknown job type returns default", func(t *testing.T) {
+		interval := scheduler.getIntervalForJobType("UnknownType")
+		assert.Equal(t, 10*time.Minute, interval)
+	})
+}

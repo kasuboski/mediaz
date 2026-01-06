@@ -175,6 +175,7 @@ type JobStorage interface {
 	ListJobs(ctx context.Context, offset, limit int, where ...sqlite.BoolExpression) ([]*Job, error)
 	UpdateJobState(ctx context.Context, id int64, state JobState, errorMsg *string) error
 	DeleteJob(ctx context.Context, id int64) error
+	DeleteJobs(ctx context.Context, where ...sqlite.BoolExpression) (int64, error)
 }
 
 type QualityProfile struct {
