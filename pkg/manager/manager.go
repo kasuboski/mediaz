@@ -670,21 +670,26 @@ func (m MediaManager) ListMoviesInLibrary(ctx context.Context) ([]LibraryMovie, 
 	var movies []LibraryMovie
 	for _, mp := range all {
 		mrec := *mp
+		// Skip movies without metadata - they haven't been reconciled yet
+		if mrec.MovieMetadataID == nil {
+			continue
+		}
+
 		lm := LibraryMovie{State: string(mrec.State)}
 		if mrec.Path != nil {
 			lm.Path = *mrec.Path
 		}
-		if mrec.MovieMetadataID != nil {
-			meta, err := m.GetMovieMetadataByID(ctx, *mrec.MovieMetadataID)
-			if err == nil && meta != nil {
-				lm.TMDBID = meta.TmdbID
-				lm.Title = meta.Title
-				lm.PosterPath = meta.Images
-				if meta.Year != nil {
-					lm.Year = *meta.Year
-				}
+
+		meta, err := m.GetMovieMetadataByID(ctx, *mrec.MovieMetadataID)
+		if err == nil && meta != nil {
+			lm.TMDBID = meta.TmdbID
+			lm.Title = meta.Title
+			lm.PosterPath = meta.Images
+			if meta.Year != nil {
+				lm.Year = *meta.Year
 			}
 		}
+
 		movies = append(movies, lm)
 	}
 	return movies, nil

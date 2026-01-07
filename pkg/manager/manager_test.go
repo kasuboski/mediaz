@@ -189,7 +189,7 @@ func TestListMoviesInLibrary(t *testing.T) {
 		}
 	})
 
-	t.Run("movies without metadata", func(t *testing.T) {
+	t.Run("movies without metadata are filtered out", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		store := storageMocks.NewMockStorage(ctrl)
 		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
@@ -206,13 +206,7 @@ func TestListMoviesInLibrary(t *testing.T) {
 
 		movies, err := m.ListMoviesInLibrary(ctx)
 		require.NoError(t, err)
-		assert.Len(t, movies, 1)
-
-		expectedMovie := LibraryMovie{
-			Path:  path,
-			State: string(storage.MovieStateDiscovered),
-		}
-		assert.Equal(t, expectedMovie, movies[0])
+		assert.Empty(t, movies, "movies without metadata should not be included in library")
 	})
 
 	t.Run("error listing movies", func(t *testing.T) {
