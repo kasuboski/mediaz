@@ -30,7 +30,7 @@ func TestMigration_000001_FreshDatabase(t *testing.T) {
 	sqliteStore := store.(*SQLite)
 	version, dirty, err := sqliteStore.GetMigrationVersion()
 	require.NoError(t, err)
-	assert.Equal(t, uint(4), version)
+	assert.Equal(t, uint(6), version)
 	assert.False(t, dirty)
 
 	profile1, err := store.GetQualityProfile(ctx, 1)
@@ -63,7 +63,7 @@ func TestMigration_000001_LegacyDatabase(t *testing.T) {
 	sqliteStore := store.(*SQLite)
 	version, dirty, err := sqliteStore.GetMigrationVersion()
 	require.NoError(t, err)
-	assert.Equal(t, uint(4), version)
+	assert.Equal(t, uint(6), version)
 	assert.False(t, dirty)
 }
 
