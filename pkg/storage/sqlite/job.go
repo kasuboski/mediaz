@@ -293,3 +293,23 @@ func (s *SQLite) DeleteJob(ctx context.Context, id int64) error {
 
 	return nil
 }
+
+// DeleteJobs removes multiple jobs matching the where clause
+func (s *SQLite) DeleteJobs(ctx context.Context, where ...sqlite.BoolExpression) (int64, error) {
+	stmt := table.Job.DELETE()
+	for _, w := range where {
+		stmt = stmt.WHERE(w)
+	}
+
+	result, err := s.handleDelete(ctx, stmt)
+	if err != nil {
+		return 0, fmt.Errorf("failed to delete jobs: %w", err)
+	}
+
+	count, err := result.RowsAffected()
+	if err != nil {
+		return 0, fmt.Errorf("failed to get rows affected: %w", err)
+	}
+
+	return count, nil
+}

@@ -44,7 +44,7 @@ func toJobResponse(job *storage.Job) JobResponse {
 // isValidJobType validates that a job type string matches one of the defined JobType constants
 func isValidJobType(jobType string) bool {
 	switch JobType(jobType) {
-	case MovieIndex, MovieReconcile, SeriesIndex, SeriesReconcile:
+	case MovieIndex, MovieReconcile, SeriesIndex, SeriesReconcile, IndexerSync:
 		return true
 	default:
 		return false

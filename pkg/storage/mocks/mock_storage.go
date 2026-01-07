@@ -429,6 +429,26 @@ func (mr *MockStorageMockRecorder) DeleteJob(ctx, id any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteJob", reflect.TypeOf((*MockStorage)(nil).DeleteJob), ctx, id)
 }
 
+// DeleteJobs mocks base method.
+func (m *MockStorage) DeleteJobs(ctx context.Context, where ...sqlite.BoolExpression) (int64, error) {
+	m.ctrl.T.Helper()
+	varargs := []any{ctx}
+	for _, a := range where {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "DeleteJobs", varargs...)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// DeleteJobs indicates an expected call of DeleteJobs.
+func (mr *MockStorageMockRecorder) DeleteJobs(ctx any, where ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{ctx}, where...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteJobs", reflect.TypeOf((*MockStorage)(nil).DeleteJobs), varargs...)
+}
+
 // DeleteMovie mocks base method.
 func (m *MockStorage) DeleteMovie(ctx context.Context, id int64) error {
 	m.ctrl.T.Helper()
@@ -2515,6 +2535,26 @@ func (m *MockJobStorage) DeleteJob(ctx context.Context, id int64) error {
 func (mr *MockJobStorageMockRecorder) DeleteJob(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteJob", reflect.TypeOf((*MockJobStorage)(nil).DeleteJob), ctx, id)
+}
+
+// DeleteJobs mocks base method.
+func (m *MockJobStorage) DeleteJobs(ctx context.Context, where ...sqlite.BoolExpression) (int64, error) {
+	m.ctrl.T.Helper()
+	varargs := []any{ctx}
+	for _, a := range where {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "DeleteJobs", varargs...)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// DeleteJobs indicates an expected call of DeleteJobs.
+func (mr *MockJobStorageMockRecorder) DeleteJobs(ctx any, where ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{ctx}, where...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteJobs", reflect.TypeOf((*MockJobStorage)(nil).DeleteJobs), varargs...)
 }
 
 // GetJob mocks base method.

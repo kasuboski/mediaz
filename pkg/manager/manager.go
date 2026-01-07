@@ -561,12 +561,12 @@ func (m MediaManager) listIndexersInternal(ctx context.Context) ([]model.Indexer
 
 		for _, idx := range cached.Indexers {
 			all = append(all, model.Indexer{
-				ID:               idx.ID,
-				IndexerSourceID:  ptr(int32(sourceID)),
-				Name:             idx.Name,
-				Priority:         idx.Priority,
-				URI:              idx.URI,
-				APIKey:           nil,
+				ID:              idx.ID,
+				IndexerSourceID: ptr(int32(sourceID)),
+				Name:            idx.Name,
+				Priority:        idx.Priority,
+				URI:             idx.URI,
+				APIKey:          nil,
 			})
 		}
 	}
