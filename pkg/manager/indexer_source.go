@@ -39,13 +39,13 @@ type UpdateIndexerSourceRequest struct {
 }
 
 type IndexerSourceResponse struct {
-	ID             int32   `json:"id"`
-	Name           string  `json:"name"`
-	Implementation string  `json:"implementation"`
-	Scheme         string  `json:"scheme"`
-	Host           string  `json:"host"`
-	Port           *int32  `json:"port,omitempty"`
-	Enabled        bool    `json:"enabled"`
+	ID             int32  `json:"id"`
+	Name           string `json:"name"`
+	Implementation string `json:"implementation"`
+	Scheme         string `json:"scheme"`
+	Host           string `json:"host"`
+	Port           *int32 `json:"port,omitempty"`
+	Enabled        bool   `json:"enabled"`
 }
 
 func (m MediaManager) CreateIndexerSource(ctx context.Context, req AddIndexerSourceRequest) (IndexerSourceResponse, error) {
