@@ -70,6 +70,62 @@ func (mr *MockLibraryMockRecorder) AddMovie(arg0, arg1, arg2 any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddMovie", reflect.TypeOf((*MockLibrary)(nil).AddMovie), arg0, arg1, arg2)
 }
 
+// DeleteMovieDirectory mocks base method.
+func (m *MockLibrary) DeleteMovieDirectory(arg0 context.Context, arg1 string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteMovieDirectory", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteMovieDirectory indicates an expected call of DeleteMovieDirectory.
+func (mr *MockLibraryMockRecorder) DeleteMovieDirectory(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteMovieDirectory", reflect.TypeOf((*MockLibrary)(nil).DeleteMovieDirectory), arg0, arg1)
+}
+
+// DeleteMovieFile mocks base method.
+func (m *MockLibrary) DeleteMovieFile(arg0 context.Context, arg1 string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteMovieFile", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteMovieFile indicates an expected call of DeleteMovieFile.
+func (mr *MockLibraryMockRecorder) DeleteMovieFile(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteMovieFile", reflect.TypeOf((*MockLibrary)(nil).DeleteMovieFile), arg0, arg1)
+}
+
+// DeleteSeriesDirectory mocks base method.
+func (m *MockLibrary) DeleteSeriesDirectory(arg0 context.Context, arg1 string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteSeriesDirectory", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteSeriesDirectory indicates an expected call of DeleteSeriesDirectory.
+func (mr *MockLibraryMockRecorder) DeleteSeriesDirectory(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteSeriesDirectory", reflect.TypeOf((*MockLibrary)(nil).DeleteSeriesDirectory), arg0, arg1)
+}
+
+// DeleteSeriesFile mocks base method.
+func (m *MockLibrary) DeleteSeriesFile(arg0 context.Context, arg1 string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteSeriesFile", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteSeriesFile indicates an expected call of DeleteSeriesFile.
+func (mr *MockLibraryMockRecorder) DeleteSeriesFile(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteSeriesFile", reflect.TypeOf((*MockLibrary)(nil).DeleteSeriesFile), arg0, arg1)
+}
+
 // FindEpisodes mocks base method.
 func (m *MockLibrary) FindEpisodes(arg0 context.Context) ([]library.EpisodeFile, error) {
 	m.ctrl.T.Helper()

@@ -388,6 +388,16 @@ func (s *SQLite) UpdateMovieMovieFileID(ctx context.Context, id int64, fileID in
 	return err
 }
 
+// UpdateMovie updates fields on a movie
+func (s *SQLite) UpdateMovie(ctx context.Context, movie model.Movie, where ...sqlite.BoolExpression) error {
+	stmt := table.Movie.UPDATE(table.Movie.Monitored).MODEL(movie)
+	for _, w := range where {
+		stmt = stmt.WHERE(w)
+	}
+	_, err := stmt.ExecContext(ctx, s.db)
+	return err
+}
+
 // UpdateMovieState updates the transition state of a movie. Metadata is optional and can be nil
 func (s *SQLite) UpdateMovieState(ctx context.Context, id int64, state storage.MovieState, metadata *storage.TransitionStateMetadata) error {
 	movie, err := s.GetMovie(ctx, id)

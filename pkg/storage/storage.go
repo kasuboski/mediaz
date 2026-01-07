@@ -116,6 +116,7 @@ type MovieStorage interface {
 	ListMoviesByState(ctx context.Context, state MovieState) ([]*Movie, error)
 	UpdateMovieState(ctx context.Context, id int64, state MovieState, metadata *TransitionStateMetadata) error
 	UpdateMovieMovieFileID(ctx context.Context, id int64, fileID int64) error
+	UpdateMovie(ctx context.Context, movie model.Movie, where ...sqlite.BoolExpression) error
 
 	GetMovieFilesByMovieName(ctx context.Context, name string) ([]*model.MovieFile, error)
 	CreateMovieFile(ctx context.Context, movieFile model.MovieFile) (int64, error)
@@ -295,6 +296,7 @@ type SeriesStorage interface {
 	ListSeries(ctx context.Context, where ...sqlite.BoolExpression) ([]*Series, error)
 	UpdateSeriesState(ctx context.Context, id int64, state SeriesState, metadata *TransitionStateMetadata) error
 	LinkSeriesMetadata(ctx context.Context, seriesID int64, metadataID int32) error
+	UpdateSeries(ctx context.Context, series model.Series, where ...sqlite.BoolExpression) error
 
 	GetSeason(ctx context.Context, where sqlite.BoolExpression) (*Season, error)
 	CreateSeason(ctx context.Context, season Season, initialState SeasonState) (int64, error)

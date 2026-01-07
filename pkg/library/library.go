@@ -342,3 +342,55 @@ func dirName(path string) string {
 	split := strings.Split(dirPath, string(os.PathSeparator))
 	return split[len(split)-1]
 }
+
+// DeleteMovieFile removes a single movie file from the library
+func (l *MediaLibrary) DeleteMovieFile(ctx context.Context, relativePath string) error {
+	return l.deleteFile(ctx, l.movies.Path, relativePath)
+}
+
+// DeleteMovieDirectory removes a movie directory and all its contents from the library
+func (l *MediaLibrary) DeleteMovieDirectory(ctx context.Context, relativePath string) error {
+	return l.deleteDirectory(ctx, l.movies.Path, relativePath)
+}
+
+// DeleteSeriesFile removes a single TV episode file from the library
+func (l *MediaLibrary) DeleteSeriesFile(ctx context.Context, relativePath string) error {
+	return l.deleteFile(ctx, l.tv.Path, relativePath)
+}
+
+// DeleteSeriesDirectory removes a series directory and all its contents from the library
+func (l *MediaLibrary) DeleteSeriesDirectory(ctx context.Context, relativePath string) error {
+	return l.deleteDirectory(ctx, l.tv.Path, relativePath)
+}
+
+// deleteFile is a helper that removes a single file from the library
+func (l *MediaLibrary) deleteFile(ctx context.Context, rootPath, relativePath string) error {
+	log := logger.FromCtx(ctx)
+	fullPath := filepath.Join(rootPath, relativePath)
+
+	log.Info("deleting file", zap.String("path", fullPath))
+
+	err := l.io.Remove(fullPath)
+	if err != nil {
+		log.Warn("failed to delete file", zap.Error(err), zap.String("path", fullPath))
+		return err
+	}
+
+	return nil
+}
+
+// deleteDirectory is a helper that removes a directory and all its contents from the library
+func (l *MediaLibrary) deleteDirectory(ctx context.Context, rootPath, relativePath string) error {
+	log := logger.FromCtx(ctx)
+	fullPath := filepath.Join(rootPath, relativePath)
+
+	log.Info("deleting directory", zap.String("path", fullPath))
+
+	err := l.io.RemoveAll(fullPath)
+	if err != nil {
+		log.Warn("failed to delete directory", zap.Error(err), zap.String("path", fullPath))
+		return err
+	}
+
+	return nil
+}

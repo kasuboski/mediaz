@@ -93,7 +93,7 @@ func (m MediaManager) IndexSeriesLibrary(ctx context.Context) error {
 		// Link the episode to the episode file so reconciliation can find the file details
 		episode := storage.Episode{Episode: model.Episode{
 			SeasonID:      int32(seasonID),
-			Monitored:     1,
+			Monitored:     0,
 			EpisodeFileID: &f.ID,
 			EpisodeNumber: int32(df.EpisodeNumber),
 		}}
@@ -115,7 +115,7 @@ func (m MediaManager) ensureSeries(ctx context.Context, seriesName string) (int6
 	series, err := m.storage.GetSeries(ctx, table.Series.Path.EQ(sqlite.String(seriesName)))
 	if errors.Is(err, storage.ErrNotFound) || series == nil {
 		log.Debug("episode file does not have associated series, creating new series")
-		seriesModel := storage.Series{Series: model.Series{Path: &seriesName, Monitored: 1}}
+		seriesModel := storage.Series{Series: model.Series{Path: &seriesName, Monitored: 0}}
 		seriesID, err := m.storage.CreateSeries(ctx, seriesModel, storage.SeriesStateDiscovered)
 		if err != nil {
 			return 0, err
@@ -170,7 +170,7 @@ func (m MediaManager) getOrCreateSeason(ctx context.Context, seriesID int64, sea
 			SeriesID:         int32(seriesID),
 			SeasonNumber:     seasonNumber,
 			SeasonMetadataID: seasonMetadataID,
-			Monitored:        1,
+			Monitored:        0,
 		},
 	}
 

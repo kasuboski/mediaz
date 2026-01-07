@@ -1,24 +1,43 @@
-import { useParams } from "react-router-dom";
-import { Calendar, Clock, Star, Globe, ExternalLink, MoreVertical, RefreshCw } from "lucide-react";
+import { useParams, useNavigate } from "react-router-dom";
+import { Calendar, Clock, Star, Globe, ExternalLink, MoreVertical, RefreshCw, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { RequestModal } from "@/components/media/RequestModal";
 import { useMovieDetail } from "@/lib/queries";
 import { useState } from "react";
+import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { metadataApi } from "@/lib/api";
+import { metadataApi, moviesApi } from "@/lib/api";
 import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function MovieDetail() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [showRequestModal, setShowRequestModal] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteFiles, setDeleteFiles] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isTogglingMonitoring, setIsTogglingMonitoring] = useState(false);
 
   const tmdbID = parseInt(id || '0');
   const { data: movie, isLoading, error } = useMovieDetail(tmdbID);
@@ -33,6 +52,38 @@ export default function MovieDetail() {
       console.error(error);
     } finally {
       setIsRefreshing(false);
+    }
+  };
+
+  const handleMonitoringToggle = async () => {
+    if (!movie?.id) return;
+
+    setIsTogglingMonitoring(true);
+    try {
+      await moviesApi.updateMovieMonitored(movie.id, !movie.monitored);
+      await queryClient.refetchQueries({ queryKey: ['movies', 'detail', tmdbID], exact: true });
+      toast.success(!movie.monitored ? "Monitoring enabled" : "Monitoring disabled");
+    } catch (error) {
+      toast.error("Failed to update monitoring status");
+      console.error(error);
+    } finally {
+      setIsTogglingMonitoring(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!movie?.id) return;
+
+    setIsDeleting(true);
+    try {
+      await moviesApi.deleteMovie(movie.id, deleteFiles);
+      await queryClient.invalidateQueries({ queryKey: ['movies', 'library'] });
+      toast.success(deleteFiles ? "Movie and files deleted" : "Movie deleted from library");
+      navigate("/movies");
+    } catch (error) {
+      toast.error("Failed to delete movie");
+      console.error(error);
+      setIsDeleting(false);
     }
   };
 
@@ -167,13 +218,39 @@ export default function MovieDetail() {
           <div className="lg:col-span-1">
             <div className="sticky top-8">
               {movie.libraryStatus ? (
-                <Button disabled className="w-full mb-4" size="lg">
-                  In Library
-                </Button>
+                <div className="space-y-3 mb-4">
+                  <div className="bg-card border border-border rounded-lg p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <p className="font-medium text-sm">Monitoring</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {movie.monitored
+                            ? "Automatically search and download upgrades"
+                            : "Metadata only - no automatic downloads"}
+                        </p>
+                      </div>
+                      <Switch
+                        checked={movie.monitored}
+                        onCheckedChange={handleMonitoringToggle}
+                        disabled={isTogglingMonitoring}
+                      />
+                    </div>
+                  </div>
+                  <Button
+                    variant="destructive"
+                    className="w-full"
+                    size="lg"
+                    onClick={() => setShowDeleteModal(true)}
+                    disabled={isDeleting}
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete Movie
+                  </Button>
+                </div>
               ) : (
-                <Button 
+                <Button
                   onClick={() => setShowRequestModal(true)}
-                  className="w-full mb-4 bg-gradient-primary hover:opacity-90" 
+                  className="w-full mb-4 bg-gradient-primary hover:opacity-90"
                   size="lg"
                 >
                   Request Movie
@@ -195,6 +272,14 @@ export default function MovieDetail() {
                       <span>{movie.runtime} minutes</span>
                     </div>
                   )}
+                  {movie.libraryStatus && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Monitoring</span>
+                      <Badge variant={movie.monitored ? "default" : "secondary"}>
+                        {movie.monitored ? "Active" : "Disabled"}
+                      </Badge>
+                    </div>
+                  )}
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">TMDB ID</span>
                     <span>{movie.tmdbID}</span>
@@ -213,6 +298,45 @@ export default function MovieDetail() {
         mediaTitle={movie.title}
         tmdbID={movie.tmdbID}
       />
+
+      <AlertDialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Movie</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{movie.title}" from your library?
+              <div className="flex items-center space-x-2 mt-4">
+                <Checkbox
+                  id="deleteFiles"
+                  checked={deleteFiles}
+                  onCheckedChange={(checked) => setDeleteFiles(checked === true)}
+                />
+                <label
+                  htmlFor="deleteFiles"
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                >
+                  Also delete files from disk
+                </label>
+              </div>
+              {deleteFiles && (
+                <p className="text-sm text-destructive font-semibold mt-3">
+                  Warning: This will permanently delete all files from disk. This action cannot be undone.
+                </p>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -146,14 +146,13 @@ func (m MediaManager) GetMovieDetailByTMDBID(ctx context.Context, tmdbID int) (*
 	// Try to get library information (movie record)
 	movie, err := m.storage.GetMovieByMetadataID(ctx, int(metadata.ID))
 	if err == nil && movie != nil {
-		// Movie exists in library - add library status information
+		result.ID = &movie.ID
 		result.LibraryStatus = string(movie.State)
 		result.Path = movie.Path
 		result.QualityProfileID = &movie.QualityProfileID
 		monitored := movie.Monitored == 1
 		result.Monitored = &monitored
 	} else if !errors.Is(err, storage.ErrNotFound) {
-		// Log non-NotFound errors but don't fail the request
 		log.Debug("error checking movie library status", zap.Error(err), zap.Int32("metadataID", metadata.ID))
 	}
 
@@ -325,6 +324,7 @@ func (m MediaManager) buildTVDetailResult(metadata *model.SeriesMetadata, detail
 
 	// Set library status information if series exists
 	if series != nil {
+		result.ID = &series.ID
 		result.LibraryStatus = string(series.State)
 		result.Path = series.Path
 		result.QualityProfileID = &series.QualityProfileID
@@ -634,23 +634,28 @@ func (m MediaManager) ListShowsInLibrary(ctx context.Context) ([]LibraryShow, er
 	var shows []LibraryShow
 	for _, sp := range series {
 		srec := *sp
+		// Skip series without metadata - they haven't been reconciled yet
+		if srec.SeriesMetadataID == nil {
+			continue
+		}
+
 		ls := LibraryShow{State: string(srec.State)}
 		if srec.Path != nil {
 			ls.Path = *srec.Path
 		}
-		if srec.SeriesMetadataID != nil {
-			meta, err := m.storage.GetSeriesMetadata(ctx, table.SeriesMetadata.ID.EQ(sqlite.Int(int64(*srec.SeriesMetadataID))))
-			if err == nil && meta != nil {
-				ls.TMDBID = meta.TmdbID
-				ls.Title = meta.Title
-				if meta.PosterPath != nil {
-					ls.PosterPath = *meta.PosterPath
-				}
-				if meta.FirstAirDate != nil {
-					ls.Year = int32(meta.FirstAirDate.Year())
-				}
+
+		meta, err := m.storage.GetSeriesMetadata(ctx, table.SeriesMetadata.ID.EQ(sqlite.Int(int64(*srec.SeriesMetadataID))))
+		if err == nil && meta != nil {
+			ls.TMDBID = meta.TmdbID
+			ls.Title = meta.Title
+			if meta.PosterPath != nil {
+				ls.PosterPath = *meta.PosterPath
+			}
+			if meta.FirstAirDate != nil {
+				ls.Year = int32(meta.FirstAirDate.Year())
 			}
 		}
+
 		shows = append(shows, ls)
 	}
 	return shows, nil
@@ -665,21 +670,26 @@ func (m MediaManager) ListMoviesInLibrary(ctx context.Context) ([]LibraryMovie, 
 	var movies []LibraryMovie
 	for _, mp := range all {
 		mrec := *mp
+		// Skip movies without metadata - they haven't been reconciled yet
+		if mrec.MovieMetadataID == nil {
+			continue
+		}
+
 		lm := LibraryMovie{State: string(mrec.State)}
 		if mrec.Path != nil {
 			lm.Path = *mrec.Path
 		}
-		if mrec.MovieMetadataID != nil {
-			meta, err := m.GetMovieMetadataByID(ctx, *mrec.MovieMetadataID)
-			if err == nil && meta != nil {
-				lm.TMDBID = meta.TmdbID
-				lm.Title = meta.Title
-				lm.PosterPath = meta.Images
-				if meta.Year != nil {
-					lm.Year = *meta.Year
-				}
+
+		meta, err := m.GetMovieMetadataByID(ctx, *mrec.MovieMetadataID)
+		if err == nil && meta != nil {
+			lm.TMDBID = meta.TmdbID
+			lm.Title = meta.Title
+			lm.PosterPath = meta.Images
+			if meta.Year != nil {
+				lm.Year = *meta.Year
 			}
 		}
+
 		movies = append(movies, lm)
 	}
 	return movies, nil
@@ -791,7 +801,7 @@ func (m MediaManager) IndexMovieLibrary(ctx context.Context) error {
 			Movie: model.Movie{
 				MovieFileID: &f.ID,
 				Path:        &movieName,
-				Monitored:   1,
+				Monitored:   0,
 			},
 		}
 
@@ -986,6 +996,121 @@ func (m MediaManager) AddSeriesToLibrary(ctx context.Context, request AddSeriesR
 	}
 
 	return series, err
+}
+
+func (m MediaManager) DeleteMovie(ctx context.Context, movieID int64, deleteFiles bool) error {
+	log := logger.FromCtx(ctx)
+
+	movie, err := m.storage.GetMovie(ctx, movieID)
+	if err != nil {
+		return fmt.Errorf("failed to get movie: %w", err)
+	}
+
+	if deleteFiles {
+		if movie.Path == nil {
+			return fmt.Errorf("cannot delete files: movie path is nil")
+		}
+
+		if err := m.library.DeleteMovieDirectory(ctx, *movie.Path); err != nil {
+			return fmt.Errorf("failed to delete movie directory %s: %w", *movie.Path, err)
+		}
+	}
+
+	if err := m.storage.DeleteMovie(ctx, movieID); err != nil {
+		return fmt.Errorf("failed to delete movie: %w", err)
+	}
+
+	log.Info("deleted movie", zap.Int64("id", movieID), zap.Bool("files_deleted", deleteFiles))
+	return nil
+}
+
+func (m MediaManager) DeleteSeries(ctx context.Context, seriesID int64, deleteDirectory bool) error {
+	log := logger.FromCtx(ctx)
+
+	series, err := m.storage.GetSeries(ctx, table.Series.ID.EQ(sqlite.Int64(seriesID)))
+	if err != nil {
+		return fmt.Errorf("failed to get series: %w", err)
+	}
+
+	seasons, err := m.storage.ListSeasons(ctx, table.Season.SeriesID.EQ(sqlite.Int64(seriesID)))
+	if err != nil {
+		log.Warn("failed to get seasons for cleanup", zap.Error(err))
+	}
+
+	for _, season := range seasons {
+		episodes, err := m.storage.ListEpisodes(ctx, table.Episode.SeasonID.EQ(sqlite.Int64(int64(season.ID))))
+		if err != nil {
+			log.Warn("failed to get episodes for cleanup", zap.Int32("season_id", season.ID), zap.Error(err))
+			continue
+		}
+		for _, episode := range episodes {
+			if episode.EpisodeFileID == nil {
+				continue
+			}
+			if err := m.storage.DeleteEpisodeFile(ctx, int64(*episode.EpisodeFileID)); err != nil {
+				log.Warn("failed to delete episode file", zap.Int32("episode_file_id", *episode.EpisodeFileID), zap.Error(err))
+			}
+		}
+	}
+
+	if deleteDirectory {
+		if series.Path == nil {
+			return fmt.Errorf("cannot delete directory: series path is nil")
+		}
+
+		if err := m.library.DeleteSeriesDirectory(ctx, *series.Path); err != nil {
+			return fmt.Errorf("failed to delete series directory %s: %w", *series.Path, err)
+		}
+	}
+
+	if err := m.storage.DeleteSeries(ctx, seriesID); err != nil {
+		return fmt.Errorf("failed to delete series: %w", err)
+	}
+
+	log.Info("deleted series", zap.Int64("id", seriesID), zap.Bool("directory_deleted", deleteDirectory))
+	return nil
+}
+
+func (m MediaManager) UpdateMovieMonitored(ctx context.Context, movieID int64, monitored bool) (*storage.Movie, error) {
+	monitoredInt := int32(0)
+	if monitored {
+		monitoredInt = 1
+	}
+
+	movieUpdate := model.Movie{Monitored: monitoredInt}
+	err := m.storage.UpdateMovie(ctx, movieUpdate, table.Movie.ID.EQ(sqlite.Int64(movieID)))
+	if err != nil {
+		return nil, err
+	}
+
+	movie, err := m.storage.GetMovie(ctx, movieID)
+	if err != nil {
+		return nil, err
+	}
+
+	logger.FromCtx(ctx).Info("updated monitoring", zap.Int64("movie_id", movieID), zap.Bool("monitored", monitored))
+	return movie, nil
+}
+
+func (m MediaManager) UpdateSeriesMonitored(ctx context.Context, seriesID int64, monitored bool) (*storage.Series, error) {
+	monitoredInt := int32(0)
+	if monitored {
+		monitoredInt = 1
+	}
+
+	seriesUpdate := model.Series{Monitored: monitoredInt}
+	err := m.storage.UpdateSeries(ctx, seriesUpdate, table.Series.ID.EQ(sqlite.Int64(seriesID)))
+	if err != nil {
+		return nil, err
+	}
+
+	series, err := m.storage.GetSeries(ctx, table.Series.ID.EQ(sqlite.Int64(seriesID)))
+	if err != nil {
+		return nil, err
+	}
+
+	logger.FromCtx(ctx).Info("updated monitoring", zap.Int64("series_id", seriesID), zap.Bool("monitored", monitored))
+	return series, nil
 }
 
 func (m MediaManager) SearchIndexers(ctx context.Context, indexers, categories []int32, query string) ([]*prowlarr.ReleaseResource, error) {

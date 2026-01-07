@@ -787,7 +787,7 @@ func TestScheduler_checkAndScheduleJob(t *testing.T) {
 }
 
 func TestScheduler_pruneOldJobs(t *testing.T) {
-	t.Run("prunes jobs older than retention period", func(t *testing.T) {
+	t.Run("retains only minimum jobs per type", func(t *testing.T) {
 		store, err := mediaSqlite.New(context.Background(), ":memory:")
 		require.NoError(t, err)
 
@@ -797,7 +797,6 @@ func TestScheduler_pruneOldJobs(t *testing.T) {
 		ctx := context.Background()
 		cfg := config.Manager{
 			Jobs: config.Jobs{
-				CleanupPeriod: 1 * time.Hour,
 				MinJobsToKeep: 2,
 			},
 		}
@@ -821,7 +820,7 @@ func TestScheduler_pruneOldJobs(t *testing.T) {
 
 		remainingJobs, err := store.ListJobs(ctx, 0, 0)
 		require.NoError(t, err)
-		assert.Equal(t, len(remainingJobs), 2, "should preserve at least minimum jobs")
+		assert.Equal(t, 2, len(remainingJobs), "should retain exactly minimum jobs")
 	})
 
 	t.Run("preserves minimum jobs per type", func(t *testing.T) {
@@ -834,7 +833,6 @@ func TestScheduler_pruneOldJobs(t *testing.T) {
 		ctx := context.Background()
 		cfg := config.Manager{
 			Jobs: config.Jobs{
-				CleanupPeriod: 0,
 				MinJobsToKeep: 1,
 			},
 		}
@@ -856,7 +854,7 @@ func TestScheduler_pruneOldJobs(t *testing.T) {
 		assert.Equal(t, jobID, int64(remainingJobs[0].ID))
 	})
 
-	t.Run("cleanup disabled with -1 does nothing", func(t *testing.T) {
+	t.Run("cleanup disabled with 0 does nothing", func(t *testing.T) {
 		store, err := mediaSqlite.New(context.Background(), ":memory:")
 		require.NoError(t, err)
 
@@ -866,7 +864,6 @@ func TestScheduler_pruneOldJobs(t *testing.T) {
 		ctx := context.Background()
 		cfg := config.Manager{
 			Jobs: config.Jobs{
-				CleanupPeriod: -1,
 				MinJobsToKeep: 0,
 			},
 		}
@@ -882,14 +879,14 @@ func TestScheduler_pruneOldJobs(t *testing.T) {
 
 		called := false
 		origRunPruning := func(_ context.Context) {
-			if cfg.Jobs.CleanupPeriod == -1 {
+			if cfg.Jobs.MinJobsToKeep <= 0 {
 				return
 			}
 			called = true
 		}
 		origRunPruning(ctx)
 
-		assert.False(t, called, "pruning should not run when cleanup period is -1")
+		assert.False(t, called, "pruning should not run when min jobs to keep is 0")
 
 		remainingJobs, err := store.ListJobs(ctx, 0, 0)
 		require.NoError(t, err)

@@ -18,11 +18,11 @@ type indexerTable struct {
 
 	// Columns
 	ID              sqlite.ColumnInteger
-	IndexerSourceID sqlite.ColumnInteger
 	Name            sqlite.ColumnString
 	Priority        sqlite.ColumnInteger
 	URI             sqlite.ColumnString
 	APIKey          sqlite.ColumnString
+	IndexerSourceID sqlite.ColumnInteger
 
 	AllColumns     sqlite.ColumnList
 	MutableColumns sqlite.ColumnList
@@ -64,13 +64,13 @@ func newIndexerTable(schemaName, tableName, alias string) *IndexerTable {
 func newIndexerTableImpl(schemaName, tableName, alias string) indexerTable {
 	var (
 		IDColumn              = sqlite.IntegerColumn("id")
-		IndexerSourceIDColumn = sqlite.IntegerColumn("indexer_source_id")
 		NameColumn            = sqlite.StringColumn("name")
 		PriorityColumn        = sqlite.IntegerColumn("priority")
 		URIColumn             = sqlite.StringColumn("uri")
 		APIKeyColumn          = sqlite.StringColumn("api_key")
-		allColumns            = sqlite.ColumnList{IDColumn, IndexerSourceIDColumn, NameColumn, PriorityColumn, URIColumn, APIKeyColumn}
-		mutableColumns        = sqlite.ColumnList{IndexerSourceIDColumn, NameColumn, PriorityColumn, URIColumn, APIKeyColumn}
+		IndexerSourceIDColumn = sqlite.IntegerColumn("indexer_source_id")
+		allColumns            = sqlite.ColumnList{IDColumn, NameColumn, PriorityColumn, URIColumn, APIKeyColumn, IndexerSourceIDColumn}
+		mutableColumns        = sqlite.ColumnList{NameColumn, PriorityColumn, URIColumn, APIKeyColumn, IndexerSourceIDColumn}
 	)
 
 	return indexerTable{
@@ -78,11 +78,11 @@ func newIndexerTableImpl(schemaName, tableName, alias string) indexerTable {
 
 		//Columns
 		ID:              IDColumn,
-		IndexerSourceID: IndexerSourceIDColumn,
 		Name:            NameColumn,
 		Priority:        PriorityColumn,
 		URI:             URIColumn,
 		APIKey:          APIKeyColumn,
+		IndexerSourceID: IndexerSourceIDColumn,
 
 		AllColumns:     allColumns,
 		MutableColumns: mutableColumns,

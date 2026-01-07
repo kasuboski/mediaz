@@ -56,6 +56,7 @@ export interface MediaItem {
  * MovieDetailResult interface matching the API schema
  */
 export interface MovieDetailResult {
+  id?: number;
   tmdbID: number;
   imdbID?: string;
   title: string;
@@ -127,6 +128,7 @@ export interface ExternalIDs {
 }
 
 export interface TVDetailResult {
+  id?: number;
   tmdbID: number;
   title: string;
   originalTitle?: string;
@@ -354,7 +356,7 @@ function transformMovieDetailResult(result: MovieDetailResult): MovieDetail {
   return {
     ...result,
     genres: result.genres ? result.genres.split(',').map(g => g.trim()) : [],
-    libraryStatus: result.libraryStatus === 'InLibrary',
+    libraryStatus: result.libraryStatus !== 'Not In Library',
     monitored: result.monitored ?? false,
   };
 }
@@ -365,7 +367,7 @@ function transformTVDetailResult(result: TVDetailResult): TVDetail {
     genres: result.genres ?? [],
     productionCountries: result.productionCountries ?? [],
     networks: result.networks ?? [],
-    libraryStatus: result.libraryStatus === 'InLibrary',
+    libraryStatus: result.libraryStatus !== 'Not In Library',
     monitored: result.monitored ?? false,
     seasons: result.seasons ?? [],
     watchProviders: result.watchProviders ?? [],
@@ -386,6 +388,17 @@ export const moviesApi = {
       method: 'POST',
       body: JSON.stringify(request),
     });
+  },
+  async deleteMovie(movieID: number, deleteFiles: boolean = false): Promise<void> {
+    const endpoint = `/library/movies/${movieID}${deleteFiles ? '?deleteFiles=true' : ''}`;
+    return apiRequest<void>(endpoint, { method: 'DELETE' });
+  },
+  async updateMovieMonitored(movieID: number, monitored: boolean): Promise<MovieDetail> {
+    const result = await apiRequest<MovieDetailResult>(`/library/movies/${movieID}/monitored`, {
+      method: 'PATCH',
+      body: JSON.stringify({ monitored }),
+    });
+    return transformMovieDetailResult(result);
   },
 };
 
@@ -437,6 +450,17 @@ export const tvApi = {
       method: 'POST',
       body: JSON.stringify(request),
     });
+  },
+  async deleteSeries(seriesID: number, deleteDirectory: boolean = false): Promise<void> {
+    const endpoint = `/library/tv/${seriesID}${deleteDirectory ? '?deleteDirectory=true' : ''}`;
+    return apiRequest<void>(endpoint, { method: 'DELETE' });
+  },
+  async updateSeriesMonitored(seriesID: number, monitored: boolean): Promise<TVDetail> {
+    const result = await apiRequest<TVDetailResult>(`/library/tv/${seriesID}/monitored`, {
+      method: 'PATCH',
+      body: JSON.stringify({ monitored }),
+    });
+    return transformTVDetailResult(result);
   },
 };
 

@@ -126,7 +126,7 @@ CREATE TABLE IF NOT EXISTS "season" (
     "season_number" INTEGER NOT NULL,
     "season_metadata_id" INTEGER,
     "monitored" INTEGER NOT NULL,
-    FOREIGN KEY ("series_id") REFERENCES "series" ("id")
+    FOREIGN KEY ("series_id") REFERENCES "series" ("id") ON DELETE CASCADE
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS "idx_season_unique_series_number" ON "season" ("series_id", "season_number");
@@ -149,7 +149,7 @@ CREATE TABLE IF NOT EXISTS "episode" (
     "monitored" INTEGER NOT NULL,
     "episode_metadata_id" INTEGER UNIQUE,
     "episode_file_id" INTEGER,
-    FOREIGN KEY ("season_id") REFERENCES "season" ("id")
+    FOREIGN KEY ("season_id") REFERENCES "season" ("id") ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS "episode_file" (
@@ -176,7 +176,7 @@ CREATE TABLE IF NOT EXISTS "episode_metadata" (
 
 CREATE TABLE IF NOT EXISTS "movie_transition" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-    "movie_id" INTEGER NOT NULL REFERENCES "movie"("id"),
+    "movie_id" INTEGER NOT NULL REFERENCES "movie"("id") ON DELETE CASCADE,
     "to_state" TEXT NOT NULL,
     "from_state" TEXT,
     "most_recent" BOOLEAN NOT NULL,
@@ -189,7 +189,7 @@ CREATE TABLE IF NOT EXISTS "movie_transition" (
 
 CREATE TABLE IF NOT EXISTS "series_transition" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-    "series_id" INTEGER NOT NULL REFERENCES "series"("id"),
+    "series_id" INTEGER NOT NULL REFERENCES "series"("id") ON DELETE CASCADE,
     "to_state" TEXT NOT NULL,
     "from_state" TEXT,
     "most_recent" BOOLEAN NOT NULL,
@@ -200,7 +200,7 @@ CREATE TABLE IF NOT EXISTS "series_transition" (
 
 CREATE TABLE IF NOT EXISTS "season_transition" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-    "season_id" INTEGER NOT NULL REFERENCES "season"("id"),
+    "season_id" INTEGER NOT NULL REFERENCES "season"("id") ON DELETE CASCADE,
     "to_state" TEXT NOT NULL,
     "from_state" TEXT,
     "most_recent" BOOLEAN NOT NULL,
@@ -214,7 +214,7 @@ CREATE TABLE IF NOT EXISTS "season_transition" (
 
 CREATE TABLE IF NOT EXISTS "episode_transition" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-    "episode_id" INTEGER NOT NULL REFERENCES "episode"("id"),
+    "episode_id" INTEGER NOT NULL REFERENCES "episode"("id") ON DELETE CASCADE,
     "to_state" TEXT NOT NULL,
     "from_state" TEXT,
     "most_recent" BOOLEAN NOT NULL,
