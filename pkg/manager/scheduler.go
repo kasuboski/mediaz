@@ -52,7 +52,7 @@ func (s *Scheduler) Run(ctx context.Context) error {
 }
 
 func (s *Scheduler) runPruning(ctx context.Context) {
-	if s.config.Jobs.CleanupPeriod == -1 {
+	if s.config.Jobs.MinJobsToKeep <= 0 {
 		return
 	}
 
@@ -72,54 +72,63 @@ func (s *Scheduler) runPruning(ctx context.Context) {
 func (s *Scheduler) pruneOldJobs(ctx context.Context) {
 	log := logger.FromCtx(ctx)
 
-	cutoff := time.Now().Add(-s.config.Jobs.CleanupPeriod)
-
 	jobTypes := []JobType{MovieIndex, MovieReconcile, SeriesIndex, SeriesReconcile, IndexerSync}
-	jobIDsToPreserve := make([]int32, 0)
+	totalDeleted := int64(0)
 
 	for _, jobType := range jobTypes {
 		where := sqlite.AND(
 			table.Job.Type.EQ(sqlite.String(string(jobType))),
 			table.JobTransition.MostRecent.EQ(sqlite.Bool(true)),
 		)
-		jobs, err := s.storage.ListJobs(ctx, 0, s.config.Jobs.MinJobsToKeep, where)
+
+		allJobs, err := s.storage.ListJobs(ctx, 0, 0, where)
 		if err != nil {
-			log.Error("failed to list jobs for preservation",
+			log.Error("failed to list jobs",
 				zap.String("type", string(jobType)),
 				zap.Error(err))
 			continue
 		}
 
-		for _, job := range jobs {
-			jobIDsToPreserve = append(jobIDsToPreserve, job.ID)
+		if len(allJobs) <= s.config.Jobs.MinJobsToKeep {
+			log.Debug("no jobs to prune for type",
+				zap.String("type", string(jobType)),
+				zap.Int("total", len(allJobs)),
+				zap.Int("min_to_keep", s.config.Jobs.MinJobsToKeep))
+			continue
 		}
-	}
 
-	log.Info("jobs to preserve",
-		zap.Int("count", len(jobIDsToPreserve)),
-		zap.Any("ids", jobIDsToPreserve))
+		jobIDsToDelete := make([]int32, 0)
+		for i := s.config.Jobs.MinJobsToKeep; i < len(allJobs); i++ {
+			jobIDsToDelete = append(jobIDsToDelete, allJobs[i].ID)
+		}
 
-	whereConditions := []sqlite.BoolExpression{
-		table.Job.CreatedAt.LT(sqlite.TimestampExp(sqlite.String(cutoff.Format(time.DateTime)))),
-	}
-	if len(jobIDsToPreserve) > 0 {
-		ids := make([]sqlite.Expression, len(jobIDsToPreserve))
-		for i, id := range jobIDsToPreserve {
+		if len(jobIDsToDelete) == 0 {
+			continue
+		}
+
+		ids := make([]sqlite.Expression, len(jobIDsToDelete))
+		for i, id := range jobIDsToDelete {
 			ids[i] = sqlite.Int32(id)
 		}
-		whereConditions = append(whereConditions,
-			table.Job.ID.NOT_IN(ids...),
-		)
+
+		deleted, err := s.storage.DeleteJobs(ctx, table.Job.ID.IN(ids...))
+		if err != nil {
+			log.Error("failed to delete jobs",
+				zap.String("type", string(jobType)),
+				zap.Error(err))
+			continue
+		}
+
+		if deleted > 0 {
+			log.Debug("deleted excess jobs",
+				zap.String("type", string(jobType)),
+				zap.Int64("count", deleted))
+			totalDeleted += deleted
+		}
 	}
 
-	deleted, err := s.storage.DeleteJobs(ctx, whereConditions...)
-	if err != nil {
-		log.Error("failed to prune old jobs", zap.Error(err))
-		return
-	}
-
-	if deleted > 0 {
-		log.Info("pruned old jobs", zap.Int64("count", deleted))
+	if totalDeleted > 0 {
+		log.Info("pruned old jobs", zap.Int64("total_deleted", totalDeleted))
 	}
 }
 

@@ -1126,8 +1126,7 @@ func TestMediaManager_ReconcileContinuingSeries(t *testing.T) {
 		where := table.SeriesTransition.ToState.IN(
 			sqlite.String(string(storage.SeriesStateContinuing)),
 			sqlite.String(string(storage.SeriesStateDownloading)),
-		).AND(table.SeriesTransition.MostRecent.EQ(sqlite.Bool(true))).
-			AND(table.Series.Monitored.EQ(sqlite.Int(1)))
+		).AND(table.SeriesTransition.MostRecent.EQ(sqlite.Bool(true)))
 
 		store.EXPECT().ListSeries(ctx, where).Return(nil, storage.ErrNotFound)
 
@@ -1146,8 +1145,7 @@ func TestMediaManager_ReconcileContinuingSeries(t *testing.T) {
 		where := table.SeriesTransition.ToState.IN(
 			sqlite.String(string(storage.SeriesStateContinuing)),
 			sqlite.String(string(storage.SeriesStateDownloading)),
-		).AND(table.SeriesTransition.MostRecent.EQ(sqlite.Bool(true))).
-			AND(table.Series.Monitored.EQ(sqlite.Int(1)))
+		).AND(table.SeriesTransition.MostRecent.EQ(sqlite.Bool(true)))
 
 		expectedErr := errors.New("database error")
 		store.EXPECT().ListSeries(ctx, where).Return(nil, expectedErr)
@@ -1715,8 +1713,7 @@ func TestMediaManager_ReconcileDiscoveredEpisodes(t *testing.T) {
 		store := storageMocks.NewMockStorage(ctrl)
 
 		where := table.EpisodeTransition.ToState.EQ(sqlite.String(string(storage.EpisodeStateDiscovered))).
-			AND(table.EpisodeTransition.MostRecent.EQ(sqlite.Bool(true))).
-			AND(table.Episode.Monitored.EQ(sqlite.Int(1)))
+			AND(table.EpisodeTransition.MostRecent.EQ(sqlite.Bool(true)))
 
 		store.EXPECT().ListEpisodes(ctx, where).Return(nil, storage.ErrNotFound)
 
@@ -1737,8 +1734,7 @@ func TestMediaManager_ReconcileDiscoveredEpisodes(t *testing.T) {
 		store := storageMocks.NewMockStorage(ctrl)
 
 		where := table.EpisodeTransition.ToState.EQ(sqlite.String(string(storage.EpisodeStateDiscovered))).
-			AND(table.EpisodeTransition.MostRecent.EQ(sqlite.Bool(true))).
-			AND(table.Episode.Monitored.EQ(sqlite.Int(1)))
+			AND(table.EpisodeTransition.MostRecent.EQ(sqlite.Bool(true)))
 
 		expectedErr := errors.New("database error")
 		store.EXPECT().ListEpisodes(ctx, where).Return(nil, expectedErr)

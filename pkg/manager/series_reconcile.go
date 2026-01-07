@@ -122,11 +122,12 @@ func (m MediaManager) ReconcileContinuingSeries(ctx context.Context, snapshot *R
 		return nil
 	}
 
+	// Process all continuing series (monitored and unmonitored) to refresh metadata
+	// New episodes will inherit the series' monitored status, so only monitored episodes will be searched/downloaded
 	where := table.SeriesTransition.ToState.IN(
 		sqlite.String(string(storage.SeriesStateContinuing)),
 		sqlite.String(string(storage.SeriesStateDownloading)),
-	).AND(table.SeriesTransition.MostRecent.EQ(sqlite.Bool(true))).
-		AND(table.Series.Monitored.EQ(sqlite.Int(1)))
+	).AND(table.SeriesTransition.MostRecent.EQ(sqlite.Bool(true)))
 
 	series, err := m.storage.ListSeries(ctx, where)
 	if err != nil {
@@ -160,10 +161,8 @@ func (m MediaManager) reconcileContinuingSeries(ctx context.Context, series *sto
 		return fmt.Errorf("series is nil")
 	}
 
-	if series.Monitored == 0 {
-		log.Debug("series is not monitored, skipping reconcile")
-		return nil
-	}
+	// Process both monitored and unmonitored series for metadata refresh
+	// The series' monitored status will be inherited by new episodes
 
 	seriesMetadata, err := m.storage.GetSeriesMetadata(ctx, table.SeriesMetadata.ID.EQ(sqlite.Int32(*series.SeriesMetadataID)))
 	if err != nil {
@@ -270,11 +269,13 @@ func (m MediaManager) refreshSeriesEpisodes(ctx context.Context, series *storage
 
 		for _, episodeMeta := range episodeMetadataList {
 			if !existingEpisodeNumbers[episodeMeta.Number] {
+				// New episodes inherit the series' monitored status
+				// This ensures unmonitored series don't trigger searches/downloads
 				episode := storage.Episode{
 					Episode: model.Episode{
 						EpisodeMetadataID: ptr(episodeMeta.ID),
 						SeasonID:          int32(seasonID),
-						Monitored:         1,
+						Monitored:         int32(series.Monitored),
 						EpisodeNumber:     episodeMeta.Number,
 					},
 				}
@@ -930,13 +931,15 @@ func (m MediaManager) evaluateAndUpdateSeriesState(ctx context.Context, seriesID
 // ReconcileDiscoveredEpisodes processes episodes in the "discovered" state by linking them to their
 // corresponding TMDB metadata hierarchy (series -> season -> episode). Discovered episodes have video
 // files on disk that need to be associated with the proper metadata before transitioning to "completed" state.
+// This runs for both monitored and unmonitored episodes to ensure metadata is populated for display.
 func (m MediaManager) ReconcileDiscoveredEpisodes(ctx context.Context, snapshot *ReconcileSnapshot) error {
 	log := logger.FromCtx(ctx)
 	log.Debug("starting discovered episodes reconciliation")
 
+	// Process all discovered episodes (both monitored and unmonitored) for metadata linking
+	// Downloads and searches are handled separately and only for monitored series
 	where := table.EpisodeTransition.ToState.EQ(sqlite.String(string(storage.EpisodeStateDiscovered))).
-		AND(table.EpisodeTransition.MostRecent.EQ(sqlite.Bool(true))).
-		AND(table.Episode.Monitored.EQ(sqlite.Int(1)))
+		AND(table.EpisodeTransition.MostRecent.EQ(sqlite.Bool(true)))
 
 	episodes, err := m.storage.ListEpisodes(ctx, where)
 	if err != nil {
@@ -1262,11 +1265,11 @@ func (m MediaManager) ReconcileCompletedSeries(ctx context.Context) error {
 	log := logger.FromCtx(ctx)
 	log.Debug("starting completed series reconciliation")
 
+	// Check completion status for all series (monitored and unmonitored) for accurate state tracking
 	where := table.SeriesTransition.ToState.IN(
 		sqlite.String(string(storage.SeriesStateDownloading)),
 		sqlite.String(string(storage.SeriesStateContinuing)),
-	).AND(table.SeriesTransition.MostRecent.EQ(sqlite.Bool(true))).
-		AND(table.Series.Monitored.EQ(sqlite.Int(1)))
+	).AND(table.SeriesTransition.MostRecent.EQ(sqlite.Bool(true)))
 
 	series, err := m.storage.ListSeries(ctx, where)
 	if err != nil {
@@ -1295,11 +1298,11 @@ func (m MediaManager) ReconcileCompletedSeasons(ctx context.Context) error {
 	log := logger.FromCtx(ctx)
 	log.Debug("starting completed seasons reconciliation")
 
+	// Check completion status for all seasons (monitored and unmonitored) for accurate state tracking
 	where := table.SeasonTransition.ToState.IN(
 		sqlite.String(string(storage.SeasonStateDownloading)),
 		sqlite.String(string(storage.SeasonStateContinuing)),
-	).AND(table.SeasonTransition.MostRecent.EQ(sqlite.Bool(true))).
-		AND(table.Season.Monitored.EQ(sqlite.Int(1)))
+	).AND(table.SeasonTransition.MostRecent.EQ(sqlite.Bool(true)))
 
 	seasons, err := m.storage.ListSeasons(ctx, where)
 	if err != nil {

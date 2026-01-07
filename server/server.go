@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -85,6 +86,8 @@ func (s *Server) Serve(port int) error {
 
 	v1.HandleFunc("/library/movies", s.ListMovies()).Methods(http.MethodGet)
 	v1.HandleFunc("/library/movies", s.AddMovieToLibrary()).Methods(http.MethodPost)
+	v1.HandleFunc("/library/movies/{id}", s.DeleteMovieFromLibrary()).Methods(http.MethodDelete)
+	v1.HandleFunc("/library/movies/{id}/monitored", s.UpdateMovieMonitored()).Methods(http.MethodPatch)
 
 	v1.HandleFunc("/movie/{tmdbID}", s.GetMovieDetailByTMDBID()).Methods(http.MethodGet)
 
@@ -92,6 +95,8 @@ func (s *Server) Serve(port int) error {
 
 	v1.HandleFunc("/library/tv", s.ListTVShows()).Methods(http.MethodGet)
 	v1.HandleFunc("/library/tv", s.AddSeriesToLibrary()).Methods(http.MethodPost)
+	v1.HandleFunc("/library/tv/{id}", s.DeleteSeriesFromLibrary()).Methods(http.MethodDelete)
+	v1.HandleFunc("/library/tv/{id}/monitored", s.UpdateSeriesMonitored()).Methods(http.MethodPatch)
 
 	v1.HandleFunc("/tv/refresh", s.RefreshSeriesMetadata()).Methods(http.MethodPost)
 	v1.HandleFunc("/movies/refresh", s.RefreshMovieMetadata()).Methods(http.MethodPost)
@@ -582,6 +587,75 @@ func (s Server) AddMovieToLibrary() http.HandlerFunc {
 	}
 }
 
+// DeleteMovieFromLibrary removes a movie from the library with optional file deletion
+func (s Server) DeleteMovieFromLibrary() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log := logger.FromCtx(r.Context())
+		vars := mux.Vars(r)
+
+		id, err := strconv.ParseInt(vars["id"], 10, 64)
+		if err != nil {
+			http.Error(w, "Invalid ID", http.StatusBadRequest)
+			return
+		}
+
+		deleteFiles := r.URL.Query().Get("deleteFiles") == "true"
+
+		if err := s.manager.DeleteMovie(r.Context(), id, deleteFiles); err != nil {
+			log.Error("delete failed", zap.Error(err))
+			if errors.Is(err, storage.ErrNotFound) {
+				writeErrorResponse(w, http.StatusNotFound, err)
+				return
+			}
+			writeErrorResponse(w, http.StatusInternalServerError, err)
+			return
+		}
+
+		writeResponse(w, http.StatusOK, GenericResponse{
+			Response: map[string]any{
+				"id":           id,
+				"message":      "Movie deleted",
+				"filesDeleted": deleteFiles,
+			},
+		})
+	}
+}
+
+// UpdateMovieMonitored updates the monitoring status of a movie
+func (s Server) UpdateMovieMonitored() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log := logger.FromCtx(r.Context())
+		vars := mux.Vars(r)
+
+		id, err := strconv.ParseInt(vars["id"], 10, 64)
+		if err != nil {
+			http.Error(w, "Invalid ID", http.StatusBadRequest)
+			return
+		}
+
+		var req struct {
+			Monitored bool `json:"monitored"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "Invalid body", http.StatusBadRequest)
+			return
+		}
+
+		movie, err := s.manager.UpdateMovieMonitored(r.Context(), id, req.Monitored)
+		if err != nil {
+			log.Error("update failed", zap.Error(err))
+			if errors.Is(err, storage.ErrNotFound) {
+				writeErrorResponse(w, http.StatusNotFound, err)
+				return
+			}
+			writeErrorResponse(w, http.StatusInternalServerError, err)
+			return
+		}
+
+		writeResponse(w, http.StatusOK, GenericResponse{Response: movie})
+	}
+}
+
 // GetQualityProfile gets a quality profile given an id
 func (s Server) GetQualityProfile() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -978,6 +1052,75 @@ func (s Server) AddSeriesToLibrary() http.HandlerFunc {
 			log.Error("failed to write response", zap.Error(err))
 			return
 		}
+	}
+}
+
+// DeleteSeriesFromLibrary removes a series from the library with optional file deletion
+func (s Server) DeleteSeriesFromLibrary() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log := logger.FromCtx(r.Context())
+		vars := mux.Vars(r)
+
+		id, err := strconv.ParseInt(vars["id"], 10, 64)
+		if err != nil {
+			http.Error(w, "Invalid ID", http.StatusBadRequest)
+			return
+		}
+
+		deleteDirectory := r.URL.Query().Get("deleteDirectory") == "true"
+
+		if err := s.manager.DeleteSeries(r.Context(), id, deleteDirectory); err != nil {
+			log.Error("delete failed", zap.Error(err))
+			if errors.Is(err, storage.ErrNotFound) {
+				writeErrorResponse(w, http.StatusNotFound, err)
+				return
+			}
+			writeErrorResponse(w, http.StatusInternalServerError, err)
+			return
+		}
+
+		writeResponse(w, http.StatusOK, GenericResponse{
+			Response: map[string]any{
+				"id":               id,
+				"message":          "Series deleted",
+				"directoryDeleted": deleteDirectory,
+			},
+		})
+	}
+}
+
+// UpdateSeriesMonitored updates the monitoring status of a series
+func (s Server) UpdateSeriesMonitored() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log := logger.FromCtx(r.Context())
+		vars := mux.Vars(r)
+
+		id, err := strconv.ParseInt(vars["id"], 10, 64)
+		if err != nil {
+			http.Error(w, "Invalid ID", http.StatusBadRequest)
+			return
+		}
+
+		var req struct {
+			Monitored bool `json:"monitored"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "Invalid body", http.StatusBadRequest)
+			return
+		}
+
+		series, err := s.manager.UpdateSeriesMonitored(r.Context(), id, req.Monitored)
+		if err != nil {
+			log.Error("update failed", zap.Error(err))
+			if errors.Is(err, storage.ErrNotFound) {
+				writeErrorResponse(w, http.StatusNotFound, err)
+				return
+			}
+			writeErrorResponse(w, http.StatusInternalServerError, err)
+			return
+		}
+
+		writeResponse(w, http.StatusOK, GenericResponse{Response: series})
 	}
 }
 

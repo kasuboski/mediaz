@@ -52,7 +52,6 @@ type Jobs struct {
 	SeriesIndex         time.Duration `json:"seriesIndex" yaml:"seriesIndex" mapstructure:"seriesIndex"`
 	IndexerSync         time.Duration `json:"indexerSync" yaml:"indexerSync" mapstructure:"indexerSync"`
 	JobScheduleInterval time.Duration `json:"JobScheduleInterval" yaml:"JobScheduleInterval" mapstructure:"JobScheduleInterval"`
-	CleanupPeriod       time.Duration `json:"cleanupPeriod" yaml:"cleanupPeriod" mapstructure:"cleanupPeriod"`
 	MinJobsToKeep       int           `json:"minJobsToKeep" yaml:"minJobsToKeep" mapstructure:"minJobsToKeep"`
 }
 
