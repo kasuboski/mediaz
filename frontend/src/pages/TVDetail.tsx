@@ -1,14 +1,26 @@
-import { useParams } from "react-router-dom";
-import { Calendar, Tv, Users, Film, Play, MoreVertical, RefreshCw } from "lucide-react";
+import { useParams, useNavigate } from "react-router-dom";
+import { Calendar, Tv, Users, Film, Play, MoreVertical, RefreshCw, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { RequestModal } from "@/components/media/RequestModal";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useState } from "react";
 import { useTVDetail } from "@/lib/queries";
-import { type SeasonResult, type EpisodeResult } from "@/lib/api";
+import { type SeasonResult, type EpisodeResult, tvApi } from "@/lib/api";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,6 +29,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { metadataApi } from "@/lib/api";
 import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
 
 // Component for rendering individual episodes
 
@@ -109,8 +122,14 @@ const SeasonContent = ({ season }: { season: SeasonResult }) => {
 
 export default function TVDetail() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [showRequestModal, setShowRequestModal] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteDirectory, setDeleteDirectory] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isTogglingMonitoring, setIsTogglingMonitoring] = useState(false);
 
   const tmdbID = parseInt(id || '0');
   const { data: show, isLoading, error } = useTVDetail(tmdbID);
@@ -125,6 +144,38 @@ export default function TVDetail() {
       console.error(error);
     } finally {
       setIsRefreshing(false);
+    }
+  };
+
+  const handleMonitoringToggle = async () => {
+    if (!show?.id) return;
+
+    setIsTogglingMonitoring(true);
+    try {
+      await tvApi.updateSeriesMonitored(show.id, !show.monitored);
+      await queryClient.refetchQueries({ queryKey: ['tv', 'detail', tmdbID], exact: true });
+      toast.success(!show.monitored ? "Monitoring enabled" : "Monitoring disabled");
+    } catch (error) {
+      toast.error("Failed to update monitoring status");
+      console.error(error);
+    } finally {
+      setIsTogglingMonitoring(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!show?.id) return;
+
+    setIsDeleting(true);
+    try {
+      await tvApi.deleteSeries(show.id, deleteDirectory);
+      await queryClient.invalidateQueries({ queryKey: ['tv', 'library'] });
+      toast.success(deleteDirectory ? "Series and directory deleted" : "Series deleted from library");
+      navigate("/series");
+    } catch (error) {
+      toast.error("Failed to delete series");
+      console.error(error);
+      setIsDeleting(false);
     }
   };
 
@@ -342,13 +393,20 @@ export default function TVDetail() {
           <div className="lg:col-span-1">
             <div className="sticky top-8">
               {show.libraryStatus ? (
-                <Button disabled className="w-full mb-4" size="lg">
-                  In Library
+                <Button
+                  variant="destructive"
+                  className="w-full mb-4"
+                  size="lg"
+                  onClick={() => setShowDeleteModal(true)}
+                  disabled={isDeleting}
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete Series
                 </Button>
               ) : (
-                <Button 
+                <Button
                   onClick={() => setShowRequestModal(true)}
-                  className="w-full mb-4 bg-gradient-primary hover:opacity-90" 
+                  className="w-full mb-4 bg-gradient-primary hover:opacity-90"
                   size="lg"
                 >
                   Request Series
@@ -365,6 +423,16 @@ export default function TVDetail() {
                       <div className="flex justify-between items-center py-2 border-b border-border/50">
                         <span className="text-muted-foreground">Status</span>
                         <span className="font-medium">{show.status}</span>
+                      </div>
+                    )}
+                    {show.libraryStatus && (
+                      <div className="flex justify-between items-center py-2 border-b border-border/50">
+                        <span className="text-muted-foreground">Monitoring</span>
+                        <Switch
+                          checked={show.monitored}
+                          onCheckedChange={handleMonitoringToggle}
+                          disabled={isTogglingMonitoring}
+                        />
                       </div>
                     )}
                     {show.firstAirDate && (
@@ -488,6 +556,45 @@ export default function TVDetail() {
         mediaTitle={show.title}
         tmdbID={show.tmdbID}
       />
+
+      <AlertDialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Series</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{show.title}" from your library?
+              <div className="flex items-center space-x-2 mt-4">
+                <Checkbox
+                  id="deleteDirectory"
+                  checked={deleteDirectory}
+                  onCheckedChange={(checked) => setDeleteDirectory(checked === true)}
+                />
+                <label
+                  htmlFor="deleteDirectory"
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                >
+                  Also delete directory from disk
+                </label>
+              </div>
+              {deleteDirectory && (
+                <p className="text-sm text-destructive font-semibold mt-3">
+                  Warning: This will permanently delete all files from disk. This action cannot be undone.
+                </p>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

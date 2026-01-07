@@ -51,6 +51,7 @@ type SearchMediaResult struct {
 // Fields like ImdbID, OriginalTitle, Overview, BackdropPath, ReleaseDate, Year, Runtime, ratings, and collection info are optional.
 // LibraryStatus is derived from storage; Path may be empty; QualityProfileID/Monitored are set only when tracked.
 type MovieDetailResult struct {
+	ID               *int32   `json:"id,omitempty"`
 	TMDBID           int32    `json:"tmdbID"`
 	ImdbID           *string  `json:"imdbID,omitempty"`
 	Title            string   `json:"title"`
@@ -104,6 +105,7 @@ type ExternalIDs struct {
 // LibraryStatus is storage-derived; Path may be empty; QualityProfileID/Monitored are only present when tracked.
 // Seasons array contains detailed season and episode information.
 type TVDetailResult struct {
+	ID                  *int32          `json:"id,omitempty"`
 	TMDBID              int32           `json:"tmdbID"`
 	Title               string          `json:"title"`
 	OriginalTitle       *string         `json:"originalTitle,omitempty"`

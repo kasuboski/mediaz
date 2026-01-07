@@ -1080,3 +1080,13 @@ func (s *SQLite) UpdateSeriesState(ctx context.Context, id int64, state storage.
 
 	return tx.Commit()
 }
+
+// UpdateSeries updates fields on a series
+func (s *SQLite) UpdateSeries(ctx context.Context, series model.Series, where ...sqlite.BoolExpression) error {
+	stmt := table.Series.UPDATE(table.Series.Monitored).MODEL(series)
+	for _, w := range where {
+		stmt = stmt.WHERE(w)
+	}
+	_, err := stmt.ExecContext(ctx, s.db)
+	return err
+}

@@ -74,6 +74,5 @@ func initConfig() {
 	viper.SetDefault("manager.jobs.indexerSync", "1h")
 
 	viper.SetDefault("manager.jobs.jobScheduleInterval", "10s")
-	viper.SetDefault("manager.jobs.cleanupPeriod", "168h")
 	viper.SetDefault("manager.jobs.minJobsToKeep", 10)
 }

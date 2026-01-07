@@ -106,6 +106,16 @@ func (o *MediaFileSystem) WalkDir(fsys fs.FS, root string, fn fs.WalkDirFunc) er
 	return fs.WalkDir(fsys, root, fn)
 }
 
+// Remove is a wrapper around os.Remove
+func (o *MediaFileSystem) Remove(name string) error {
+	return os.Remove(name)
+}
+
+// RemoveAll is a wrapper around os.RemoveAll
+func (o *MediaFileSystem) RemoveAll(path string) error {
+	return os.RemoveAll(path)
+}
+
 func (o *MediaFileSystem) FileExists(path string) bool {
 	_, err := o.Stat(path)
 	return err == nil

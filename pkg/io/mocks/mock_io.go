@@ -115,6 +115,34 @@ func (mr *MockFileIOMockRecorder) Open(arg0 any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Open", reflect.TypeOf((*MockFileIO)(nil).Open), arg0)
 }
 
+// Remove mocks base method.
+func (m *MockFileIO) Remove(arg0 string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Remove", arg0)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Remove indicates an expected call of Remove.
+func (mr *MockFileIOMockRecorder) Remove(arg0 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Remove", reflect.TypeOf((*MockFileIO)(nil).Remove), arg0)
+}
+
+// RemoveAll mocks base method.
+func (m *MockFileIO) RemoveAll(arg0 string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RemoveAll", arg0)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// RemoveAll indicates an expected call of RemoveAll.
+func (mr *MockFileIOMockRecorder) RemoveAll(arg0 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveAll", reflect.TypeOf((*MockFileIO)(nil).RemoveAll), arg0)
+}
+
 // Rename mocks base method.
 func (m *MockFileIO) Rename(arg0, arg1 string) error {
 	m.ctrl.T.Helper()
