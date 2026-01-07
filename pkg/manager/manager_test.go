@@ -287,7 +287,7 @@ func TestListShowsInLibrary(t *testing.T) {
 		assert.Equal(t, expected.PosterPath, shows[0].PosterPath)
 	})
 
-	t.Run("shows without metadata", func(t *testing.T) {
+	t.Run("shows without metadata are filtered out", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		store := storageMocks.NewMockStorage(ctrl)
 		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
@@ -304,13 +304,7 @@ func TestListShowsInLibrary(t *testing.T) {
 
 		shows, err := m.ListShowsInLibrary(ctx)
 		require.NoError(t, err)
-		require.Len(t, shows, 1)
-
-		expected := LibraryShow{
-			Path:  path,
-			State: string(storage.SeriesStateDiscovered),
-		}
-		assert.Equal(t, expected, shows[0])
+		assert.Empty(t, shows, "series without metadata should not be included in library")
 	})
 
 	t.Run("error listing series", func(t *testing.T) {

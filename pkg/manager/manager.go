@@ -634,23 +634,28 @@ func (m MediaManager) ListShowsInLibrary(ctx context.Context) ([]LibraryShow, er
 	var shows []LibraryShow
 	for _, sp := range series {
 		srec := *sp
+		// Skip series without metadata - they haven't been reconciled yet
+		if srec.SeriesMetadataID == nil {
+			continue
+		}
+
 		ls := LibraryShow{State: string(srec.State)}
 		if srec.Path != nil {
 			ls.Path = *srec.Path
 		}
-		if srec.SeriesMetadataID != nil {
-			meta, err := m.storage.GetSeriesMetadata(ctx, table.SeriesMetadata.ID.EQ(sqlite.Int(int64(*srec.SeriesMetadataID))))
-			if err == nil && meta != nil {
-				ls.TMDBID = meta.TmdbID
-				ls.Title = meta.Title
-				if meta.PosterPath != nil {
-					ls.PosterPath = *meta.PosterPath
-				}
-				if meta.FirstAirDate != nil {
-					ls.Year = int32(meta.FirstAirDate.Year())
-				}
+
+		meta, err := m.storage.GetSeriesMetadata(ctx, table.SeriesMetadata.ID.EQ(sqlite.Int(int64(*srec.SeriesMetadataID))))
+		if err == nil && meta != nil {
+			ls.TMDBID = meta.TmdbID
+			ls.Title = meta.Title
+			if meta.PosterPath != nil {
+				ls.PosterPath = *meta.PosterPath
+			}
+			if meta.FirstAirDate != nil {
+				ls.Year = int32(meta.FirstAirDate.Year())
 			}
 		}
+
 		shows = append(shows, ls)
 	}
 	return shows, nil
