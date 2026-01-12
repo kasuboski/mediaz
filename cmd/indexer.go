@@ -130,7 +130,9 @@ var searchIndexerCmd = &cobra.Command{
 			categories = append(categories, manager.TV_CATEGORIES...)
 		}
 
-		releases, err := m.SearchIndexers(ctx, indexers, categories, query)
+		releases, err := m.SearchIndexers(ctx, indexers, categories, indexer.SearchOptions{
+			Query: query,
+		})
 		if err != nil {
 			log.Fatal(err)
 		}

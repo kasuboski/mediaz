@@ -12,6 +12,7 @@ const API_BASE_URL =
  */
 interface ApiResponse<T> {
   response: T;
+  error?: string;
 }
 
 /**
@@ -159,6 +160,7 @@ export interface TVDetailResult {
 }
 
 export interface TVDetail {
+  id?: number;
   tmdbID: number;
   title: string;
   originalTitle?: string;
@@ -267,6 +269,12 @@ export interface AddMovieRequest {
 export interface AddSeriesRequest {
   tmdbID: number;
   qualityProfileID: number;
+  monitoredEpisodes?: number[];
+}
+
+export interface UpdateSeriesMonitoringRequest {
+  monitoredEpisodes: number[];
+  qualityProfileID?: number;
 }
 
 /**
@@ -315,10 +323,30 @@ async function apiRequest<T>(
       headers: { 'Content-Type': 'application/json' },
       ...options,
     });
+
     if (!response.ok) {
-      throw new ApiError(response.status, `HTTP ${response.status}: ${response.statusText}`);
+      const text = await response.text();
+      let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+
+      if (text && text.trim()) {
+        try {
+          const data: ApiResponse<T> = JSON.parse(text);
+          if (data.error && typeof data.error === 'string' && data.error.trim()) {
+            errorMessage = data.error;
+          }
+        } catch {
+        }
+      }
+
+      throw new ApiError(response.status, errorMessage);
     }
-    const data: ApiResponse<T> = await response.json();
+
+    const text = await response.text();
+    if (!text || text.trim() === '') {
+      return undefined as T;
+    }
+
+    const data: ApiResponse<T> = JSON.parse(text);
     return data.response;
   } catch (error) {
     if (error instanceof ApiError) {
@@ -400,12 +428,18 @@ export const moviesApi = {
     });
     return transformMovieDetailResult(result);
   },
+  async searchForMovie(movieID: number): Promise<void> {
+    return apiRequest<void>(`/library/movies/${movieID}/search`, {
+      method: 'POST',
+    });
+  },
 };
 
 /**
  * SeasonResult interface matching the backend SeasonResult struct
  */
 export interface SeasonResult {
+  id: number;
   tmdbID: number;
   seriesID: number;
   seasonNumber: number;
@@ -422,6 +456,7 @@ export interface SeasonResult {
  * EpisodeResult interface matching the backend EpisodeResult struct
  */
 export interface EpisodeResult {
+  id: number;
   tmdbID: number;
   seriesID: number;
   seasonNumber: number;
@@ -455,12 +490,33 @@ export const tvApi = {
     const endpoint = `/library/tv/${seriesID}${deleteDirectory ? '?deleteDirectory=true' : ''}`;
     return apiRequest<void>(endpoint, { method: 'DELETE' });
   },
-  async updateSeriesMonitored(seriesID: number, monitored: boolean): Promise<TVDetail> {
-    const result = await apiRequest<TVDetailResult>(`/library/tv/${seriesID}/monitored`, {
+  async updateSeriesMonitoring(seriesID: number, request: UpdateSeriesMonitoringRequest): Promise<TVDetail> {
+    const result = await apiRequest<TVDetailResult>(`/library/tv/${seriesID}/monitoring`, {
+      method: 'PATCH',
+      body: JSON.stringify(request),
+    });
+    return transformTVDetailResult(result);
+  },
+  async searchForSeries(seriesID: number): Promise<void> {
+    return apiRequest<void>(`/library/tv/${seriesID}/search`, {
+      method: 'POST',
+    });
+  },
+  async searchForSeason(seasonID: number): Promise<void> {
+    return apiRequest<void>(`/season/${seasonID}/search`, {
+      method: 'POST',
+    });
+  },
+  async searchForEpisode(episodeID: number): Promise<void> {
+    return apiRequest<void>(`/episode/${episodeID}/search`, {
+      method: 'POST',
+    });
+  },
+  async updateSeasonMonitored(seasonID: number, monitored: boolean): Promise<SeasonResult> {
+    return apiRequest<SeasonResult>(`/season/${seasonID}/monitored`, {
       method: 'PATCH',
       body: JSON.stringify({ monitored }),
     });
-    return transformTVDetailResult(result);
   },
 };
 

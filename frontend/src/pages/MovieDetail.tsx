@@ -1,10 +1,10 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { Calendar, Clock, Star, Globe, ExternalLink, MoreVertical, RefreshCw, Trash2 } from "lucide-react";
+import { Calendar, Clock, Star, Globe, ExternalLink, MoreVertical, RefreshCw, Trash2, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { RequestModal } from "@/components/media/RequestModal";
-import { useMovieDetail } from "@/lib/queries";
+import { useMovieDetail, useSearchMovie } from "@/lib/queries";
 import { useState } from "react";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -41,6 +41,7 @@ export default function MovieDetail() {
 
   const tmdbID = parseInt(id || '0');
   const { data: movie, isLoading, error } = useMovieDetail(tmdbID);
+  const searchMovie = useSearchMovie();
 
   const handleRefreshMetadata = async () => {
     setIsRefreshing(true);
@@ -85,6 +86,18 @@ export default function MovieDetail() {
       console.error(error);
       setIsDeleting(false);
     }
+  };
+
+  const handleSearch = () => {
+    if (!movie?.id) return;
+    searchMovie.mutate(movie.id, {
+      onSuccess: () => {
+        toast.success("Search started");
+      },
+      onError: (error) => {
+        toast.error(error instanceof Error ? error.message : "Failed to start search");
+      },
+    });
   };
 
   if (isLoading) {
@@ -268,6 +281,17 @@ export default function MovieDetail() {
                     <span>{movie.tmdbID}</span>
                   </div>
                 </div>
+                {movie.libraryStatus && movie.monitored && (
+                  <Button
+                    onClick={handleSearch}
+                    disabled={searchMovie.isPending}
+                    variant="outline"
+                    className="w-full mt-4"
+                  >
+                    <Search className="h-4 w-4 mr-2" />
+                    {searchMovie.isPending ? "Searching..." : "Search for Movie"}
+                  </Button>
+                )}
               </div>
             </div>
           </div>

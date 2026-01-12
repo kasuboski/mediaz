@@ -3,6 +3,7 @@ package manager
 import (
 	"context"
 	"errors"
+	"net/url"
 
 	"github.com/go-jet/jet/v2/sqlite"
 	"github.com/kasuboski/mediaz/pkg/indexer"
@@ -16,6 +17,7 @@ type indexerCacheEntry struct {
 	Indexers   []indexer.SourceIndexer
 	SourceName string
 	SourceURI  string
+	Enabled    bool
 }
 
 type AddIndexerSourceRequest struct {
@@ -122,9 +124,7 @@ func (m MediaManager) UpdateIndexerSource(ctx context.Context, id int64, req Upd
 		return IndexerSourceResponse{}, err
 	}
 
-	if source.Enabled {
-		m.RefreshIndexerSource(ctx, id)
-	}
+	m.RefreshIndexerSource(ctx, id)
 
 	return toIndexerSourceResponse(source), nil
 }
@@ -176,6 +176,11 @@ func (m MediaManager) RefreshIndexerSource(ctx context.Context, id int64) error 
 	}
 
 	if !sourceConfig.Enabled {
+		cached, ok := m.indexerCache.Get(id)
+		if ok {
+			cached.Enabled = sourceConfig.Enabled
+			m.indexerCache.Set(id, cached)
+		}
 		return nil
 	}
 
@@ -189,12 +194,16 @@ func (m MediaManager) RefreshIndexerSource(ctx context.Context, id int64) error 
 		return err
 	}
 
-	sourceURI := sourceConfig.Scheme + "://" + sourceConfig.Host
+	sourceURL := &url.URL{
+		Scheme: sourceConfig.Scheme,
+		Host:   sourceConfig.Host,
+	}
 
 	m.indexerCache.Set(id, indexerCacheEntry{
 		Indexers:   indexers,
 		SourceName: sourceConfig.Name,
-		SourceURI:  sourceURI,
+		SourceURI:  sourceURL.String(),
+		Enabled:    sourceConfig.Enabled,
 	})
 
 	log.Debug("refreshed indexers from source",

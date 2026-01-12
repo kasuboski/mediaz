@@ -29,7 +29,7 @@ const (
 
 // New creates a new sqlite database given a path to the database file.
 func New(ctx context.Context, filePath string) (storage.Storage, error) {
-	db, err := sql.Open("sqlite3", filePath)
+	db, err := sql.Open("sqlite3", filePath+"?_foreign_keys=on")
 	if err != nil {
 		return nil, err
 	}

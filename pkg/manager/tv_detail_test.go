@@ -163,6 +163,7 @@ func TestGetTVDetailByTMDBID_WithSeasonsAndEpisodes(t *testing.T) {
 
 		// Mock storage calls - series not found
 		store.EXPECT().GetSeries(ctx, gomock.Any()).Return(nil, storage.ErrNotFound)
+		store.EXPECT().ListSeasonMetadata(ctx, gomock.Any()).Return([]*model.SeasonMetadata{}, nil)
 
 		result, err := m.GetTVDetailByTMDBID(ctx, tmdbID)
 		require.NoError(t, err)

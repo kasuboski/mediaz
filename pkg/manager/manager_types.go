@@ -155,9 +155,16 @@ type AddMovieRequest struct {
 
 // AddSeriesRequest describes inputs to start managing a TV series.
 // TMDBID must refer to a valid TMDB series; QualityProfileID must match an existing quality profile.
+// MonitoredEpisodes is a list of episode TMDB IDs to monitor.
 type AddSeriesRequest struct {
-	TMDBID           int   `json:"tmdbID"`
-	QualityProfileID int32 `json:"qualityProfileID"`
+	TMDBID            int     `json:"tmdbID"`
+	QualityProfileID  int32   `json:"qualityProfileID"`
+	MonitoredEpisodes []int32 `json:"monitoredEpisodes,omitempty"`
+}
+
+type UpdateSeriesMonitoringRequest struct {
+	MonitoredEpisodes []int32 `json:"monitoredEpisodes"`
+	QualityProfileID  *int32  `json:"qualityProfileID,omitempty"`
 }
 
 type IndexerResponse struct {
@@ -191,6 +198,7 @@ type DeleteIndexerRequest struct {
 // Overview, AirDate, and PosterPath are optional fields from TMDB; EpisodeCount reflects known episodes; Monitored indicates tracking status.
 // Episodes array contains detailed episode information when requested.
 type SeasonResult struct {
+	ID           int32           `json:"id"`
 	TMDBID       int32           `json:"tmdbID"`
 	SeriesID     int32           `json:"seriesID"`
 	Number       int32           `json:"seasonNumber"`
@@ -206,6 +214,7 @@ type SeasonResult struct {
 // EpisodeResult represents an episode with metadata for API responses.
 // Overview, AirDate, StillPath, Runtime, and VoteAverage are optional TMDB fields; Downloaded reflects local status.
 type EpisodeResult struct {
+	ID           int32    `json:"id"`
 	TMDBID       int32    `json:"tmdbID"`
 	SeriesID     int32    `json:"seriesID"`
 	SeasonNumber int32    `json:"seasonNumber"`

@@ -24,8 +24,8 @@ import (
 )
 
 type GenericResponse struct {
-	Error    error `json:"error,omitempty"`
-	Response any   `json:"response"`
+	Error    string `json:"error,omitempty"`
+	Response any    `json:"response"`
 }
 
 type RefreshRequest struct {
@@ -50,8 +50,12 @@ func New(logger *zap.SugaredLogger, manager manager.MediaManager, config config.
 }
 
 func writeErrorResponse(w http.ResponseWriter, status int, err error) error {
+	errMsg := ""
+	if err != nil {
+		errMsg = err.Error()
+	}
 	return writeResponse(w, status, GenericResponse{
-		Error: err,
+		Error: errMsg,
 	})
 }
 
@@ -88,6 +92,7 @@ func (s *Server) Serve(port int) error {
 	v1.HandleFunc("/library/movies", s.AddMovieToLibrary()).Methods(http.MethodPost)
 	v1.HandleFunc("/library/movies/{id}", s.DeleteMovieFromLibrary()).Methods(http.MethodDelete)
 	v1.HandleFunc("/library/movies/{id}/monitored", s.UpdateMovieMonitored()).Methods(http.MethodPatch)
+	v1.HandleFunc("/library/movies/{id}/search", s.SearchForMovie()).Methods(http.MethodPost)
 
 	v1.HandleFunc("/movie/{tmdbID}", s.GetMovieDetailByTMDBID()).Methods(http.MethodGet)
 
@@ -96,7 +101,11 @@ func (s *Server) Serve(port int) error {
 	v1.HandleFunc("/library/tv", s.ListTVShows()).Methods(http.MethodGet)
 	v1.HandleFunc("/library/tv", s.AddSeriesToLibrary()).Methods(http.MethodPost)
 	v1.HandleFunc("/library/tv/{id}", s.DeleteSeriesFromLibrary()).Methods(http.MethodDelete)
-	v1.HandleFunc("/library/tv/{id}/monitored", s.UpdateSeriesMonitored()).Methods(http.MethodPatch)
+	v1.HandleFunc("/library/tv/{id}/monitoring", s.UpdateSeriesMonitoring()).Methods(http.MethodPatch)
+	v1.HandleFunc("/library/tv/{id}/search", s.SearchForSeries()).Methods(http.MethodPost)
+	v1.HandleFunc("/season/{id}/monitored", s.UpdateSeasonMonitored()).Methods(http.MethodPatch)
+	v1.HandleFunc("/season/{id}/search", s.SearchForSeason()).Methods(http.MethodPost)
+	v1.HandleFunc("/episode/{id}/search", s.SearchForEpisode()).Methods(http.MethodPost)
 
 	v1.HandleFunc("/tv/refresh", s.RefreshSeriesMetadata()).Methods(http.MethodPost)
 	v1.HandleFunc("/movies/refresh", s.RefreshMovieMetadata()).Methods(http.MethodPost)
@@ -1090,7 +1099,7 @@ func (s Server) DeleteSeriesFromLibrary() http.HandlerFunc {
 }
 
 // UpdateSeriesMonitored updates the monitoring status of a series
-func (s Server) UpdateSeriesMonitored() http.HandlerFunc {
+func (s Server) UpdateSeriesMonitoring() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log := logger.FromCtx(r.Context())
 		vars := mux.Vars(r)
@@ -1101,15 +1110,13 @@ func (s Server) UpdateSeriesMonitored() http.HandlerFunc {
 			return
 		}
 
-		var req struct {
-			Monitored bool `json:"monitored"`
-		}
+		var req manager.UpdateSeriesMonitoringRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			http.Error(w, "Invalid body", http.StatusBadRequest)
 			return
 		}
 
-		series, err := s.manager.UpdateSeriesMonitored(r.Context(), id, req.Monitored)
+		series, err := s.manager.UpdateSeriesMonitoring(r.Context(), id, req)
 		if err != nil {
 			log.Error("update failed", zap.Error(err))
 			if errors.Is(err, storage.ErrNotFound) {
@@ -1149,17 +1156,13 @@ func (s Server) ListJobs() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		params, err := ParsePaginationParams(r)
 		if err != nil {
-			writeResponse(w, http.StatusBadRequest, GenericResponse{
-				Error: err,
-			})
+			writeErrorResponse(w, http.StatusBadRequest, err)
 			return
 		}
 
 		jobs, err := s.manager.ListJobs(r.Context(), nil, nil, params)
 		if err != nil {
-			writeResponse(w, http.StatusInternalServerError, GenericResponse{
-				Error: err,
-			})
+			writeErrorResponse(w, http.StatusInternalServerError, err)
 			return
 		}
 
@@ -1184,9 +1187,7 @@ func (s Server) GetJob() http.HandlerFunc {
 
 		jobs, err := s.manager.GetJob(r.Context(), id)
 		if err != nil {
-			writeResponse(w, http.StatusInternalServerError, GenericResponse{
-				Error: err,
-			})
+			writeErrorResponse(w, http.StatusInternalServerError, err)
 			return
 		}
 
@@ -1210,9 +1211,7 @@ func (s Server) CancelJob() http.HandlerFunc {
 
 		jobs, err := s.manager.CancelJob(r.Context(), id)
 		if err != nil {
-			writeResponse(w, http.StatusInternalServerError, GenericResponse{
-				Error: err,
-			})
+			writeErrorResponse(w, http.StatusInternalServerError, err)
 			return
 		}
 
@@ -1241,9 +1240,7 @@ func (s Server) CreateJob() http.HandlerFunc {
 
 		jobs, err := s.manager.CreateJob(r.Context(), request)
 		if err != nil {
-			writeResponse(w, http.StatusInternalServerError, GenericResponse{
-				Error: err,
-			})
+			writeErrorResponse(w, http.StatusInternalServerError, err)
 			return
 		}
 
@@ -1309,5 +1306,143 @@ func (s Server) RefreshMovieMetadata() http.HandlerFunc {
 		writeResponse(w, http.StatusOK, GenericResponse{
 			Response: "Movie metadata refresh completed",
 		})
+	}
+}
+
+func (s Server) SearchForMovie() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log := logger.FromCtx(r.Context())
+		vars := mux.Vars(r)
+
+		id, err := strconv.ParseInt(vars["id"], 10, 64)
+		if err != nil {
+			http.Error(w, "Invalid ID", http.StatusBadRequest)
+			return
+		}
+
+		err = s.manager.SearchForMovie(r.Context(), id)
+		if err != nil {
+			log.Error("search failed", zap.Error(err))
+			if errors.Is(err, storage.ErrNotFound) {
+				writeErrorResponse(w, http.StatusNotFound, err)
+				return
+			}
+			writeErrorResponse(w, http.StatusBadRequest, err)
+			return
+		}
+
+		w.WriteHeader(http.StatusAccepted)
+	}
+}
+
+func (s Server) SearchForSeries() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log := logger.FromCtx(r.Context())
+		vars := mux.Vars(r)
+
+		id, err := strconv.ParseInt(vars["id"], 10, 64)
+		if err != nil {
+			http.Error(w, "Invalid ID", http.StatusBadRequest)
+			return
+		}
+
+		err = s.manager.SearchForSeries(r.Context(), id)
+		if err != nil {
+			log.Error("search failed", zap.Error(err))
+			if errors.Is(err, storage.ErrNotFound) {
+				writeErrorResponse(w, http.StatusNotFound, err)
+				return
+			}
+			writeErrorResponse(w, http.StatusBadRequest, err)
+			return
+		}
+
+		w.WriteHeader(http.StatusAccepted)
+	}
+}
+
+func (s Server) SearchForEpisode() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log := logger.FromCtx(r.Context())
+		vars := mux.Vars(r)
+
+		id, err := strconv.ParseInt(vars["id"], 10, 64)
+		if err != nil {
+			http.Error(w, "Invalid ID", http.StatusBadRequest)
+			return
+		}
+
+		err = s.manager.SearchForEpisode(r.Context(), id)
+		if err != nil {
+			log.Error("search failed", zap.Error(err))
+			if errors.Is(err, storage.ErrNotFound) {
+				writeErrorResponse(w, http.StatusNotFound, err)
+				return
+			}
+			writeErrorResponse(w, http.StatusBadRequest, err)
+			return
+		}
+
+		w.WriteHeader(http.StatusAccepted)
+	}
+}
+
+func (s Server) SearchForSeason() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log := logger.FromCtx(r.Context())
+		vars := mux.Vars(r)
+
+		id, err := strconv.ParseInt(vars["id"], 10, 64)
+		if err != nil {
+			http.Error(w, "Invalid ID", http.StatusBadRequest)
+			return
+		}
+
+		err = s.manager.SearchForSeason(r.Context(), id)
+		if err != nil {
+			log.Error("search failed", zap.Error(err))
+			if errors.Is(err, storage.ErrNotFound) {
+				writeErrorResponse(w, http.StatusNotFound, err)
+				return
+			}
+			writeErrorResponse(w, http.StatusBadRequest, err)
+			return
+		}
+
+		w.WriteHeader(http.StatusAccepted)
+	}
+}
+
+func (s Server) UpdateSeasonMonitored() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log := logger.FromCtx(r.Context())
+		vars := mux.Vars(r)
+
+		id, err := strconv.ParseInt(vars["id"], 10, 64)
+		if err != nil {
+			http.Error(w, "Invalid ID", http.StatusBadRequest)
+			return
+		}
+
+		var req struct {
+			Monitored bool `json:"monitored"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "Invalid body", http.StatusBadRequest)
+			return
+		}
+
+		season, err := s.manager.UpdateSeasonMonitoring(r.Context(), id, req.Monitored)
+		if err != nil {
+			log.Error("update failed", zap.Error(err))
+			if errors.Is(err, storage.ErrNotFound) {
+				writeErrorResponse(w, http.StatusNotFound, err)
+				return
+			}
+			writeErrorResponse(w, http.StatusInternalServerError, err)
+			return
+		}
+
+		writeResponse(w, http.StatusOK, GenericResponse{Response: season})
 	}
 }

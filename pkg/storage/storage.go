@@ -209,6 +209,7 @@ const (
 	SeriesStateUnreleased  SeriesState = "unreleased"
 	SeriesStateContinuing  SeriesState = "continuing"
 	SeriesStateDownloading SeriesState = "downloading"
+	SeriesStatePartial     SeriesState = "partial"
 	SeriesStateCompleted   SeriesState = "completed"
 
 	SeasonStateNew         SeasonState = ""
@@ -217,6 +218,7 @@ const (
 	SeasonStateUnreleased  SeasonState = "unreleased"
 	SeasonStateContinuing  SeasonState = "continuing"
 	SeasonStateDownloading SeasonState = "downloading"
+	SeasonStatePartial     SeasonState = "partial"
 	SeasonStateCompleted   SeasonState = "completed"
 
 	EpisodeStateNew         EpisodeState = ""
@@ -238,12 +240,13 @@ type SeriesTransition model.SeriesTransition
 func (s Series) Machine() *machine.StateMachine[SeriesState] {
 	return machine.New(s.State,
 		machine.From(SeriesStateNew).To(SeriesStateUnreleased, SeriesStateMissing, SeriesStateDiscovered),
-		machine.From(SeriesStateDiscovered).To(SeriesStateMissing, SeriesStateContinuing, SeriesStateCompleted),
+		machine.From(SeriesStateDiscovered).To(SeriesStateMissing, SeriesStateContinuing, SeriesStatePartial, SeriesStateCompleted),
 		machine.From(SeriesStateMissing).To(SeriesStateDiscovered, SeriesStateDownloading),
 		machine.From(SeriesStateUnreleased).To(SeriesStateDiscovered, SeriesStateMissing),
-		machine.From(SeriesStateDownloading).To(SeriesStateContinuing, SeriesStateCompleted),
-		machine.From(SeriesStateContinuing).To(SeriesStateCompleted, SeriesStateMissing),
-		machine.From(SeriesStateCompleted).To(SeriesStateContinuing),
+		machine.From(SeriesStateDownloading).To(SeriesStateContinuing, SeriesStatePartial, SeriesStateCompleted),
+		machine.From(SeriesStateContinuing).To(SeriesStatePartial, SeriesStateCompleted, SeriesStateMissing),
+		machine.From(SeriesStatePartial).To(SeriesStateContinuing, SeriesStateCompleted, SeriesStateMissing),
+		machine.From(SeriesStateCompleted).To(SeriesStateContinuing, SeriesStatePartial),
 	)
 }
 
@@ -259,12 +262,13 @@ type SeasonTransition model.SeasonTransition
 func (s Season) Machine() *machine.StateMachine[SeasonState] {
 	return machine.New(s.State,
 		machine.From(SeasonStateNew).To(SeasonStateUnreleased, SeasonStateMissing, SeasonStateDiscovered),
-		machine.From(SeasonStateDiscovered).To(SeasonStateMissing, SeasonStateContinuing, SeasonStateCompleted),
+		machine.From(SeasonStateDiscovered).To(SeasonStateMissing, SeasonStateContinuing, SeasonStatePartial, SeasonStateCompleted),
 		machine.From(SeasonStateMissing).To(SeasonStateDiscovered, SeasonStateDownloading),
 		machine.From(SeasonStateUnreleased).To(SeasonStateDiscovered, SeasonStateMissing),
-		machine.From(SeasonStateDownloading).To(SeasonStateContinuing, SeasonStateCompleted),
-		machine.From(SeasonStateContinuing).To(SeasonStateCompleted, SeasonStateMissing),
-		machine.From(SeasonStateCompleted).To(SeasonStateContinuing),
+		machine.From(SeasonStateDownloading).To(SeasonStateContinuing, SeasonStatePartial, SeasonStateCompleted),
+		machine.From(SeasonStateContinuing).To(SeasonStatePartial, SeasonStateCompleted, SeasonStateMissing),
+		machine.From(SeasonStatePartial).To(SeasonStateContinuing, SeasonStateCompleted, SeasonStateMissing),
+		machine.From(SeasonStateCompleted).To(SeasonStateContinuing, SeasonStatePartial),
 	)
 }
 
@@ -303,6 +307,7 @@ type SeriesStorage interface {
 	DeleteSeason(ctx context.Context, id int64) error
 	ListSeasons(ctx context.Context, where ...sqlite.BoolExpression) ([]*Season, error)
 	UpdateSeasonState(ctx context.Context, id int64, season SeasonState, metadata *TransitionStateMetadata) error
+	UpdateSeason(ctx context.Context, season model.Season, where ...sqlite.BoolExpression) error
 	LinkSeasonMetadata(ctx context.Context, seasonID int64, metadataID int32) error
 
 	GetEpisode(ctx context.Context, where sqlite.BoolExpression) (*Episode, error)
@@ -312,6 +317,7 @@ type SeriesStorage interface {
 	ListEpisodes(ctx context.Context, where ...sqlite.BoolExpression) ([]*Episode, error)
 	UpdateEpisodeEpisodeFileID(ctx context.Context, id int64, fileID int64) error
 	UpdateEpisodeState(ctx context.Context, id int64, state EpisodeState, metadata *TransitionStateMetadata) error
+	UpdateEpisode(ctx context.Context, episode model.Episode, where ...sqlite.BoolExpression) error
 	LinkEpisodeMetadata(ctx context.Context, episodeID int64, seasonID int32, episodeMetadataID int32) error
 
 	GetEpisodeFile(ctx context.Context, id int32) (*model.EpisodeFile, error)

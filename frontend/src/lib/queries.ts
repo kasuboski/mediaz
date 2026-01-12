@@ -27,6 +27,7 @@ import {
   type CreateQualityDefinitionRequest,
   type UpdateQualityDefinitionRequest,
   type PaginationParams,
+  type UpdateSeriesMonitoringRequest,
 } from './api';
 
 /**
@@ -524,9 +525,127 @@ export function useAddSeries() {
 
   return useMutation({
     mutationFn: (request: AddSeriesRequest) => tvApi.addSeries(request),
-    onSuccess: (data) => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.tv.library() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.tv.detail(variables.tmdbID) });
+    },
+  });
+}
+
+export function useSearchMovie() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (movieID: number) => moviesApi.searchForMovie(movieID),
+    onSuccess: (_, movieID) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.movies.detail(movieID) });
+    },
+  });
+}
+
+export function useSearchSeries() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (seriesID: number) => tvApi.searchForSeries(seriesID),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.tv.all });
+    },
+  });
+}
+
+export function useSearchSeason() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (seasonID: number) => tvApi.searchForSeason(seasonID),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.tv.all });
+    },
+  });
+}
+
+export function useSearchEpisode() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (episodeID: number) => tvApi.searchForEpisode(episodeID),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.tv.all });
+    },
+  });
+}
+
+export function useUpdateSeasonMonitored() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ seasonID, monitored }: { seasonID: number; monitored: boolean }) =>
+      tvApi.updateSeasonMonitored(seasonID, monitored),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.tv.all });
+    },
+  });
+}
+
+export function useUpdateMovieMonitored() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ movieID, monitored }: { movieID: number; monitored: boolean }) =>
+      moviesApi.updateMovieMonitored(movieID, monitored),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.movies.detail(data.tmdbID) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.movies.library() });
+    },
+  });
+}
+
+export function useUpdateSeriesMonitored() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ seriesID, monitored }: { seriesID: number; monitored: boolean }) =>
+      tvApi.updateSeriesMonitored(seriesID, monitored),
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.tv.detail(data.tmdbID) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.tv.library() });
+    },
+  });
+}
+
+export function useUpdateSeriesMonitoring() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ seriesID, request }: { seriesID: number; request: UpdateSeriesMonitoringRequest }) =>
+      tvApi.updateSeriesMonitoring(seriesID, request),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.tv.all });
+    },
+  });
+}
+
+export function useDeleteMovie() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ movieID, deleteFiles }: { movieID: number; deleteFiles?: boolean }) =>
+      moviesApi.deleteMovie(movieID, deleteFiles),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.movies.library() });
+    },
+  });
+}
+
+export function useDeleteSeries() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ seriesID, deleteDirectory }: { seriesID: number; deleteDirectory?: boolean }) =>
+      tvApi.deleteSeries(seriesID, deleteDirectory),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.tv.all });
     },
   });
 }

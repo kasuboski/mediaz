@@ -1083,7 +1083,31 @@ func (s *SQLite) UpdateSeriesState(ctx context.Context, id int64, state storage.
 
 // UpdateSeries updates fields on a series
 func (s *SQLite) UpdateSeries(ctx context.Context, series model.Series, where ...sqlite.BoolExpression) error {
-	stmt := table.Series.UPDATE(table.Series.Monitored).MODEL(series)
+	stmt := table.Series.UPDATE(table.Series.Monitored, table.Series.QualityProfileID).MODEL(series)
+	if series.LastSearchTime != nil {
+		stmt = table.Series.UPDATE(table.Series.Monitored, table.Series.LastSearchTime, table.Series.QualityProfileID).MODEL(series)
+	}
+	for _, w := range where {
+		stmt = stmt.WHERE(w)
+	}
+	_, err := stmt.ExecContext(ctx, s.db)
+	return err
+}
+
+func (s *SQLite) UpdateSeason(ctx context.Context, season model.Season, where ...sqlite.BoolExpression) error {
+	stmt := table.Season.UPDATE(table.Season.Monitored).MODEL(season)
+	if season.LastSearchTime != nil {
+		stmt = table.Season.UPDATE(table.Season.Monitored, table.Season.LastSearchTime).MODEL(season)
+	}
+	for _, w := range where {
+		stmt = stmt.WHERE(w)
+	}
+	_, err := stmt.ExecContext(ctx, s.db)
+	return err
+}
+
+func (s *SQLite) UpdateEpisode(ctx context.Context, episode model.Episode, where ...sqlite.BoolExpression) error {
+	stmt := table.Episode.UPDATE(table.Episode.Monitored).MODEL(episode)
 	for _, w := range where {
 		stmt = stmt.WHERE(w)
 	}

@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-jet/jet/v2/sqlite"
 	"github.com/kasuboski/mediaz/pkg/download"
+	"github.com/kasuboski/mediaz/pkg/indexer"
 	"github.com/kasuboski/mediaz/pkg/io"
 	"github.com/kasuboski/mediaz/pkg/library"
 	"github.com/kasuboski/mediaz/pkg/logger"
@@ -353,7 +354,11 @@ func (m MediaManager) reconcileMissingSeries(ctx context.Context, series *storag
 		return err
 	}
 
-	releases, err := m.SearchIndexers(ctx, snapshot.GetIndexerIDs(), TV_CATEGORIES, seriesMetadata.Title)
+	searchType := indexer.TypeTV
+	releases, err := m.SearchIndexers(ctx, snapshot.GetIndexerIDs(), TV_CATEGORIES, indexer.SearchOptions{
+		Query: seriesMetadata.Title,
+		Type:  &searchType,
+	})
 	if err != nil {
 		log.Debugw("failed to search indexer", "indexers", snapshot.GetIndexerIDs(), zap.Error(err))
 		return err
@@ -379,7 +384,8 @@ func (m MediaManager) reconcileMissingSeries(ctx context.Context, series *storag
 	// Check if all missing seasons only have unreleased episodes
 	allMissingSeasonsUnreleased := true
 	for _, season := range seasons {
-		where := table.Episode.SeasonID.EQ(sqlite.Int32(season.ID))
+		where := table.Episode.SeasonID.EQ(sqlite.Int32(season.ID)).
+			AND(table.Episode.Monitored.EQ(sqlite.Int(1)))
 		episodes, err := m.storage.ListEpisodes(ctx, where)
 		if err != nil {
 			log.Error("failed to list episodes for season", zap.Error(err))
@@ -437,14 +443,15 @@ func (m MediaManager) reconcileMissingSeason(ctx context.Context, seriesTitle st
 		return err
 	}
 
-	where := table.Episode.SeasonID.EQ(sqlite.Int32(season.ID))
+	where := table.Episode.SeasonID.EQ(sqlite.Int32(season.ID)).
+		AND(table.Episode.Monitored.EQ(sqlite.Int(1)))
 	episodes, err := m.storage.ListEpisodes(ctx, where)
 	if err != nil {
 		log.Error("failed to list missing episodes", zap.Error(err))
 		return fmt.Errorf("couldn't list missing episodes: %w", err)
 	}
 	if len(episodes) == 0 {
-		log.Debug("no episodes found, skipping reconcile")
+		log.Debug("no monitored episodes found, skipping reconcile")
 		return nil
 	}
 
@@ -612,7 +619,7 @@ func (m MediaManager) reconcileMissingEpisode(ctx context.Context, seriesTitle s
 
 	if chosenRelease == nil {
 		log.Debug("no valid releases found for episode, skipping reconcile")
-		return false, nil
+		return false, fmt.Errorf("no results found")
 	}
 
 	log.Infow("found release", "title", chosenRelease.Title, "proto", *chosenRelease.Protocol)
@@ -732,7 +739,19 @@ func getSeasonRuntime(episodeMetadata []*model.EpisodeMetadata, totalSeasonEpiso
 
 func determineSeasonState(episodes []*storage.Episode) (map[string]int, storage.SeasonState) {
 	var done, downloading, missing, unreleased, discovered int
+	var monitoredEpisodes, doneMonitoredEpisodes, unmonitoredEpisodes int
 	for _, episode := range episodes {
+		if episode.Monitored == 1 {
+			monitoredEpisodes++
+			switch episode.State {
+			case storage.EpisodeStateDownloaded, storage.EpisodeStateCompleted:
+				doneMonitoredEpisodes++
+			}
+		}
+		if episode.Monitored == 0 {
+			unmonitoredEpisodes++
+		}
+
 		switch episode.State {
 		case storage.EpisodeStateDownloaded, storage.EpisodeStateCompleted:
 			done++
@@ -755,11 +774,16 @@ func determineSeasonState(episodes []*storage.Episode) (map[string]int, storage.
 		"discovered":  discovered,
 	}
 
+	allMonitoredDone := monitoredEpisodes > 0 && doneMonitoredEpisodes == monitoredEpisodes
+	hasUnmonitoredEpisodes := unmonitoredEpisodes > 0
+
 	switch {
 	case len(episodes) == 0:
 		return counts, storage.SeasonStateMissing
 	case done == len(episodes):
 		return counts, storage.SeasonStateCompleted
+	case allMonitoredDone && hasUnmonitoredEpisodes:
+		return counts, storage.SeasonStatePartial
 	case downloading > 0:
 		return counts, storage.SeasonStateDownloading
 	case discovered > 0 && (done > 0 || missing > 0 || downloading > 0):
@@ -862,7 +886,7 @@ func (m MediaManager) evaluateAndUpdateSeriesState(ctx context.Context, seriesID
 		return nil
 	}
 
-	var completed, downloading, missing, unreleased, discovered, continuing int
+	var completed, downloading, missing, unreleased, discovered, continuing, partial int
 	for _, season := range seasons {
 		// dont count specials
 		if season.SeasonNumber == 0 {
@@ -871,6 +895,8 @@ func (m MediaManager) evaluateAndUpdateSeriesState(ctx context.Context, seriesID
 		switch season.State {
 		case storage.SeasonStateCompleted:
 			completed++
+		case storage.SeasonStatePartial:
+			partial++
 		case storage.SeasonStateDownloading:
 			downloading++
 		case storage.SeasonStateMissing:
@@ -892,13 +918,15 @@ func (m MediaManager) evaluateAndUpdateSeriesState(ctx context.Context, seriesID
 	switch {
 	case completed == len(seasons) && isSeriesEnded:
 		newSeriesState = storage.SeriesStateCompleted
+	case (completed+partial) == len(seasons) && partial > 0:
+		newSeriesState = storage.SeriesStatePartial
 	case downloading > 0:
 		newSeriesState = storage.SeriesStateDownloading
 	case discovered == len(seasons) && isSeriesEnded:
 		newSeriesState = storage.SeriesStateDiscovered
-	case isSeriesEnded && missing == 0 && discovered == 0 && (completed > 0 || continuing > 0):
+	case isSeriesEnded && missing == 0 && discovered == 0 && (completed > 0 || continuing > 0 || partial > 0):
 		newSeriesState = storage.SeriesStateCompleted
-	case continuing > 0 || discovered > 0 || (isSeriesContinuing && (completed > 0 || discovered > 0)):
+	case continuing > 0 || discovered > 0 || partial > 0 || (isSeriesContinuing && (completed > 0 || discovered > 0)):
 		newSeriesState = storage.SeriesStateContinuing
 	case unreleased == len(seasons):
 		newSeriesState = storage.SeriesStateUnreleased

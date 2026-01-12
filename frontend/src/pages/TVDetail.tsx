@@ -1,12 +1,11 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { Calendar, Tv, Users, Film, Play, MoreVertical, RefreshCw, Trash2 } from "lucide-react";
+import { Calendar, Tv, Users, Film, Play, MoreVertical, RefreshCw, Trash2, Search, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { RequestModal } from "@/components/media/RequestModal";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   AlertDialog,
@@ -19,7 +18,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useState } from "react";
-import { useTVDetail } from "@/lib/queries";
+import { useTVDetail, useSearchSeries, useSearchSeason, useSearchEpisode } from "@/lib/queries";
 import { type SeasonResult, type EpisodeResult, tvApi } from "@/lib/api";
 import {
   DropdownMenu,
@@ -31,9 +30,44 @@ import { metadataApi } from "@/lib/api";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 
+const SearchButton = ({
+  onClick,
+  disabled,
+  isSearching
+}: {
+  onClick: () => void;
+  disabled?: boolean;
+  isSearching?: boolean;
+}) => (
+  <Button
+    size="sm"
+    variant="outline"
+    onClick={onClick}
+    disabled={disabled || isSearching}
+    className="h-8 w-8 p-0"
+    title={isSearching ? "Searching..." : "Search"}
+  >
+    {isSearching ? (
+      <Loader2 className="h-4 w-4 animate-spin" />
+    ) : (
+      <Search className="h-4 w-4" />
+    )}
+  </Button>
+);
+
 // Component for rendering individual episodes
 
-const EpisodeItem = ({ episode }: { episode: EpisodeResult }) => (
+const EpisodeItem = ({
+  episode,
+  seasonID,
+  onSearch,
+  isSearchDisabled
+}: {
+  episode: EpisodeResult;
+  seasonID: number;
+  onSearch: (episodeID: number) => void;
+  isSearchDisabled: (episodeID: number, seasonID: number) => boolean;
+}) => (
   <div className="bg-background/50 dark:bg-gray-800/50 rounded-lg p-4 border border-border/50 hover:border-border transition-colors">
     <div className="flex items-start gap-4">
       <div className="aspect-video w-32 bg-muted rounded-lg overflow-hidden flex-shrink-0">
@@ -54,7 +88,7 @@ const EpisodeItem = ({ episode }: { episode: EpisodeResult }) => (
       <div className="flex-1 min-w-0">
         <div className="flex items-start justify-between mb-3">
           <div className="flex-1 min-w-0">
-            <h4 className="font-bold text-lg text-foreground mb-1 line-clamp-1">
+            <h4 className="font-bold text-lg text-foreground line-clamp-1 mb-1">
               {episode.episodeNumber} - {episode.title}
             </h4>
             <div className="flex items-center gap-2 mb-2 text-xs">
@@ -70,21 +104,30 @@ const EpisodeItem = ({ episode }: { episode: EpisodeResult }) => (
               )}
               {episode.downloaded && (
                 <Badge variant="default" className="px-2 py-1">
-                  Downloaded
+                  Available
                 </Badge>
               )}
             </div>
           </div>
 
-          {episode.voteAverage && episode.voteAverage > 0 && (
-            <span
-              className="text-xs rounded border px-2 py-0.5"
-              aria-label={`TMDB episode rating ${episode.voteAverage.toFixed(1)} of 10`}
-              title={`TMDB rating ${episode.voteAverage.toFixed(1)}/10`}
-            >
-              ⭐ {episode.voteAverage.toFixed(1)}
-            </span>
-          )}
+          <div className="flex items-center gap-3">
+            {!episode.downloaded && episode.monitored && (
+              <SearchButton
+                onClick={() => onSearch(episode.id)}
+                disabled={isSearchDisabled(episode.id, seasonID)}
+                isSearching={isSearchDisabled(episode.id, seasonID)}
+              />
+            )}
+            {episode.voteAverage && episode.voteAverage > 0 && (
+              <span
+                className="text-xs rounded border px-2 py-0.5"
+                aria-label={`TMDB episode rating ${episode.voteAverage.toFixed(1)} of 10`}
+                title={`TMDB rating ${episode.voteAverage.toFixed(1)}/10`}
+              >
+                ⭐ {episode.voteAverage.toFixed(1)}
+              </span>
+            )}
+          </div>
         </div>
 
         <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3">
@@ -96,15 +139,29 @@ const EpisodeItem = ({ episode }: { episode: EpisodeResult }) => (
 );
 
 // Component for rendering season content with episodes
-const SeasonContent = ({ season }: { season: SeasonResult }) => {
+const SeasonContent = ({
+  season,
+  onSearchEpisode,
+  isEpisodeSearchDisabled,
+  onSearchSeason,
+  isSeasonSearchDisabled
+}: {
+  season: SeasonResult;
+  onSearchEpisode: (episodeID: number) => void;
+  isEpisodeSearchDisabled: (episodeID: number, seasonID: number) => boolean;
+  onSearchSeason: (seasonID: number) => void;
+  isSeasonSearchDisabled: (season: SeasonResult) => boolean;
+}) => {
   const episodes = season.episodes || [];
   const sortedEpisodes = [...episodes].sort((a, b) => a.episodeNumber - b.episodeNumber);
 
   return (
     <div className="pl-15 space-y-6">
-      <p className="text-sm text-muted-foreground">
-        {season.overview || "Season overview is not available."}
-      </p>
+      {season.overview && (
+        <p className="text-sm text-muted-foreground mb-4">
+          {season.overview}
+        </p>
+      )}
       {sortedEpisodes.length === 0 ? (
         <div className="text-center py-4">
           <p className="text-sm text-muted-foreground">No episodes available</p>
@@ -112,7 +169,13 @@ const SeasonContent = ({ season }: { season: SeasonResult }) => {
       ) : (
         <div className="space-y-4">
           {sortedEpisodes.map((episode) => (
-            <EpisodeItem key={episode.episodeNumber} episode={episode} />
+            <EpisodeItem
+              key={episode.episodeNumber}
+              episode={episode}
+              seasonID={season.id}
+              onSearch={onSearchEpisode}
+              isSearchDisabled={isEpisodeSearchDisabled}
+            />
           ))}
         </div>
       )}
@@ -125,14 +188,20 @@ export default function TVDetail() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [showRequestModal, setShowRequestModal] = useState(false);
+  const [showEditMonitoringModal, setShowEditMonitoringModal] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteDirectory, setDeleteDirectory] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [isTogglingMonitoring, setIsTogglingMonitoring] = useState(false);
+  const [searchingEpisodes, setSearchingEpisodes] = useState<Set<number>>(new Set());
+  const [searchingSeasons, setSearchingSeasons] = useState<Set<number>>(new Set());
+  const [searchingSeries, setSearchingSeries] = useState(false);
 
   const tmdbID = parseInt(id || '0');
   const { data: show, isLoading, error } = useTVDetail(tmdbID);
+  const searchSeries = useSearchSeries();
+  const searchSeason = useSearchSeason();
+  const searchEpisode = useSearchEpisode();
 
   const handleRefreshMetadata = async () => {
     setIsRefreshing(true);
@@ -147,22 +216,6 @@ export default function TVDetail() {
     }
   };
 
-  const handleMonitoringToggle = async () => {
-    if (!show?.id) return;
-
-    setIsTogglingMonitoring(true);
-    try {
-      await tvApi.updateSeriesMonitored(show.id, !show.monitored);
-      await queryClient.refetchQueries({ queryKey: ['tv', 'detail', tmdbID], exact: true });
-      toast.success(!show.monitored ? "Monitoring enabled" : "Monitoring disabled");
-    } catch (error) {
-      toast.error("Failed to update monitoring status");
-      console.error(error);
-    } finally {
-      setIsTogglingMonitoring(false);
-    }
-  };
-
   const handleDelete = async () => {
     if (!show?.id) return;
 
@@ -170,6 +223,7 @@ export default function TVDetail() {
     try {
       await tvApi.deleteSeries(show.id, deleteDirectory);
       await queryClient.invalidateQueries({ queryKey: ['tv', 'library'] });
+      await queryClient.invalidateQueries({ queryKey: ['tv', 'detail', tmdbID] });
       toast.success(deleteDirectory ? "Series and directory deleted" : "Series deleted from library");
       navigate("/series");
     } catch (error) {
@@ -177,6 +231,75 @@ export default function TVDetail() {
       console.error(error);
       setIsDeleting(false);
     }
+  };
+
+  const handleSearchSeries = () => {
+    if (!show?.id) return;
+    setSearchingSeries(true);
+    searchSeries.mutate(show.id, {
+      onSuccess: () => {
+        toast.success("Series search completed");
+      },
+      onError: (error) => {
+        toast.error(error instanceof Error ? error.message : "Search failed");
+      },
+      onSettled: () => {
+        setSearchingSeries(false);
+      },
+    });
+  };
+
+  const handleSearchSeason = (seasonID: number) => {
+    setSearchingSeasons(prev => new Set(prev).add(seasonID));
+    searchSeason.mutate(seasonID, {
+      onSuccess: () => {
+        toast.success("Season search completed");
+      },
+      onError: (error) => {
+        toast.error(error instanceof Error ? error.message : "Search failed");
+      },
+      onSettled: () => {
+        setSearchingSeasons(prev => {
+          const next = new Set(prev);
+          next.delete(seasonID);
+          return next;
+        });
+      },
+    });
+  };
+
+  const handleSearchEpisode = (episodeID: number) => {
+    setSearchingEpisodes(prev => new Set(prev).add(episodeID));
+    searchEpisode.mutate(episodeID, {
+      onSuccess: () => {
+        toast.success("Episode search completed");
+      },
+      onError: (error) => {
+        toast.error(error instanceof Error ? error.message : "Search failed");
+      },
+      onSettled: () => {
+        setSearchingEpisodes(prev => {
+          const next = new Set(prev);
+          next.delete(episodeID);
+          return next;
+        });
+      },
+    });
+  };
+
+
+  const isEpisodeSearchDisabled = (episodeID: number, seasonID: number) => {
+    return searchingSeries || searchingSeasons.has(seasonID) || searchingEpisodes.has(episodeID);
+  };
+
+  const isSeasonSearchDisabled = (season: SeasonResult) => {
+    if (searchingSeries || searchingSeasons.has(season.id)) return true;
+    const episodeIDs = season.episodes?.map(ep => ep.id) || [];
+    return episodeIDs.some(id => searchingEpisodes.has(id));
+  };
+
+  const isSeriesSearchDisabled = () => {
+    return searchingSeries || searchingSeasons.size > 0 || searchingEpisodes.size > 0;
   };
 
   if (isLoading) {
@@ -212,11 +335,11 @@ export default function TVDetail() {
 
   return (
     <div className="min-h-screen">
-      <div 
+      <div
         role="banner"
         aria-label={`${show.title} hero backdrop`}
         className="relative h-96 bg-cover bg-center"
-        style={{ 
+        style={{
           backgroundImage: backdropUrl ? `url(${backdropUrl})` : 'none',
           backgroundColor: backdropUrl ? 'transparent' : 'hsl(var(--muted))'
         }}
@@ -309,12 +432,12 @@ export default function TVDetail() {
           <div className="lg:col-span-2">
             <h2 className="text-2xl font-bold mb-4">Overview</h2>
             <p className="text-muted-foreground leading-relaxed mb-6">
-              {show.overview && show.overview.trim() 
-                ? show.overview 
+              {show.overview && show.overview.trim()
+                ? show.overview
                 : "No overview available for this series."}
             </p>
 
-{show.networks && show.networks.length > 0 && (
+            {show.networks && show.networks.length > 0 && (
               <div className="mb-6">
                 <h3 className="font-semibold mb-2">Networks</h3>
                 <div className="flex gap-3 flex-wrap items-center">
@@ -347,7 +470,7 @@ export default function TVDetail() {
                       <AccordionItem key={season.seasonNumber} value={`season-${season.seasonNumber}`}>
                         <AccordionTrigger className="hover:no-underline">
                           <div className="flex items-center justify-between w-full mr-4">
-                            <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-3 flex-1">
                               <div className="w-12 h-16 bg-muted rounded flex items-center justify-center">
                                 {season.posterPath ? (
                                   <img
@@ -380,7 +503,13 @@ export default function TVDetail() {
                           </div>
                         </AccordionTrigger>
                         <AccordionContent>
-                          <SeasonContent season={season} />
+                          <SeasonContent
+                            season={season}
+                            onSearchEpisode={handleSearchEpisode}
+                            isEpisodeSearchDisabled={isEpisodeSearchDisabled}
+                            onSearchSeason={handleSearchSeason}
+                            isSeasonSearchDisabled={isSeasonSearchDisabled}
+                          />
                         </AccordionContent>
                       </AccordionItem>
                     ))}
@@ -413,7 +542,7 @@ export default function TVDetail() {
                 </Button>
               )}
 
-<Card>
+              <Card>
                 <CardHeader>
                   <CardTitle className="text-lg">Details</CardTitle>
                 </CardHeader>
@@ -428,11 +557,23 @@ export default function TVDetail() {
                     {show.libraryStatus && (
                       <div className="flex justify-between items-center py-2 border-b border-border/50">
                         <span className="text-muted-foreground">Monitoring</span>
-                        <Switch
-                          checked={show.monitored}
-                          onCheckedChange={handleMonitoringToggle}
-                          disabled={isTogglingMonitoring}
-                        />
+                        <div className="flex items-center gap-2">
+                          {show.monitored && (
+                            <SearchButton
+                              onClick={handleSearchSeries}
+                              disabled={isSeriesSearchDisabled()}
+                              isSearching={isSeriesSearchDisabled()}
+                            />
+                          )}
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setShowEditMonitoringModal(true)}
+                            className="h-8"
+                          >
+                            Edit Monitoring
+                          </Button>
+                        </div>
                       </div>
                     )}
                     {show.firstAirDate && (
@@ -555,6 +696,20 @@ export default function TVDetail() {
         mediaType="tv"
         mediaTitle={show.title}
         tmdbID={show.tmdbID}
+      />
+
+      <RequestModal
+        isOpen={showEditMonitoringModal}
+        onClose={() => setShowEditMonitoringModal(false)}
+        mediaType="tv"
+        mediaTitle={show.title}
+        tmdbID={show.tmdbID}
+        mode="edit"
+        currentMonitoring={{
+          seriesID: show.id,
+          seasons: show.seasons || [],
+          qualityProfileID: show.qualityProfileID
+        }}
       />
 
       <AlertDialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>

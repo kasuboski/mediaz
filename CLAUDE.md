@@ -35,6 +35,11 @@ go test -cover ./...        # Run tests with coverage
 4. Fix any errors
 5. Repeat
 
+### Coding Style Guidelines
+
+**CRITICAL RULES**:
+- **Never use else statements** (use early returns instead)
+
 ### Database
 ```bash
 ./mediaz generate schema    # Create database schema

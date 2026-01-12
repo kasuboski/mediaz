@@ -1386,6 +1386,25 @@ func (mr *MockStorageMockRecorder) UpdateDownloadClient(ctx, id, client any) *go
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateDownloadClient", reflect.TypeOf((*MockStorage)(nil).UpdateDownloadClient), ctx, id, client)
 }
 
+// UpdateEpisode mocks base method.
+func (m *MockStorage) UpdateEpisode(ctx context.Context, episode model.Episode, where ...sqlite.BoolExpression) error {
+	m.ctrl.T.Helper()
+	varargs := []any{ctx, episode}
+	for _, a := range where {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "UpdateEpisode", varargs...)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateEpisode indicates an expected call of UpdateEpisode.
+func (mr *MockStorageMockRecorder) UpdateEpisode(ctx, episode any, where ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{ctx, episode}, where...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateEpisode", reflect.TypeOf((*MockStorage)(nil).UpdateEpisode), varargs...)
+}
+
 // UpdateEpisodeEpisodeFileID mocks base method.
 func (m *MockStorage) UpdateEpisodeEpisodeFileID(ctx context.Context, id, fileID int64) error {
 	m.ctrl.T.Helper()
@@ -1557,6 +1576,25 @@ func (m *MockStorage) UpdateQualityProfile(ctx context.Context, id int64, profil
 func (mr *MockStorageMockRecorder) UpdateQualityProfile(ctx, id, profile any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateQualityProfile", reflect.TypeOf((*MockStorage)(nil).UpdateQualityProfile), ctx, id, profile)
+}
+
+// UpdateSeason mocks base method.
+func (m *MockStorage) UpdateSeason(ctx context.Context, season model.Season, where ...sqlite.BoolExpression) error {
+	m.ctrl.T.Helper()
+	varargs := []any{ctx, season}
+	for _, a := range where {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "UpdateSeason", varargs...)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateSeason indicates an expected call of UpdateSeason.
+func (mr *MockStorageMockRecorder) UpdateSeason(ctx, season any, where ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{ctx, season}, where...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateSeason", reflect.TypeOf((*MockStorage)(nil).UpdateSeason), varargs...)
 }
 
 // UpdateSeasonState mocks base method.
@@ -3009,6 +3047,25 @@ func (mr *MockSeriesStorageMockRecorder) ListSeries(ctx any, where ...any) *gomo
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListSeries", reflect.TypeOf((*MockSeriesStorage)(nil).ListSeries), varargs...)
 }
 
+// UpdateEpisode mocks base method.
+func (m *MockSeriesStorage) UpdateEpisode(ctx context.Context, episode model.Episode, where ...sqlite.BoolExpression) error {
+	m.ctrl.T.Helper()
+	varargs := []any{ctx, episode}
+	for _, a := range where {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "UpdateEpisode", varargs...)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateEpisode indicates an expected call of UpdateEpisode.
+func (mr *MockSeriesStorageMockRecorder) UpdateEpisode(ctx, episode any, where ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{ctx, episode}, where...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateEpisode", reflect.TypeOf((*MockSeriesStorage)(nil).UpdateEpisode), varargs...)
+}
+
 // UpdateEpisodeEpisodeFileID mocks base method.
 func (m *MockSeriesStorage) UpdateEpisodeEpisodeFileID(ctx context.Context, id, fileID int64) error {
 	m.ctrl.T.Helper()
@@ -3049,6 +3106,25 @@ func (m *MockSeriesStorage) UpdateEpisodeState(ctx context.Context, id int64, st
 func (mr *MockSeriesStorageMockRecorder) UpdateEpisodeState(ctx, id, state, metadata any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateEpisodeState", reflect.TypeOf((*MockSeriesStorage)(nil).UpdateEpisodeState), ctx, id, state, metadata)
+}
+
+// UpdateSeason mocks base method.
+func (m *MockSeriesStorage) UpdateSeason(ctx context.Context, season model.Season, where ...sqlite.BoolExpression) error {
+	m.ctrl.T.Helper()
+	varargs := []any{ctx, season}
+	for _, a := range where {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "UpdateSeason", varargs...)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateSeason indicates an expected call of UpdateSeason.
+func (mr *MockSeriesStorageMockRecorder) UpdateSeason(ctx, season any, where ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{ctx, season}, where...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateSeason", reflect.TypeOf((*MockSeriesStorage)(nil).UpdateSeason), varargs...)
 }
 
 // UpdateSeasonState mocks base method.

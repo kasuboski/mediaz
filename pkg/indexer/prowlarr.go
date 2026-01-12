@@ -7,8 +7,10 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/kasuboski/mediaz/pkg/logger"
 	"github.com/kasuboski/mediaz/pkg/prowlarr"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
+	"go.uber.org/zap"
 )
 
 type ProwlarrIndexerSource struct {
@@ -89,19 +91,43 @@ func (p *ProwlarrIndexerSource) ListIndexers(ctx context.Context) ([]SourceIndex
 	return indexers, nil
 }
 
-func (p *ProwlarrIndexerSource) Search(ctx context.Context, indexerID int32, categories []int32, query string) ([]*prowlarr.ReleaseResource, error) {
-	resp, err := p.client.GetAPIV1Search(ctx, &prowlarr.GetAPIV1SearchParams{
+func (p *ProwlarrIndexerSource) Search(ctx context.Context, indexerID int32, categories []int32, opts SearchOptions) ([]*prowlarr.ReleaseResource, error) {
+	log := logger.FromCtx(ctx)
+
+	query := opts.Query
+
+	if opts.Season != nil {
+		query = fmt.Sprintf("%s S%02d", query, *opts.Season)
+	}
+	if opts.Episode != nil {
+		query = fmt.Sprintf("%sE%02d", query, *opts.Episode)
+	}
+
+	params := &prowlarr.GetAPIV1SearchParams{
 		IndexerIds: &[]int32{indexerID},
 		Query:      &query,
 		Categories: &categories,
 		Limit:      ptr(int32(100)),
-	})
+	}
+
+	if opts.Type != nil {
+		params.Type = opts.Type
+	}
+
+	log.Debug("prowlarr search request",
+		zap.Int32("indexer", indexerID),
+		zap.String("query", query),
+		zap.Any("type", opts.Type))
+
+	resp, err := p.client.GetAPIV1Search(ctx, params)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		log.Debug("prowlarr error response", zap.Int("status", resp.StatusCode), zap.String("body", string(body)))
 		return nil, fmt.Errorf("unexpected status: %s", resp.Status)
 	}
 
