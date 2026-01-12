@@ -105,13 +105,11 @@ func RejectEpisodeReleaseFunc(ctx context.Context, seriesTitle string, seasonNum
 
 func rejectEpisodeReleaseFunc(seriesTitle string, seasonNumber, episodeNumber int32, r *prowlarr.ReleaseResource) bool {
 	if r == nil {
-		fmt.Printf("DEBUG: rejected (nil release)\n")
 		return true
 	}
 
 	foundTitle, err := r.Title.Get()
 	if err != nil {
-		fmt.Printf("DEBUG: rejected (no title): %v\n", err)
 		return true
 	}
 
