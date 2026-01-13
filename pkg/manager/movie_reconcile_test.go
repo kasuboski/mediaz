@@ -126,7 +126,6 @@ func Test_Manager_reconcileMissingMovie(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	// Create indexers in database
 	indexers := []model.Indexer{}
 	var sourceIndexers []indexer.SourceIndexer
 
@@ -428,7 +427,6 @@ func Test_Manager_reconcileUnreleasedMovie(t *testing.T) {
 	m := New(tClient, indexerFactory, lib, store, mockFactory, config.Manager{}, config.Config{})
 	require.NotNil(t, m)
 
-	// Create indexers for the snapshot
 	indexers := []model.Indexer{
 		{ID: 1, Name: "test", Priority: 1, URI: "http://test1"},
 		{ID: 3, Name: "test2", Priority: 10, URI: "http://test2"},

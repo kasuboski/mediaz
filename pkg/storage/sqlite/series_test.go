@@ -643,7 +643,6 @@ func TestUpdateEpisodeState(t *testing.T) {
 	id, err := store.CreateEpisode(ctx, episode, storage.EpisodeStateMissing)
 	require.Nil(t, err)
 
-	// Create download client record (required by foreign key in episode_transition)
 	downloadClient := model.DownloadClient{
 		ID:             1,
 		Type:           "torrent",
