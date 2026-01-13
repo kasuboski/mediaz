@@ -1023,6 +1023,9 @@ func TestGetTVDetailByTMDBID(t *testing.T) {
 		// Mock GetSeries call - not found
 		store.EXPECT().GetSeries(ctx, gomock.Any()).Return(nil, storage.ErrNotFound)
 
+		// Mock ListSeasonMetadata call - returns empty list since series not in library
+		store.EXPECT().ListSeasonMetadata(ctx, gomock.Any()).Return([]*model.SeasonMetadata{}, nil)
+
 		result, err := m.GetTVDetailByTMDBID(ctx, 123)
 		require.NoError(t, err)
 		require.NotNil(t, result)
@@ -1189,6 +1192,9 @@ func TestGetTVDetailByTMDBID(t *testing.T) {
 		dbErr := errors.New("database connection error")
 		store.EXPECT().GetSeries(ctx, gomock.Any()).Return(nil, dbErr)
 
+		// Mock ListSeasonMetadata call - returns empty list since series not in library
+		store.EXPECT().ListSeasonMetadata(ctx, gomock.Any()).Return([]*model.SeasonMetadata{}, nil)
+
 		result, err := m.GetTVDetailByTMDBID(ctx, 123)
 		require.NoError(t, err)
 		require.NotNil(t, result)
@@ -1253,6 +1259,9 @@ func TestGetTVDetailByTMDBID(t *testing.T) {
 
 		// Mock GetSeries call - not found
 		store.EXPECT().GetSeries(ctx, gomock.Any()).Return(nil, storage.ErrNotFound)
+
+		// Mock ListSeasonMetadata call - returns empty list since series not in library
+		store.EXPECT().ListSeasonMetadata(ctx, gomock.Any()).Return([]*model.SeasonMetadata{}, nil)
 
 		result, err := m.GetTVDetailByTMDBID(ctx, 123)
 		require.NoError(t, err, "Should handle empty FirstAirDate gracefully")
@@ -1428,7 +1437,7 @@ func TestMediaManager_AddSeriesToLibrary(t *testing.T) {
 
 		assert.Equal(t, series.ID, int32(1))
 		assert.Equal(t, series.SeriesMetadataID, ptr(int32(metadataID)))
-		assert.Equal(t, series.Monitored, int32(1))
+		assert.Equal(t, series.Monitored, int32(0))
 		assert.Equal(t, series.QualityProfileID, int32(1))
 		assert.Equal(t, storage.SeriesStateUnreleased, series.State)
 	})
@@ -1488,7 +1497,7 @@ func TestMediaManager_AddSeriesToLibrary(t *testing.T) {
 
 		assert.Equal(t, int32(1), series.ID)
 		assert.Equal(t, ptr(int32(1)), series.SeriesMetadataID)
-		assert.Equal(t, int32(1), series.Monitored)
+		assert.Equal(t, int32(0), series.Monitored)
 		assert.Equal(t, int32(1), series.QualityProfileID)
 		assert.Equal(t, storage.SeriesStateMissing, series.State)
 
@@ -1497,13 +1506,13 @@ func TestMediaManager_AddSeriesToLibrary(t *testing.T) {
 		require.Len(t, seasons, 1)
 		assert.Equal(t, int32(series.ID), seasons[0].SeriesID)
 		assert.Equal(t, seasons[0].State, storage.SeasonStateMissing)
-		assert.Equal(t, int32(1), seasons[0].Monitored)
+		assert.Equal(t, int32(0), seasons[0].Monitored)
 
 		episodes, err := m.storage.ListEpisodes(ctx, table.Episode.SeasonID.EQ(sqlite.Int32(seasons[0].ID)))
 		assert.Nil(t, err)
 		require.Len(t, episodes, 1)
 		assert.Equal(t, int32(1), episodes[0].EpisodeNumber)
-		assert.Equal(t, int32(1), episodes[0].Monitored)
+		assert.Equal(t, int32(0), episodes[0].Monitored)
 		assert.Equal(t, storage.EpisodeStateMissing, episodes[0].State)
 	})
 }

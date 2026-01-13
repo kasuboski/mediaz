@@ -446,6 +446,8 @@ func TestServer_GetTVDetailByTMDBID(t *testing.T) {
 
 		store.EXPECT().GetSeries(gomock.Any(), gomock.Any()).Return(nil, storage.ErrNotFound)
 
+		store.EXPECT().ListSeasonMetadata(gomock.Any(), gomock.Any()).Return([]*model.SeasonMetadata{}, nil)
+
 		mgr := manager.New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
 
 		s := Server{

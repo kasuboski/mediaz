@@ -1,4 +1,4 @@
-PRAGMA foreign_keys=off;
+PRAGMA defer_foreign_keys=on;
 
 CREATE TABLE "season_new" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
@@ -18,4 +18,3 @@ ALTER TABLE "season_new" RENAME TO "season";
 
 CREATE UNIQUE INDEX IF NOT EXISTS "idx_season_unique_series_number" ON "season" ("series_id", "season_number");
 
-PRAGMA foreign_keys=on;

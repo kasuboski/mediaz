@@ -492,12 +492,22 @@ func TestSeasonMetadataStorage(t *testing.T) {
 	store := initSqlite(t, ctx)
 	assert.NotNil(t, store)
 
-	// Test creating season metadata
+	seriesMetadata := model.SeriesMetadata{
+		TmdbID:       123,
+		Title:        "Test Series",
+		SeasonCount:  1,
+		EpisodeCount: 10,
+		Status:       "Continuing",
+	}
+	seriesMetadataID, err := store.CreateSeriesMetadata(ctx, seriesMetadata)
+	require.NoError(t, err)
+
 	metadata := model.SeasonMetadata{
-		TmdbID:   12345,
-		Title:    "Season 1",
-		Overview: ptr("Test season overview"),
-		Number:   1,
+		TmdbID:           12345,
+		Title:            "Season 1",
+		Overview:         ptr("Test season overview"),
+		Number:           1,
+		SeriesMetadataID: int32(seriesMetadataID),
 	}
 
 	id, err := store.CreateSeasonMetadata(ctx, metadata)
@@ -539,12 +549,31 @@ func TestEpisodeMetadataStorage(t *testing.T) {
 	store := initSqlite(t, ctx)
 	assert.NotNil(t, store)
 
-	// Test creating episode metadata
+	seriesMetadata := model.SeriesMetadata{
+		TmdbID:       456,
+		Title:        "Test Series for Episode",
+		SeasonCount:  1,
+		EpisodeCount: 1,
+		Status:       "Continuing",
+	}
+	seriesMetadataID, err := store.CreateSeriesMetadata(ctx, seriesMetadata)
+	require.NoError(t, err)
+
+	seasonMetadata := model.SeasonMetadata{
+		TmdbID:           789,
+		Title:            "Season 1",
+		Number:           1,
+		SeriesMetadataID: int32(seriesMetadataID),
+	}
+	seasonMetadataID, err := store.CreateSeasonMetadata(ctx, seasonMetadata)
+	require.NoError(t, err)
+
 	metadata := model.EpisodeMetadata{
-		TmdbID:   12345,
-		Title:    "Test Episode",
-		Overview: ptr("Test episode overview"),
-		Runtime:  ptr(int32(45)),
+		TmdbID:           12345,
+		Title:            "Test Episode",
+		Overview:         ptr("Test episode overview"),
+		Runtime:          ptr(int32(45)),
+		SeasonMetadataID: int32(seasonMetadataID),
 	}
 
 	id, err := store.CreateEpisodeMetadata(ctx, metadata)
@@ -614,6 +643,18 @@ func TestUpdateEpisodeState(t *testing.T) {
 	id, err := store.CreateEpisode(ctx, episode, storage.EpisodeStateMissing)
 	require.Nil(t, err)
 
+	// Create download client record (required by foreign key in episode_transition)
+	downloadClient := model.DownloadClient{
+		ID:             1,
+		Type:           "torrent",
+		Implementation: "transmission",
+		Scheme:         "http",
+		Host:           "transmission",
+		Port:           8080,
+	}
+	_, err = store.CreateDownloadClient(ctx, downloadClient)
+	require.Nil(t, err)
+
 	downloadID := "12"
 	isSeasonDownload := true
 	metadata := &storage.TransitionStateMetadata{
@@ -645,12 +686,21 @@ func TestSQLite_UpdateSeasonState(t *testing.T) {
 		store := initSqlite(t, ctx)
 		require.NotNil(t, store)
 
+		series := storage.Series{
+			Series: model.Series{
+				Monitored:        1,
+				QualityProfileID: 4,
+			},
+		}
+		seriesID, err := store.CreateSeries(ctx, series, storage.SeriesStateMissing)
+		require.NoError(t, err)
+
 		season := storage.Season{
 			Season: model.Season{
-				ID:               1,
-				SeriesID:         1,
-				SeasonMetadataID: ptr(int32(1)),
-				Monitored:        1,
+				ID:           1,
+				SeriesID:     int32(seriesID),
+				SeasonNumber: 1,
+				Monitored:    1,
 			},
 		}
 
@@ -658,10 +708,20 @@ func TestSQLite_UpdateSeasonState(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, int64(1), seasonID)
 
+		downloadClient := model.DownloadClient{
+			Type:           "torrent",
+			Implementation: "transmission",
+			Scheme:         "http",
+			Host:           "transmission",
+			Port:           8080,
+		}
+		clientID, err := store.CreateDownloadClient(ctx, downloadClient)
+		require.NoError(t, err)
+
 		season.ID = int32(seasonID)
 		err = store.UpdateSeasonState(ctx, seasonID, storage.SeasonStateDownloading, &storage.TransitionStateMetadata{
 			DownloadID:             ptr("123"),
-			DownloadClientID:       ptr(int32(2)),
+			DownloadClientID:       ptr(int32(clientID)),
 			IsEntireSeasonDownload: ptr(true),
 		})
 		require.NoError(t, err)
@@ -672,8 +732,7 @@ func TestSQLite_UpdateSeasonState(t *testing.T) {
 
 		assert.Equal(t, storage.SeasonStateDownloading, foundSeason.State)
 		assert.Equal(t, "123", foundSeason.DownloadID)
-		assert.Equal(t, int32(1), foundSeason.SeriesID)
-		assert.Equal(t, ptr(int32(1)), foundSeason.SeasonMetadataID)
+		assert.Equal(t, int32(seriesID), foundSeason.SeriesID)
 
 		err = store.UpdateSeasonState(ctx, 999999, storage.SeasonStateMissing, nil)
 		assert.ErrorIs(t, err, storage.ErrNotFound)

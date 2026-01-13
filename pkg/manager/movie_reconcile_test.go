@@ -46,8 +46,6 @@ func Test_Manager_reconcileMissingMovie(t *testing.T) {
 	err = store.Init(ctx, schemas...)
 	require.NoError(t, err)
 
-	indexers := []model.Indexer{{ID: 1, Name: "test", Priority: 1}, {ID: 3, Name: "test2", Priority: 10}}
-
 	bigSeeders := nullable.NewNullNullable[int32]()
 	bigSeeders.Set(23)
 
@@ -128,14 +126,47 @@ func Test_Manager_reconcileMissingMovie(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	sourceIndexers := []indexer.SourceIndexer{
-		{ID: 1, Name: "test", Priority: 1},
-		{ID: 3, Name: "test2", Priority: 10},
+	// Create indexers in database
+	indexers := []model.Indexer{}
+	var sourceIndexers []indexer.SourceIndexer
+
+	indexer1 := model.Indexer{
+		IndexerSourceID: ptr(int32(sourceID)),
+		Name:            "test",
+		Priority:        1,
+		URI:             "http://test1",
 	}
+	id1, err := store.CreateIndexer(ctx, indexer1)
+	require.NoError(t, err)
+	indexer1.ID = int32(id1)
+	indexers = append(indexers, indexer1)
+	sourceIndexers = append(sourceIndexers, indexer.SourceIndexer{
+		ID:       int32(id1),
+		Name:     indexer1.Name,
+		Priority: indexer1.Priority,
+	})
+
+	indexer2 := model.Indexer{
+		IndexerSourceID: ptr(int32(sourceID)),
+		Name:            "test2",
+		Priority:        10,
+		URI:             "http://test2",
+	}
+	id2, err := store.CreateIndexer(ctx, indexer2)
+	require.NoError(t, err)
+	indexer2.ID = int32(id2)
+	indexers = append(indexers, indexer2)
+	sourceIndexers = append(sourceIndexers, indexer.SourceIndexer{
+		ID:       int32(id2),
+		Name:     indexer2.Name,
+		Priority: indexer2.Priority,
+	})
+
 	m.indexerCache.Set(sourceID, indexerCacheEntry{
 		Indexers:   sourceIndexers,
 		SourceName: "test-source",
 		SourceURI:  "http://test",
+		Enabled:    true,
 	})
 
 	req := AddMovieRequest{
@@ -358,8 +389,6 @@ func Test_Manager_reconcileUnreleasedMovie(t *testing.T) {
 	err = store.Init(ctx, schemas...)
 	require.NoError(t, err)
 
-	indexers := []model.Indexer{{ID: 1, Name: "test", Priority: 1}, {ID: 3, Name: "test2", Priority: 10}}
-
 	indexerFactory := indexerMock.NewMockFactory(ctrl)
 
 	releaseDate := time.Now().AddDate(0, 0, +5).Format(tmdb.ReleaseDateFormat)
@@ -398,6 +427,12 @@ func Test_Manager_reconcileUnreleasedMovie(t *testing.T) {
 
 	m := New(tClient, indexerFactory, lib, store, mockFactory, config.Manager{}, config.Config{})
 	require.NotNil(t, m)
+
+	// Create indexers for the snapshot
+	indexers := []model.Indexer{
+		{ID: 1, Name: "test", Priority: 1, URI: "http://test1"},
+		{ID: 3, Name: "test2", Priority: 10, URI: "http://test2"},
+	}
 
 	req := AddMovieRequest{
 		TMDBID:           1234,

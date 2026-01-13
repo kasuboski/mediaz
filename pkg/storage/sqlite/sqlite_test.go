@@ -110,6 +110,17 @@ func TestMovieStorage(t *testing.T) {
 	actual.Added = nil
 	assert.Equal(t, &wantMovie, actual)
 
+	downloadClient := model.DownloadClient{
+		ID:             1,
+		Type:           "torrent",
+		Implementation: "transmission",
+		Scheme:         "http",
+		Host:           "transmission",
+		Port:           8080,
+	}
+	_, err = store.CreateDownloadClient(ctx, downloadClient)
+	assert.Nil(t, err)
+
 	err = store.UpdateMovieState(ctx, int64(movies[0].ID), storage.MovieStateDownloading, &storage.TransitionStateMetadata{
 		DownloadID:       ptr("123"),
 		DownloadClientID: ptr(int32(1)),
@@ -319,16 +330,16 @@ func TestGetQualityStorage(t *testing.T) {
 		},
 	}, profile.Qualities)
 
-	err = store.DeleteQualityDefinition(ctx, def1ID)
-	assert.Nil(t, err)
-
-	err = store.DeleteQualityDefinition(ctx, def2ID)
-	assert.Nil(t, err)
-
 	err = store.DeleteQualityProfileItem(ctx, item1ID)
 	assert.Nil(t, err)
 
 	err = store.DeleteQualityProfileItem(ctx, item2ID)
+	assert.Nil(t, err)
+
+	err = store.DeleteQualityDefinition(ctx, def1ID)
+	assert.Nil(t, err)
+
+	err = store.DeleteQualityDefinition(ctx, def2ID)
 	assert.Nil(t, err)
 
 	err = store.DeleteQualityProfile(ctx, profileID)

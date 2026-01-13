@@ -237,14 +237,6 @@ export function RequestModal({
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>Request {mediaType === "movie" ? "Movie" : "TV Show"}</DialogTitle>
-          <DialogDescription>
-            You are requesting <span className="font-medium">{mediaTitle}</span>
-            {mediaType === "tv" && ". This will request the entire series."}
-          </DialogDescription>
-        </DialogHeader>
-
         <div className="py-4">
           <label htmlFor="quality-profile" className="text-sm font-medium mb-2 block">
             Quality Profile
