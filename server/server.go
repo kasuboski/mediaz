@@ -144,11 +144,21 @@ func (s *Server) Serve(port int) error {
 	v1.HandleFunc("/jobs/{id}", s.GetJob()).Methods(http.MethodGet)
 	v1.HandleFunc("/jobs/{id}/cancel", s.CancelJob()).Methods(http.MethodPost)
 
+	v1.HandleFunc("/activity/active", s.GetActiveActivity()).Methods(http.MethodGet)
+	v1.HandleFunc("/activity/failures", s.GetRecentFailures()).Methods(http.MethodGet)
+	v1.HandleFunc("/activity/timeline", s.GetActivityTimeline()).Methods(http.MethodGet)
+	v1.HandleFunc("/activity/history/{entityType}/{entityId}", s.GetEntityTransitionHistory()).Methods(http.MethodGet)
+
 	rtr.PathPrefix("/static/").Handler(s.FileHandler()).Methods(http.MethodGet)
 	rtr.PathPrefix("/").Handler(s.IndexHandler())
 
 	corsHandler := handlers.CORS(
 		handlers.AllowedOrigins([]string{"*"}),
+		handlers.AllowedMethods([]string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"}),
+		handlers.AllowedHeaders([]string{"Content-Type", "Authorization"}),
+		handlers.ExposedHeaders([]string{"Content-Length"}),
+		handlers.AllowCredentials(),
+		handlers.MaxAge(3600),
 	)(rtr)
 
 	srv := &http.Server{

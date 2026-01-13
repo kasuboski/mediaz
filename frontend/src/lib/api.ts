@@ -947,3 +947,158 @@ export const metadataApi = {
     });
   },
 };
+
+/**
+ * Activity API types
+ */
+export interface DownloadClientInfo {
+  id: number;
+  host: string;
+  port: number;
+}
+
+export interface EpisodeInfo {
+  seasonNumber: number;
+  episodeNumber: number;
+}
+
+export interface ActiveMovie {
+  id: number;
+  tmdbID: number;
+  title: string;
+  year: number;
+  poster_path: string;
+  state: string;
+  stateSince: string;
+  duration: string;
+  downloadClient: DownloadClientInfo;
+  downloadID: string;
+}
+
+export interface ActiveSeries {
+  id: number;
+  tmdbID: number;
+  title: string;
+  year: number;
+  poster_path: string;
+  state: string;
+  stateSince: string;
+  duration: string;
+  downloadClient: DownloadClientInfo;
+  downloadID: string;
+  currentEpisode: EpisodeInfo;
+}
+
+export interface ActiveJob {
+  id: number;
+  type: string;
+  state: string;
+  createdAt: string;
+  updatedAt: string;
+  duration: string;
+}
+
+export interface ActiveActivityResponse {
+  movies: ActiveMovie[];
+  series: ActiveSeries[];
+  jobs: ActiveJob[];
+}
+
+export interface FailureItem {
+  type: string;
+  id: number;
+  title: string;
+  subtitle: string;
+  state: string;
+  failedAt: string;
+  error: string;
+  retryable: boolean;
+}
+
+export interface FailuresResponse {
+  failures: FailureItem[];
+}
+
+export interface MovieCounts {
+  downloaded?: number;
+  downloading?: number;
+}
+
+export interface SeriesCounts {
+  completed?: number;
+  downloading?: number;
+}
+
+export interface JobCounts {
+  done?: number;
+  error?: number;
+}
+
+export interface TimelineEntry {
+  date: string;
+  movies: MovieCounts;
+  series: SeriesCounts;
+  jobs: JobCounts;
+}
+
+export interface TransitionItem {
+  id: number;
+  entityType: string;
+  entityId: number;
+  entityTitle: string;
+  toState: string;
+  fromState: string | null;
+  createdAt: string;
+}
+
+export interface TimelineResponse {
+  timeline: TimelineEntry[];
+  transitions: TransitionItem[];
+}
+
+export interface EntityInfo {
+  type: string;
+  id: number;
+  title: string;
+  poster_path: string;
+}
+
+export interface TransitionMetadata {
+  downloadClient?: DownloadClientInfo;
+  downloadID?: string;
+}
+
+export interface HistoryEntry {
+  sortKey: number;
+  toState: string;
+  fromState: string | null;
+  createdAt: string;
+  duration: string;
+  metadata: TransitionMetadata | null;
+}
+
+export interface HistoryResponse {
+  entity: EntityInfo;
+  history: HistoryEntry[];
+}
+
+/**
+ * Activity API for monitoring downloads, jobs, and system activity
+ */
+export const activityApi = {
+  async getActiveActivity(): Promise<ActiveActivityResponse> {
+    return apiRequest<ActiveActivityResponse>('/activity/active');
+  },
+
+  async getRecentFailures(hours: number = 24): Promise<FailureItem[]> {
+    return apiRequest<FailureItem[]>(`/activity/failures?hours=${hours}`);
+  },
+
+  async getActivityTimeline(days: number = 1): Promise<TimelineResponse> {
+    return apiRequest<TimelineResponse>(`/activity/timeline?days=${days}`);
+  },
+
+  async getEntityHistory(entityType: string, entityId: number): Promise<HistoryResponse> {
+    return apiRequest<HistoryResponse>(`/activity/history/${entityType}/${entityId}`);
+  },
+};
