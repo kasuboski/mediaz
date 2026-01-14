@@ -137,21 +137,19 @@ function ActivityTimelineSection({ timelineData, isLoading, selectedDays, onDays
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
       <Card>
         <CardHeader>
-          <CollapsibleTrigger className="flex items-center justify-between w-full">
-            <div className="flex items-center gap-3">
+          <div className="flex items-center justify-between">
+            <CollapsibleTrigger className="flex items-center gap-3">
               <span className="text-2xl">📊</span>
               <CardTitle className="text-xl">Activity Timeline</CardTitle>
-            </div>
-            <div className="flex items-center gap-4">
-              {isOpen && (
-                <TimeRangeSelector
-                  days={selectedDays}
-                  onChange={onDaysChange}
-                />
-              )}
               {isOpen ? <ChevronUp className="h-5 w-5 text-muted-foreground" /> : <ChevronDown className="h-5 w-5 text-muted-foreground" />}
-            </div>
-          </CollapsibleTrigger>
+            </CollapsibleTrigger>
+            {isOpen && (
+              <TimeRangeSelector
+                days={selectedDays}
+                onChange={onDaysChange}
+              />
+            )}
+          </div>
         </CardHeader>
         <CollapsibleContent>
           <CardContent>

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import { format as formatDateFn } from "date-fns";
 import { Film, Tv, Briefcase, Activity } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,8 +18,13 @@ interface ActivityTimelineProps {
 type ChartView = "overview" | "movies" | "series";
 
 export function ActivityTimeline({ data, isLoading, page, onPageChange }: ActivityTimelineProps) {
-  const [chartView, setChartView] = useState<ChartView>("overview");
+  const savedViewRef = useRef<ChartView>("overview");
+  const [chartView, setChartView] = useState<ChartView>(() => savedViewRef.current);
   const PAGE_SIZE = 20;
+
+  useEffect(() => {
+    savedViewRef.current = chartView;
+  }, [chartView]);
 
   const chartData = useMemo(() => {
     if (!data?.timeline) return [];
