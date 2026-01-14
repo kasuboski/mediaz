@@ -390,11 +390,32 @@ func (s *SQLite) UpdateMovieMovieFileID(ctx context.Context, id int64, fileID in
 
 // UpdateMovie updates fields on a movie
 func (s *SQLite) UpdateMovie(ctx context.Context, movie model.Movie, where ...sqlite.BoolExpression) error {
-	stmt := table.Movie.UPDATE(table.Movie.Monitored).MODEL(movie)
+	stmt := table.Movie.UPDATE()
+	hasSet := false
+	if movie.Monitored != 0 {
+		stmt = stmt.SET(table.Movie.Monitored.SET(sqlite.Int32(movie.Monitored)))
+		hasSet = true
+	}
+	if movie.QualityProfileID != 0 {
+		stmt = stmt.SET(table.Movie.QualityProfileID.SET(sqlite.Int32(movie.QualityProfileID)))
+		hasSet = true
+	}
+	if !hasSet {
+		return nil
+	}
 	for _, w := range where {
 		stmt = stmt.WHERE(w)
 	}
 	_, err := stmt.ExecContext(ctx, s.db)
+	return err
+}
+
+// UpdateMovieQualityProfile updates only the quality profile id for a movie
+func (s *SQLite) UpdateMovieQualityProfile(ctx context.Context, id int64, qualityProfileID int32) error {
+	stmt := table.Movie.UPDATE().
+		SET(table.Movie.QualityProfileID.SET(sqlite.Int32(qualityProfileID))).
+		WHERE(table.Movie.ID.EQ(sqlite.Int64(id)))
+	_, err := s.handleStatement(ctx, stmt)
 	return err
 }
 

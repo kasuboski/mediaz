@@ -88,6 +88,7 @@ func (s *Server) Serve(port int) error {
 	v1.HandleFunc("/library/movies", s.AddMovieToLibrary()).Methods(http.MethodPost)
 	v1.HandleFunc("/library/movies/{id}", s.DeleteMovieFromLibrary()).Methods(http.MethodDelete)
 	v1.HandleFunc("/library/movies/{id}/monitored", s.UpdateMovieMonitored()).Methods(http.MethodPatch)
+	v1.HandleFunc("/library/movies/{id}/quality", s.UpdateMovieQualityProfile()).Methods(http.MethodPatch)
 
 	v1.HandleFunc("/movie/{tmdbID}", s.GetMovieDetailByTMDBID()).Methods(http.MethodGet)
 
@@ -652,6 +653,41 @@ func (s Server) UpdateMovieMonitored() http.HandlerFunc {
 		}
 
 		movie, err := s.manager.UpdateMovieMonitored(r.Context(), id, req.Monitored)
+		if err != nil {
+			log.Error("update failed", zap.Error(err))
+			if errors.Is(err, storage.ErrNotFound) {
+				writeErrorResponse(w, http.StatusNotFound, err)
+				return
+			}
+			writeErrorResponse(w, http.StatusInternalServerError, err)
+			return
+		}
+
+		writeResponse(w, http.StatusOK, GenericResponse{Response: movie})
+	}
+}
+
+// UpdateMovieQualityProfile updates the quality profile of a movie
+func (s Server) UpdateMovieQualityProfile() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log := logger.FromCtx(r.Context())
+		vars := mux.Vars(r)
+
+		id, err := strconv.ParseInt(vars["id"], 10, 64)
+		if err != nil {
+			http.Error(w, "Invalid ID", http.StatusBadRequest)
+			return
+		}
+
+		var req struct {
+			QualityProfileID int32 `json:"qualityProfileId"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "Invalid body", http.StatusBadRequest)
+			return
+		}
+
+		movie, err := s.manager.UpdateMovieQualityProfile(r.Context(), id, req.QualityProfileID)
 		if err != nil {
 			log.Error("update failed", zap.Error(err))
 			if errors.Is(err, storage.ErrNotFound) {

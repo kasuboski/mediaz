@@ -1623,6 +1623,20 @@ func (mr *MockStorageMockRecorder) UpdateMovieMovieFileID(ctx, id, fileID any) *
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateMovieMovieFileID", reflect.TypeOf((*MockStorage)(nil).UpdateMovieMovieFileID), ctx, id, fileID)
 }
 
+// UpdateMovieQualityProfile mocks base method.
+func (m *MockStorage) UpdateMovieQualityProfile(ctx context.Context, id int64, qualityProfileID int32) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateMovieQualityProfile", ctx, id, qualityProfileID)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateMovieQualityProfile indicates an expected call of UpdateMovieQualityProfile.
+func (mr *MockStorageMockRecorder) UpdateMovieQualityProfile(ctx, id, qualityProfileID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateMovieQualityProfile", reflect.TypeOf((*MockStorage)(nil).UpdateMovieQualityProfile), ctx, id, qualityProfileID)
+}
+
 // UpdateMovieState mocks base method.
 func (m *MockStorage) UpdateMovieState(ctx context.Context, id int64, state storage.MovieState, metadata *storage.TransitionStateMetadata) error {
 	m.ctrl.T.Helper()
@@ -2420,6 +2434,20 @@ func (m *MockMovieStorage) UpdateMovieMovieFileID(ctx context.Context, id, fileI
 func (mr *MockMovieStorageMockRecorder) UpdateMovieMovieFileID(ctx, id, fileID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateMovieMovieFileID", reflect.TypeOf((*MockMovieStorage)(nil).UpdateMovieMovieFileID), ctx, id, fileID)
+}
+
+// UpdateMovieQualityProfile mocks base method.
+func (m *MockMovieStorage) UpdateMovieQualityProfile(ctx context.Context, id int64, qualityProfileID int32) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateMovieQualityProfile", ctx, id, qualityProfileID)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateMovieQualityProfile indicates an expected call of UpdateMovieQualityProfile.
+func (mr *MockMovieStorageMockRecorder) UpdateMovieQualityProfile(ctx, id, qualityProfileID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateMovieQualityProfile", reflect.TypeOf((*MockMovieStorage)(nil).UpdateMovieQualityProfile), ctx, id, qualityProfileID)
 }
 
 // UpdateMovieState mocks base method.
