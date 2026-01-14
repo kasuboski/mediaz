@@ -123,7 +123,7 @@ When an episode's state changes, the season state is re-evaluated based on all i
   - Only discovered → `discovered`
 
 - **Series** state is calculated from its seasons:
-  - All seasons completed + TMDB status "ended/canceled" → `completed`
+  - All seasons completed + TMDB status "ended/cancelled" → `completed`
   - Any downloading → `downloading`
   - All discovered + series ended → `discovered`
   - Continuing series → `continuing`

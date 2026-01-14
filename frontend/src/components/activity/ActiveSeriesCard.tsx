@@ -1,6 +1,5 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import { Clock, Download, Server, Tv } from "lucide-react";
 import type { ActiveSeries } from "@/lib/api";
 
@@ -32,17 +31,15 @@ export function ActiveSeriesCard({ series }: ActiveSeriesCardProps) {
             Downloading
           </Badge>
 
-          <Badge
-            variant="secondary"
-            className="absolute top-2 left-2 bg-background/80 backdrop-blur-sm"
-          >
-            <Tv className="h-3 w-3 mr-1" />
-            S{series.currentEpisode.seasonNumber}E{series.currentEpisode.episodeNumber}
-          </Badge>
-
-          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3">
-            <Progress value={45} className="h-1.5" />
-          </div>
+          {series.currentEpisode && (
+            <Badge
+              variant="secondary"
+              className="absolute top-2 left-2 bg-background/80 backdrop-blur-sm"
+            >
+              <Tv className="h-3 w-3 mr-1" />
+              S{series.currentEpisode.seasonNumber}E{series.currentEpisode.episodeNumber}
+            </Badge>
+          )}
         </div>
 
         <div className="p-4 space-y-3">
@@ -62,12 +59,10 @@ export function ActiveSeriesCard({ series }: ActiveSeriesCardProps) {
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <Server className="h-3 w-3" />
               <span>
-                {series.downloadClient.host}:{series.downloadClient.port}
+                {series.downloadClient?.host}:{series.downloadClient?.port}
               </span>
             </div>
           </div>
-
-          <Progress value={45} className="h-2" />
         </div>
       </CardContent>
     </Card>

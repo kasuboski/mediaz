@@ -142,7 +142,7 @@ export function ActivityTimeline({ data, isLoading, page, onPageChange }: Activi
         {data?.count && data.count > PAGE_SIZE && (
           <div className="flex items-center justify-between border-t border-border/50 pt-4">
             <span className="text-sm text-muted-foreground">
-              Showing {Math.min(page * PAGE_SIZE, data.count)} of {data.count}
+              Showing {((page - 1) * PAGE_SIZE) + (data.items?.length ?? Math.min(PAGE_SIZE, Math.max(0, data.count - (page - 1) * PAGE_SIZE)))} of {data.count}
             </span>
             <div className="flex gap-2">
               <Button

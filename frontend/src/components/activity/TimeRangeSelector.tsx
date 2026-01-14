@@ -10,7 +10,7 @@ export interface TimeRangeSelectorProps {
 }
 
 const TIME_RANGE_OPTIONS = [
-  { label: "1H", days: 0 },
+  { label: "Today", days: 0 },
   { label: "24H", days: 1 },
   { label: "7D", days: 7 },
   { label: "30D", days: 30 },

@@ -277,12 +277,15 @@ func calculateDurations(entries []*storage.HistoryEntry) []*HistoryEntry {
 		var metadata *TransitionMetadata
 		if entry.Metadata != nil {
 			metadata = &TransitionMetadata{
-				DownloadClient: &DownloadClientInfo{
+				DownloadClient: nil,
+				DownloadID:     entry.Metadata.DownloadID,
+			}
+			if entry.Metadata.DownloadClient != nil {
+				metadata.DownloadClient = &DownloadClientInfo{
 					ID:   entry.Metadata.DownloadClient.ID,
 					Host: entry.Metadata.DownloadClient.Host,
 					Port: entry.Metadata.DownloadClient.Port,
-				},
-				DownloadID: entry.Metadata.DownloadID,
+				}
 			}
 		}
 

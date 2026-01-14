@@ -18,6 +18,8 @@ export function ActiveJobCard({ job }: ActiveJobCardProps) {
         return "bg-red-500/10 text-red-500 border-red-500/20";
       case "done":
         return "bg-green-500/10 text-green-500 border-green-500/20";
+      case "cancelled":
+        return "bg-gray-500/10 text-gray-500 border-gray-500/20";
       default:
         return "text-muted-foreground";
     }

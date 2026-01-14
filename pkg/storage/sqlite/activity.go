@@ -267,6 +267,9 @@ func (s *SQLite) CountTransitionsByDate(ctx context.Context, startDate, endDate 
 	startDateStr := startDate.Format("2006-01-02 15:04:05")
 	endDateStr := endDate.Format("2006-01-02 15:04:05")
 
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	var totalCount int64
 	err := s.db.QueryRowContext(ctx, `
 		SELECT (
@@ -868,7 +871,7 @@ func (s *SQLite) GetEntityTransitions(ctx context.Context, entityType string, en
 				et.to_state,
 				et.from_state,
 				et.created_at,
-				et.sort_key,
+				et.sort_key
 			FROM episode e
 			INNER JOIN episode_transition et ON e.id = et.episode_id
 			INNER JOIN season s ON e.season_id = s.id
@@ -909,7 +912,7 @@ func (s *SQLite) GetEntityTransitions(ctx context.Context, entityType string, en
 				jt.to_state,
 				jt.from_state,
 				jt.created_at,
-				jt.sort_key,
+				jt.sort_key
 		FROM job j
 		INNER JOIN job_transition jt ON j.id = jt.job_id
 		WHERE j.id = ?

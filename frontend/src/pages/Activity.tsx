@@ -51,7 +51,7 @@ function ActiveProcessesSection({ activeData, isLoading }: ActiveProcessesSectio
                 <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
               ) : (
                 <span className="text-sm text-muted-foreground">
-                  {activeData?.movies?.length + activeData?.series?.length + activeData?.jobs?.length || 0} active
+                  {(activeData?.movies?.length ?? 0) + (activeData?.series?.length ?? 0) + (activeData?.jobs?.length ?? 0)} active
                 </span>
               )}
               {isOpen ? <ChevronUp className="h-5 w-5 text-muted-foreground" /> : <ChevronDown className="h-5 w-5 text-muted-foreground" />}
@@ -194,21 +194,27 @@ export default function Activity() {
   const {
     data: activeData,
     isLoading: activeLoading,
+    refetch: refetchActive,
   } = useActiveActivity();
 
   const {
     data: failuresData,
     isLoading: failuresLoading,
+    refetch: refetchFailures,
   } = useRecentFailures(24);
 
   const {
     data: timelineData,
     isLoading: timelineLoading,
+    refetch: refetchTimeline,
   } = useActivityTimeline(selectedDays, page, 20);
 
   const handleRefresh = useCallback(() => {
+    refetchActive();
+    refetchFailures();
+    refetchTimeline();
     setLastUpdated(new Date());
-  }, []);
+  }, [refetchActive, refetchFailures, refetchTimeline]);
 
   const handleDaysChange = useCallback((days: number) => {
     setSelectedDays(days);
