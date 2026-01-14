@@ -455,7 +455,7 @@ func TestSQLite_UpdateMovieMovieFileID(t *testing.T) {
 	})
 }
 
-func TestSQLite_UpdateMovie(t *testing.T) {
+func TestSQLite_UpdateMovieQualityProfile(t *testing.T) {
 	t.Run("updates only quality profile id", func(t *testing.T) {
 		ctx := context.Background()
 		store := initSqlite(t, ctx)
