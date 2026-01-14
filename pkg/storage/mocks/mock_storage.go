@@ -1185,18 +1185,18 @@ func (mr *MockStorageMockRecorder) ListEpisodes(ctx any, where ...any) *gomock.C
 }
 
 // ListErrorJobs mocks base method.
-func (m *MockStorage) ListErrorJobs(ctx context.Context) ([]*storage.ActiveJob, error) {
+func (m *MockStorage) ListErrorJobs(ctx context.Context, hours int) ([]*storage.ActiveJob, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListErrorJobs", ctx)
+	ret := m.ctrl.Call(m, "ListErrorJobs", ctx, hours)
 	ret0, _ := ret[0].([]*storage.ActiveJob)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListErrorJobs indicates an expected call of ListErrorJobs.
-func (mr *MockStorageMockRecorder) ListErrorJobs(ctx any) *gomock.Call {
+func (mr *MockStorageMockRecorder) ListErrorJobs(ctx, hours any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListErrorJobs", reflect.TypeOf((*MockStorage)(nil).ListErrorJobs), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListErrorJobs", reflect.TypeOf((*MockStorage)(nil).ListErrorJobs), ctx, hours)
 }
 
 // ListIndexerSources mocks base method.

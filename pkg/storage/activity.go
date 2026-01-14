@@ -112,7 +112,7 @@ type ActivityStorage interface {
 	ListDownloadingMovies(ctx context.Context) ([]*ActiveMovie, error)
 	ListDownloadingSeries(ctx context.Context) ([]*ActiveSeries, error)
 	ListRunningJobs(ctx context.Context) ([]*ActiveJob, error)
-	ListErrorJobs(ctx context.Context) ([]*ActiveJob, error)
+	ListErrorJobs(ctx context.Context, hours int) ([]*ActiveJob, error)
 	GetTransitionsByDate(ctx context.Context, startDate, endDate time.Time, offset, limit int) (*TimelineResponse, error)
 	CountTransitionsByDate(ctx context.Context, startDate, endDate time.Time) (int, error)
 	GetEntityTransitions(ctx context.Context, entityType string, entityID int64) (*HistoryResponse, error)

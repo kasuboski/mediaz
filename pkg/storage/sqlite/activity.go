@@ -227,7 +227,7 @@ func (s *SQLite) ListRunningJobs(ctx context.Context) ([]*storage.ActiveJob, err
 	return jobs, nil
 }
 
-func (s *SQLite) ListErrorJobs(ctx context.Context) ([]*storage.ActiveJob, error) {
+func (s *SQLite) ListErrorJobs(ctx context.Context, hours int) ([]*storage.ActiveJob, error) {
 	query := `
 		SELECT
 			j.id,
@@ -238,12 +238,12 @@ func (s *SQLite) ListErrorJobs(ctx context.Context) ([]*storage.ActiveJob, error
 		FROM job j
 		INNER JOIN job_transition jt ON j.id = jt.job_id AND jt.most_recent = 1
 		WHERE jt.to_state = 'error'
-		  AND jt.updated_at >= datetime('now', '-24 hours')
+		  AND jt.updated_at >= datetime('now', '-' || ? || ' hours')
 		ORDER BY jt.updated_at DESC
 	`
 
 	s.mu.Lock()
-	rows, err := s.db.QueryContext(ctx, query)
+	rows, err := s.db.QueryContext(ctx, query, hours)
 	s.mu.Unlock()
 
 	if err != nil {

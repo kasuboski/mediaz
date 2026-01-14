@@ -134,7 +134,7 @@ func transformDownloadClient(dc *storage.DownloadClientInfo) *DownloadClientInfo
 func (m MediaManager) GetRecentFailures(ctx context.Context, hours int) (*FailuresResponse, error) {
 	log := logger.FromCtx(ctx)
 
-	jobs, err := m.storage.ListErrorJobs(ctx)
+	jobs, err := m.storage.ListErrorJobs(ctx, hours)
 	if err != nil {
 		log.Error("failed to list error jobs", zap.Error(err))
 		return nil, err
