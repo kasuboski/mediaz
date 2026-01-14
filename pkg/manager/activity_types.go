@@ -73,6 +73,7 @@ type FailureItem struct {
 type TimelineResponse struct {
 	Timeline    []*TimelineEntry  `json:"timeline"`
 	Transitions []*TransitionItem `json:"transitions"`
+	Count       int               `json:"count"`
 }
 
 type TimelineEntry struct {

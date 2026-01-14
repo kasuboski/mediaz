@@ -6,6 +6,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/kasuboski/mediaz/pkg/logger"
+	"github.com/kasuboski/mediaz/pkg/pagination"
 	"go.uber.org/zap"
 )
 
@@ -63,7 +64,14 @@ func (s Server) GetActivityTimeline() http.HandlerFunc {
 			days = parsed
 		}
 
-		response, err := s.manager.GetActivityTimeline(r.Context(), days)
+		var params pagination.Params
+		params, err := ParsePaginationParams(r)
+		if err != nil {
+			writeErrorResponse(w, http.StatusBadRequest, err)
+			return
+		}
+
+		response, err := s.manager.GetActivityTimeline(r.Context(), days, params)
 		if err != nil {
 			log.Error("failed to get activity timeline", zap.Error(err), zap.Int("days", days))
 			writeErrorResponse(w, http.StatusInternalServerError, err)

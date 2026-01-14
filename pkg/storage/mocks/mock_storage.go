@@ -63,6 +63,21 @@ func (mr *MockStorageMockRecorder) CountJobs(ctx any, where ...any) *gomock.Call
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CountJobs", reflect.TypeOf((*MockStorage)(nil).CountJobs), varargs...)
 }
 
+// CountTransitionsByDate mocks base method.
+func (m *MockStorage) CountTransitionsByDate(ctx context.Context, startDate, endDate time.Time) (int, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CountTransitionsByDate", ctx, startDate, endDate)
+	ret0, _ := ret[0].(int)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CountTransitionsByDate indicates an expected call of CountTransitionsByDate.
+func (mr *MockStorageMockRecorder) CountTransitionsByDate(ctx, startDate, endDate any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CountTransitionsByDate", reflect.TypeOf((*MockStorage)(nil).CountTransitionsByDate), ctx, startDate, endDate)
+}
+
 // CreateDownloadClient mocks base method.
 func (m *MockStorage) CreateDownloadClient(ctx context.Context, client model.DownloadClient) (int64, error) {
 	m.ctrl.T.Helper()
@@ -980,18 +995,18 @@ func (mr *MockStorageMockRecorder) GetTVStatsByState(ctx any) *gomock.Call {
 }
 
 // GetTransitionsByDate mocks base method.
-func (m *MockStorage) GetTransitionsByDate(ctx context.Context, startDate, endDate time.Time) (*storage.TimelineResponse, error) {
+func (m *MockStorage) GetTransitionsByDate(ctx context.Context, startDate, endDate time.Time, offset, limit int) (*storage.TimelineResponse, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetTransitionsByDate", ctx, startDate, endDate)
+	ret := m.ctrl.Call(m, "GetTransitionsByDate", ctx, startDate, endDate, offset, limit)
 	ret0, _ := ret[0].(*storage.TimelineResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetTransitionsByDate indicates an expected call of GetTransitionsByDate.
-func (mr *MockStorageMockRecorder) GetTransitionsByDate(ctx, startDate, endDate any) *gomock.Call {
+func (mr *MockStorageMockRecorder) GetTransitionsByDate(ctx, startDate, endDate, offset, limit any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTransitionsByDate", reflect.TypeOf((*MockStorage)(nil).GetTransitionsByDate), ctx, startDate, endDate)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTransitionsByDate", reflect.TypeOf((*MockStorage)(nil).GetTransitionsByDate), ctx, startDate, endDate, offset, limit)
 }
 
 // Init mocks base method.

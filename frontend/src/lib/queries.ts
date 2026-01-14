@@ -86,7 +86,7 @@ export const queryKeys = {
     all: ['activity'] as const,
     active: () => [...queryKeys.activity.all, 'active'] as const,
     failures: (hours: number) => [...queryKeys.activity.all, 'failures', hours] as const,
-    timeline: (days: number) => [...queryKeys.activity.all, 'timeline', days] as const,
+    timeline: (days: number, page: number, pageSize: number) => [...queryKeys.activity.all, 'timeline', days, page, pageSize] as const,
     history: (entityType: string, entityId: number) => [...queryKeys.activity.all, 'history', entityType, entityId] as const,
   },
 } as const;
@@ -577,10 +577,10 @@ export function useRecentFailures(hours: number = 24) {
 /**
  * Hook to fetch activity timeline with 5min cache
  */
-export function useActivityTimeline(days: number = 1) {
+export function useActivityTimeline(days: number = 1, page: number = 1, pageSize: number = 20) {
   return useQuery({
-    queryKey: queryKeys.activity.timeline(days),
-    queryFn: () => activityApi.getActivityTimeline(days),
+    queryKey: queryKeys.activity.timeline(days, page, pageSize),
+    queryFn: () => activityApi.getActivityTimeline(days, page, pageSize),
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
   });

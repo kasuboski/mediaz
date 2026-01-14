@@ -126,9 +126,11 @@ interface ActivityTimelineSectionProps {
   isLoading: boolean;
   selectedDays: number;
   onDaysChange: (days: number) => void;
+  page: number;
+  onPageChange: (page: number) => void;
 }
 
-function ActivityTimelineSection({ timelineData, isLoading, selectedDays, onDaysChange }: ActivityTimelineSectionProps) {
+function ActivityTimelineSection({ timelineData, isLoading, selectedDays, onDaysChange, page, onPageChange }: ActivityTimelineSectionProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
@@ -158,7 +160,7 @@ function ActivityTimelineSection({ timelineData, isLoading, selectedDays, onDays
                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
               </div>
             ) : (
-              <ActivityTimeline data={timelineData} />
+              <ActivityTimeline data={timelineData} page={page} onPageChange={onPageChange} />
             )}
           </CardContent>
         </CollapsibleContent>
@@ -189,6 +191,7 @@ function ActivityPageSkeleton() {
 export default function Activity() {
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
   const [selectedDays, setSelectedDays] = useState<number>(1);
+  const [page, setPage] = useState<number>(1);
 
   const {
     data: activeData,
@@ -203,10 +206,15 @@ export default function Activity() {
   const {
     data: timelineData,
     isLoading: timelineLoading,
-  } = useActivityTimeline(selectedDays);
+  } = useActivityTimeline(selectedDays, page, 20);
 
   const handleRefresh = useCallback(() => {
     setLastUpdated(new Date());
+  }, []);
+
+  const handleDaysChange = useCallback((days: number) => {
+    setSelectedDays(days);
+    setPage(1);
   }, []);
 
   const isLoading = activeLoading || failuresLoading || timelineLoading;
@@ -254,7 +262,9 @@ export default function Activity() {
             timelineData={timelineData}
             isLoading={timelineLoading}
             selectedDays={selectedDays}
-            onDaysChange={setSelectedDays}
+            onDaysChange={handleDaysChange}
+            page={page}
+            onPageChange={setPage}
           />
         </div>
       )}

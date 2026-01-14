@@ -3,6 +3,7 @@ import { format as formatDateFn } from "date-fns";
 import { Film, Tv, Briefcase, Activity } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import type { TimelineResponse, TransitionItem } from "@/lib/api";
@@ -10,12 +11,15 @@ import type { TimelineResponse, TransitionItem } from "@/lib/api";
 interface ActivityTimelineProps {
   data: TimelineResponse | null;
   isLoading?: boolean;
+  page: number;
+  onPageChange: (page: number) => void;
 }
 
 type ChartView = "overview" | "movies" | "series";
 
-export function ActivityTimeline({ data, isLoading }: ActivityTimelineProps) {
+export function ActivityTimeline({ data, isLoading, page, onPageChange }: ActivityTimelineProps) {
   const [chartView, setChartView] = useState<ChartView>("overview");
+  const PAGE_SIZE = 20;
 
   const chartData = useMemo(() => {
     if (!data?.timeline) return [];
@@ -129,6 +133,35 @@ export function ActivityTimeline({ data, isLoading }: ActivityTimelineProps) {
             ))
           )}
         </div>
+
+        {data?.count && data.count > PAGE_SIZE && (
+          <div className="flex items-center justify-between border-t border-border/50 pt-4">
+            <span className="text-sm text-muted-foreground">
+              Showing {Math.min(page * PAGE_SIZE, data.count)} of {data.count}
+            </span>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onPageChange(page - 1)}
+                disabled={page === 1}
+              >
+                Previous
+              </Button>
+              <span className="flex items-center px-3 text-sm">
+                Page {page}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onPageChange(page + 1)}
+                disabled={page * PAGE_SIZE >= data.count}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
@@ -168,7 +201,7 @@ function TransitionGroup({ date, transitions }: { date: string; transitions: Tra
       <h4 className="text-sm font-semibold text-muted-foreground mb-3">{date}</h4>
       <div className="space-y-3">
         {transitions.map((transition) => (
-          <TransitionItemCard key={transition.id} transition={transition} />
+          <TransitionItemCard key={`${transition.entityType}-${transition.id}`} transition={transition} />
         ))}
       </div>
     </div>

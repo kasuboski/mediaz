@@ -118,7 +118,6 @@ func (s *SQLite) ListDownloadingSeries(ctx context.Context) ([]*storage.ActiveSe
 			st.sort_key,
 			st.download_id,
 			se.season_number,
-			se.episode_number,
 			dc.id,
 			dc.host,
 			dc.port
@@ -147,7 +146,7 @@ func (s *SQLite) ListDownloadingSeries(ctx context.Context) ([]*storage.ActiveSe
 		var downloadID sql.NullString
 		var dcID sql.NullInt32
 		var dcHost, dcPort sql.NullString
-		var seasonNum, episodeNum sql.NullInt32
+		var seasonNum sql.NullInt32
 
 		if err := rows.Scan(
 			&s.ID,
@@ -158,7 +157,6 @@ func (s *SQLite) ListDownloadingSeries(ctx context.Context) ([]*storage.ActiveSe
 			&s.StateSince,
 			&downloadID,
 			&seasonNum,
-			&episodeNum,
 			&dcID,
 			&dcHost,
 			&dcPort,
@@ -175,10 +173,6 @@ func (s *SQLite) ListDownloadingSeries(ctx context.Context) ([]*storage.ActiveSe
 		if seasonNum.Valid {
 			sn := int(seasonNum.Int32)
 			s.SeasonNumber = &sn
-		}
-		if episodeNum.Valid {
-			en := int(episodeNum.Int32)
-			s.EpisodeNumber = &en
 		}
 		if dcID.Valid && dcHost.Valid && dcPort.Valid {
 			var port int
@@ -269,7 +263,39 @@ func (s *SQLite) ListErrorJobs(ctx context.Context) ([]*storage.ActiveJob, error
 	return jobs, nil
 }
 
-func (s *SQLite) GetTransitionsByDate(ctx context.Context, startDate, endDate time.Time) (*storage.TimelineResponse, error) {
+func (s *SQLite) CountTransitionsByDate(ctx context.Context, startDate, endDate time.Time) (int, error) {
+	startDateStr := startDate.Format("2006-01-02 15:04:05")
+	endDateStr := endDate.Format("2006-01-02 15:04:05")
+
+	var totalCount int64
+	err := s.db.QueryRowContext(ctx, `
+		SELECT (
+			SELECT COUNT(*) FROM movie_transition mt
+			INNER JOIN movie m ON m.id = mt.movie_id
+			WHERE mt.created_at >= datetime(?) AND mt.created_at <= datetime(?)
+			  AND mt.most_recent = 1
+		) + (
+			SELECT COUNT(*) FROM season_transition st
+			INNER JOIN season s ON s.id = st.season_id
+			WHERE st.created_at >= datetime(?) AND st.created_at <= datetime(?)
+			  AND st.most_recent = 1
+		) + (
+			SELECT COUNT(*) FROM episode_transition et
+			INNER JOIN episode e ON e.id = et.episode_id
+			WHERE et.created_at >= datetime(?) AND et.created_at <= datetime(?)
+			  AND et.most_recent = 1
+		) + (
+			SELECT COUNT(*) FROM job_transition jt
+			INNER JOIN job j ON j.id = jt.job_id
+			WHERE jt.created_at >= datetime(?) AND jt.created_at <= datetime(?)
+			  AND jt.most_recent = 1
+		) AS total
+	`, startDateStr, endDateStr, startDateStr, endDateStr, startDateStr, endDateStr, startDateStr, endDateStr).Scan(&totalCount)
+
+	return int(totalCount), err
+}
+
+func (s *SQLite) GetTransitionsByDate(ctx context.Context, startDate, endDate time.Time, offset, limit int) (*storage.TimelineResponse, error) {
 	startDateStr := startDate.Format("2006-01-02 15:04:05")
 	endDateStr := endDate.Format("2006-01-02 15:04:05")
 
@@ -411,24 +437,47 @@ func (s *SQLite) GetTransitionsByDate(ctx context.Context, startDate, endDate ti
 	}
 
 	s.mu.Lock()
-	movieTransitionRows, err := s.db.QueryContext(ctx, `
-		SELECT
-			mt.id,
-			'movie' AS entity_type,
-			m.id AS entity_id,
-			COALESCE(mm.title, '') AS entity_title,
-			mt.to_state,
-			mt.from_state,
-			mt.created_at
-		FROM movie m
-		INNER JOIN movie_transition mt ON m.id = mt.movie_id
-		LEFT JOIN movie_metadata mm ON m.movie_metadata_id = mm.id
-		WHERE mt.created_at >= datetime(?)
-		  AND mt.created_at <= datetime(?)
-		  AND mt.most_recent = 1
-		ORDER BY mt.created_at DESC
-		LIMIT 100
-	`, startDateStr, endDateStr)
+	var movieTransitionRows *sql.Rows
+	if limit > 0 {
+		movieTransitionQuery := `
+			SELECT
+				mt.id,
+				'movie' AS entity_type,
+				m.id AS entity_id,
+				COALESCE(mm.title, '') AS entity_title,
+				mt.to_state,
+				mt.from_state,
+				mt.created_at
+			FROM movie m
+			INNER JOIN movie_transition mt ON m.id = mt.movie_id
+			LEFT JOIN movie_metadata mm ON m.movie_metadata_id = mm.id
+			WHERE mt.created_at >= datetime(?)
+			  AND mt.created_at <= datetime(?)
+			  AND mt.most_recent = 1
+			ORDER BY mt.created_at DESC
+			LIMIT ? OFFSET ?
+		`
+		movieTransitionRows, err = s.db.QueryContext(ctx, movieTransitionQuery, startDateStr, endDateStr, limit, offset)
+	} else {
+		movieTransitionQuery := `
+			SELECT
+				mt.id,
+				'movie' AS entity_type,
+				m.id AS entity_id,
+				COALESCE(mm.title, '') AS entity_title,
+				mt.to_state,
+				mt.from_state,
+				mt.created_at
+			FROM movie m
+			INNER JOIN movie_transition mt ON m.id = mt.movie_id
+			LEFT JOIN movie_metadata mm ON m.movie_metadata_id = mm.id
+			WHERE mt.created_at >= datetime(?)
+			  AND mt.created_at <= datetime(?)
+			  AND mt.most_recent = 1
+			ORDER BY mt.created_at DESC
+		`
+		movieTransitionRows, err = s.db.QueryContext(ctx, movieTransitionQuery, startDateStr, endDateStr)
+	}
 	s.mu.Unlock()
 
 	if err != nil {
@@ -451,25 +500,49 @@ func (s *SQLite) GetTransitionsByDate(ctx context.Context, startDate, endDate ti
 	}
 
 	s.mu.Lock()
-	seasonTransitionRows, err := s.db.QueryContext(ctx, `
-		SELECT
-			st.id,
-			'season' AS entity_type,
-			s.id AS entity_id,
-			COALESCE(sm.title, '') AS entity_title,
-			st.to_state,
-			st.from_state,
-			st.created_at
-		FROM season s
-		INNER JOIN season_transition st ON s.id = st.season_id
-		INNER JOIN series ser ON s.series_id = ser.id
-		LEFT JOIN series_metadata sm ON ser.series_metadata_id = sm.id
-		WHERE st.created_at >= datetime(?)
-		  AND st.created_at <= datetime(?)
-		  AND st.most_recent = 1
-		ORDER BY st.created_at DESC
-		LIMIT 100
-	`, startDateStr, endDateStr)
+	var seasonTransitionRows *sql.Rows
+	if limit > 0 {
+		seasonTransitionQuery := `
+			SELECT
+				st.id,
+				'season' AS entity_type,
+				s.id AS entity_id,
+				COALESCE(sm.title, '') AS entity_title,
+				st.to_state,
+				st.from_state,
+				st.created_at
+			FROM season s
+			INNER JOIN season_transition st ON s.id = st.season_id
+			INNER JOIN series ser ON s.series_id = ser.id
+			LEFT JOIN series_metadata sm ON ser.series_metadata_id = sm.id
+			WHERE st.created_at >= datetime(?)
+			  AND st.created_at <= datetime(?)
+			  AND st.most_recent = 1
+			ORDER BY st.created_at DESC
+			LIMIT ? OFFSET ?
+		`
+		seasonTransitionRows, err = s.db.QueryContext(ctx, seasonTransitionQuery, startDateStr, endDateStr, limit, offset)
+	} else {
+		seasonTransitionQuery := `
+			SELECT
+				st.id,
+				'season' AS entity_type,
+				s.id AS entity_id,
+				COALESCE(sm.title, '') AS entity_title,
+				st.to_state,
+				st.from_state,
+				st.created_at
+			FROM season s
+			INNER JOIN season_transition st ON s.id = st.season_id
+			INNER JOIN series ser ON s.series_id = ser.id
+			LEFT JOIN series_metadata sm ON ser.series_metadata_id = sm.id
+			WHERE st.created_at >= datetime(?)
+			  AND st.created_at <= datetime(?)
+			  AND st.most_recent = 1
+			ORDER BY st.created_at DESC
+		`
+		seasonTransitionRows, err = s.db.QueryContext(ctx, seasonTransitionQuery, startDateStr, endDateStr)
+	}
 	s.mu.Unlock()
 
 	if err != nil {
@@ -490,26 +563,51 @@ func (s *SQLite) GetTransitionsByDate(ctx context.Context, startDate, endDate ti
 	}
 
 	s.mu.Lock()
-	episodeTransitionRows, err := s.db.QueryContext(ctx, `
-		SELECT
-			et.id,
-			'episode' AS entity_type,
-			e.id AS entity_id,
-			COALESCE(sm.title, '') AS entity_title,
-			et.to_state,
-			et.from_state,
-			et.created_at
-		FROM episode e
-		INNER JOIN episode_transition et ON e.id = et.episode_id
-		INNER JOIN season s ON e.season_id = s.id
-		INNER JOIN series ser ON s.series_id = ser.id
-		LEFT JOIN series_metadata sm ON ser.series_metadata_id = sm.id
-		WHERE et.created_at >= datetime(?)
-		  AND et.created_at <= datetime(?)
-		  AND et.most_recent = 1
-		ORDER BY et.created_at DESC
-		LIMIT 100
-	`, startDateStr, endDateStr)
+	var episodeTransitionRows *sql.Rows
+	if limit > 0 {
+		episodeTransitionQuery := `
+			SELECT
+				et.id,
+				'episode' AS entity_type,
+				e.id AS entity_id,
+				COALESCE(sm.title, '') AS entity_title,
+				et.to_state,
+				et.from_state,
+				et.created_at
+			FROM episode e
+			INNER JOIN episode_transition et ON e.id = et.episode_id
+			INNER JOIN season s ON e.season_id = s.id
+			INNER JOIN series ser ON s.series_id = ser.id
+			LEFT JOIN series_metadata sm ON ser.series_metadata_id = sm.id
+			WHERE et.created_at >= datetime(?)
+			  AND et.created_at <= datetime(?)
+			  AND et.most_recent = 1
+			ORDER BY et.created_at DESC
+			LIMIT ? OFFSET ?
+		`
+		episodeTransitionRows, err = s.db.QueryContext(ctx, episodeTransitionQuery, startDateStr, endDateStr, limit, offset)
+	} else {
+		episodeTransitionQuery := `
+			SELECT
+				et.id,
+				'episode' AS entity_type,
+				e.id AS entity_id,
+				COALESCE(sm.title, '') AS entity_title,
+				et.to_state,
+				et.from_state,
+				et.created_at
+			FROM episode e
+			INNER JOIN episode_transition et ON e.id = et.episode_id
+			INNER JOIN season s ON e.season_id = s.id
+			INNER JOIN series ser ON s.series_id = ser.id
+			LEFT JOIN series_metadata sm ON ser.series_metadata_id = sm.id
+			WHERE et.created_at >= datetime(?)
+			  AND et.created_at <= datetime(?)
+			  AND et.most_recent = 1
+			ORDER BY et.created_at DESC
+		`
+		episodeTransitionRows, err = s.db.QueryContext(ctx, episodeTransitionQuery, startDateStr, endDateStr)
+	}
 	s.mu.Unlock()
 
 	if err != nil {
@@ -530,23 +628,45 @@ func (s *SQLite) GetTransitionsByDate(ctx context.Context, startDate, endDate ti
 	}
 
 	s.mu.Lock()
-	jobTransitionRows, err := s.db.QueryContext(ctx, `
-		SELECT
-			jt.id,
-			'job' AS entity_type,
-			j.id AS entity_id,
-			j.type AS entity_title,
-			jt.to_state,
-			jt.from_state,
-			jt.created_at
-		FROM job j
-		INNER JOIN job_transition jt ON j.id = jt.job_id
-		WHERE jt.created_at >= datetime(?)
-		  AND jt.created_at <= datetime(?)
-		  AND jt.most_recent = 1
-		ORDER BY jt.created_at DESC
-		LIMIT 100
-	`, startDateStr, endDateStr)
+	var jobTransitionRows *sql.Rows
+	if limit > 0 {
+		jobTransitionQuery := `
+			SELECT
+				jt.id,
+				'job' AS entity_type,
+				j.id AS entity_id,
+				j.type AS entity_title,
+				jt.to_state,
+				jt.from_state,
+				jt.created_at
+			FROM job j
+			INNER JOIN job_transition jt ON j.id = jt.job_id
+			WHERE jt.created_at >= datetime(?)
+			  AND jt.created_at <= datetime(?)
+			  AND jt.most_recent = 1
+			ORDER BY jt.created_at DESC
+			LIMIT ? OFFSET ?
+		`
+		jobTransitionRows, err = s.db.QueryContext(ctx, jobTransitionQuery, startDateStr, endDateStr, limit, offset)
+	} else {
+		jobTransitionQuery := `
+			SELECT
+				jt.id,
+				'job' AS entity_type,
+				j.id AS entity_id,
+				j.type AS entity_title,
+				jt.to_state,
+				jt.from_state,
+				jt.created_at
+			FROM job j
+			INNER JOIN job_transition jt ON j.id = jt.job_id
+			WHERE jt.created_at >= datetime(?)
+			  AND jt.created_at <= datetime(?)
+			  AND jt.most_recent = 1
+			ORDER BY jt.created_at DESC
+		`
+		jobTransitionRows, err = s.db.QueryContext(ctx, jobTransitionQuery, startDateStr, endDateStr)
+	}
 	s.mu.Unlock()
 
 	if err != nil {
@@ -566,9 +686,15 @@ func (s *SQLite) GetTransitionsByDate(ctx context.Context, startDate, endDate ti
 		transitions = append(transitions, &item)
 	}
 
+	totalCount, countErr := s.CountTransitionsByDate(ctx, startDate, endDate)
+	if countErr != nil {
+		return nil, countErr
+	}
+
 	return &storage.TimelineResponse{
 		Timeline:    timeline,
 		Transitions: transitions,
+		Count:       totalCount,
 	}, nil
 }
 

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/kasuboski/mediaz/pkg/logger"
+	"github.com/kasuboski/mediaz/pkg/pagination"
 	"github.com/kasuboski/mediaz/pkg/storage"
 	"go.uber.org/zap"
 )
@@ -162,13 +163,15 @@ func (m MediaManager) GetRecentFailures(ctx context.Context, hours int) (*Failur
 	}, nil
 }
 
-func (m MediaManager) GetActivityTimeline(ctx context.Context, days int) (*TimelineResponse, error) {
+func (m MediaManager) GetActivityTimeline(ctx context.Context, days int, params pagination.Params) (*TimelineResponse, error) {
 	log := logger.FromCtx(ctx)
 
 	startDate := time.Now().AddDate(0, 0, -days)
 	endDate := time.Now()
 
-	storageResp, err := m.storage.GetTransitionsByDate(ctx, startDate, endDate)
+	offset, limit := params.CalculateOffsetLimit()
+
+	storageResp, err := m.storage.GetTransitionsByDate(ctx, startDate, endDate, offset, limit)
 	if err != nil {
 		log.Error("failed to get transitions by date", zap.Error(err))
 		return nil, err
@@ -200,6 +203,7 @@ func (m MediaManager) GetActivityTimeline(ctx context.Context, days int) (*Timel
 	return &TimelineResponse{
 		Timeline:    timeline,
 		Transitions: transitions,
+		Count:       storageResp.Count,
 	}, nil
 }
 

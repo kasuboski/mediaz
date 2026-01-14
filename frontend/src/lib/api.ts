@@ -1054,6 +1054,7 @@ export interface TransitionItem {
 export interface TimelineResponse {
   timeline: TimelineEntry[];
   transitions: TransitionItem[];
+  count: number;
 }
 
 export interface EntityInfo {
@@ -1094,8 +1095,11 @@ export const activityApi = {
     return apiRequest<FailureItem[]>(`/activity/failures?hours=${hours}`);
   },
 
-  async getActivityTimeline(days: number = 1): Promise<TimelineResponse> {
-    return apiRequest<TimelineResponse>(`/activity/timeline?days=${days}`);
+  async getActivityTimeline(days: number = 1, page: number = 1, pageSize: number = 20): Promise<TimelineResponse> {
+    const params = new URLSearchParams({ days: days.toString() });
+    if (page > 1) params.append('page', page.toString());
+    if (pageSize > 0) params.append('pageSize', pageSize.toString());
+    return apiRequest<TimelineResponse>(`/activity/timeline?${params.toString()}`);
   },
 
   async getEntityHistory(entityType: string, entityId: number): Promise<HistoryResponse> {

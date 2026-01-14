@@ -93,6 +93,7 @@ type TransitionMetadata struct {
 type TimelineResponse struct {
 	Timeline    []*TimelineEntry  `json:"timeline"`
 	Transitions []*TransitionItem `json:"transitions"`
+	Count       int               `json:"count"`
 }
 
 type HistoryResponse struct {
@@ -112,6 +113,7 @@ type ActivityStorage interface {
 	ListDownloadingSeries(ctx context.Context) ([]*ActiveSeries, error)
 	ListRunningJobs(ctx context.Context) ([]*ActiveJob, error)
 	ListErrorJobs(ctx context.Context) ([]*ActiveJob, error)
-	GetTransitionsByDate(ctx context.Context, startDate, endDate time.Time) (*TimelineResponse, error)
+	GetTransitionsByDate(ctx context.Context, startDate, endDate time.Time, offset, limit int) (*TimelineResponse, error)
+	CountTransitionsByDate(ctx context.Context, startDate, endDate time.Time) (int, error)
 	GetEntityTransitions(ctx context.Context, entityType string, entityID int64) (*HistoryResponse, error)
 }
