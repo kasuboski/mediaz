@@ -32,6 +32,7 @@ type Storage interface {
 	SeriesStorage
 	SeriesMetadataStorage
 	StatisticsStorage
+	ActivityStorage
 }
 
 type IndexerStorage interface {

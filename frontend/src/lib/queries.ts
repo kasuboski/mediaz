@@ -14,6 +14,7 @@ import {
   indexerSourcesApi,
   qualityProfilesApi,
   qualityDefinitionsApi,
+  activityApi,
   type JobType,
   type CreateDownloadClientRequest,
   type UpdateDownloadClientRequest,
@@ -80,6 +81,13 @@ export const queryKeys = {
     all: ['qualityDefinitions'] as const,
     list: () => [...queryKeys.qualityDefinitions.all, 'list'] as const,
     detail: (id: number) => [...queryKeys.qualityDefinitions.all, 'detail', id] as const,
+  },
+  activity: {
+    all: ['activity'] as const,
+    active: () => [...queryKeys.activity.all, 'active'] as const,
+    failures: (hours: number) => [...queryKeys.activity.all, 'failures', hours] as const,
+    timeline: (days: number, page: number, pageSize: number) => [...queryKeys.activity.all, 'timeline', days, page, pageSize] as const,
+    history: (entityType: string, entityId: number) => [...queryKeys.activity.all, 'history', entityType, entityId] as const,
   },
 } as const;
 
@@ -529,5 +537,87 @@ export function useAddSeries() {
       queryClient.invalidateQueries({ queryKey: queryKeys.tv.detail(data.tmdbID) });
     },
   });
+}
+
+/**
+ * Activity Query Hooks
+ */
+
+/**
+ * Hook to fetch active activity with smart 5s polling
+ * Only polls when there are active items (movies + series + jobs > 0)
+ */
+export function useActiveActivity() {
+  return useQuery({
+    queryKey: queryKeys.activity.active(),
+    queryFn: activityApi.getActiveActivity,
+    refetchInterval: (query) => {
+      const data = query.state.data;
+      if (!data) return false;
+      const activeCount = data.movies.length + data.series.length + data.jobs.length;
+      return activeCount > 0 ? 5000 : false;
+    },
+    staleTime: 2000,
+    gcTime: 5 * 60 * 1000,
+  });
+}
+
+/**
+ * Hook to fetch recent failures with 10min cache
+ */
+export function useRecentFailures(hours: number = 24) {
+  return useQuery({
+    queryKey: queryKeys.activity.failures(hours),
+    queryFn: () => activityApi.getRecentFailures(hours),
+    staleTime: 10 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
+  });
+}
+
+/**
+ * Hook to fetch activity timeline with 5min cache
+ */
+export function useActivityTimeline(days: number = 1, page: number = 1, pageSize: number = 20) {
+  return useQuery({
+    queryKey: queryKeys.activity.timeline(days, page, pageSize),
+    queryFn: () => activityApi.getActivityTimeline(days, page, pageSize),
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+  });
+}
+
+/**
+ * Hook to fetch entity history with 10min cache
+ * Only enabled when params are provided
+ */
+export function useEntityHistory(entityType: string, entityId: number) {
+  return useQuery({
+    queryKey: queryKeys.activity.history(entityType, entityId),
+    queryFn: () => activityApi.getEntityHistory(entityType, entityId),
+    staleTime: 10 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
+    enabled: !!entityType && !!entityId,
+  });
+}
+
+/**
+ * Convenience hook combining active activity and recent failures
+ * Useful for activity dashboard views
+ */
+export function useActivityDashboard(hours: number = 24) {
+  const active = useActiveActivity();
+  const failures = useRecentFailures(hours);
+
+  return {
+    active: active.data,
+    failures: failures.data,
+    isLoading: active.isLoading || failures.isLoading,
+    isError: active.isError || failures.isError,
+    error: active.error || failures.error,
+    refetch: () => {
+      active.refetch();
+      failures.refetch();
+    },
+  };
 }
 

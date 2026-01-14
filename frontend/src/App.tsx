@@ -7,6 +7,7 @@ import { AppLayout } from "./components/layout/AppLayout";
 import Discover from "./pages/Discover";
 import Movies from "./pages/Movies";
 import Series from "./pages/Series";
+import Activity from "./pages/Activity";
 import MovieDetail from "./pages/MovieDetail";
 import TVDetail from "./pages/TVDetail";
 import LibraryPage from "./pages/LibraryPage";
@@ -29,6 +30,7 @@ const App = () => (
             <Route path="/" element={<Discover />} />
             <Route path="/discover" element={<Discover />} />
             <Route path="/movies" element={<Movies />} />
+            <Route path="/activity" element={<Activity />} />
             <Route path="/series" element={<Series />} />
             <Route path="/library" element={<LibraryPage />} />
             <Route path="/jobs" element={<Jobs />} />

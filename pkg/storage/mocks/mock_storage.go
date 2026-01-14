@@ -12,6 +12,7 @@ package mocks
 import (
 	context "context"
 	reflect "reflect"
+	time "time"
 
 	sqlite "github.com/go-jet/jet/v2/sqlite"
 	storage "github.com/kasuboski/mediaz/pkg/storage"
@@ -60,6 +61,21 @@ func (mr *MockStorageMockRecorder) CountJobs(ctx any, where ...any) *gomock.Call
 	mr.mock.ctrl.T.Helper()
 	varargs := append([]any{ctx}, where...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CountJobs", reflect.TypeOf((*MockStorage)(nil).CountJobs), varargs...)
+}
+
+// CountTransitionsByDate mocks base method.
+func (m *MockStorage) CountTransitionsByDate(ctx context.Context, startDate, endDate time.Time) (int, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CountTransitionsByDate", ctx, startDate, endDate)
+	ret0, _ := ret[0].(int)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CountTransitionsByDate indicates an expected call of CountTransitionsByDate.
+func (mr *MockStorageMockRecorder) CountTransitionsByDate(ctx, startDate, endDate any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CountTransitionsByDate", reflect.TypeOf((*MockStorage)(nil).CountTransitionsByDate), ctx, startDate, endDate)
 }
 
 // CreateDownloadClient mocks base method.
@@ -618,6 +634,21 @@ func (mr *MockStorageMockRecorder) GetDownloadClient(ctx, id any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDownloadClient", reflect.TypeOf((*MockStorage)(nil).GetDownloadClient), ctx, id)
 }
 
+// GetEntityTransitions mocks base method.
+func (m *MockStorage) GetEntityTransitions(ctx context.Context, entityType string, entityID int64) (*storage.HistoryResponse, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetEntityTransitions", ctx, entityType, entityID)
+	ret0, _ := ret[0].(*storage.HistoryResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetEntityTransitions indicates an expected call of GetEntityTransitions.
+func (mr *MockStorageMockRecorder) GetEntityTransitions(ctx, entityType, entityID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetEntityTransitions", reflect.TypeOf((*MockStorage)(nil).GetEntityTransitions), ctx, entityType, entityID)
+}
+
 // GetEpisode mocks base method.
 func (m *MockStorage) GetEpisode(ctx context.Context, where sqlite.BoolExpression) (*storage.Episode, error) {
 	m.ctrl.T.Helper()
@@ -963,6 +994,21 @@ func (mr *MockStorageMockRecorder) GetTVStatsByState(ctx any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTVStatsByState", reflect.TypeOf((*MockStorage)(nil).GetTVStatsByState), ctx)
 }
 
+// GetTransitionsByDate mocks base method.
+func (m *MockStorage) GetTransitionsByDate(ctx context.Context, startDate, endDate time.Time, offset, limit int) (*storage.TimelineResponse, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetTransitionsByDate", ctx, startDate, endDate, offset, limit)
+	ret0, _ := ret[0].(*storage.TimelineResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetTransitionsByDate indicates an expected call of GetTransitionsByDate.
+func (mr *MockStorageMockRecorder) GetTransitionsByDate(ctx, startDate, endDate, offset, limit any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTransitionsByDate", reflect.TypeOf((*MockStorage)(nil).GetTransitionsByDate), ctx, startDate, endDate, offset, limit)
+}
+
 // Init mocks base method.
 func (m *MockStorage) Init(ctx context.Context, schemas ...string) error {
 	m.ctrl.T.Helper()
@@ -1053,6 +1099,36 @@ func (mr *MockStorageMockRecorder) ListDownloadClients(ctx any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListDownloadClients", reflect.TypeOf((*MockStorage)(nil).ListDownloadClients), ctx)
 }
 
+// ListDownloadingMovies mocks base method.
+func (m *MockStorage) ListDownloadingMovies(ctx context.Context) ([]*storage.ActiveMovie, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListDownloadingMovies", ctx)
+	ret0, _ := ret[0].([]*storage.ActiveMovie)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListDownloadingMovies indicates an expected call of ListDownloadingMovies.
+func (mr *MockStorageMockRecorder) ListDownloadingMovies(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListDownloadingMovies", reflect.TypeOf((*MockStorage)(nil).ListDownloadingMovies), ctx)
+}
+
+// ListDownloadingSeries mocks base method.
+func (m *MockStorage) ListDownloadingSeries(ctx context.Context) ([]*storage.ActiveSeries, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListDownloadingSeries", ctx)
+	ret0, _ := ret[0].([]*storage.ActiveSeries)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListDownloadingSeries indicates an expected call of ListDownloadingSeries.
+func (mr *MockStorageMockRecorder) ListDownloadingSeries(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListDownloadingSeries", reflect.TypeOf((*MockStorage)(nil).ListDownloadingSeries), ctx)
+}
+
 // ListEpisodeFiles mocks base method.
 func (m *MockStorage) ListEpisodeFiles(ctx context.Context) ([]*model.EpisodeFile, error) {
 	m.ctrl.T.Helper()
@@ -1106,6 +1182,21 @@ func (mr *MockStorageMockRecorder) ListEpisodes(ctx any, where ...any) *gomock.C
 	mr.mock.ctrl.T.Helper()
 	varargs := append([]any{ctx}, where...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListEpisodes", reflect.TypeOf((*MockStorage)(nil).ListEpisodes), varargs...)
+}
+
+// ListErrorJobs mocks base method.
+func (m *MockStorage) ListErrorJobs(ctx context.Context, hours int) ([]*storage.ActiveJob, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListErrorJobs", ctx, hours)
+	ret0, _ := ret[0].([]*storage.ActiveJob)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListErrorJobs indicates an expected call of ListErrorJobs.
+func (mr *MockStorageMockRecorder) ListErrorJobs(ctx, hours any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListErrorJobs", reflect.TypeOf((*MockStorage)(nil).ListErrorJobs), ctx, hours)
 }
 
 // ListIndexerSources mocks base method.
@@ -1276,6 +1367,21 @@ func (mr *MockStorageMockRecorder) ListQualityProfiles(ctx any, where ...any) *g
 	mr.mock.ctrl.T.Helper()
 	varargs := append([]any{ctx}, where...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListQualityProfiles", reflect.TypeOf((*MockStorage)(nil).ListQualityProfiles), varargs...)
+}
+
+// ListRunningJobs mocks base method.
+func (m *MockStorage) ListRunningJobs(ctx context.Context) ([]*storage.ActiveJob, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListRunningJobs", ctx)
+	ret0, _ := ret[0].([]*storage.ActiveJob)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListRunningJobs indicates an expected call of ListRunningJobs.
+func (mr *MockStorageMockRecorder) ListRunningJobs(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListRunningJobs", reflect.TypeOf((*MockStorage)(nil).ListRunningJobs), ctx)
 }
 
 // ListSeasonMetadata mocks base method.
