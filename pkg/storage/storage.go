@@ -117,6 +117,7 @@ type MovieStorage interface {
 	ListMoviesByState(ctx context.Context, state MovieState) ([]*Movie, error)
 	UpdateMovieState(ctx context.Context, id int64, state MovieState, metadata *TransitionStateMetadata) error
 	UpdateMovieMovieFileID(ctx context.Context, id int64, fileID int64) error
+	UpdateMovieQualityProfile(ctx context.Context, id int64, qualityProfileID int32) error
 	UpdateMovie(ctx context.Context, movie model.Movie, where ...sqlite.BoolExpression) error
 
 	GetMovieFilesByMovieName(ctx context.Context, name string) ([]*model.MovieFile, error)
