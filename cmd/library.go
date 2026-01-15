@@ -330,7 +330,20 @@ func generateMoviesWithGeneratedNames(ctx context.Context, store storage.Storage
 
 		// Clean filename
 		filename = cleanFilename(filename)
-		filePath := filepath.Join(outputDir, filename)
+
+		// Create movie directory (e.g., "Movie Title (2020)/")
+		dirName := title
+		if year > 0 {
+			dirName = fmt.Sprintf("%s (%d)", title, year)
+		}
+		dirName = cleanFilename(dirName)
+		movieDir := filepath.Join(outputDir, dirName)
+		if err := os.MkdirAll(movieDir, 0755); err != nil {
+			log.Warnf("failed to create movie directory %s: %v", movieDir, err)
+			continue
+		}
+
+		filePath := filepath.Join(movieDir, filename)
 
 		if err := createEmptyMediaFile(filePath, filepath.Ext(filename)); err != nil {
 			log.Warnf("failed to create movie file %s: %v", filename, err)

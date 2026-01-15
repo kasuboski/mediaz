@@ -1211,6 +1211,21 @@ func (m MediaManager) UpdateMovieMonitored(ctx context.Context, movieID int64, m
 	return movie, nil
 }
 
+func (m MediaManager) UpdateMovieQualityProfile(ctx context.Context, movieID int64, qualityProfileID int32) (*storage.Movie, error) {
+	err := m.storage.UpdateMovieQualityProfile(ctx, movieID, qualityProfileID)
+	if err != nil {
+		return nil, err
+	}
+
+	movie, err := m.storage.GetMovie(ctx, movieID)
+	if err != nil {
+		return nil, err
+	}
+
+	logger.FromCtx(ctx).Info("updated quality profile", zap.Int64("movie_id", movieID), zap.Int32("quality_profile_id", qualityProfileID))
+	return movie, nil
+}
+
 func (m MediaManager) UpdateSeriesMonitored(ctx context.Context, seriesID int64, monitored bool) (*storage.Series, error) {
 	monitoredInt := int32(0)
 	if monitored {

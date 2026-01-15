@@ -466,6 +466,44 @@ func TestSQLite_UpdateMovieMovieFileID(t *testing.T) {
 	})
 }
 
+func TestSQLite_UpdateMovieQualityProfile(t *testing.T) {
+	t.Run("updates only quality profile id", func(t *testing.T) {
+		ctx := context.Background()
+		store := initSqlite(t, ctx)
+		require.NotNil(t, store)
+
+		path := "Title/Title.mkv"
+		newMovie := storage.Movie{
+			Movie: model.Movie{
+				Monitored:        1,
+				QualityProfileID: 1,
+				Path:             &path,
+			},
+		}
+
+		movieID, err := store.CreateMovie(ctx, newMovie, storage.MovieStateDiscovered)
+		require.NoError(t, err)
+
+		err = store.UpdateMovieQualityProfile(ctx, movieID, 3)
+		require.NoError(t, err)
+
+		movie, err := store.GetMovie(ctx, movieID)
+		require.NoError(t, err)
+
+		assert.Equal(t, int32(1), movie.Monitored, "Monitored should remain unchanged")
+		assert.Equal(t, int32(3), movie.QualityProfileID, "QualityProfileID should be updated")
+	})
+
+	t.Run("no error for non-existent movie", func(t *testing.T) {
+		ctx := context.Background()
+		store := initSqlite(t, ctx)
+		require.NotNil(t, store)
+
+		err := store.UpdateMovieQualityProfile(ctx, 999, 3)
+		assert.NoError(t, err, "UpdateMovieQualityProfile should not error for non-existent movie")
+	})
+}
+
 func TestSQLite_GetMovieByMovieFileID(t *testing.T) {
 	t.Run("get movie by movie file id", func(t *testing.T) {
 		ctx := context.Background()

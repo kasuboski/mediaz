@@ -398,6 +398,15 @@ func (s *SQLite) UpdateMovie(ctx context.Context, movie model.Movie, where ...sq
 	return err
 }
 
+// UpdateMovieQualityProfile updates only the quality profile id for a movie
+func (s *SQLite) UpdateMovieQualityProfile(ctx context.Context, id int64, qualityProfileID int32) error {
+	stmt := table.Movie.UPDATE().
+		SET(table.Movie.QualityProfileID.SET(sqlite.Int32(qualityProfileID))).
+		WHERE(table.Movie.ID.EQ(sqlite.Int64(id)))
+	_, err := s.handleStatement(ctx, stmt)
+	return err
+}
+
 // UpdateMovieState updates the transition state of a movie. Metadata is optional and can be nil
 func (s *SQLite) UpdateMovieState(ctx context.Context, id int64, state storage.MovieState, metadata *storage.TransitionStateMetadata) error {
 	movie, err := s.GetMovie(ctx, id)

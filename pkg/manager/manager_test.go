@@ -1938,3 +1938,56 @@ func TestMediaManager_CancelJob(t *testing.T) {
 		assert.Equal(t, storage.ErrNotFound, err)
 	})
 }
+
+func TestUpdateMovieQualityProfile(t *testing.T) {
+	t.Run("successfully updates quality profile", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		store, err := mediaSqlite.New(context.Background(), ":memory:")
+		require.NoError(t, err)
+
+		schemas, err := storage.ReadSchemaFiles("../storage/sqlite/schema/schema.sql", "../storage/sqlite/schema/defaults.sql")
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		err = store.Init(ctx, schemas...)
+		require.NoError(t, err)
+
+		releaseDate := time.Now().AddDate(0, 0, -1).Format(tmdb.ReleaseDateFormat)
+		tmdbHttpMock := mhttpMock.NewMockHTTPClient(ctrl)
+		tmdbHttpMock.EXPECT().Do(gomock.Any()).Return(mediaDetailsResponse("test movie", 120, releaseDate), nil).Times(1)
+
+		tClient, err := tmdb.New("https://api.themoviedb.org", "1234", tmdb.WithHTTPClient(tmdbHttpMock))
+		require.NoError(t, err)
+
+		mockFactory := downloadMock.NewMockFactory(ctrl)
+		m := New(tClient, nil, nil, store, mockFactory, config.Manager{}, config.Config{})
+
+		req := AddMovieRequest{
+			TMDBID:           1234,
+			QualityProfileID: 1,
+		}
+		movie, err := m.AddMovieToLibrary(ctx, req)
+		require.NoError(t, err)
+
+		result, err := m.UpdateMovieQualityProfile(ctx, int64(movie.ID), 3)
+		require.NoError(t, err)
+		assert.Equal(t, int32(3), result.QualityProfileID)
+	})
+
+	t.Run("returns error for non-existent movie", func(t *testing.T) {
+		store, err := mediaSqlite.New(context.Background(), ":memory:")
+		require.NoError(t, err)
+
+		schemas, err := storage.ReadSchemaFiles("../storage/sqlite/schema/schema.sql", "../storage/sqlite/schema/defaults.sql")
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		err = store.Init(ctx, schemas...)
+		require.NoError(t, err)
+
+		m := MediaManager{storage: store}
+		_, err = m.UpdateMovieQualityProfile(ctx, 999, 3)
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "rows")
+	})
+}
