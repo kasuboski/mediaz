@@ -611,13 +611,24 @@ Error: near "COLUMN": syntax error
 
 ### Regenerating After Schema Changes
 
-```bash
-# Apply migration (via server startup)
-./mediaz serve
+**CRITICAL**: When you modify `schema.sql`, you must regenerate the Jet models before the Go code will compile.
 
-# Regenerate Jet models
+```bash
+# Generate schema (creates Jet models from schema.sql)
+go run main.go generate schema
+
+# Then regenerate other code
 go generate ./...
 ```
+
+**Handling Breaking Changes Workflow:**
+
+When your code references new fields that don't exist yet in the generated models:
+
+1. **Comment out breaking code** - Any Go code that references the new field
+2. **Run schema generation** - `go run main.go generate schema`
+3. **Uncomment the code** - Now the field exists in the generated models
+4. **Verify** - Run `go build ./...` to confirm compilation
 
 This updates:
 - `pkg/storage/sqlite/schema/gen/model/*.go` - Struct definitions

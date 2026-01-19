@@ -1,12 +1,12 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { Calendar, Clock, Star, Globe, ExternalLink, MoreVertical, RefreshCw, Trash2, Search } from "lucide-react";
+import { Calendar, Clock, Star, ExternalLink, RefreshCw, Trash2, Search, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { RequestModal } from "@/components/media/RequestModal";
+import { MediaActionBar, MediaAction } from "@/components/media/MediaActionBar";
 import { useMovieDetail, useSearchMovie } from "@/lib/queries";
 import { useState } from "react";
-import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   AlertDialog,
@@ -18,12 +18,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { metadataApi, moviesApi } from "@/lib/api";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
@@ -33,11 +27,11 @@ export default function MovieDetail() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [showRequestModal, setShowRequestModal] = useState(false);
+  const [showEditMonitoringModal, setShowEditMonitoringModal] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteFiles, setDeleteFiles] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [isTogglingMonitoring, setIsTogglingMonitoring] = useState(false);
 
   const tmdbID = parseInt(id || '0');
   const { data: movie, isLoading, error } = useMovieDetail(tmdbID);
@@ -53,22 +47,6 @@ export default function MovieDetail() {
       console.error(error);
     } finally {
       setIsRefreshing(false);
-    }
-  };
-
-  const handleMonitoringToggle = async () => {
-    if (!movie?.id) return;
-
-    setIsTogglingMonitoring(true);
-    try {
-      await moviesApi.updateMovieMonitored(movie.id, !movie.monitored);
-      await queryClient.refetchQueries({ queryKey: ['movies', 'detail', tmdbID], exact: true });
-      toast.success(!movie.monitored ? "Monitoring enabled" : "Monitoring disabled");
-    } catch (error) {
-      toast.error("Failed to update monitoring status");
-      console.error(error);
-    } finally {
-      setIsTogglingMonitoring(false);
     }
   };
 
@@ -131,17 +109,59 @@ export default function MovieDetail() {
     ? `https://image.tmdb.org/t/p/w500${movie.posterPath}`
     : "/placeholder.svg";
 
+  const mediaActions: MediaAction[] = movie.libraryStatus
+    ? [
+        {
+          icon: Settings,
+          label: "Edit",
+          onClick: () => setShowEditMonitoringModal(true),
+        },
+        ...(movie.monitored
+          ? [
+              {
+                icon: Search,
+                label: "Search",
+                onClick: handleSearch,
+                disabled: searchMovie.isPending,
+                loading: searchMovie.isPending,
+              },
+            ]
+          : []),
+        {
+          icon: RefreshCw,
+          label: "Refresh",
+          onClick: handleRefreshMetadata,
+          disabled: isRefreshing,
+          loading: isRefreshing,
+        },
+        {
+          icon: Trash2,
+          label: "Delete",
+          onClick: () => setShowDeleteModal(true),
+          disabled: isDeleting,
+          variant: "destructive" as const,
+        },
+      ]
+    : [];
+
   return (
     <div className="min-h-screen">
       {/* Hero Section with Backdrop */}
-      <div 
+      <div
         className="relative h-96 bg-cover bg-center"
-        style={{ 
+        style={{
           backgroundImage: backdropUrl ? `url(${backdropUrl})` : 'none',
           backgroundColor: backdropUrl ? 'transparent' : 'hsl(var(--muted))'
         }}
       >
         <div className="absolute inset-0 bg-gradient-hero" />
+
+        {mediaActions.length > 0 && (
+          <div className="absolute top-4 right-8 z-[1]">
+            <MediaActionBar actions={mediaActions} />
+          </div>
+        )}
+
         <div className="absolute bottom-0 left-0 right-0 p-8">
           <div className="container mx-auto">
             <div className="flex items-end gap-6">
@@ -151,22 +171,7 @@ export default function MovieDetail() {
                 className="w-48 h-72 object-cover rounded-lg shadow-modal border border-border/20"
               />
               <div className="flex-1 text-white">
-                <div className="flex items-center gap-3 mb-2">
-                  <h1 className="text-4xl font-bold">{movie.title}</h1>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-white hover:bg-white/20">
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start" side="right">
-                      <DropdownMenuItem onClick={handleRefreshMetadata} disabled={isRefreshing}>
-                        <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-                        Refresh Metadata
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
+                <h1 className="text-4xl font-bold mb-2">{movie.title}</h1>
                 <div className="flex items-center gap-4 text-sm opacity-90 mb-4">
                   {movie.year && (
                     <div className="flex items-center gap-1">
@@ -230,18 +235,7 @@ export default function MovieDetail() {
 
           <div className="lg:col-span-1">
             <div className="sticky top-8">
-              {movie.libraryStatus ? (
-                <Button
-                  variant="destructive"
-                  className="w-full mb-4"
-                  size="lg"
-                  onClick={() => setShowDeleteModal(true)}
-                  disabled={isDeleting}
-                >
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Delete Movie
-                </Button>
-              ) : (
+              {!movie.libraryStatus && (
                 <Button
                   onClick={() => setShowRequestModal(true)}
                   className="w-full mb-4 bg-gradient-primary hover:opacity-90"
@@ -266,32 +260,11 @@ export default function MovieDetail() {
                       <span>{movie.runtime} minutes</span>
                     </div>
                   )}
-                  {movie.libraryStatus && (
-                    <div className="flex justify-between items-center py-2 border-b border-border/50">
-                      <span className="text-muted-foreground">Monitoring</span>
-                      <Switch
-                        checked={movie.monitored}
-                        onCheckedChange={handleMonitoringToggle}
-                        disabled={isTogglingMonitoring}
-                      />
-                    </div>
-                  )}
                   <div className="flex justify-between items-center py-2">
                     <span className="text-muted-foreground">TMDB ID</span>
                     <span>{movie.tmdbID}</span>
                   </div>
                 </div>
-                {movie.libraryStatus && movie.monitored && (
-                  <Button
-                    onClick={handleSearch}
-                    disabled={searchMovie.isPending}
-                    variant="outline"
-                    className="w-full mt-4"
-                  >
-                    <Search className="h-4 w-4 mr-2" />
-                    {searchMovie.isPending ? "Searching..." : "Search for Movie"}
-                  </Button>
-                )}
               </div>
             </div>
           </div>
@@ -304,6 +277,19 @@ export default function MovieDetail() {
         mediaType="movie"
         mediaTitle={movie.title}
         tmdbID={movie.tmdbID}
+      />
+
+      <RequestModal
+        isOpen={showEditMonitoringModal}
+        onClose={() => setShowEditMonitoringModal(false)}
+        mediaType="movie"
+        mediaTitle={movie.title}
+        tmdbID={movie.tmdbID}
+        mode="edit"
+        currentMovieMonitoring={{
+          movieID: movie.id!,
+          qualityProfileID: movie.qualityProfileID
+        }}
       />
 
       <AlertDialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>

@@ -164,13 +164,23 @@ func (m MediaManager) getOrCreateSeason(ctx context.Context, seriesID int64, sea
 		return int64(season.ID), nil
 	}
 
-	// Season doesn't exist, create new one with metadata link if available
+	series, err := m.storage.GetSeries(ctx, table.Series.ID.EQ(sqlite.Int64(seriesID)))
+	if err != nil {
+		log.Error("failed to get series for monitor_new_seasons check", zap.Error(err))
+		return 0, err
+	}
+
+	monitored := int32(0)
+	if series.MonitorNewSeasons == 1 {
+		monitored = 1
+	}
+
 	newSeason := storage.Season{
 		Season: model.Season{
 			SeriesID:         int32(seriesID),
 			SeasonNumber:     seasonNumber,
 			SeasonMetadataID: seasonMetadataID,
-			Monitored:        0,
+			Monitored:        monitored,
 		},
 	}
 

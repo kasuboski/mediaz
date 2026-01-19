@@ -130,6 +130,7 @@ type TVDetailResult struct {
 	Path                *string         `json:"path,omitempty"`
 	QualityProfileID    *int32          `json:"qualityProfileID,omitempty"`
 	Monitored           *bool           `json:"monitored,omitempty"`
+	MonitorNewSeasons   *bool           `json:"monitorNewSeasons,omitempty"`
 	Seasons             []SeasonResult  `json:"seasons,omitempty"`
 	ExternalIDs         *ExternalIDs    `json:"externalIds,omitempty"`
 	WatchProviders      []WatchProvider `json:"watchProviders,omitempty"`
@@ -156,15 +157,18 @@ type AddMovieRequest struct {
 // AddSeriesRequest describes inputs to start managing a TV series.
 // TMDBID must refer to a valid TMDB series; QualityProfileID must match an existing quality profile.
 // MonitoredEpisodes is a list of episode TMDB IDs to monitor.
+// MonitorNewSeasons indicates whether new seasons should be automatically monitored.
 type AddSeriesRequest struct {
 	TMDBID            int     `json:"tmdbID"`
 	QualityProfileID  int32   `json:"qualityProfileID"`
 	MonitoredEpisodes []int32 `json:"monitoredEpisodes,omitempty"`
+	MonitorNewSeasons bool    `json:"monitorNewSeasons,omitempty"`
 }
 
 type UpdateSeriesMonitoringRequest struct {
 	MonitoredEpisodes []int32 `json:"monitoredEpisodes"`
 	QualityProfileID  *int32  `json:"qualityProfileID,omitempty"`
+	MonitorNewSeasons *bool   `json:"monitorNewSeasons,omitempty"`
 }
 
 type IndexerResponse struct {

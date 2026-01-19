@@ -27,7 +27,7 @@ func runMigrations(db *sql.DB) error {
 
 	dbDriver, err := sqlite3.WithInstance(db, &sqlite3.Config{
 		MigrationsTable: "schema_migrations",
-		NoTxWrap:        false,
+		NoTxWrap:        true,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create database driver: %w", err)

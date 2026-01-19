@@ -1,9 +1,10 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { Calendar, Tv, Users, Film, Play, MoreVertical, RefreshCw, Trash2, Search, Loader2 } from "lucide-react";
+import { Calendar, Tv, Users, Film, Play, RefreshCw, Trash2, Search, Loader2, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { RequestModal } from "@/components/media/RequestModal";
+import { MediaActionBar, MediaAction } from "@/components/media/MediaActionBar";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -20,12 +21,6 @@ import {
 import { useState } from "react";
 import { useTVDetail, useSearchSeries, useSearchSeason, useSearchEpisode } from "@/lib/queries";
 import { type SeasonResult, type EpisodeResult, tvApi } from "@/lib/api";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { metadataApi } from "@/lib/api";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
@@ -333,6 +328,41 @@ export default function TVDetail() {
     ? `https://image.tmdb.org/t/p/w500${show.posterPath}`
     : "/placeholder.svg";
 
+  const mediaActions: MediaAction[] = show.libraryStatus
+    ? [
+      {
+        icon: Settings,
+        label: "Monitoring",
+        onClick: () => setShowEditMonitoringModal(true),
+      },
+      ...(show.monitored
+        ? [
+          {
+            icon: Search,
+            label: "Search",
+            onClick: handleSearchSeries,
+            disabled: isSeriesSearchDisabled(),
+            loading: searchingSeries,
+          },
+        ]
+        : []),
+      {
+        icon: RefreshCw,
+        label: "Refresh",
+        onClick: handleRefreshMetadata,
+        disabled: isRefreshing,
+        loading: isRefreshing,
+      },
+      {
+        icon: Trash2,
+        label: "Delete",
+        onClick: () => setShowDeleteModal(true),
+        disabled: isDeleting,
+        variant: "destructive" as const,
+      },
+    ]
+    : [];
+
   return (
     <div className="min-h-screen">
       <div
@@ -345,25 +375,12 @@ export default function TVDetail() {
         }}
       >
         <div className="absolute inset-0 bg-gradient-hero" />
-        <div className="absolute top-6 right-6 flex gap-2">
-          {show.voteAverage != null ? (
-            <span
-              className="rating-badge bg-white/15 text-white border-white/20"
-              aria-label={`TMDB rating ${show.voteAverage.toFixed(1)} of 10`}
-              title={`TMDB rating ${show.voteAverage.toFixed(1)}/10`}
-            >
-              {Math.round(show.voteAverage * 10)}%
-            </span>
-          ) : (
-            <span
-              className="rating-badge bg-white/10 text-white/90 border-white/15"
-              aria-label="Not rated"
-              title="Not rated"
-            >
-              NR
-            </span>
-          )}
-        </div>
+
+        {mediaActions.length > 0 && (
+          <div className="absolute top-4 right-8 z-[1]">
+            <MediaActionBar actions={mediaActions} />
+          </div>
+        )}
         <div className="absolute bottom-0 left-0 right-0 p-8">
           <div className="container mx-auto">
             <div className="flex items-end gap-6">
@@ -379,22 +396,7 @@ export default function TVDetail() {
                 }}
               />
               <div className="flex-1 text-white">
-                <div className="flex items-center gap-3 mb-2">
-                  <h1 className="hero-title">{show.title}</h1>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-white hover:bg-white/20">
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start" side="right">
-                      <DropdownMenuItem onClick={handleRefreshMetadata} disabled={isRefreshing}>
-                        <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-                        Refresh Metadata
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
+                <h1 className="hero-title mb-2">{show.title}</h1>
                 <div className="flex items-center gap-4 text-sm opacity-90 mb-4">
                   {show.firstAirDate && (
                     <div className="flex items-center gap-1">
@@ -521,18 +523,7 @@ export default function TVDetail() {
 
           <div className="lg:col-span-1">
             <div className="sticky top-8">
-              {show.libraryStatus ? (
-                <Button
-                  variant="destructive"
-                  className="w-full mb-4"
-                  size="lg"
-                  onClick={() => setShowDeleteModal(true)}
-                  disabled={isDeleting}
-                >
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Delete Series
-                </Button>
-              ) : (
+              {!show.libraryStatus && (
                 <Button
                   onClick={() => setShowRequestModal(true)}
                   className="w-full mb-4 bg-gradient-primary hover:opacity-90"
@@ -548,32 +539,16 @@ export default function TVDetail() {
                 </CardHeader>
                 <CardContent className="pt-0">
                   <div className="space-y-3 text-sm">
+                    {show.libraryStatus && (
+                      <div className="flex justify-between items-center py-2 border-b border-border/50">
+                        <span className="text-muted-foreground">Monitoring</span>
+                        <span className="font-medium">{show.monitored ? "Monitored" : "Not Monitored"}</span>
+                      </div>
+                    )}
                     {show.status && (
                       <div className="flex justify-between items-center py-2 border-b border-border/50">
                         <span className="text-muted-foreground">Status</span>
                         <span className="font-medium">{show.status}</span>
-                      </div>
-                    )}
-                    {show.libraryStatus && (
-                      <div className="flex justify-between items-center py-2 border-b border-border/50">
-                        <span className="text-muted-foreground">Monitoring</span>
-                        <div className="flex items-center gap-2">
-                          {show.monitored && (
-                            <SearchButton
-                              onClick={handleSearchSeries}
-                              disabled={isSeriesSearchDisabled()}
-                              isSearching={isSeriesSearchDisabled()}
-                            />
-                          )}
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => setShowEditMonitoringModal(true)}
-                            className="h-8"
-                          >
-                            Edit Monitoring
-                          </Button>
-                        </div>
                       </div>
                     )}
                     {show.firstAirDate && (
@@ -708,7 +683,8 @@ export default function TVDetail() {
         currentMonitoring={{
           seriesID: show.id,
           seasons: show.seasons || [],
-          qualityProfileID: show.qualityProfileID
+          qualityProfileID: show.qualityProfileID,
+          monitorNewSeasons: show.monitorNewSeasons,
         }}
       />
 

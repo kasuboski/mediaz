@@ -20,7 +20,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { ChevronDown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useMovieQualityProfiles, useSeriesQualityProfiles, useAddMovie, useAddSeries, useUpdateSeriesMonitoring } from "@/lib/queries";
+import { useMovieQualityProfiles, useSeriesQualityProfiles, useAddMovie, useAddSeries, useUpdateSeriesMonitoring, useUpdateMovieQualityProfile } from "@/lib/queries";
 import { ApiError, tvApi, type SeasonResult } from "@/lib/api";
 
 interface RequestModalProps {
@@ -34,6 +34,11 @@ interface RequestModalProps {
     seriesID?: number;
     seasons: SeasonResult[];
     qualityProfileID?: number;
+    monitorNewSeasons?: boolean;
+  };
+  currentMovieMonitoring?: {
+    movieID: number;
+    qualityProfileID?: number;
   };
 }
 
@@ -44,13 +49,15 @@ export function RequestModal({
   mediaTitle,
   tmdbID,
   mode = "request",
-  currentMonitoring
+  currentMonitoring,
+  currentMovieMonitoring
 }: RequestModalProps) {
   const [selectedProfileId, setSelectedProfileId] = useState<string>("");
   const [selectedEpisodes, setSelectedEpisodes] = useState<Set<number>>(new Set());
   const [expandedSeasons, setExpandedSeasons] = useState<Set<number>>(new Set());
   const [seriesSeasons, setSeriesSeasons] = useState<SeasonResult[]>([]);
   const [isLoadingSeasons, setIsLoadingSeasons] = useState(false);
+  const [monitorNewSeasons, setMonitorNewSeasons] = useState(false);
   const { toast } = useToast();
 
   const { data: qualityProfiles = [], isLoading: isLoadingProfiles } =
@@ -62,9 +69,10 @@ export function RequestModal({
   const addMovie = useAddMovie();
   const addSeries = useAddSeries();
   const updateSeriesMonitoring = useUpdateSeriesMonitoring();
+  const updateMovieQualityProfile = useUpdateMovieQualityProfile();
 
   // Determine which mutation is running
-  const isSubmitting = addMovie.isPending || addSeries.isPending || updateSeriesMonitoring.isPending;
+  const isSubmitting = addMovie.isPending || addSeries.isPending || updateSeriesMonitoring.isPending || updateMovieQualityProfile.isPending;
 
   const isSeasonFullySelected = (season: SeasonResult) => {
     if (!season.episodes || season.episodes.length === 0) return false;
@@ -112,6 +120,14 @@ export function RequestModal({
       setSelectedEpisodes(new Set());
       setExpandedSeasons(new Set());
       setSeriesSeasons([]);
+      setMonitorNewSeasons(false);
+      return;
+    }
+
+    if (mode === "edit" && mediaType === "movie" && currentMovieMonitoring) {
+      if (currentMovieMonitoring.qualityProfileID) {
+        setSelectedProfileId(currentMovieMonitoring.qualityProfileID.toString());
+      }
       return;
     }
 
@@ -129,6 +145,7 @@ export function RequestModal({
       if (currentMonitoring.qualityProfileID) {
         setSelectedProfileId(currentMonitoring.qualityProfileID.toString());
       }
+      setMonitorNewSeasons(currentMonitoring.monitorNewSeasons ?? false);
       return;
     }
 
@@ -158,7 +175,7 @@ export function RequestModal({
           setIsLoadingSeasons(false);
         });
     }
-  }, [isOpen, mediaType, tmdbID, mode, currentMonitoring, toast]);
+  }, [isOpen, mediaType, tmdbID, mode, currentMonitoring, currentMovieMonitoring, toast]);
 
   const handleSubmit = async () => {
     if (!selectedProfileId) {
@@ -172,6 +189,19 @@ export function RequestModal({
 
     try {
       if (mediaType === "movie") {
+        if (mode === "edit" && currentMovieMonitoring?.movieID) {
+          await updateMovieQualityProfile.mutateAsync({
+            movieID: currentMovieMonitoring.movieID,
+            qualityProfileID: parseInt(selectedProfileId),
+          });
+          toast({
+            title: "Quality Profile Updated",
+            description: `${mediaTitle} quality profile has been updated successfully!`,
+          });
+          onClose();
+          return;
+        }
+
         const request = {
           tmdbID: tmdbID,
           qualityProfileID: parseInt(selectedProfileId),
@@ -190,7 +220,7 @@ export function RequestModal({
         const qualityProfileID = selectedProfileId ? parseInt(selectedProfileId) : undefined;
         await updateSeriesMonitoring.mutateAsync({
           seriesID: currentMonitoring.seriesID,
-          request: { monitoredEpisodes, qualityProfileID }
+          request: { monitoredEpisodes, qualityProfileID, monitorNewSeasons }
         });
         toast({
           title: "Monitoring Updated",
@@ -204,6 +234,7 @@ export function RequestModal({
         tmdbID: tmdbID,
         qualityProfileID: parseInt(selectedProfileId),
         monitoredEpisodes: Array.from(selectedEpisodes),
+        monitorNewSeasons,
       };
       await addSeries.mutateAsync(request);
       toast({
@@ -234,9 +265,21 @@ export function RequestModal({
     setSelectedProfileId("");
   };
 
+  const dialogTitle = mode === "edit"
+    ? `Monitoring - ${mediaTitle}`
+    : `Request ${mediaType === "movie" ? "Movie" : "Series"}`;
+
+  const dialogDescription = mode === "edit"
+    ? "Update quality profile and episode monitoring settings."
+    : `Add ${mediaTitle} to your library.`;
+
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>{dialogTitle}</DialogTitle>
+          <DialogDescription>{dialogDescription}</DialogDescription>
+        </DialogHeader>
         <div className="py-4">
           <label htmlFor="quality-profile" className="text-sm font-medium mb-2 block">
             Quality Profile
@@ -282,6 +325,22 @@ export function RequestModal({
         </div>
 
         {mediaType === 'tv' && (
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="monitorNewSeasons"
+              checked={monitorNewSeasons}
+              onCheckedChange={(checked) => setMonitorNewSeasons(checked === true)}
+            />
+            <label
+              htmlFor="monitorNewSeasons"
+              className="text-sm font-medium leading-none cursor-pointer"
+            >
+              Monitor future seasons automatically
+            </label>
+          </div>
+        )}
+
+        {mediaType === 'tv' && (
           <div className="py-4">
             <label className="text-sm font-medium mb-3 block">Monitor Episodes</label>
 
@@ -302,12 +361,7 @@ export function RequestModal({
                       <div key={season.seasonNumber} className="border-b last:border-b-0">
                         <div className="flex items-center p-3 hover:bg-muted/30 transition-colors">
                           <Checkbox
-                            checked={isFullySelected}
-                            ref={(el) => {
-                              if (el) {
-                                el.indeterminate = isPartiallySelected;
-                              }
-                            }}
+                            checked={isPartiallySelected ? "indeterminate" : isFullySelected}
                             onCheckedChange={() => toggleSeason(season)}
                           />
                           <button

@@ -270,13 +270,11 @@ func (m MediaManager) refreshSeriesEpisodes(ctx context.Context, series *storage
 
 		for _, episodeMeta := range episodeMetadataList {
 			if !existingEpisodeNumbers[episodeMeta.Number] {
-				// New episodes inherit the series' monitored status
-				// This ensures unmonitored series don't trigger searches/downloads
 				episode := storage.Episode{
 					Episode: model.Episode{
 						EpisodeMetadataID: ptr(episodeMeta.ID),
 						SeasonID:          int32(seasonID),
-						Monitored:         int32(series.Monitored),
+						Monitored:         seasonEntity.Monitored,
 						EpisodeNumber:     episodeMeta.Number,
 					},
 				}

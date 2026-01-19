@@ -671,7 +671,7 @@ func (s *SQLite) ListMovieMetadata(ctx context.Context) ([]*model.MovieMetadata,
 // GetMovieMetadata get a movie metadata for the given where
 func (s *SQLite) GetMovieMetadata(ctx context.Context, where sqlite.BoolExpression) (*model.MovieMetadata, error) {
 	meta := &model.MovieMetadata{}
-	stmt := table.Movie.SELECT(table.MovieMetadata.AllColumns).FROM(table.MovieMetadata).WHERE(where).LIMIT(1)
+	stmt := table.MovieMetadata.SELECT(table.MovieMetadata.AllColumns).WHERE(where).LIMIT(1)
 	err := stmt.QueryContext(ctx, s.db, meta)
 	if err != nil {
 		if errors.Is(err, qrm.ErrNoRows) {

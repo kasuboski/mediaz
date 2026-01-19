@@ -101,7 +101,8 @@ CREATE TABLE IF NOT EXISTS "series" (
     "added" DATETIME DEFAULT CURRENT_TIMESTAMP,
     "quality_profile_id" INTEGER NOT NULL,
     "series_metadata_id" INTEGER UNIQUE,
-    "last_search_time" DATETIME
+    "last_search_time" DATETIME,
+    "monitor_new_seasons" INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS "series_metadata" (
@@ -182,7 +183,7 @@ CREATE TABLE IF NOT EXISTS "movie_transition" (
     "from_state" TEXT,
     "most_recent" BOOLEAN NOT NULL,
     "sort_key" INTEGER NOT NULL,
-    "download_client_id" INTEGER REFERENCES "download_client"("id"),
+    "download_client_id" INTEGER REFERENCES "download_client"("id") ON DELETE SET NULL,
     "download_id" TEXT,
     "created_at" DATETIME DEFAULT CURRENT_TIMESTAMP,
     "updated_at" DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -206,7 +207,7 @@ CREATE TABLE IF NOT EXISTS "season_transition" (
     "from_state" TEXT,
     "most_recent" BOOLEAN NOT NULL,
     "sort_key" INTEGER NOT NULL,
-    "download_client_id" INTEGER REFERENCES "download_client"("id"),
+    "download_client_id" INTEGER REFERENCES "download_client"("id") ON DELETE SET NULL,
     "download_id" TEXT,
     "is_entire_season_download" BOOLEAN,
     "created_at" DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -220,7 +221,7 @@ CREATE TABLE IF NOT EXISTS "episode_transition" (
     "from_state" TEXT,
     "most_recent" BOOLEAN NOT NULL,
     "sort_key" INTEGER NOT NULL,
-    "download_client_id" INTEGER REFERENCES "download_client"("id"),
+    "download_client_id" INTEGER REFERENCES "download_client"("id") ON DELETE SET NULL,
     "download_id" TEXT,
     "is_entire_season_download" BOOLEAN,
     "created_at" DATETIME DEFAULT CURRENT_TIMESTAMP,

@@ -361,7 +361,7 @@ func generateMoviesWithGeneratedNames(ctx context.Context, store storage.Storage
 
 func generateTVFromDB(ctx context.Context, store storage.Storage, outputDir string, log *zap.SugaredLogger) (int, int, int, error) {
 	// Get all series
-	allSeries, err := store.ListSeries(ctx, nil)
+	allSeries, err := store.ListSeries(ctx)
 	if err != nil && err != storage.ErrNotFound {
 		return 0, 0, 0, fmt.Errorf("failed to list series: %w", err)
 	}

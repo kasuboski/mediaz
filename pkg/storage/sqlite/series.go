@@ -1083,9 +1083,9 @@ func (s *SQLite) UpdateSeriesState(ctx context.Context, id int64, state storage.
 
 // UpdateSeries updates fields on a series
 func (s *SQLite) UpdateSeries(ctx context.Context, series model.Series, where ...sqlite.BoolExpression) error {
-	stmt := table.Series.UPDATE(table.Series.Monitored, table.Series.QualityProfileID).MODEL(series)
+	stmt := table.Series.UPDATE(table.Series.Monitored, table.Series.QualityProfileID, table.Series.MonitorNewSeasons).MODEL(series)
 	if series.LastSearchTime != nil {
-		stmt = table.Series.UPDATE(table.Series.Monitored, table.Series.LastSearchTime, table.Series.QualityProfileID).MODEL(series)
+		stmt = table.Series.UPDATE(table.Series.Monitored, table.Series.LastSearchTime, table.Series.QualityProfileID, table.Series.MonitorNewSeasons).MODEL(series)
 	}
 	for _, w := range where {
 		stmt = stmt.WHERE(w)

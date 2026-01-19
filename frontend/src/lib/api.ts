@@ -87,6 +87,7 @@ export interface MovieDetailResult {
  * Transformed movie detail data for the MovieDetail component
  */
 export interface MovieDetail {
+  id?: number;
   tmdbID: number;
   imdbID?: string;
   title: string;
@@ -154,6 +155,7 @@ export interface TVDetailResult {
   path?: string;
   qualityProfileID?: number;
   monitored?: boolean;
+  monitorNewSeasons?: boolean;
   seasons?: SeasonResult[];
   externalIds?: ExternalIDs;
   watchProviders?: WatchProvider[];
@@ -185,6 +187,7 @@ export interface TVDetail {
   path?: string;
   qualityProfileID?: number;
   monitored: boolean;
+  monitorNewSeasons: boolean;
   seasons: SeasonResult[];
   externalIds?: ExternalIDs;
   watchProviders: WatchProvider[];
@@ -270,11 +273,13 @@ export interface AddSeriesRequest {
   tmdbID: number;
   qualityProfileID: number;
   monitoredEpisodes?: number[];
+  monitorNewSeasons?: boolean;
 }
 
 export interface UpdateSeriesMonitoringRequest {
   monitoredEpisodes: number[];
   qualityProfileID?: number;
+  monitorNewSeasons?: boolean;
 }
 
 /**
@@ -397,6 +402,7 @@ function transformTVDetailResult(result: TVDetailResult): TVDetail {
     networks: result.networks ?? [],
     libraryStatus: result.libraryStatus !== 'Not In Library',
     monitored: result.monitored ?? false,
+    monitorNewSeasons: result.monitorNewSeasons ?? false,
     seasons: result.seasons ?? [],
     watchProviders: result.watchProviders ?? [],
   };
@@ -432,6 +438,13 @@ export const moviesApi = {
     return apiRequest<void>(`/library/movies/${movieID}/search`, {
       method: 'POST',
     });
+  },
+  async updateMovieQualityProfile(movieID: number, qualityProfileID: number): Promise<MovieDetail> {
+    const result = await apiRequest<MovieDetailResult>(`/library/movies/${movieID}/quality`, {
+      method: 'PATCH',
+      body: JSON.stringify({ qualityProfileId: qualityProfileID }),
+    });
+    return transformMovieDetailResult(result);
   },
 };
 

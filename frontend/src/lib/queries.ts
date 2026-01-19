@@ -609,6 +609,19 @@ export function useUpdateMovieMonitored() {
   });
 }
 
+export function useUpdateMovieQualityProfile() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ movieID, qualityProfileID }: { movieID: number; qualityProfileID: number }) =>
+      moviesApi.updateMovieQualityProfile(movieID, qualityProfileID),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.movies.detail(data.tmdbID) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.movies.library() });
+    },
+  });
+}
+
 export function useUpdateSeriesMonitored() {
   const queryClient = useQueryClient();
 
