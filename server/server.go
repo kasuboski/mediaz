@@ -24,8 +24,8 @@ import (
 )
 
 type GenericResponse struct {
-	Error    error `json:"error,omitempty"`
-	Response any   `json:"response"`
+	Error    string `json:"error,omitempty"`
+	Response any    `json:"response"`
 }
 
 type RefreshRequest struct {
@@ -50,8 +50,12 @@ func New(logger *zap.SugaredLogger, manager manager.MediaManager, config config.
 }
 
 func writeErrorResponse(w http.ResponseWriter, status int, err error) error {
+	errMsg := ""
+	if err != nil {
+		errMsg = err.Error()
+	}
 	return writeResponse(w, status, GenericResponse{
-		Error: err,
+		Error: errMsg,
 	})
 }
 
@@ -1195,17 +1199,13 @@ func (s Server) ListJobs() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		params, err := ParsePaginationParams(r)
 		if err != nil {
-			writeResponse(w, http.StatusBadRequest, GenericResponse{
-				Error: err,
-			})
+			writeErrorResponse(w, http.StatusBadRequest, err)
 			return
 		}
 
 		jobs, err := s.manager.ListJobs(r.Context(), nil, nil, params)
 		if err != nil {
-			writeResponse(w, http.StatusInternalServerError, GenericResponse{
-				Error: err,
-			})
+			writeErrorResponse(w, http.StatusInternalServerError, err)
 			return
 		}
 
@@ -1230,9 +1230,7 @@ func (s Server) GetJob() http.HandlerFunc {
 
 		jobs, err := s.manager.GetJob(r.Context(), id)
 		if err != nil {
-			writeResponse(w, http.StatusInternalServerError, GenericResponse{
-				Error: err,
-			})
+			writeErrorResponse(w, http.StatusInternalServerError, err)
 			return
 		}
 
@@ -1256,9 +1254,7 @@ func (s Server) CancelJob() http.HandlerFunc {
 
 		jobs, err := s.manager.CancelJob(r.Context(), id)
 		if err != nil {
-			writeResponse(w, http.StatusInternalServerError, GenericResponse{
-				Error: err,
-			})
+			writeErrorResponse(w, http.StatusInternalServerError, err)
 			return
 		}
 
@@ -1287,9 +1283,7 @@ func (s Server) CreateJob() http.HandlerFunc {
 
 		jobs, err := s.manager.CreateJob(r.Context(), request)
 		if err != nil {
-			writeResponse(w, http.StatusInternalServerError, GenericResponse{
-				Error: err,
-			})
+			writeErrorResponse(w, http.StatusInternalServerError, err)
 			return
 		}
 
