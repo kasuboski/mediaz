@@ -10,8 +10,8 @@ CREATE TABLE "series_new" (
     "last_search_time" DATETIME
 );
 
-INSERT INTO "series_new" ("id", "path", "monitored", "added", "quality_profile_id", "series_metadata_id")
-SELECT "id", "path", "monitored", "added", "quality_profile_id", "series_metadata_id" FROM "series";
+INSERT INTO "series_new" ("id", "path", "monitored", "added", "quality_profile_id", "series_metadata_id", "last_search_time")
+SELECT "id", "path", "monitored", "added", "quality_profile_id", "series_metadata_id", "last_search_time" FROM "series";
 
 DROP TABLE "series";
 ALTER TABLE "series_new" RENAME TO "series";
