@@ -18,5 +18,6 @@ type Series struct {
 	Added             *time.Time
 	QualityProfileID  int32
 	SeriesMetadataID  *int32
+	LastSearchTime    *time.Time
 	MonitorNewSeasons int32
 }

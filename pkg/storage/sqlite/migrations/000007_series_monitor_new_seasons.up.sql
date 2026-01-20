@@ -7,11 +7,12 @@ CREATE TABLE "series_new" (
     "added" DATETIME DEFAULT CURRENT_TIMESTAMP,
     "quality_profile_id" INTEGER NOT NULL,
     "series_metadata_id" INTEGER UNIQUE,
+    "last_search_time" DATETIME,
     "monitor_new_seasons" INTEGER NOT NULL DEFAULT 0
 );
 
-INSERT INTO "series_new" ("id", "path", "monitored", "added", "quality_profile_id", "series_metadata_id", "monitor_new_seasons")
-SELECT "id", "path", "monitored", "added", "quality_profile_id", "series_metadata_id", 0 FROM "series";
+INSERT INTO "series_new" ("id", "path", "monitored", "added", "quality_profile_id", "series_metadata_id", "last_search_time", "monitor_new_seasons")
+SELECT "id", "path", "monitored", "added", "quality_profile_id", "series_metadata_id", "last_search_time", 0 FROM "series";
 
 DROP TABLE "series";
 ALTER TABLE "series_new" RENAME TO "series";
