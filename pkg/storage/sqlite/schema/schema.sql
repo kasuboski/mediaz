@@ -101,7 +101,8 @@ CREATE TABLE IF NOT EXISTS "series" (
     "added" DATETIME DEFAULT CURRENT_TIMESTAMP,
     "quality_profile_id" INTEGER NOT NULL,
     "series_metadata_id" INTEGER UNIQUE,
-    "monitor_new_seasons" INTEGER NOT NULL DEFAULT 0
+    "last_search_time" DATETIME,
+    "monitor_new_seasons" INTEGER NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS "series_metadata" (
