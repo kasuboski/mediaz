@@ -22,6 +22,7 @@ type seasonTable struct {
 	SeasonNumber     sqlite.ColumnInteger
 	SeasonMetadataID sqlite.ColumnInteger
 	Monitored        sqlite.ColumnInteger
+	LastSearchTime   sqlite.ColumnTimestamp
 
 	AllColumns     sqlite.ColumnList
 	MutableColumns sqlite.ColumnList
@@ -67,8 +68,9 @@ func newSeasonTableImpl(schemaName, tableName, alias string) seasonTable {
 		SeasonNumberColumn     = sqlite.IntegerColumn("season_number")
 		SeasonMetadataIDColumn = sqlite.IntegerColumn("season_metadata_id")
 		MonitoredColumn        = sqlite.IntegerColumn("monitored")
-		allColumns             = sqlite.ColumnList{IDColumn, SeriesIDColumn, SeasonNumberColumn, SeasonMetadataIDColumn, MonitoredColumn}
-		mutableColumns         = sqlite.ColumnList{SeriesIDColumn, SeasonNumberColumn, SeasonMetadataIDColumn, MonitoredColumn}
+		LastSearchTimeColumn   = sqlite.TimestampColumn("last_search_time")
+		allColumns             = sqlite.ColumnList{IDColumn, SeriesIDColumn, SeasonNumberColumn, SeasonMetadataIDColumn, MonitoredColumn, LastSearchTimeColumn}
+		mutableColumns         = sqlite.ColumnList{SeriesIDColumn, SeasonNumberColumn, SeasonMetadataIDColumn, MonitoredColumn, LastSearchTimeColumn}
 	)
 
 	return seasonTable{
@@ -80,6 +82,7 @@ func newSeasonTableImpl(schemaName, tableName, alias string) seasonTable {
 		SeasonNumber:     SeasonNumberColumn,
 		SeasonMetadataID: SeasonMetadataIDColumn,
 		Monitored:        MonitoredColumn,
+		LastSearchTime:   LastSearchTimeColumn,
 
 		AllColumns:     allColumns,
 		MutableColumns: mutableColumns,

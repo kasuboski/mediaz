@@ -126,6 +126,7 @@ CREATE TABLE IF NOT EXISTS "season" (
     "season_number" INTEGER NOT NULL,
     "season_metadata_id" INTEGER,
     "monitored" INTEGER NOT NULL,
+    "last_search_time" DATETIME,
     FOREIGN KEY ("series_id") REFERENCES "series" ("id") ON DELETE CASCADE
 );
 
