@@ -476,6 +476,12 @@ func (m MediaManager) reconcileDiscoveredMovie(ctx context.Context, movie *stora
 		return fmt.Errorf("failed to get movie metadata: %w", err)
 	}
 
+	existingMovie, err := m.storage.GetMovieByMetadataID(ctx, int(metadata.ID))
+	if err == nil && existingMovie != nil {
+		log.Warn("metadata already linked to another movie, skipping", zap.Int32("metadata_id", metadata.ID), zap.Int32("existing_movie_id", existingMovie.ID), zap.String("path", *movie.Path))
+		return nil
+	}
+
 	err = m.storage.LinkMovieMetadata(ctx, int64(movie.ID), metadata.ID)
 	if err != nil {
 		return fmt.Errorf("failed to update movie: %w", err)
