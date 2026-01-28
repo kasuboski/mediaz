@@ -113,7 +113,7 @@ func TestEpisodeFileStorage(t *testing.T) {
 	assert.Greater(t, id, int64(0))
 
 	// Test getting the episode file
-	retrieved, err := store.GetEpisodeFiles(ctx, id)
+	retrieved, err := store.GetEpisodeFileByID(ctx, id)
 	assert.Nil(t, err)
 	assert.NotEmpty(t, retrieved)
 	assert.Equal(t, file.Quality, retrieved[0].Quality)
@@ -136,7 +136,7 @@ func TestEpisodeFileStorage(t *testing.T) {
 	assert.Empty(t, files)
 
 	// Test getting non-existent episode file
-	_, err = store.GetEpisodeFiles(ctx, id)
+	_, err = store.GetEpisodeFileByID(ctx, id)
 	assert.ErrorIs(t, err, storage.ErrNotFound)
 }
 

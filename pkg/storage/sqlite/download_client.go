@@ -19,7 +19,7 @@ func (s *SQLite) GetDownloadClient(ctx context.Context, id int64) (model.Downloa
 // ListDownloadClients lists all stored download clients
 func (s *SQLite) ListDownloadClients(ctx context.Context) ([]*model.DownloadClient, error) {
 	items := make([]*model.DownloadClient, 0)
-	stmt := table.Indexer.SELECT(table.DownloadClient.AllColumns).FROM(table.DownloadClient).ORDER_BY(table.DownloadClient.ID.ASC())
+	stmt := table.DownloadClient.SELECT(table.DownloadClient.AllColumns).FROM(table.DownloadClient).ORDER_BY(table.DownloadClient.ID.ASC())
 	err := stmt.QueryContext(ctx, s.db, &items)
 	return items, err
 }

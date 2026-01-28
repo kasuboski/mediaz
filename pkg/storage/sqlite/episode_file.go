@@ -10,8 +10,8 @@ import (
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/table"
 )
 
-// GetEpisodeFiles gets all episode files for an episode
-func (s *SQLite) GetEpisodeFiles(ctx context.Context, id int64) ([]*model.EpisodeFile, error) {
+// GetEpisodeFileByID gets all episode files for an episode
+func (s *SQLite) GetEpisodeFileByID(ctx context.Context, id int64) ([]*model.EpisodeFile, error) {
 	stmt := table.EpisodeFile.
 		SELECT(table.EpisodeFile.AllColumns).
 		FROM(table.EpisodeFile).
@@ -51,7 +51,7 @@ func (s *SQLite) UpdateEpisodeFile(ctx context.Context, id int32, file model.Epi
 		MODEL(file).
 		WHERE(table.EpisodeFile.ID.EQ(sqlite.Int32(id)))
 
-	_, err := stmt.ExecContext(ctx, s.db)
+	_, err := s.handleStatement(ctx, stmt)
 	return err
 }
 
@@ -69,9 +69,9 @@ func (s *SQLite) CreateEpisodeFile(ctx context.Context, file model.EpisodeFile) 
 	stmt := table.EpisodeFile.
 		INSERT(insertColumns).
 		MODEL(file).
-		RETURNING(table.EpisodeFile.ID).
 		ON_CONFLICT(table.EpisodeFile.ID).
-		DO_UPDATE(sqlite.SET(table.EpisodeFile.MutableColumns.SET(sqlite.ROW(setColumns...))))
+		DO_UPDATE(sqlite.SET(table.EpisodeFile.MutableColumns.SET(sqlite.ROW(setColumns...)))).
+		RETURNING(table.EpisodeFile.ID)
 
 	result, err := s.handleInsert(ctx, stmt)
 	if err != nil {

@@ -33,8 +33,12 @@ func (s *SQLite) ListIndexerSources(ctx context.Context, where ...sqlite.BoolExp
 
 	stmt := table.IndexerSource.SELECT(table.IndexerSource.AllColumns).FROM(table.IndexerSource)
 
+	var conds []sqlite.BoolExpression
 	for _, w := range where {
-		stmt = stmt.WHERE(w)
+		conds = append(conds, w)
+	}
+	if len(conds) > 0 {
+		stmt = stmt.WHERE(sqlite.AND(conds...))
 	}
 
 	stmt = stmt.ORDER_BY(table.IndexerSource.Name.ASC())

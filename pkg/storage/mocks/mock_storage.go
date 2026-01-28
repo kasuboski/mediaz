@@ -694,19 +694,19 @@ func (mr *MockStorageMockRecorder) GetEpisodeFile(ctx, id any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetEpisodeFile", reflect.TypeOf((*MockStorage)(nil).GetEpisodeFile), ctx, id)
 }
 
-// GetEpisodeFiles mocks base method.
-func (m *MockStorage) GetEpisodeFiles(ctx context.Context, id int64) ([]*model.EpisodeFile, error) {
+// GetEpisodeFileByID mocks base method.
+func (m *MockStorage) GetEpisodeFileByID(ctx context.Context, id int64) ([]*model.EpisodeFile, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetEpisodeFiles", ctx, id)
+	ret := m.ctrl.Call(m, "GetEpisodeFileByID", ctx, id)
 	ret0, _ := ret[0].([]*model.EpisodeFile)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// GetEpisodeFiles indicates an expected call of GetEpisodeFiles.
-func (mr *MockStorageMockRecorder) GetEpisodeFiles(ctx, id any) *gomock.Call {
+// GetEpisodeFileByID indicates an expected call of GetEpisodeFileByID.
+func (mr *MockStorageMockRecorder) GetEpisodeFileByID(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetEpisodeFiles", reflect.TypeOf((*MockStorage)(nil).GetEpisodeFiles), ctx, id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetEpisodeFileByID", reflect.TypeOf((*MockStorage)(nil).GetEpisodeFileByID), ctx, id)
 }
 
 // GetEpisodeMetadata mocks base method.
@@ -2981,19 +2981,19 @@ func (mr *MockSeriesStorageMockRecorder) GetEpisodeFile(ctx, id any) *gomock.Cal
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetEpisodeFile", reflect.TypeOf((*MockSeriesStorage)(nil).GetEpisodeFile), ctx, id)
 }
 
-// GetEpisodeFiles mocks base method.
-func (m *MockSeriesStorage) GetEpisodeFiles(ctx context.Context, id int64) ([]*model.EpisodeFile, error) {
+// GetEpisodeFileByID mocks base method.
+func (m *MockSeriesStorage) GetEpisodeFileByID(ctx context.Context, id int64) ([]*model.EpisodeFile, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetEpisodeFiles", ctx, id)
+	ret := m.ctrl.Call(m, "GetEpisodeFileByID", ctx, id)
 	ret0, _ := ret[0].([]*model.EpisodeFile)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// GetEpisodeFiles indicates an expected call of GetEpisodeFiles.
-func (mr *MockSeriesStorageMockRecorder) GetEpisodeFiles(ctx, id any) *gomock.Call {
+// GetEpisodeFileByID indicates an expected call of GetEpisodeFileByID.
+func (mr *MockSeriesStorageMockRecorder) GetEpisodeFileByID(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetEpisodeFiles", reflect.TypeOf((*MockSeriesStorage)(nil).GetEpisodeFiles), ctx, id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetEpisodeFileByID", reflect.TypeOf((*MockSeriesStorage)(nil).GetEpisodeFileByID), ctx, id)
 }
 
 // GetSeason mocks base method.
