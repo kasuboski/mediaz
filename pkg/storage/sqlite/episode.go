@@ -48,6 +48,7 @@ func (s *SQLite) CreateEpisode(ctx context.Context, episode storage.Episode, ini
 
 	result, err := stmt.ExecContext(ctx, tx)
 	if err != nil {
+		tx.Rollback()
 		return 0, err
 	}
 
