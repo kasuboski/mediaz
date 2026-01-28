@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-jet/jet/v2/sqlite"
 	"github.com/kasuboski/mediaz/pkg/download"
+	"github.com/kasuboski/mediaz/pkg/indexer"
 	"github.com/kasuboski/mediaz/pkg/logger"
 	"github.com/kasuboski/mediaz/pkg/prowlarr"
 	"github.com/kasuboski/mediaz/pkg/storage"
@@ -315,7 +316,10 @@ func (m MediaManager) reconcileMissingMovie(ctx context.Context, movie *storage.
 	}
 
 	indexerIDs := snapshot.GetIndexerIDs()
-	releases, err := m.SearchIndexers(ctx, indexerIDs, MOVIE_CATEGORIES, det.Title)
+	releases, err := m.SearchIndexers(ctx, indexerIDs, MOVIE_CATEGORIES, indexer.SearchOptions{
+		Query: det.Title,
+		Type:  ptr(indexer.TypeMovie),
+	})
 	if err != nil {
 		log.Debugw("failed to search indexer", "indexers", indexerIDs, zap.Error(err))
 		return err

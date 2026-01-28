@@ -58,7 +58,7 @@ func (mr *MockIndexerSourceMockRecorder) ListIndexers(arg0 any) *gomock.Call {
 }
 
 // Search mocks base method.
-func (m *MockIndexerSource) Search(arg0 context.Context, arg1 int32, arg2 []int32, arg3 string) ([]*prowlarr.ReleaseResource, error) {
+func (m *MockIndexerSource) Search(arg0 context.Context, arg1 int32, arg2 []int32, arg3 indexer.SearchOptions) ([]*prowlarr.ReleaseResource, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Search", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].([]*prowlarr.ReleaseResource)

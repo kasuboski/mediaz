@@ -7,8 +7,10 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/kasuboski/mediaz/pkg/logger"
 	"github.com/kasuboski/mediaz/pkg/prowlarr"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
+	"go.uber.org/zap"
 )
 
 type ProwlarrIndexerSource struct {
@@ -89,12 +91,25 @@ func (p *ProwlarrIndexerSource) ListIndexers(ctx context.Context) ([]SourceIndex
 	return indexers, nil
 }
 
-func (p *ProwlarrIndexerSource) Search(ctx context.Context, indexerID int32, categories []int32, query string) ([]*prowlarr.ReleaseResource, error) {
+func (p *ProwlarrIndexerSource) Search(ctx context.Context, indexerID int32, categories []int32, opts SearchOptions) ([]*prowlarr.ReleaseResource, error) {
+	log := logger.FromCtx(ctx)
+
+	query := opts.Query
+	if opts.Season != nil {
+		query = fmt.Sprintf("%s S%02d", query, *opts.Season)
+		if opts.Episode != nil {
+			query = fmt.Sprintf("%sE%02d", query, *opts.Episode)
+		}
+	}
+
+	log.Debug("searching indexer", zap.Int32("indexer_id", indexerID), zap.String("query", query))
+
 	resp, err := p.client.GetAPIV1Search(ctx, &prowlarr.GetAPIV1SearchParams{
 		IndexerIds: &[]int32{indexerID},
 		Query:      &query,
 		Categories: &categories,
 		Limit:      ptr(int32(100)),
+		Type:       opts.Type,
 	})
 	if err != nil {
 		return nil, err
