@@ -58,8 +58,8 @@ func (s *SQLite) ListQualityProfiles(ctx context.Context, where ...sqlite.BoolEx
 				table.QualityDefinition, table.QualityProfileItem.QualityID.EQ(table.QualityDefinition.ID)),
 		)
 
-	for _, w := range where {
-		stmt = stmt.WHERE(w)
+	if len(where) > 0 {
+		stmt = stmt.WHERE(AND(where...))
 	}
 
 	stmt = stmt.ORDER_BY(table.QualityDefinition.MinSize.DESC())
