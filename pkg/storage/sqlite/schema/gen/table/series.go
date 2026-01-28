@@ -17,13 +17,14 @@ type seriesTable struct {
 	sqlite.Table
 
 	// Columns
-	ID               sqlite.ColumnInteger
-	Path             sqlite.ColumnString
-	Monitored        sqlite.ColumnInteger
-	Added            sqlite.ColumnTimestamp
-	QualityProfileID sqlite.ColumnInteger
-	SeriesMetadataID sqlite.ColumnInteger
-	LastSearchTime   sqlite.ColumnTimestamp
+	ID                sqlite.ColumnInteger
+	Path              sqlite.ColumnString
+	Monitored         sqlite.ColumnInteger
+	Added             sqlite.ColumnTimestamp
+	QualityProfileID  sqlite.ColumnInteger
+	SeriesMetadataID  sqlite.ColumnInteger
+	LastSearchTime    sqlite.ColumnTimestamp
+	MonitorNewSeasons sqlite.ColumnInteger
 
 	AllColumns     sqlite.ColumnList
 	MutableColumns sqlite.ColumnList
@@ -64,28 +65,30 @@ func newSeriesTable(schemaName, tableName, alias string) *SeriesTable {
 
 func newSeriesTableImpl(schemaName, tableName, alias string) seriesTable {
 	var (
-		IDColumn               = sqlite.IntegerColumn("id")
-		PathColumn             = sqlite.StringColumn("path")
-		MonitoredColumn        = sqlite.IntegerColumn("monitored")
-		AddedColumn            = sqlite.TimestampColumn("added")
-		QualityProfileIDColumn = sqlite.IntegerColumn("quality_profile_id")
-		SeriesMetadataIDColumn = sqlite.IntegerColumn("series_metadata_id")
-		LastSearchTimeColumn   = sqlite.TimestampColumn("last_search_time")
-		allColumns             = sqlite.ColumnList{IDColumn, PathColumn, MonitoredColumn, AddedColumn, QualityProfileIDColumn, SeriesMetadataIDColumn, LastSearchTimeColumn}
-		mutableColumns         = sqlite.ColumnList{PathColumn, MonitoredColumn, AddedColumn, QualityProfileIDColumn, SeriesMetadataIDColumn, LastSearchTimeColumn}
+		IDColumn                = sqlite.IntegerColumn("id")
+		PathColumn              = sqlite.StringColumn("path")
+		MonitoredColumn         = sqlite.IntegerColumn("monitored")
+		AddedColumn             = sqlite.TimestampColumn("added")
+		QualityProfileIDColumn  = sqlite.IntegerColumn("quality_profile_id")
+		SeriesMetadataIDColumn  = sqlite.IntegerColumn("series_metadata_id")
+		LastSearchTimeColumn    = sqlite.TimestampColumn("last_search_time")
+		MonitorNewSeasonsColumn = sqlite.IntegerColumn("monitor_new_seasons")
+		allColumns              = sqlite.ColumnList{IDColumn, PathColumn, MonitoredColumn, AddedColumn, QualityProfileIDColumn, SeriesMetadataIDColumn, LastSearchTimeColumn, MonitorNewSeasonsColumn}
+		mutableColumns          = sqlite.ColumnList{PathColumn, MonitoredColumn, AddedColumn, QualityProfileIDColumn, SeriesMetadataIDColumn, LastSearchTimeColumn, MonitorNewSeasonsColumn}
 	)
 
 	return seriesTable{
 		Table: sqlite.NewTable(schemaName, tableName, alias, allColumns...),
 
 		//Columns
-		ID:               IDColumn,
-		Path:             PathColumn,
-		Monitored:        MonitoredColumn,
-		Added:            AddedColumn,
-		QualityProfileID: QualityProfileIDColumn,
-		SeriesMetadataID: SeriesMetadataIDColumn,
-		LastSearchTime:   LastSearchTimeColumn,
+		ID:                IDColumn,
+		Path:              PathColumn,
+		Monitored:         MonitoredColumn,
+		Added:             AddedColumn,
+		QualityProfileID:  QualityProfileIDColumn,
+		SeriesMetadataID:  SeriesMetadataIDColumn,
+		LastSearchTime:    LastSearchTimeColumn,
+		MonitorNewSeasons: MonitorNewSeasonsColumn,
 
 		AllColumns:     allColumns,
 		MutableColumns: mutableColumns,

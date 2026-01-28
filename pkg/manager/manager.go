@@ -330,6 +330,8 @@ func (m MediaManager) buildTVDetailResult(metadata *model.SeriesMetadata, detail
 		result.QualityProfileID = &series.QualityProfileID
 		monitored := series.Monitored == 1
 		result.Monitored = &monitored
+		monitorNewSeasons := series.MonitorNewSeasons == 1
+		result.MonitorNewSeasons = &monitorNewSeasons
 	}
 
 	// Add seasons information if available
@@ -903,12 +905,17 @@ func (m MediaManager) AddSeriesToLibrary(ctx context.Context, request AddSeriesR
 		return nil, err
 	}
 
+	monitorNewSeasons := int32(0)
+	if request.MonitorNewSeasons {
+		monitorNewSeasons = 1
+	}
 	series = &storage.Series{
 		Series: model.Series{
-			SeriesMetadataID: &seriesMetadata.ID,
-			QualityProfileID: qualityProfile.ID,
-			Monitored:        1,
-			Path:             &seriesMetadata.Title,
+			SeriesMetadataID:  &seriesMetadata.ID,
+			QualityProfileID:  qualityProfile.ID,
+			Monitored:         1,
+			Path:              &seriesMetadata.Title,
+			MonitorNewSeasons: monitorNewSeasons,
 		},
 	}
 
