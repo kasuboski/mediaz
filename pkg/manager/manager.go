@@ -646,15 +646,17 @@ func (m MediaManager) ListShowsInLibrary(ctx context.Context) ([]LibraryShow, er
 			ls.Path = *srec.Path
 		}
 
-		meta, err := m.storage.GetSeriesMetadata(ctx, table.SeriesMetadata.ID.EQ(sqlite.Int(int64(*srec.SeriesMetadataID))))
-		if err == nil && meta != nil {
-			ls.TMDBID = meta.TmdbID
-			ls.Title = meta.Title
-			if meta.PosterPath != nil {
-				ls.PosterPath = *meta.PosterPath
-			}
-			if meta.FirstAirDate != nil {
-				ls.Year = int32(meta.FirstAirDate.Year())
+		if srec.SeriesMetadataID != nil {
+			meta, err := m.storage.GetSeriesMetadata(ctx, table.SeriesMetadata.ID.EQ(sqlite.Int(int64(*srec.SeriesMetadataID))))
+			if err == nil && meta != nil {
+				ls.TMDBID = meta.TmdbID
+				ls.Title = meta.Title
+				if meta.PosterPath != nil {
+					ls.PosterPath = *meta.PosterPath
+				}
+				if meta.FirstAirDate != nil {
+					ls.Year = int32(meta.FirstAirDate.Year())
+				}
 			}
 		}
 
@@ -1827,6 +1829,11 @@ func (m MediaManager) SearchForSeason(ctx context.Context, seasonID int64) error
 		return fmt.Errorf("failed to get quality profile: %w", err)
 	}
 
+	if series.SeriesMetadataID == nil {
+		log.Error("series has no metadata ID")
+		return fmt.Errorf("series has no metadata")
+	}
+
 	seriesMetadata, err := m.storage.GetSeriesMetadata(ctx, table.SeriesMetadata.ID.EQ(sqlite.Int32(*series.SeriesMetadataID)))
 	if err != nil {
 		log.Error("failed to get series metadata", zap.Error(err))
@@ -1899,6 +1906,11 @@ func (m MediaManager) SearchForEpisode(ctx context.Context, episodeID int64) err
 	if err != nil {
 		log.Error("failed to get quality profile", zap.Error(err))
 		return fmt.Errorf("failed to get quality profile: %w", err)
+	}
+
+	if series.SeriesMetadataID == nil {
+		log.Error("series has no metadata ID")
+		return fmt.Errorf("series has no metadata")
 	}
 
 	seriesMetadata, err := m.storage.GetSeriesMetadata(ctx, table.SeriesMetadata.ID.EQ(sqlite.Int32(*series.SeriesMetadataID)))
