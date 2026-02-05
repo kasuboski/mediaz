@@ -197,6 +197,7 @@ func Test_Manager_reconcileDiscoveredMovie(t *testing.T) {
 		ctx := context.Background()
 
 		store.EXPECT().GetMovieMetadata(ctx, table.MovieMetadata.TmdbID.EQ(sqlite.Int(1234))).Return(&model.MovieMetadata{ID: 120}, nil)
+		store.EXPECT().GetMovieByMetadataID(ctx, 120).Return(nil, storage.ErrNotFound)
 		store.EXPECT().LinkMovieMetadata(ctx, int64(1), int32(120)).Return(nil)
 
 		// Execute reconciliation
@@ -293,6 +294,7 @@ func Test_Manager_reconcileDiscoveredMovie(t *testing.T) {
 		ctx := context.Background()
 
 		store.EXPECT().GetMovieMetadata(ctx, table.MovieMetadata.TmdbID.EQ(sqlite.Int(1234))).Return(&model.MovieMetadata{ID: 120}, nil)
+		store.EXPECT().GetMovieByMetadataID(ctx, 120).Return(nil, storage.ErrNotFound)
 		store.EXPECT().LinkMovieMetadata(ctx, int64(1), int32(120)).Return(nil)
 
 		// Execute reconciliation
@@ -306,6 +308,57 @@ func Test_Manager_reconcileDiscoveredMovie(t *testing.T) {
 		// Verify that metadata was linked (ID 120 from the mock response)
 		require.NotNil(t, movie.MovieMetadataID, "MovieMetadataID should be set")
 		require.Equal(t, int32(120), *movie.MovieMetadataID, "MovieMetadataID should be set to the ID from GetMovieMetadata")
+	})
+
+	t.Run("already linked", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+
+		store := storageMocks.NewMockStorage(ctrl)
+		tmdbHttpMock := mhttpMock.NewMockHTTPClient(ctrl)
+
+		// Mock search response
+		searchResp := &http.Response{
+			Body: io.NopCloser(strings.NewReader(`{
+				"results": [{
+					"id": 1234,
+					"title": "test movie",
+					"overview": "test overview",
+					"poster_path": "/test.jpg"
+				}]
+			}`)),
+			StatusCode: http.StatusOK,
+		}
+		tmdbHttpMock.EXPECT().Do(gomock.Any()).Return(searchResp, nil).Times(1)
+
+		tClient, err := tmdb.New("https://api.themoviedb.org", "1234", tmdb.WithHTTPClient(tmdbHttpMock))
+		require.NoError(t, err)
+
+		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
+		m.tmdb = tClient
+
+		movie := storage.Movie{
+			Movie: model.Movie{
+				ID:   2,
+				Path: func() *string { s := "test movie duplicate"; return &s }(),
+			},
+		}
+
+		ctx := context.Background()
+
+		store.EXPECT().GetMovieMetadata(ctx, table.MovieMetadata.TmdbID.EQ(sqlite.Int(1234))).Return(&model.MovieMetadata{ID: 120}, nil)
+		// Metadata is already linked to movie ID 1
+		existingMovie := &storage.Movie{Movie: model.Movie{ID: 1}}
+		store.EXPECT().GetMovieByMetadataID(ctx, 120).Return(existingMovie, nil)
+		// LinkMovieMetadata should NOT be called
+
+		// Execute reconciliation
+		err = m.reconcileDiscoveredMovie(ctx, &movie)
+		require.NoError(t, err)
+
+		// Verify movie properties - metadata should NOT be linked
+		require.Equal(t, int32(2), movie.ID, "ID should remain unchanged")
+		require.Equal(t, "test movie duplicate", *movie.Path, "Path should remain unchanged")
+		require.Nil(t, movie.MovieMetadataID, "MovieMetadataID should NOT be set because metadata is already linked to another movie")
 	})
 
 	t.Run("has metadata", func(t *testing.T) {
