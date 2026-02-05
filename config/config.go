@@ -31,6 +31,7 @@ type Library struct {
 	MovieDir         string `json:"movie" yaml:"movie" mapstructure:"movie"`
 	TVDir            string `json:"tv" yaml:"tv" mapstructure:"tv"`
 	DownloadMountDir string `json:"downloadMountDir" yaml:"downloadMountDir" mapstructure:"downloadMountDir"`
+	UseHardlinks     bool   `json:"useHardlinks" yaml:"useHardlinks" mapstructure:"useHardlinks"`
 }
 
 // Storage configuration is assumed to be for sqlite database only currently

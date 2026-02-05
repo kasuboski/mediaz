@@ -86,7 +86,7 @@ func TestFindMovies(t *testing.T) {
 		FS: fs,
 	}
 
-	l := New(fileSystem, FileSystem{}, &io.MediaFileSystem{})
+	l := New(fileSystem, FileSystem{}, &io.MediaFileSystem{}, true)
 	movies, err := l.FindMovies(ctx)
 	if err != nil {
 		t.Fatal(err)
@@ -110,7 +110,7 @@ func TestFindEpisodes(t *testing.T) {
 		FS: fs,
 	}
 
-	l := New(FileSystem{}, fileSystem, &io.MediaFileSystem{})
+	l := New(FileSystem{}, fileSystem, &io.MediaFileSystem{}, true)
 	episodes, err := l.FindEpisodes(ctx)
 	if err != nil {
 		t.Fatal(err)
@@ -165,7 +165,7 @@ func TestFindEpisodes_FlatStructure(t *testing.T) {
 		FS: fs,
 	}
 
-	l := New(FileSystem{}, fileSystem, &io.MediaFileSystem{})
+	l := New(FileSystem{}, fileSystem, &io.MediaFileSystem{}, true)
 	got, err := l.FindEpisodes(ctx)
 	if err != nil {
 		t.Fatal(err)
@@ -204,7 +204,7 @@ func TestFindEpisodes_SeasonSubdirectory(t *testing.T) {
 		FS: fs,
 	}
 
-	l := New(FileSystem{}, fileSystem, &io.MediaFileSystem{})
+	l := New(FileSystem{}, fileSystem, &io.MediaFileSystem{}, true)
 	got, err := l.FindEpisodes(ctx)
 	if err != nil {
 		t.Fatal(err)
@@ -261,7 +261,7 @@ func TestFindEpisodes_MixedStructures(t *testing.T) {
 		FS: fs,
 	}
 
-	l := New(FileSystem{}, fileSystem, &io.MediaFileSystem{})
+	l := New(FileSystem{}, fileSystem, &io.MediaFileSystem{}, true)
 	got, err := l.FindEpisodes(ctx)
 	if err != nil {
 		t.Fatal(err)
@@ -292,7 +292,7 @@ func TestFindEpisodes_SkipsTooDeepNesting(t *testing.T) {
 		FS: fs,
 	}
 
-	l := New(FileSystem{}, fileSystem, &io.MediaFileSystem{})
+	l := New(FileSystem{}, fileSystem, &io.MediaFileSystem{}, true)
 	got, err := l.FindEpisodes(ctx)
 	if err != nil {
 		t.Fatal(err)
@@ -326,7 +326,7 @@ func TestMediaLibrary_AddMovie(t *testing.T) {
 			Path: "testing",
 		}
 
-		library := New(FileSystem{}, fileSystem, mockfs)
+		library := New(FileSystem{}, fileSystem, mockfs, true)
 
 		title := "Batman Begins"
 		movieFile, err := library.AddMovie(ctx, title, movieToAdd)
@@ -349,7 +349,7 @@ func TestMediaLibrary_AddMovie(t *testing.T) {
 		movieToAdd := fmt.Sprintf("testing/%s", tmpFile.Name())
 
 		mockfs.EXPECT().MkdirAll(gomock.Any(), gomock.Any()).Times(1).Return(nil)
-		mockfs.EXPECT().IsSameFileSystem(gomock.Any(), gomock.Any()).Times(1).Return(false, errors.New("expected testing error"))
+		mockfs.EXPECT().Hardlink(gomock.Any(), gomock.Any()).Times(1).Return(errors.New("expected testing error"))
 
 		fs, _ := MovieFSFromFile(t, "./testing/test_movies.txt")
 
@@ -358,7 +358,7 @@ func TestMediaLibrary_AddMovie(t *testing.T) {
 			Path: "testing",
 		}
 
-		library := New(fileSystem, FileSystem{}, mockfs)
+		library := New(fileSystem, FileSystem{}, mockfs, true)
 
 		ctx := context.Background()
 
@@ -396,8 +396,7 @@ func TestMediaLibrary_AddMovie(t *testing.T) {
 		mockFileInfo.EXPECT().Size().Return(int64(1024)).AnyTimes()
 
 		mockfs.EXPECT().MkdirAll(gomock.Any(), gomock.Any()).Times(1).Return(nil)
-		mockfs.EXPECT().IsSameFileSystem(gomock.Any(), gomock.Any()).Times(1).Return(true, nil)
-		mockfs.EXPECT().Rename(gomock.Any(), gomock.Any()).Times(1).Return(nil)
+		mockfs.EXPECT().Hardlink(gomock.Any(), gomock.Any()).Times(1).Return(nil)
 		mockfs.EXPECT().Stat(gomock.Any()).Times(1).Return(mockFileInfo, nil)
 
 		fs, _ := MovieFSFromFile(t, "./testing/test_movies.txt")
@@ -407,7 +406,7 @@ func TestMediaLibrary_AddMovie(t *testing.T) {
 			Path: "testing",
 		}
 
-		library := New(fileSystem, FileSystem{}, mockfs)
+		library := New(fileSystem, FileSystem{}, mockfs, true)
 
 		title := "Batman Begins"
 		movieFile, err := library.AddMovie(ctx, title, movieToAdd)
@@ -438,8 +437,7 @@ func TestMediaLibrary_AddMovie(t *testing.T) {
 		mockFileInfo.EXPECT().Size().Return(int64(1024)).AnyTimes()
 
 		mockfs.EXPECT().MkdirAll(gomock.Any(), gomock.Any()).Times(1).Return(nil)
-		mockfs.EXPECT().IsSameFileSystem(gomock.Any(), gomock.Any()).Times(1).Return(false, nil)
-		mockfs.EXPECT().Copy(gomock.Any(), gomock.Any()).Times(1).Return(int64(0), nil)
+		mockfs.EXPECT().Hardlink(gomock.Any(), gomock.Any()).Times(1).Return(nil)
 		mockfs.EXPECT().Stat(gomock.Any()).Times(1).Return(mockFileInfo, nil)
 
 		fs, _ := MovieFSFromFile(t, "./testing/test_movies.txt")
@@ -449,7 +447,7 @@ func TestMediaLibrary_AddMovie(t *testing.T) {
 			Path: "testing",
 		}
 
-		library := New(fileSystem, FileSystem{}, mockfs)
+		library := New(fileSystem, FileSystem{}, mockfs, true)
 
 		ctx := context.Background()
 		title := "Batman Begins"
@@ -484,8 +482,7 @@ func TestMediaLibrary_AddMovie(t *testing.T) {
 		mockFileInfo.EXPECT().Size().Return(int64(1024)).AnyTimes()
 
 		mockfs.EXPECT().MkdirAll(gomock.Any(), gomock.Any()).Times(1).Return(nil)
-		mockfs.EXPECT().IsSameFileSystem(gomock.Any(), gomock.Any()).Times(1).Return(true, nil)
-		mockfs.EXPECT().Rename(gomock.Any(), gomock.Any()).Times(1).Return(io.ErrFileExists)
+		mockfs.EXPECT().Hardlink(gomock.Any(), gomock.Any()).Times(1).Return(io.ErrFileExists)
 		mockfs.EXPECT().Stat(gomock.Any()).Times(1).Return(mockFileInfo, nil)
 
 		fs, _ := MovieFSFromFile(t, "./testing/test_movies.txt")
@@ -495,7 +492,7 @@ func TestMediaLibrary_AddMovie(t *testing.T) {
 			Path: "testing",
 		}
 
-		library := New(fileSystem, FileSystem{}, mockfs)
+		library := New(fileSystem, FileSystem{}, mockfs, true)
 
 		title := "Batman Begins"
 		movieFile, err := library.AddMovie(ctx, title, movieToAdd)
@@ -527,8 +524,7 @@ func TestMediaLibrary_AddMovie(t *testing.T) {
 		mockFileInfo.EXPECT().Size().Return(int64(1024)).AnyTimes()
 
 		mockfs.EXPECT().MkdirAll(gomock.Any(), gomock.Any()).Times(1).Return(nil)
-		mockfs.EXPECT().IsSameFileSystem(gomock.Any(), gomock.Any()).Times(1).Return(false, nil)
-		mockfs.EXPECT().Copy(gomock.Any(), gomock.Any()).Times(1).Return(int64(0), io.ErrFileExists)
+		mockfs.EXPECT().Hardlink(gomock.Any(), gomock.Any()).Times(1).Return(io.ErrFileExists)
 		mockfs.EXPECT().Stat(gomock.Any()).Times(1).Return(mockFileInfo, nil)
 
 		fs, _ := MovieFSFromFile(t, "./testing/test_movies.txt")
@@ -538,7 +534,7 @@ func TestMediaLibrary_AddMovie(t *testing.T) {
 			Path: "testing",
 		}
 
-		library := New(fileSystem, FileSystem{}, mockfs)
+		library := New(fileSystem, FileSystem{}, mockfs, true)
 
 		ctx := context.Background()
 		title := "Batman Begins"
@@ -552,6 +548,93 @@ func TestMediaLibrary_AddMovie(t *testing.T) {
 
 		assert.Error(t, err)
 		assert.True(t, errors.Is(err, io.ErrFileExists))
+		assert.Equal(t, wantMovieFile, movieFile)
+	})
+
+	t.Run("hardlinks disabled - same file system uses rename", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockfs := mocks.NewMockFileIO(ctrl)
+
+		ctx := context.Background()
+
+		tmpFile, err := os.CreateTemp("testing/", "Batman Begins (2005)-*.mp4")
+		if err != nil {
+			t.Error(err)
+		}
+		defer os.Remove(tmpFile.Name())
+
+		movieToAdd := fmt.Sprintf("testing/%s", tmpFile.Name())
+
+		mockFileInfo := mocks.NewMockFileInfo(ctrl)
+		mockFileInfo.EXPECT().Size().Return(int64(1024)).AnyTimes()
+
+		mockfs.EXPECT().MkdirAll(gomock.Any(), gomock.Any()).Times(1).Return(nil)
+		mockfs.EXPECT().IsSameFileSystem(gomock.Any(), gomock.Any()).Times(1).Return(true, nil)
+		mockfs.EXPECT().Rename(gomock.Any(), gomock.Any()).Times(1).Return(nil)
+		mockfs.EXPECT().Stat(gomock.Any()).Times(1).Return(mockFileInfo, nil)
+
+		fs, _ := MovieFSFromFile(t, "./testing/test_movies.txt")
+
+		fileSystem := FileSystem{
+			FS:   fs,
+			Path: "testing",
+		}
+
+		library := New(fileSystem, FileSystem{}, mockfs, false)
+
+		title := "Batman Begins"
+		movieFile, err := library.AddMovie(ctx, title, movieToAdd)
+		wantMovieFile := MovieFile{
+			Name:         filepath.Base(tmpFile.Name()),
+			Size:         1024,
+			RelativePath: filepath.Join(title, filepath.Base(tmpFile.Name())),
+			AbsolutePath: filepath.Join(fileSystem.Path, title, filepath.Base(tmpFile.Name())),
+		}
+
+		assert.Nil(t, err)
+		assert.Equal(t, wantMovieFile, movieFile)
+	})
+
+	t.Run("hardlinks disabled - different file system uses copy", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockfs := mocks.NewMockFileIO(ctrl)
+
+		tmpFile, err := os.CreateTemp("testing/", "Batman Begins (2005)-*.mp4")
+		if err != nil {
+			t.Error(err)
+		}
+		defer os.Remove(tmpFile.Name())
+
+		movieToAdd := fmt.Sprintf("testing/%s", tmpFile.Name())
+
+		mockFileInfo := mocks.NewMockFileInfo(ctrl)
+		mockFileInfo.EXPECT().Size().Return(int64(1024)).AnyTimes()
+
+		mockfs.EXPECT().MkdirAll(gomock.Any(), gomock.Any()).Times(1).Return(nil)
+		mockfs.EXPECT().IsSameFileSystem(gomock.Any(), gomock.Any()).Times(1).Return(false, nil)
+		mockfs.EXPECT().Copy(gomock.Any(), gomock.Any()).Times(1).Return(int64(0), nil)
+		mockfs.EXPECT().Stat(gomock.Any()).Times(1).Return(mockFileInfo, nil)
+
+		fs, _ := MovieFSFromFile(t, "./testing/test_movies.txt")
+
+		fileSystem := FileSystem{
+			FS:   fs,
+			Path: "testing",
+		}
+
+		library := New(fileSystem, FileSystem{}, mockfs, false)
+
+		ctx := context.Background()
+		title := "Batman Begins"
+		movieFile, err := library.AddMovie(ctx, title, movieToAdd)
+		wantMovieFile := MovieFile{
+			Name:         filepath.Base(tmpFile.Name()),
+			Size:         1024,
+			RelativePath: filepath.Join(title, filepath.Base(tmpFile.Name())),
+			AbsolutePath: filepath.Join(fileSystem.Path, title, filepath.Base(tmpFile.Name())),
+		}
+
+		assert.Nil(t, err)
 		assert.Equal(t, wantMovieFile, movieFile)
 	})
 }
@@ -576,8 +659,7 @@ func TestMediaLibrary_AddEpisode(t *testing.T) {
 		mockFileInfo.EXPECT().Size().Return(int64(1024)).AnyTimes()
 
 		mockfs.EXPECT().MkdirAll(gomock.Any(), gomock.Any()).Times(1).Return(nil)
-		mockfs.EXPECT().IsSameFileSystem(gomock.Any(), gomock.Any()).Times(1).Return(true, nil)
-		mockfs.EXPECT().Rename(gomock.Any(), gomock.Any()).Times(1).Return(nil)
+		mockfs.EXPECT().Hardlink(gomock.Any(), gomock.Any()).Times(1).Return(nil)
 		mockfs.EXPECT().Stat(gomock.Any()).Times(1).Return(mockFileInfo, nil)
 
 		fs, _ := TVFSFromFile(t, "./testing/test_episodes.txt")
@@ -587,7 +669,7 @@ func TestMediaLibrary_AddEpisode(t *testing.T) {
 			Path: "testing",
 		}
 
-		library := New(FileSystem{}, fileSystem, mockfs)
+		library := New(FileSystem{}, fileSystem, mockfs, true)
 
 		seriesTitle := "Series Name"
 		var seasonNumber int32 = 1
@@ -624,8 +706,7 @@ func TestMediaLibrary_AddEpisode(t *testing.T) {
 		mockFileInfo.EXPECT().Size().Return(int64(1024)).AnyTimes()
 
 		mockfs.EXPECT().MkdirAll(gomock.Any(), gomock.Any()).Times(1).Return(nil)
-		mockfs.EXPECT().IsSameFileSystem(gomock.Any(), gomock.Any()).Times(1).Return(true, nil)
-		mockfs.EXPECT().Rename(gomock.Any(), gomock.Any()).Times(1).Return(io.ErrFileExists)
+		mockfs.EXPECT().Hardlink(gomock.Any(), gomock.Any()).Times(1).Return(io.ErrFileExists)
 		mockfs.EXPECT().Stat(gomock.Any()).Times(1).Return(mockFileInfo, nil)
 
 		fs, _ := TVFSFromFile(t, "./testing/test_episodes.txt")
@@ -635,7 +716,7 @@ func TestMediaLibrary_AddEpisode(t *testing.T) {
 			Path: "testing",
 		}
 
-		library := New(FileSystem{}, fileSystem, mockfs)
+		library := New(FileSystem{}, fileSystem, mockfs, true)
 
 		seriesTitle := "Series Name"
 		var seasonNumber int32 = 1
@@ -668,13 +749,11 @@ func TestMediaLibrary_AddEpisode(t *testing.T) {
 
 		episodeToAdd := fmt.Sprintf("testing/%s", tmpFile.Name())
 
-		// Create a mock file info with the Size() method
 		mockFileInfo := mocks.NewMockFileInfo(ctrl)
 		mockFileInfo.EXPECT().Size().Return(int64(1024)).AnyTimes()
 
 		mockfs.EXPECT().MkdirAll(gomock.Any(), gomock.Any()).Times(1).Return(nil)
-		mockfs.EXPECT().IsSameFileSystem(gomock.Any(), gomock.Any()).Times(1).Return(false, nil)
-		mockfs.EXPECT().Copy(gomock.Any(), gomock.Any()).Times(1).Return(int64(0), io.ErrFileExists)
+		mockfs.EXPECT().Hardlink(gomock.Any(), gomock.Any()).Times(1).Return(io.ErrFileExists)
 		mockfs.EXPECT().Stat(gomock.Any()).Times(1).Return(mockFileInfo, nil)
 
 		fs, _ := TVFSFromFile(t, "./testing/test_episodes.txt")
@@ -684,7 +763,7 @@ func TestMediaLibrary_AddEpisode(t *testing.T) {
 			Path: "testing",
 		}
 
-		library := New(FileSystem{}, fileSystem, mockfs)
+		library := New(FileSystem{}, fileSystem, mockfs, true)
 
 		seriesTitle := "Series Name"
 		var seasonNumber int32 = 1
@@ -700,6 +779,100 @@ func TestMediaLibrary_AddEpisode(t *testing.T) {
 
 		assert.Error(t, err)
 		assert.True(t, errors.Is(err, io.ErrFileExists))
+		assert.Equal(t, wantEpisodeFile, episodeFile)
+	})
+
+	t.Run("hardlinks disabled - same file system uses rename", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockfs := mocks.NewMockFileIO(ctrl)
+
+		ctx := context.Background()
+
+		tmpFile, err := os.CreateTemp("testing/", "Series Name - s01e01 - Episode Title.mp4")
+		if err != nil {
+			t.Error(err)
+		}
+		defer os.Remove(tmpFile.Name())
+
+		episodeToAdd := fmt.Sprintf("testing/%s", tmpFile.Name())
+
+		mockFileInfo := mocks.NewMockFileInfo(ctrl)
+		mockFileInfo.EXPECT().Size().Return(int64(1024)).AnyTimes()
+
+		mockfs.EXPECT().MkdirAll(gomock.Any(), gomock.Any()).Times(1).Return(nil)
+		mockfs.EXPECT().IsSameFileSystem(gomock.Any(), gomock.Any()).Times(1).Return(true, nil)
+		mockfs.EXPECT().Rename(gomock.Any(), gomock.Any()).Times(1).Return(nil)
+		mockfs.EXPECT().Stat(gomock.Any()).Times(1).Return(mockFileInfo, nil)
+
+		fs, _ := TVFSFromFile(t, "./testing/test_episodes.txt")
+
+		fileSystem := FileSystem{
+			FS:   fs,
+			Path: "testing",
+		}
+
+		library := New(FileSystem{}, fileSystem, mockfs, false)
+
+		seriesTitle := "Series Name"
+		var seasonNumber int32 = 1
+		episodeFile, err := library.AddEpisode(ctx, seriesTitle, seasonNumber, episodeToAdd)
+
+		expectedFilename := filepath.Base(tmpFile.Name())
+		wantEpisodeFile := EpisodeFile{
+			Name:         expectedFilename,
+			Size:         1024,
+			RelativePath: fmt.Sprintf("%s/Season %02d/%s", seriesTitle, seasonNumber, expectedFilename),
+			AbsolutePath: filepath.Join(fileSystem.Path, seriesTitle, fmt.Sprintf("Season %02d", seasonNumber), expectedFilename),
+		}
+
+		assert.Nil(t, err)
+		assert.Equal(t, wantEpisodeFile, episodeFile)
+	})
+
+	t.Run("hardlinks disabled - different file system uses copy", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		mockfs := mocks.NewMockFileIO(ctrl)
+
+		ctx := context.Background()
+
+		tmpFile, err := os.CreateTemp("testing/", "Series Name - s01e01 - Episode Title.mp4")
+		if err != nil {
+			t.Error(err)
+		}
+		defer os.Remove(tmpFile.Name())
+
+		episodeToAdd := fmt.Sprintf("testing/%s", tmpFile.Name())
+
+		mockFileInfo := mocks.NewMockFileInfo(ctrl)
+		mockFileInfo.EXPECT().Size().Return(int64(1024)).AnyTimes()
+
+		mockfs.EXPECT().MkdirAll(gomock.Any(), gomock.Any()).Times(1).Return(nil)
+		mockfs.EXPECT().IsSameFileSystem(gomock.Any(), gomock.Any()).Times(1).Return(false, nil)
+		mockfs.EXPECT().Copy(gomock.Any(), gomock.Any()).Times(1).Return(int64(0), nil)
+		mockfs.EXPECT().Stat(gomock.Any()).Times(1).Return(mockFileInfo, nil)
+
+		fs, _ := TVFSFromFile(t, "./testing/test_episodes.txt")
+
+		fileSystem := FileSystem{
+			FS:   fs,
+			Path: "testing",
+		}
+
+		library := New(FileSystem{}, fileSystem, mockfs, false)
+
+		seriesTitle := "Series Name"
+		var seasonNumber int32 = 1
+		episodeFile, err := library.AddEpisode(ctx, seriesTitle, seasonNumber, episodeToAdd)
+
+		expectedFilename := filepath.Base(tmpFile.Name())
+		wantEpisodeFile := EpisodeFile{
+			Name:         expectedFilename,
+			Size:         1024,
+			RelativePath: fmt.Sprintf("%s/Season %02d/%s", seriesTitle, seasonNumber, expectedFilename),
+			AbsolutePath: filepath.Join(fileSystem.Path, seriesTitle, fmt.Sprintf("Season %02d", seasonNumber), expectedFilename),
+		}
+
+		assert.Nil(t, err)
 		assert.Equal(t, wantEpisodeFile, episodeFile)
 	})
 }

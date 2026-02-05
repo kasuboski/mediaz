@@ -24,17 +24,19 @@ type FileSystem struct {
 
 // MediaLibrary describes the media that create a library
 type MediaLibrary struct {
-	io     io.FileIO
-	movies FileSystem
-	tv     FileSystem
+	io           io.FileIO
+	movies       FileSystem
+	tv           FileSystem
+	useHardlinks bool
 }
 
 // New creates a new library
-func New(movies FileSystem, tv FileSystem, io io.FileIO) Library {
+func New(movies FileSystem, tv FileSystem, io io.FileIO, useHardlinks bool) Library {
 	return &MediaLibrary{
-		movies: movies,
-		tv:     tv,
-		io:     io,
+		movies:       movies,
+		tv:           tv,
+		io:           io,
+		useHardlinks: useHardlinks,
 	}
 }
 
@@ -115,6 +117,11 @@ func (l *MediaLibrary) moveFileToLibrary(ctx context.Context, sourcePath, target
 
 func (l *MediaLibrary) moveFile(ctx context.Context, libraryRoot, sourcePath, targetPath string) error {
 	log := logger.FromCtx(ctx)
+
+	if l.useHardlinks {
+		return l.hardlinkFile(ctx, sourcePath, targetPath)
+	}
+
 	ok, err := l.io.IsSameFileSystem(libraryRoot, sourcePath)
 	if err != nil {
 		log.Debug("failed to determine if request path and library path share a file system", zap.Error(err))
@@ -126,6 +133,12 @@ func (l *MediaLibrary) moveFile(ctx context.Context, libraryRoot, sourcePath, ta
 	}
 
 	return l.copyFile(ctx, sourcePath, targetPath)
+}
+
+func (l *MediaLibrary) hardlinkFile(ctx context.Context, sourcePath, targetPath string) error {
+	log := logger.FromCtx(ctx)
+	log.Debug("creating hardlink", zap.String("source", sourcePath), zap.String("target", targetPath))
+	return l.io.Hardlink(sourcePath, targetPath)
 }
 
 func (l *MediaLibrary) renameFile(ctx context.Context, sourcePath, targetPath string) error {

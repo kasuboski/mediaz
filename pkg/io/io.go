@@ -31,6 +31,14 @@ func (o *MediaFileSystem) Rename(source, target string) error {
 	return os.Rename(source, target)
 }
 
+// Hardlink creates a hard link from oldpath to newpath
+func (o *MediaFileSystem) Hardlink(oldpath, newpath string) error {
+	if o.FileExists(newpath) {
+		return ErrFileExists
+	}
+	return os.Link(oldpath, newpath)
+}
+
 // Open is a wrapper around os.Open
 func (o *MediaFileSystem) Open(name string) (*os.File, error) {
 	return os.Open(name)

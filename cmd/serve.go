@@ -66,6 +66,7 @@ var serveCmd = &cobra.Command{
 				FS:   tvFS,
 			},
 			&mio.MediaFileSystem{},
+			cfg.Library.UseHardlinks,
 		)
 
 		factory := download.NewDownloadClientFactory(cfg.Library.DownloadMountDir)

@@ -75,6 +75,7 @@ func TestAddMovietoLibrary(t *testing.T) {
 			FS: tvFS,
 		},
 		&mio.MediaFileSystem{},
+		true,
 	)
 
 	tmdbHttpMock := mhttpMock.NewMockHTTPClient(ctrl)

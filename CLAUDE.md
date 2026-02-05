@@ -77,6 +77,45 @@ Key config sections defined in `cmd/root.go:initConfig()`:
 - Storage (SQLite file path and schemas)
 - Manager job intervals (default 10 minutes)
 
+### File Management and Seeding
+
+**Hardlinks for Seeding Support** (default: enabled)
+
+Mediaz uses hardlinks by default when moving downloaded files to the library. This enables torrent clients to continue seeding without duplicating disk space.
+
+**How it works:**
+- When `library.useHardlinks` is `true` (default), files are hardlinked instead of moved
+- The same file data exists at two paths: download location + library location
+- Download clients can continue seeding from original location
+- Zero additional disk space used (same inode, multiple directory entries)
+- If hardlink fails, the operation errors (no fallback)
+
+**Requirements:**
+- Download directory and library must be on the same filesystem
+- Filesystem must support hardlinks (most modern filesystems do)
+
+**Configuration:**
+```yaml
+library:
+  movie: /path/to/movies
+  tv: /path/to/tv
+  useHardlinks: true  # default
+```
+
+**Disable hardlinks** (falls back to rename/copy):
+```yaml
+library:
+  useHardlinks: false
+```
+
+When disabled:
+- Same filesystem: Uses atomic rename (moves file, breaks seeding)
+- Different filesystem: Copies file then removes original
+
+**Docker/Container Setup:**
+- Use single volume with subdirectories (e.g., `/data/downloads` and `/data/library`)
+- Avoid separate volumes which create different filesystems
+
 ### Generated Code
 
 The project uses code generation extensively:

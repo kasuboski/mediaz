@@ -13,6 +13,7 @@ type FileIO interface {
 	IsSameFileSystem(source, target string) (bool, error)
 	Open(name string) (*os.File, error)
 	Rename(source, target string) error
+	Hardlink(oldpath, newpath string) error
 	WalkDir(fsys fs.FS, root string, fn fs.WalkDirFunc) error
 	Copy(source, target string) (int64, error)
 	MkdirAll(name string, perm os.FileMode) error
