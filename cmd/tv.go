@@ -39,6 +39,7 @@ var listTVCmd = &cobra.Command{
 			FS:   tvFS,
 		},
 			&mio.MediaFileSystem{},
+			true,
 		)
 		episodes, err := lib.FindEpisodes(ctx)
 		if err != nil {

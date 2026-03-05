@@ -114,6 +114,7 @@ func Test_Manager_reconcileMissingMovie(t *testing.T) {
 			FS: tvFS,
 		},
 		&mio.MediaFileSystem{},
+		true,
 	)
 
 	m := New(tClient, indexerFactory, lib, store, mockFactory, config.Manager{}, config.Config{})
@@ -447,6 +448,7 @@ func Test_Manager_reconcileUnreleasedMovie(t *testing.T) {
 			FS: tvFS,
 		},
 		&mio.MediaFileSystem{},
+		true,
 	)
 
 	m := New(tClient, indexerFactory, lib, store, mockFactory, config.Manager{}, config.Config{})

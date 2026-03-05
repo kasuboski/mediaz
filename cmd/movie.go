@@ -76,6 +76,7 @@ var listMovieCmd = &cobra.Command{
 			library.FileSystem{FS: movieFS},
 			library.FileSystem{},
 			&mio.MediaFileSystem{},
+			true,
 		)
 		movies, err := lib.FindMovies(ctx)
 		if err != nil {

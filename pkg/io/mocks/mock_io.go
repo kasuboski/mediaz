@@ -71,6 +71,20 @@ func (mr *MockFileIOMockRecorder) Create(arg0 any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockFileIO)(nil).Create), arg0)
 }
 
+// Hardlink mocks base method.
+func (m *MockFileIO) Hardlink(arg0, arg1 string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Hardlink", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Hardlink indicates an expected call of Hardlink.
+func (mr *MockFileIOMockRecorder) Hardlink(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Hardlink", reflect.TypeOf((*MockFileIO)(nil).Hardlink), arg0, arg1)
+}
+
 // IsSameFileSystem mocks base method.
 func (m *MockFileIO) IsSameFileSystem(arg0, arg1 string) (bool, error) {
 	m.ctrl.T.Helper()
