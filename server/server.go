@@ -93,6 +93,7 @@ func (s *Server) Serve(port int) error {
 	v1.HandleFunc("/library/movies/{id}", s.DeleteMovieFromLibrary()).Methods(http.MethodDelete)
 	v1.HandleFunc("/library/movies/{id}/monitored", s.UpdateMovieMonitored()).Methods(http.MethodPatch)
 	v1.HandleFunc("/library/movies/{id}/quality", s.UpdateMovieQualityProfile()).Methods(http.MethodPatch)
+	v1.HandleFunc("/library/movies/{id}/search", s.SearchForMovie()).Methods(http.MethodPost)
 
 	v1.HandleFunc("/movie/{tmdbID}", s.GetMovieDetailByTMDBID()).Methods(http.MethodGet)
 
@@ -102,6 +103,9 @@ func (s *Server) Serve(port int) error {
 	v1.HandleFunc("/library/tv", s.AddSeriesToLibrary()).Methods(http.MethodPost)
 	v1.HandleFunc("/library/tv/{id}", s.DeleteSeriesFromLibrary()).Methods(http.MethodDelete)
 	v1.HandleFunc("/library/tv/{id}/monitored", s.UpdateSeriesMonitored()).Methods(http.MethodPatch)
+	v1.HandleFunc("/library/tv/{id}/search", s.SearchForSeries()).Methods(http.MethodPost)
+	v1.HandleFunc("/season/{id}/search", s.SearchForSeason()).Methods(http.MethodPost)
+	v1.HandleFunc("/episode/{id}/search", s.SearchForEpisode()).Methods(http.MethodPost)
 
 	v1.HandleFunc("/tv/refresh", s.RefreshSeriesMetadata()).Methods(http.MethodPost)
 	v1.HandleFunc("/movies/refresh", s.RefreshMovieMetadata()).Methods(http.MethodPost)
@@ -1349,5 +1353,109 @@ func (s Server) RefreshMovieMetadata() http.HandlerFunc {
 		writeResponse(w, http.StatusOK, GenericResponse{
 			Response: "Movie metadata refresh completed",
 		})
+	}
+}
+
+func (s Server) SearchForMovie() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log := logger.FromCtx(r.Context())
+		vars := mux.Vars(r)
+
+		id, err := strconv.ParseInt(vars["id"], 10, 64)
+		if err != nil {
+			http.Error(w, "Invalid ID", http.StatusBadRequest)
+			return
+		}
+
+		err = s.manager.SearchForMovie(r.Context(), id)
+		if err != nil {
+			log.Error("search failed", zap.Error(err))
+			if errors.Is(err, storage.ErrNotFound) {
+				writeErrorResponse(w, http.StatusNotFound, err)
+				return
+			}
+			writeErrorResponse(w, http.StatusBadRequest, err)
+			return
+		}
+
+		w.WriteHeader(http.StatusAccepted)
+	}
+}
+
+func (s Server) SearchForSeries() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log := logger.FromCtx(r.Context())
+		vars := mux.Vars(r)
+
+		id, err := strconv.ParseInt(vars["id"], 10, 64)
+		if err != nil {
+			http.Error(w, "Invalid ID", http.StatusBadRequest)
+			return
+		}
+
+		err = s.manager.SearchForSeries(r.Context(), id)
+		if err != nil {
+			log.Error("search failed", zap.Error(err))
+			if errors.Is(err, storage.ErrNotFound) {
+				writeErrorResponse(w, http.StatusNotFound, err)
+				return
+			}
+			writeErrorResponse(w, http.StatusBadRequest, err)
+			return
+		}
+
+		w.WriteHeader(http.StatusAccepted)
+	}
+}
+
+func (s Server) SearchForSeason() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log := logger.FromCtx(r.Context())
+		vars := mux.Vars(r)
+
+		id, err := strconv.ParseInt(vars["id"], 10, 64)
+		if err != nil {
+			http.Error(w, "Invalid ID", http.StatusBadRequest)
+			return
+		}
+
+		err = s.manager.SearchForSeason(r.Context(), id)
+		if err != nil {
+			log.Error("search failed", zap.Error(err))
+			if errors.Is(err, storage.ErrNotFound) {
+				writeErrorResponse(w, http.StatusNotFound, err)
+				return
+			}
+			writeErrorResponse(w, http.StatusBadRequest, err)
+			return
+		}
+
+		w.WriteHeader(http.StatusAccepted)
+	}
+}
+
+func (s Server) SearchForEpisode() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log := logger.FromCtx(r.Context())
+		vars := mux.Vars(r)
+
+		id, err := strconv.ParseInt(vars["id"], 10, 64)
+		if err != nil {
+			http.Error(w, "Invalid ID", http.StatusBadRequest)
+			return
+		}
+
+		err = s.manager.SearchForEpisode(r.Context(), id)
+		if err != nil {
+			log.Error("search failed", zap.Error(err))
+			if errors.Is(err, storage.ErrNotFound) {
+				writeErrorResponse(w, http.StatusNotFound, err)
+				return
+			}
+			writeErrorResponse(w, http.StatusBadRequest, err)
+			return
+		}
+
+		w.WriteHeader(http.StatusAccepted)
 	}
 }

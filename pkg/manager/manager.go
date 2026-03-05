@@ -8,7 +8,6 @@ import (
 	"io"
 	"net/http"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/go-jet/jet/v2/qrm"
@@ -20,7 +19,6 @@ import (
 	"github.com/kasuboski/mediaz/pkg/library"
 	"github.com/kasuboski/mediaz/pkg/logger"
 	"github.com/kasuboski/mediaz/pkg/pagination"
-	"github.com/kasuboski/mediaz/pkg/prowlarr"
 	"github.com/kasuboski/mediaz/pkg/storage"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/table"
@@ -646,15 +644,17 @@ func (m MediaManager) ListShowsInLibrary(ctx context.Context) ([]LibraryShow, er
 			ls.Path = *srec.Path
 		}
 
-		meta, err := m.storage.GetSeriesMetadata(ctx, table.SeriesMetadata.ID.EQ(sqlite.Int(int64(*srec.SeriesMetadataID))))
-		if err == nil && meta != nil {
-			ls.TMDBID = meta.TmdbID
-			ls.Title = meta.Title
-			if meta.PosterPath != nil {
-				ls.PosterPath = *meta.PosterPath
-			}
-			if meta.FirstAirDate != nil {
-				ls.Year = int32(meta.FirstAirDate.Year())
+		if srec.SeriesMetadataID != nil {
+			meta, err := m.storage.GetSeriesMetadata(ctx, table.SeriesMetadata.ID.EQ(sqlite.Int(int64(*srec.SeriesMetadataID))))
+			if err == nil && meta != nil {
+				ls.TMDBID = meta.TmdbID
+				ls.Title = meta.Title
+				if meta.PosterPath != nil {
+					ls.PosterPath = *meta.PosterPath
+				}
+				if meta.FirstAirDate != nil {
+					ls.Year = int32(meta.FirstAirDate.Year())
+				}
 			}
 		}
 
@@ -1133,100 +1133,6 @@ func (m MediaManager) UpdateSeriesMonitored(ctx context.Context, seriesID int64,
 
 	logger.FromCtx(ctx).Info("updated monitoring", zap.Int64("series_id", seriesID), zap.Bool("monitored", monitored))
 	return series, nil
-}
-
-func (m MediaManager) SearchIndexers(ctx context.Context, indexers, categories []int32, query string) ([]*prowlarr.ReleaseResource, error) {
-	log := logger.FromCtx(ctx)
-
-	sourceIndexers := make(map[int64][]int32)
-
-	keys := m.indexerCache.Keys()
-	for _, sourceID := range keys {
-		cached, ok := m.indexerCache.Get(sourceID)
-		if !ok {
-			continue
-		}
-
-		for _, idx := range cached.Indexers {
-			for _, id := range indexers {
-				if idx.ID == id {
-					sourceIndexers[sourceID] = append(sourceIndexers[sourceID], id)
-				}
-			}
-		}
-	}
-
-	if len(sourceIndexers) == 0 {
-		return nil, fmt.Errorf("no indexer sources found for requested indexers")
-	}
-
-	type result struct {
-		releases []*prowlarr.ReleaseResource
-		err      error
-	}
-
-	resultChan := make(chan result, len(sourceIndexers))
-	var wg sync.WaitGroup
-
-	for sourceID, idxIDs := range sourceIndexers {
-		wg.Add(1)
-		go func(srcID int64, indexerIDs []int32) {
-			defer wg.Done()
-			releases, err := m.searchIndexerSource(ctx, srcID, indexerIDs, categories, query)
-			resultChan <- result{releases: releases, err: err}
-		}(sourceID, idxIDs)
-	}
-
-	go func() {
-		wg.Wait()
-		close(resultChan)
-	}()
-
-	var allReleases []*prowlarr.ReleaseResource
-	var searchErr error
-
-	for res := range resultChan {
-		if res.err != nil {
-			log.Error("source search failed", zap.Error(res.err))
-			searchErr = errors.Join(searchErr, res.err)
-			continue
-		}
-		allReleases = append(allReleases, res.releases...)
-	}
-
-	if len(allReleases) == 0 && searchErr != nil {
-		return nil, searchErr
-	}
-
-	return allReleases, nil
-}
-
-func (m MediaManager) searchIndexerSource(ctx context.Context, sourceID int64, indexerIDs, categories []int32, query string) ([]*prowlarr.ReleaseResource, error) {
-	log := logger.FromCtx(ctx)
-
-	sourceConfig, err := m.storage.GetIndexerSource(ctx, sourceID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get source: %w", err)
-	}
-
-	source, err := m.indexerFactory.NewIndexerSource(sourceConfig)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create source: %w", err)
-	}
-
-	var sourceReleases []*prowlarr.ReleaseResource
-	for _, indexerID := range indexerIDs {
-		releases, err := source.Search(ctx, indexerID, categories, query)
-		if err != nil {
-			log.Error("indexer search failed",
-				zap.Int32("indexerID", indexerID),
-				zap.Error(err))
-			continue
-		}
-		sourceReleases = append(sourceReleases, releases...)
-	}
-
-	return sourceReleases, nil
 }
 
 func (m MediaManager) AddIndexer(ctx context.Context, request AddIndexerRequest) (IndexerResponse, error) {

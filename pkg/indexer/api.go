@@ -7,9 +7,14 @@ import (
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
 )
 
+const (
+	TypeTV    = "tv"
+	TypeMovie = "movie"
+)
+
 type IndexerSource interface {
 	ListIndexers(ctx context.Context) ([]SourceIndexer, error)
-	Search(ctx context.Context, indexerID int32, categories []int32, query string) ([]*prowlarr.ReleaseResource, error)
+	Search(ctx context.Context, indexerID int32, categories []int32, opts SearchOptions) ([]*prowlarr.ReleaseResource, error)
 }
 
 type SourceIndexer struct {
@@ -19,6 +24,14 @@ type SourceIndexer struct {
 	Priority   int32
 	Categories []prowlarr.IndexerCategory
 	Status     *prowlarr.IndexerStatusResource
+}
+
+type SearchOptions struct {
+	Query   string
+	Season  *int32
+	Episode *int32
+	Type    *string
+	TmdbID  *int32
 }
 
 type Factory interface {

@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-jet/jet/v2/sqlite"
 	"github.com/kasuboski/mediaz/pkg/download"
+	"github.com/kasuboski/mediaz/pkg/indexer"
 	"github.com/kasuboski/mediaz/pkg/io"
 	"github.com/kasuboski/mediaz/pkg/library"
 	"github.com/kasuboski/mediaz/pkg/logger"
@@ -353,7 +354,10 @@ func (m MediaManager) reconcileMissingSeries(ctx context.Context, series *storag
 		return err
 	}
 
-	releases, err := m.SearchIndexers(ctx, snapshot.GetIndexerIDs(), TV_CATEGORIES, seriesMetadata.Title)
+	releases, err := m.SearchIndexers(ctx, snapshot.GetIndexerIDs(), TV_CATEGORIES, indexer.SearchOptions{
+		Query: seriesMetadata.Title,
+		Type:  ptr(indexer.TypeTV),
+	})
 	if err != nil {
 		log.Debugw("failed to search indexer", "indexers", snapshot.GetIndexerIDs(), zap.Error(err))
 		return err
