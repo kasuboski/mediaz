@@ -463,7 +463,11 @@ func (m MediaManager) reconcileDiscoveredMovie(ctx context.Context, movie *stora
 		return nil
 	}
 
-	searchTerm := pathToSearchTerm(*movie.Path)
+	searchTerm, year := pathToSearchTermWithYear(*movie.Path)
+	if year == nil {
+		log.Debug("no year found from path")
+	}
+
 	searchResp, err := m.SearchMovie(ctx, searchTerm)
 	if err != nil {
 		return fmt.Errorf("failed to search for movie: %w", err)
@@ -474,12 +478,13 @@ func (m MediaManager) reconcileDiscoveredMovie(ctx context.Context, movie *stora
 		return nil
 	}
 
-	if len(searchResp.Results) > 1 {
-		log.Debug("multiple results found for movie", zap.String("path", *movie.Path), zap.String("search_term", searchTerm), zap.Int("count", len(searchResp.Results)))
+	result := findMatchingMovieResult(searchResp.Results, year)
+
+	if result == nil {
+		log.Warn("no matching result found for movie", zap.String("path", *movie.Path), zap.String("search_term", searchTerm), zap.Int32("year", *year))
+		return nil
 	}
 
-	// Use first result
-	result := searchResp.Results[0]
 	if result.ID == nil {
 		return fmt.Errorf("movie result has no ID")
 	}
@@ -500,10 +505,26 @@ func (m MediaManager) reconcileDiscoveredMovie(ctx context.Context, movie *stora
 		return fmt.Errorf("failed to update movie: %w", err)
 	}
 
-	// Update the movie struct with the metadata ID
 	movie.MovieMetadataID = &metadata.ID
 
 	log.Info("updated movie with metadata", zap.Int32("metadata_id", metadata.ID))
+	return nil
+}
+
+func findMatchingMovieResult(results []*SearchMediaResult, year *int32) *SearchMediaResult {
+	if year == nil {
+		return results[0]
+	}
+
+	for _, r := range results {
+		if r.ReleaseDate != nil && len(*r.ReleaseDate) >= 4 {
+			resultYear := (*r.ReleaseDate)[:4]
+			if resultYear == fmt.Sprintf("%d", *year) {
+				return r
+			}
+		}
+	}
+
 	return nil
 }
 

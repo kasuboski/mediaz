@@ -595,6 +595,31 @@ func pathToSearchTerm(path string) string {
 	return strings.TrimSpace(cleaned)
 }
 
+// pathToSearchTermWithYear extracts the year from a movie path and returns both the search term and year
+func pathToSearchTermWithYear(path string) (string, *int32) {
+	if path == "" {
+		return "", nil
+	}
+
+	year := extractYearFromPath(path)
+
+	searchTerm := pathToSearchTerm(path)
+
+	return searchTerm, year
+}
+
+func extractYearFromPath(path string) *int32 {
+	matches := yearRegex.FindStringSubmatch(path)
+	if len(matches) > 1 {
+		year, err := strconv.Atoi(matches[1])
+		if err == nil && year >= 1900 && year <= 2100 {
+			y := int32(year)
+			return &y
+		}
+	}
+	return nil
+}
+
 func removeFromName(filename string, toRemove ...string) string {
 	lowerRemove := make([]string, len(toRemove))
 	for i, r := range toRemove {
