@@ -1163,7 +1163,7 @@ func (m MediaManager) reconcileDiscoveredEpisode(ctx context.Context, snapshot *
 }
 
 func (m MediaManager) linkSeriesMetadata(ctx context.Context, series *storage.Series, log *zap.SugaredLogger) error {
-	searchTerm := pathToSearchTerm(*series.Path)
+	searchTerm, year := pathToSearchTermWithYear(*series.Path)
 	searchResp, err := m.SearchTV(ctx, searchTerm)
 	if err != nil {
 		return fmt.Errorf("failed to search for TV show: %w", err)
@@ -1174,11 +1174,19 @@ func (m MediaManager) linkSeriesMetadata(ctx context.Context, series *storage.Se
 		return fmt.Errorf("no TMDB results found for series")
 	}
 
-	if len(searchResp.Results) > 1 {
-		log.Debug("multiple results found for TV show", zap.String("path", *series.Path), zap.String("search_term", searchTerm), zap.Int("count", len(searchResp.Results)))
+	result := findMatchingSeriesResult(searchResp.Results, year)
+	if result == nil {
+		if year != nil {
+			log.Warn("no results matched year", zap.String("path", *series.Path), zap.String("search_term", searchTerm), zap.Int32("year", *year))
+		} else {
+			result = searchResp.Results[0]
+		}
 	}
 
-	result := searchResp.Results[0]
+	if result == nil {
+		return nil
+	}
+
 	if result.ID == nil {
 		return fmt.Errorf("TV show result has no ID")
 	}
@@ -1194,6 +1202,23 @@ func (m MediaManager) linkSeriesMetadata(ctx context.Context, series *storage.Se
 	}
 
 	log.Info("linked series to TMDB metadata", zap.Int32("series_metadata_id", seriesMetadata.ID))
+	return nil
+}
+
+func findMatchingSeriesResult(results []*SearchMediaResult, year *int32) *SearchMediaResult {
+	if year == nil {
+		return results[0]
+	}
+
+	for _, r := range results {
+		if r.FirstAirDate != nil && len(*r.FirstAirDate) >= 4 {
+			resultYear := (*r.FirstAirDate)[:4]
+			if resultYear == fmt.Sprintf("%d", *year) {
+				return r
+			}
+		}
+	}
+
 	return nil
 }
 
