@@ -13,7 +13,6 @@ import (
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/table"
 )
 
-
 // CreateSeriesMetadata creates the given series metadata
 func (s *SQLite) CreateSeriesMetadata(ctx context.Context, seriesMeta model.SeriesMetadata) (int64, error) {
 	// don't insert a zeroed ID

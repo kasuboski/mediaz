@@ -506,8 +506,13 @@ func (m MediaManager) reconcileMissingSeason(ctx context.Context, seriesTitle st
 	log.Debug("considering releases for season pack", zap.Int("count", len(releases)))
 
 	var chosenSeasonPackRelease *prowlarr.ReleaseResource
+	seasonParams := SeriesReleaseFilterParams{
+		Title:        seriesTitle,
+		SeasonNumber: metadata.Number,
+		Runtime:      runtime,
+	}
 	for _, r := range releases {
-		if RejectSeasonReleaseFunc(ctx, seriesTitle, metadata.Number, runtime, qualityProfile, snapshot.GetProtocols())(r) {
+		if RejectSeasonReleaseFunc(ctx, seasonParams, qualityProfile, snapshot.GetProtocols())(r) {
 			continue
 		}
 
@@ -607,8 +612,14 @@ func (m MediaManager) reconcileMissingEpisode(ctx context.Context, seriesTitle s
 	}
 
 	var chosenRelease *prowlarr.ReleaseResource
+	episodeParams := SeriesReleaseFilterParams{
+		Title:         seriesTitle,
+		SeasonNumber:  seasonNumber,
+		EpisodeNumber: episodeMetadata.Number,
+		Runtime:       *episodeMetadata.Runtime,
+	}
 	for _, r := range releases {
-		if RejectEpisodeReleaseFunc(ctx, seriesTitle, seasonNumber, episodeMetadata.Number, *episodeMetadata.Runtime, qualityProfile, snapshot.GetProtocols())(r) {
+		if RejectEpisodeReleaseFunc(ctx, episodeParams, qualityProfile, snapshot.GetProtocols())(r) {
 			continue
 		}
 		chosenRelease = r

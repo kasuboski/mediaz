@@ -327,7 +327,16 @@ func (m MediaManager) reconcileMissingMovie(ctx context.Context, movie *storage.
 
 	availableProtocols := snapshot.GetProtocols()
 	log.Debugw("releases for consideration", "releases", len(releases))
-	releases = slices.DeleteFunc(releases, RejectMovieReleaseFunc(ctx, det.Title, det.Runtime, profile, availableProtocols))
+	params := ReleaseFilterParams{
+		Title:         det.Title,
+		OriginalTitle: det.OriginalTitle,
+		CleanTitle:    det.CleanTitle,
+		Year:          det.Year,
+		Runtime:       det.Runtime,
+		Certification: det.Certification,
+		Studio:        det.Studio,
+	}
+	releases = slices.DeleteFunc(releases, RejectMovieReleaseFunc(ctx, params, profile, availableProtocols))
 	log.Debugw("releases after rejection", "releases", len(releases))
 	if len(releases) == 0 {
 		return nil

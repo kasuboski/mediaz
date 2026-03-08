@@ -23,6 +23,7 @@
       devShells = forEachSupportedSystem ({ pkgs }: {
         default = pkgs.mkShell {
           packages = with pkgs; [
+            ast-grep
             # go (version is specified by overlay)
             go
 
