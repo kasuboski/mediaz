@@ -23,7 +23,7 @@ var (
 
 	// pathToSearchTerm regex patterns
 	releaseGroupRegex   = regexp.MustCompile(`-[A-Z0-9]+\[[^\]]+\]`)
-	yearRegex           = regexp.MustCompile(`\s*[\(\[\{]?(19|20)\d{2}[\)\]\}]?(?:\s|$)`)
+	yearRegex           = regexp.MustCompile(`\s*[\(\[\{]?((?:19|20)\d{2})[\)\]\}]?(?:\s|$)`)
 	countryCodeRegex    = regexp.MustCompile(`\s*[\(\[\{]([A-Z]{2,3})[\)\]\}]\s*`)
 	qualityRegex        = regexp.MustCompile(`(?i)\b(720p|1080p|4k|2160p|x264|h264|hevc|web-dl|bluray|dvdrip|cam|ts|tc)\b`)
 	codecRegex          = regexp.MustCompile(`(?i)\b(h264|ac3|aac|dts|dd5\.1)\b`)
@@ -31,7 +31,24 @@ var (
 	multipleSpacesRegex = regexp.MustCompile(`\s+`)
 )
 
-func RejectMovieReleaseFunc(ctx context.Context, title string, runtime int32, profile storage.QualityProfile, protocolsAvailable map[string]struct{}) func(*prowlarr.ReleaseResource) bool {
+type ReleaseFilterParams struct {
+	Title         string
+	OriginalTitle *string
+	CleanTitle    *string
+	Year          *int32
+	Runtime       int32
+	Certification *string
+	Studio        *string
+}
+
+type SeriesReleaseFilterParams struct {
+	Title         string
+	SeasonNumber  int32
+	EpisodeNumber int32
+	Runtime       int32
+}
+
+func RejectMovieReleaseFunc(ctx context.Context, params ReleaseFilterParams, profile storage.QualityProfile, protocolsAvailable map[string]struct{}) func(*prowlarr.ReleaseResource) bool {
 	return func(r *prowlarr.ReleaseResource) bool {
 		if r == nil {
 			return true
@@ -39,21 +56,51 @@ func RejectMovieReleaseFunc(ctx context.Context, title string, runtime int32, pr
 
 		if r.Title != nil {
 			releaseTitle := strings.TrimSpace(r.Title.MustGet())
-			if !strings.HasPrefix(releaseTitle, title) {
+
+			titleMatches := strings.HasPrefix(releaseTitle, params.Title)
+
+			if !titleMatches && params.OriginalTitle != nil {
+				titleMatches = strings.HasPrefix(releaseTitle, *params.OriginalTitle)
+			}
+
+			if !titleMatches && params.CleanTitle != nil {
+				titleMatches = strings.HasPrefix(releaseTitle, *params.CleanTitle)
+			}
+
+			if !titleMatches {
 				return true
+			}
+
+			if params.Year != nil {
+				releaseYear := extractYear(releaseTitle)
+				if releaseYear != nil && *releaseYear != *params.Year {
+					return true
+				}
 			}
 		}
 
-		return rejectReleaseFunc(ctx, runtime, profile, protocolsAvailable)(r)
+		return rejectReleaseFunc(ctx, params.Runtime, profile, protocolsAvailable)(r)
 	}
 }
 
-func RejectSeasonReleaseFunc(ctx context.Context, seriesTitle string, seasonNumber, runtime int32, profile storage.QualityProfile, protocolsAvailable map[string]struct{}) func(*prowlarr.ReleaseResource) bool {
+func extractYear(title string) *int32 {
+	matches := yearRegex.FindStringSubmatch(title)
+	if len(matches) > 1 {
+		year, err := strconv.Atoi(matches[1])
+		if err == nil {
+			y := int32(year)
+			return &y
+		}
+	}
+	return nil
+}
+
+func RejectSeasonReleaseFunc(ctx context.Context, params SeriesReleaseFilterParams, profile storage.QualityProfile, protocolsAvailable map[string]struct{}) func(*prowlarr.ReleaseResource) bool {
 	return func(r *prowlarr.ReleaseResource) bool {
-		if rejectSeasonReleaseFunc(seriesTitle, seasonNumber, r) {
+		if rejectSeasonReleaseFunc(params.Title, params.SeasonNumber, r) {
 			return true
 		}
-		return rejectReleaseFunc(ctx, runtime, profile, protocolsAvailable)(r)
+		return rejectReleaseFunc(ctx, params.Runtime, profile, protocolsAvailable)(r)
 	}
 }
 
@@ -93,13 +140,13 @@ func rejectSeasonReleaseFunc(seriesTitle string, seasonNumber int32, r *prowlarr
 	return true
 }
 
-func RejectEpisodeReleaseFunc(ctx context.Context, seriesTitle string, seasonNumber, episodeNumber, runtime int32, profile storage.QualityProfile, protocolsAvailable map[string]struct{}) func(*prowlarr.ReleaseResource) bool {
+func RejectEpisodeReleaseFunc(ctx context.Context, params SeriesReleaseFilterParams, profile storage.QualityProfile, protocolsAvailable map[string]struct{}) func(*prowlarr.ReleaseResource) bool {
 	return func(r *prowlarr.ReleaseResource) bool {
-		if rejectEpisodeReleaseFunc(seriesTitle, seasonNumber, episodeNumber, r) {
+		if rejectEpisodeReleaseFunc(params.Title, params.SeasonNumber, params.EpisodeNumber, r) {
 			return true
 		}
 
-		return rejectReleaseFunc(ctx, runtime, profile, protocolsAvailable)(r)
+		return rejectReleaseFunc(ctx, params.Runtime, profile, protocolsAvailable)(r)
 	}
 }
 
@@ -546,6 +593,31 @@ func pathToSearchTerm(path string) string {
 	cleaned = multipleSpacesRegex.ReplaceAllString(cleaned, " ")
 
 	return strings.TrimSpace(cleaned)
+}
+
+// pathToSearchTermWithYear extracts the year from a movie path and returns both the search term and year
+func pathToSearchTermWithYear(path string) (string, *int32) {
+	if path == "" {
+		return "", nil
+	}
+
+	year := extractYearFromPath(path)
+
+	searchTerm := pathToSearchTerm(path)
+
+	return searchTerm, year
+}
+
+func extractYearFromPath(path string) *int32 {
+	matches := yearRegex.FindStringSubmatch(path)
+	if len(matches) > 1 {
+		year, err := strconv.Atoi(matches[1])
+		if err == nil && year >= 1900 && year <= 2100 {
+			y := int32(year)
+			return &y
+		}
+	}
+	return nil
 }
 
 func removeFromName(filename string, toRemove ...string) string {
