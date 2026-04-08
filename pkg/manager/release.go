@@ -84,7 +84,9 @@ func RejectMovieReleaseFunc(ctx context.Context, params ReleaseFilterParams, pro
 }
 
 func extractYear(title string) *int32 {
-	matches := yearRegex.FindStringSubmatch(title)
+	normalized := strings.NewReplacer(".", " ", "_", " ", "-", " ").Replace(title)
+	normalized = multipleSpacesRegex.ReplaceAllString(normalized, " ")
+	matches := yearRegex.FindStringSubmatch(normalized)
 	if len(matches) > 1 {
 		year, err := strconv.Atoi(matches[1])
 		if err == nil {
@@ -609,7 +611,9 @@ func pathToSearchTermWithYear(path string) (string, *int32) {
 }
 
 func extractYearFromPath(path string) *int32 {
-	matches := yearRegex.FindStringSubmatch(path)
+	normalized := strings.NewReplacer(".", " ", "_", " ", "-", " ").Replace(path)
+	normalized = multipleSpacesRegex.ReplaceAllString(normalized, " ")
+	matches := yearRegex.FindStringSubmatch(normalized)
 	if len(matches) > 1 {
 		year, err := strconv.Atoi(matches[1])
 		if err == nil && year >= 1900 && year <= 2100 {
