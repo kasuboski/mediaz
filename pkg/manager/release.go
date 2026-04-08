@@ -88,13 +88,6 @@ func RejectMovieReleaseFunc(ctx context.Context, params ReleaseFilterParams, pro
 			if releaseYear != nil && *releaseYear != *params.Year {
 				return true
 			}
-
-			if params.Year != nil {
-				releaseYear := extractYear(releaseTitle)
-				if releaseYear != nil && *releaseYear != *params.Year {
-					return true
-				}
-			}
 		}
 
 		return rejectReleaseFunc(ctx, params.Runtime, profile, protocolsAvailable)(r)
