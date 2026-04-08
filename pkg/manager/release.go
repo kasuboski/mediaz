@@ -21,11 +21,11 @@ var (
 	episodeNumberPattern = regexp.MustCompile(`(?i)S?(\d{1,2})(?:E|x)(\d{1,2})`)
 	seasonNumberPattern  = regexp.MustCompile(`(?i)(?:S(?:eason)?[\s._-]?(\d{1,2}))`)
 
-	// pathToSearchTerm regex patterns
-	releaseGroupRegex   = regexp.MustCompile(`-[A-Z0-9]+\[[^\]]+\]`)
-	yearRegex           = regexp.MustCompile(`\s*[\(\[\{]?((?:19|20)\d{2})[\)\]\}]?(?:\s|$)`)
+	releaseGroupRegex   = regexp.MustCompile(`(?:\s|-)[A-Z0-9]+\[[^\]]+\]`)
+	bracketedYearRegex  = regexp.MustCompile(`[\(\[\{]((?:19|20)\d{2})[\)\]\}]`)
+	trailingYearRegex   = regexp.MustCompile(`\s((?:19|20)\d{2})(?:\s|$)`)
 	countryCodeRegex    = regexp.MustCompile(`\s*[\(\[\{]([A-Z]{2,3})[\)\]\}]\s*`)
-	qualityRegex        = regexp.MustCompile(`(?i)\b(720p|1080p|4k|2160p|x264|h264|hevc|web-dl|bluray|dvdrip|cam|ts|tc)\b`)
+	qualityRegex        = regexp.MustCompile(`(?i)\b(720p|1080p|4k|2160p|x264|h264|hevc|web[\s_-]dl|bluray|dvdrip|cam|ts|tc)\b`)
 	codecRegex          = regexp.MustCompile(`(?i)\b(h264|ac3|aac|dts|dd5\.1)\b`)
 	emptyBracketsRegex  = regexp.MustCompile(`\s*[\[\(\{][\]\)\}]\s*`)
 	multipleSpacesRegex = regexp.MustCompile(`\s+`)
@@ -54,28 +54,35 @@ func RejectMovieReleaseFunc(ctx context.Context, params ReleaseFilterParams, pro
 			return true
 		}
 
-		if r.Title != nil {
-			releaseTitle := strings.TrimSpace(r.Title.MustGet())
+		releaseTitle, err := r.Title.Get()
+		if err != nil {
+			return true
+		}
 
-			titleMatches := strings.HasPrefix(releaseTitle, params.Title)
+		releaseTitle = strings.TrimSpace(releaseTitle)
+		if releaseTitle == "" {
+			return true
+		}
 
-			if !titleMatches && params.OriginalTitle != nil {
-				titleMatches = strings.HasPrefix(releaseTitle, *params.OriginalTitle)
-			}
+		lowerReleaseTitle := strings.ToLower(releaseTitle)
+		titleMatches := strings.HasPrefix(lowerReleaseTitle, strings.ToLower(params.Title))
 
-			if !titleMatches && params.CleanTitle != nil {
-				titleMatches = strings.HasPrefix(releaseTitle, *params.CleanTitle)
-			}
+		if !titleMatches && params.OriginalTitle != nil {
+			titleMatches = strings.HasPrefix(lowerReleaseTitle, strings.ToLower(*params.OriginalTitle))
+		}
 
-			if !titleMatches {
+		if !titleMatches && params.CleanTitle != nil {
+			titleMatches = strings.HasPrefix(lowerReleaseTitle, strings.ToLower(*params.CleanTitle))
+		}
+
+		if !titleMatches {
+			return true
+		}
+
+		if params.Year != nil {
+			releaseYear := extractYear(releaseTitle)
+			if releaseYear != nil && *releaseYear != *params.Year {
 				return true
-			}
-
-			if params.Year != nil {
-				releaseYear := extractYear(releaseTitle)
-				if releaseYear != nil && *releaseYear != *params.Year {
-					return true
-				}
 			}
 		}
 
@@ -83,10 +90,13 @@ func RejectMovieReleaseFunc(ctx context.Context, params ReleaseFilterParams, pro
 	}
 }
 
-func extractYear(title string) *int32 {
-	normalized := strings.NewReplacer(".", " ", "_", " ", "-", " ").Replace(title)
-	normalized = multipleSpacesRegex.ReplaceAllString(normalized, " ")
-	matches := yearRegex.FindStringSubmatch(normalized)
+func normalizeSeparators(path string) string {
+	normalized := strings.NewReplacer(".", " ", "_", " ", "-", " ").Replace(path)
+	return multipleSpacesRegex.ReplaceAllString(normalized, " ")
+}
+
+func findYear(normalized string) *int32 {
+	matches := bracketedYearRegex.FindStringSubmatch(normalized)
 	if len(matches) > 1 {
 		year, err := strconv.Atoi(matches[1])
 		if err == nil {
@@ -94,7 +104,21 @@ func extractYear(title string) *int32 {
 			return &y
 		}
 	}
+
+	matches = trailingYearRegex.FindStringSubmatch(normalized)
+	if len(matches) > 1 {
+		year, err := strconv.Atoi(matches[1])
+		if err == nil {
+			y := int32(year)
+			return &y
+		}
+	}
+
 	return nil
+}
+
+func extractYear(title string) *int32 {
+	return findYear(normalizeSeparators(title))
 }
 
 func RejectSeasonReleaseFunc(ctx context.Context, params SeriesReleaseFilterParams, profile storage.QualityProfile, protocolsAvailable map[string]struct{}) func(*prowlarr.ReleaseResource) bool {
@@ -570,14 +594,12 @@ func pathToSearchTerm(path string) string {
 		return ""
 	}
 
-	// Replace dots with spaces (for movie.name.format)
-	cleaned := strings.ReplaceAll(path, ".", " ")
+	cleaned := normalizeSeparators(path)
 
-	// Remove release group indicators (e.g., -EVO[EtHD])
 	cleaned = releaseGroupRegex.ReplaceAllString(cleaned, "")
 
-	// Remove years in various formats: (YYYY), {YYYY}, [YYYY], or trailing YYYY
-	cleaned = yearRegex.ReplaceAllString(cleaned, " ")
+	cleaned = bracketedYearRegex.ReplaceAllString(cleaned, " ")
+	cleaned = trailingYearRegex.ReplaceAllString(cleaned, " ")
 
 	// Remove country codes (e.g., (US), (UK), [AU])
 	cleaned = countryCodeRegex.ReplaceAllString(cleaned, " ")
@@ -603,25 +625,15 @@ func pathToSearchTermWithYear(path string) (string, *int32) {
 		return "", nil
 	}
 
-	year := extractYearFromPath(path)
-
-	searchTerm := pathToSearchTerm(path)
+	normalized := normalizeSeparators(path)
+	year := findYear(normalized)
+	searchTerm := pathToSearchTerm(normalized)
 
 	return searchTerm, year
 }
 
 func extractYearFromPath(path string) *int32 {
-	normalized := strings.NewReplacer(".", " ", "_", " ", "-", " ").Replace(path)
-	normalized = multipleSpacesRegex.ReplaceAllString(normalized, " ")
-	matches := yearRegex.FindStringSubmatch(normalized)
-	if len(matches) > 1 {
-		year, err := strconv.Atoi(matches[1])
-		if err == nil && year >= 1900 && year <= 2100 {
-			y := int32(year)
-			return &y
-		}
-	}
-	return nil
+	return findYear(normalizeSeparators(path))
 }
 
 func removeFromName(filename string, toRemove ...string) string {

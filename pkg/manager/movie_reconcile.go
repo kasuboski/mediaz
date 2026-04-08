@@ -512,6 +512,10 @@ func (m MediaManager) reconcileDiscoveredMovie(ctx context.Context, movie *stora
 }
 
 func findMatchingMovieResult(results []*SearchMediaResult, year *int32) *SearchMediaResult {
+	if len(results) == 0 {
+		return nil
+	}
+
 	if year == nil {
 		return results[0]
 	}

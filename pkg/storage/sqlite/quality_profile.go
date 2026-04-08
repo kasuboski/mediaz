@@ -86,7 +86,27 @@ func (s *SQLite) UpdateQualityProfile(ctx context.Context, id int64, profile mod
 
 // DeleteQualityProfile delete a quality profile
 func (s *SQLite) DeleteQualityProfile(ctx context.Context, id int64) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+
+	deleteItems := table.QualityProfileItem.DELETE().WHERE(table.QualityProfileItem.ProfileID.EQ(sqlite.Int64(id)))
+	_, err = deleteItems.ExecContext(ctx, tx)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
 	stmt := table.QualityProfile.DELETE().WHERE(table.QualityProfile.ID.EQ(sqlite.Int64(id))).RETURNING(table.QualityProfile.AllColumns)
-	_, err := s.handleDelete(ctx, stmt)
-	return err
+	_, err = stmt.ExecContext(ctx, tx)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	return tx.Commit()
 }

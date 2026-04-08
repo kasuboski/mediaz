@@ -1,6 +1,7 @@
 package manager
 
 import (
+	"context"
 	"encoding/json"
 	"os"
 	"reflect"
@@ -8,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/kasuboski/mediaz/pkg/prowlarr"
+	"github.com/kasuboski/mediaz/pkg/storage"
 	"github.com/oapi-codegen/nullable"
 
 	"github.com/stretchr/testify/assert"
@@ -246,7 +248,7 @@ func TestPathToSearchTerm(t *testing.T) {
 		{
 			name: "year at end without parentheses",
 			path: "Der Untergang - Downfall 2004",
-			want: "Der Untergang - Downfall",
+			want: "Der Untergang Downfall",
 		},
 		{
 			name: "year in parentheses with quality",
@@ -603,6 +605,348 @@ func TestRejectEpisodeReleaseFunc(t *testing.T) {
 
 func equalValuesPrettyPrint(t testing.TB, expected, actual any) bool {
 	return assert.EqualValues(t, expected, actual, "exp=%v, got=%v", reflect.Indirect(reflect.ValueOf(expected)), reflect.Indirect(reflect.ValueOf(actual)))
+}
+
+func TestNormalizeSeparators(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{
+			name:  "dots to spaces",
+			input: "Movie.Name.2024",
+			want:  "Movie Name 2024",
+		},
+		{
+			name:  "underscores to spaces",
+			input: "Movie_Name_2024",
+			want:  "Movie Name 2024",
+		},
+		{
+			name:  "dashes to spaces",
+			input: "Movie-Name-2024",
+			want:  "Movie Name 2024",
+		},
+		{
+			name:  "mixed separators",
+			input: "Movie_Name-Here.2024",
+			want:  "Movie Name Here 2024",
+		},
+		{
+			name:  "collapse duplicate separators",
+			input: "Movie__Name..2024",
+			want:  "Movie Name 2024",
+		},
+		{
+			name:  "collapse mixed duplicates",
+			input: "Movie._-Name_-.2024",
+			want:  "Movie Name 2024",
+		},
+		{
+			name:  "no separators",
+			input: "MovieName",
+			want:  "MovieName",
+		},
+		{
+			name:  "already spaces",
+			input: "Movie Name 2024",
+			want:  "Movie Name 2024",
+		},
+		{
+			name:  "empty string",
+			input: "",
+			want:  "",
+		},
+		{
+			name:  "leading and trailing separators",
+			input: ".Movie_Name.",
+			want:  " Movie Name ",
+		},
+		{
+			name:  "complex filename",
+			input: "The.Dark.Knight.2008.1080p.BluRay",
+			want:  "The Dark Knight 2008 1080p BluRay",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := normalizeSeparators(tt.input)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestExtractYear(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  *int32
+	}{
+		{
+			name:  "numeric title only is not a year",
+			input: "1917",
+			want:  nil,
+		},
+		{
+			name:  "numeric title with actual year after",
+			input: "2012 2009 1080p",
+			want:  int32Ptr(2009),
+		},
+		{
+			name:  "movie title 1917 with release year",
+			input: "1917 2019 1080p",
+			want:  int32Ptr(2019),
+		},
+		{
+			name:  "year in parentheses",
+			input: "Zoolander (2001)",
+			want:  int32Ptr(2001),
+		},
+		{
+			name:  "year in square brackets",
+			input: "Movie [2020]",
+			want:  int32Ptr(2020),
+		},
+		{
+			name:  "year in curly braces",
+			input: "Movie {2019}",
+			want:  int32Ptr(2019),
+		},
+		{
+			name:  "trailing year after dot separators",
+			input: "Movie.Name.2024",
+			want:  int32Ptr(2024),
+		},
+		{
+			name:  "trailing year after underscore separators",
+			input: "Movie_Name_2023",
+			want:  int32Ptr(2023),
+		},
+		{
+			name:  "trailing year after dash separators",
+			input: "Movie-Name-2022",
+			want:  int32Ptr(2022),
+		},
+		{
+			name:  "no year present",
+			input: "Movie Name",
+			want:  nil,
+		},
+		{
+			name:  "empty string",
+			input: "",
+			want:  nil,
+		},
+		{
+			name:  "bracketed year preferred over trailing",
+			input: "Movie Name (2019) 2020",
+			want:  int32Ptr(2019),
+		},
+		{
+			name:  "year with quality after",
+			input: "Movie Name 2017 1080p",
+			want:  int32Ptr(2017),
+		},
+		{
+			name:  "dot separated with quality and year",
+			input: "Columbus.2017.1080p.WEB-DL.H264",
+			want:  int32Ptr(2017),
+		},
+		{
+			name:  "year only in brackets mid string",
+			input: "Movie (2019) Extended Edition",
+			want:  int32Ptr(2019),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := extractYear(tt.input)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestExtractYearFromPath(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  *int32
+	}{
+		{
+			name:  "numeric title only is not a year",
+			input: "1917",
+			want:  nil,
+		},
+		{
+			name:  "numeric title with release year",
+			input: "2012.2009.1080p",
+			want:  int32Ptr(2009),
+		},
+		{
+			name:  "year in parentheses",
+			input: "Zoolander (2001)",
+			want:  int32Ptr(2001),
+		},
+		{
+			name:  "year in square brackets",
+			input: "Guardians of the Galaxy [2014]",
+			want:  int32Ptr(2014),
+		},
+		{
+			name:  "year in curly braces",
+			input: "Apocalypse Now {1979}",
+			want:  int32Ptr(1979),
+		},
+		{
+			name:  "underscore separated",
+			input: "Movie_Name_2024_1080p",
+			want:  int32Ptr(2024),
+		},
+		{
+			name:  "dash separated",
+			input: "Movie-Name-2024",
+			want:  int32Ptr(2024),
+		},
+		{
+			name:  "no year",
+			input: "Movie Name",
+			want:  nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := extractYearFromPath(tt.input)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestPathToSearchTermWithYear(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		wantTerm string
+		wantYear *int32
+	}{
+		{
+			name:     "dot separated with year and quality",
+			input:    "Columbus.2017.1080p.WEB-DL.H264.AC3-EVO[EtHD]",
+			wantTerm: "Columbus",
+			wantYear: int32Ptr(2017),
+		},
+		{
+			name:     "underscore separated",
+			input:    "Movie_Name_2024_1080p",
+			wantTerm: "Movie Name",
+			wantYear: int32Ptr(2024),
+		},
+		{
+			name:     "dash separated",
+			input:    "Movie-Name-2024",
+			wantTerm: "Movie Name",
+			wantYear: int32Ptr(2024),
+		},
+		{
+			name:     "parentheses year",
+			input:    "Zoolander (2001)",
+			wantTerm: "Zoolander",
+			wantYear: int32Ptr(2001),
+		},
+		{
+			name:     "numeric title 1917 no year",
+			input:    "1917",
+			wantTerm: "1917",
+			wantYear: nil,
+		},
+		{
+			name:     "numeric title 2012 with actual year",
+			input:    "2012.2009.1080p",
+			wantTerm: "2012",
+			wantYear: int32Ptr(2009),
+		},
+		{
+			name:     "empty string",
+			input:    "",
+			wantTerm: "",
+			wantYear: nil,
+		},
+		{
+			name:     "year and country code",
+			input:    "Parasite (2019) (KR)",
+			wantTerm: "Parasite",
+			wantYear: int32Ptr(2019),
+		},
+		{
+			name:     "alternate title with year",
+			input:    "Zoolander (Blue Steel) (2001)",
+			wantTerm: "Zoolander (Blue Steel)",
+			wantYear: int32Ptr(2001),
+		},
+		{
+			name:     "mixed separators normalized",
+			input:    "The.Dark-Knight_2008.1080p",
+			wantTerm: "The Dark Knight",
+			wantYear: int32Ptr(2008),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			term, year := pathToSearchTermWithYear(tt.input)
+			assert.Equal(t, tt.wantTerm, term)
+			assert.Equal(t, tt.wantYear, year)
+		})
+	}
+}
+
+func TestRejectMovieReleaseFunc(t *testing.T) {
+	year2019 := int32(2019)
+	params := ReleaseFilterParams{
+		Title:   "Movie",
+		Year:    &year2019,
+		Runtime: 120,
+	}
+	profile := storage.QualityProfile{}
+	protocols := map[string]struct{}{}
+
+	t.Run("nil release", func(t *testing.T) {
+		reject := RejectMovieReleaseFunc(context.Background(), params, profile, protocols)
+		assert.True(t, reject(nil))
+	})
+
+	t.Run("unspecified title", func(t *testing.T) {
+		reject := RejectMovieReleaseFunc(context.Background(), params, profile, protocols)
+		r := &prowlarr.ReleaseResource{}
+		assert.True(t, reject(r))
+	})
+
+	t.Run("null title", func(t *testing.T) {
+		reject := RejectMovieReleaseFunc(context.Background(), params, profile, protocols)
+		r := &prowlarr.ReleaseResource{
+			Title: nullable.NewNullNullable[string](),
+		}
+		assert.True(t, reject(r))
+	})
+
+	t.Run("empty title", func(t *testing.T) {
+		reject := RejectMovieReleaseFunc(context.Background(), params, profile, protocols)
+		r := &prowlarr.ReleaseResource{
+			Title: nullable.NewNullableWithValue(""),
+		}
+		assert.True(t, reject(r))
+	})
+
+	t.Run("whitespace only title", func(t *testing.T) {
+		reject := RejectMovieReleaseFunc(context.Background(), params, profile, protocols)
+		r := &prowlarr.ReleaseResource{
+			Title: nullable.NewNullableWithValue("   "),
+		}
+		assert.True(t, reject(r))
+	})
 }
 
 func assertArrayString(t *testing.T, expected, actual *string) {

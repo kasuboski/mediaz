@@ -35,7 +35,7 @@ var discoverMovieCmd = &cobra.Command{
 			log.Fatalf("failed to create tmdb client: %v", err)
 		}
 
-		ctx := context.TODO()
+		ctx := context.Background()
 		r, err := c.SearchMovie(ctx, &tmdb.SearchMovieParams{Query: movieQuery}, tmdb.SetRequestAPIKey(cfg.TMDB.APIKey))
 		if err != nil {
 			log.Fatalf("failed to query movie: %v", err)

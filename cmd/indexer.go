@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"os"
 
 	"github.com/dustin/go-humanize"
@@ -30,18 +29,19 @@ var listIndexerCmd = &cobra.Command{
 	Short: "list indexers that are currently managed",
 	Long:  `list indexers that are currently managed`,
 	Run: func(cmd *cobra.Command, args []string) {
+		log := logger.Get()
+		ctx := logger.WithCtx(context.Background(), log)
+
 		cfg, err := config.New(viper.GetViper())
 		if err != nil {
 			log.Fatalf("failed to read configurations: %v", err)
 		}
 
-		ctx := context.TODO()
-
 		indexerFactory := indexer.NewIndexerSourceFactory()
 
 		store, err := sqlite.New(ctx, cfg.Storage.FilePath)
 		if err != nil {
-			log.Fatal("failed to create storage connection", err)
+			log.Fatal("failed to create storage connection", zap.Error(err))
 		}
 
 		m := manager.New(nil, indexerFactory, nil, store, nil, cfg.Manager, cfg)
@@ -52,7 +52,7 @@ var listIndexerCmd = &cobra.Command{
 		}
 
 		for _, i := range indexers {
-			log.Println(i.Name)
+			log.Info(i.Name)
 		}
 	},
 }
