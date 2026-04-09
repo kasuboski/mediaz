@@ -16,7 +16,6 @@ import (
 	"github.com/kasuboski/mediaz/pkg/storage"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite"
 	"github.com/oapi-codegen/nullable"
-	"go.uber.org/zap"
 
 	"github.com/kasuboski/mediaz/pkg/tmdb"
 	"github.com/spf13/cobra"
@@ -41,7 +40,7 @@ var listIndexerCmd = &cobra.Command{
 
 		store, err := sqlite.New(ctx, cfg.Storage.FilePath)
 		if err != nil {
-			log.Fatal("failed to create storage connection", zap.Error(err))
+			log.Fatalw("failed to create storage connection", "error", err)
 		}
 
 		m := manager.New(nil, indexerFactory, nil, store, nil, cfg.Manager, cfg)
@@ -76,7 +75,7 @@ var searchIndexerCmd = &cobra.Command{
 
 		tmdbClient, err := tmdb.New(cfg.TMDB.URI, cfg.TMDB.APIKey)
 		if err != nil {
-			log.Fatal("failed to create tmdb client", err)
+			log.Fatalw("failed to create tmdb client", "error", err)
 		}
 
 		movieFS := os.DirFS(cfg.Library.MovieDir)
@@ -95,24 +94,24 @@ var searchIndexerCmd = &cobra.Command{
 
 		store, err := sqlite.New(ctx, cfg.Storage.FilePath)
 		if err != nil {
-			log.Fatal("failed to create storage connection", zap.Error(err))
+			log.Fatalw("failed to create storage connection", "error", err)
 		}
 
 		schemas, err := storage.GetSchemas()
 		if err != nil {
-			log.Fatal(err)
+			log.Fatalw("failed to get schemas", "error", err)
 		}
 
 		err = store.Init(ctx, schemas...)
 		if err != nil {
-			log.Fatal("failed to init database", zap.Error(err))
+			log.Fatalw("failed to init database", "error", err)
 		}
 
 		m := manager.New(tmdbClient, indexerFactory, library, store, nil, cfg.Manager, cfg)
 
 		idx, err := m.ListIndexers(ctx)
 		if err != nil {
-			log.Fatal(err)
+			log.Fatalw("failed to list indexers", "error", err)
 		}
 		indexers := make([]int32, len(idx))
 		for i, indexer := range idx {
@@ -134,7 +133,7 @@ var searchIndexerCmd = &cobra.Command{
 			Query: query,
 		})
 		if err != nil {
-			log.Fatal(err)
+			log.Fatalw("failed to search indexers", "error", err)
 		}
 
 		for _, r := range releases {
@@ -158,11 +157,11 @@ var searchIndexerCmd = &cobra.Command{
 		if out, err := cmd.Flags().GetString("output"); err == nil {
 			data, err := json.MarshalIndent(releases, "", "  ")
 			if err != nil {
-				log.Fatal(err)
+				log.Fatalw("failed to marshal releases", "error", err)
 			}
 			f, err := os.Create(out)
 			if err != nil {
-				log.Fatal(err)
+				log.Fatalw("failed to create output file", "path", out, "error", err)
 			}
 			fmt.Fprintln(f, string(data))
 		}

@@ -463,6 +463,11 @@ func (m MediaManager) reconcileDiscoveredMovie(ctx context.Context, movie *stora
 		return nil
 	}
 
+	if movie.Path == nil {
+		log.Warn("movie has no path, skipping reconcile")
+		return nil
+	}
+
 	searchTerm, year := pathToSearchTermWithYear(*movie.Path)
 	if year == nil {
 		log.Debug("no year found from path")

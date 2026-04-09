@@ -63,6 +63,8 @@ func initConfig() {
 
 	viper.SetDefault("tmdb.uri", "https://api.themoviedb.org")
 	viper.SetDefault("tmdb.apiKey", "")
+	viper.SetDefault("tmdb.maxRetries", 3)
+	viper.SetDefault("tmdb.backoff", "500ms")
 
 	viper.SetDefault("server.port", 8080)
 	viper.SetDefault("server.distDir", "./frontend/dist")

@@ -65,13 +65,17 @@ func RejectMovieReleaseFunc(ctx context.Context, params ReleaseFilterParams, pro
 		}
 
 		lowerReleaseTitle := strings.ToLower(releaseTitle)
-		titleMatches := strings.HasPrefix(lowerReleaseTitle, strings.ToLower(params.Title))
 
-		if !titleMatches && params.OriginalTitle != nil {
+		var titleMatches bool
+		if params.Title != "" {
+			titleMatches = strings.HasPrefix(lowerReleaseTitle, strings.ToLower(params.Title))
+		}
+
+		if !titleMatches && params.OriginalTitle != nil && *params.OriginalTitle != "" {
 			titleMatches = strings.HasPrefix(lowerReleaseTitle, strings.ToLower(*params.OriginalTitle))
 		}
 
-		if !titleMatches && params.CleanTitle != nil {
+		if !titleMatches && params.CleanTitle != nil && *params.CleanTitle != "" {
 			titleMatches = strings.HasPrefix(lowerReleaseTitle, strings.ToLower(*params.CleanTitle))
 		}
 
