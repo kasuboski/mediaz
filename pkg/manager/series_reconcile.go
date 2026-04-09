@@ -1176,11 +1176,8 @@ func (m MediaManager) linkSeriesMetadata(ctx context.Context, series *storage.Se
 
 	result := findMatchingSeriesResult(searchResp.Results, year)
 	if result == nil {
-		if year != nil {
-			log.Warn("no results matched year", zap.String("path", *series.Path), zap.String("search_term", searchTerm), zap.Int32("year", *year))
-			return fmt.Errorf("no TMDB results matched year %d for series", *year)
-		}
-		result = searchResp.Results[0]
+		log.Warn("no results matched year", zap.String("path", *series.Path), zap.String("search_term", searchTerm), zap.Int32("year", *year))
+		return fmt.Errorf("no TMDB results matched year %d for series", *year)
 	}
 
 	if result.ID == nil {
