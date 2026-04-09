@@ -74,7 +74,7 @@ var seriesDetailsCmd = &cobra.Command{
 
 		m := manager.New(tmdbClient, nil, &library.MediaLibrary{}, nil, nil, cfg.Manager, cfg)
 
-		ctx := logger.WithCtx(context.Background(), log)
+		ctx := logger.WithCtx(cmd.Context(), log)
 		details, err := m.GetSeriesDetails(ctx, tmdbID)
 		if err != nil {
 			log.Fatal("failed to get series details", zap.Error(err))

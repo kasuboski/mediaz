@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"context"
 	"os"
 
 	"github.com/kasuboski/mediaz/config"
@@ -36,7 +35,7 @@ var reconcileMoviesCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		// Setup logger and config
 		log := logger.Get()
-		ctx := logger.WithCtx(context.Background(), log)
+		ctx := logger.WithCtx(cmd.Context(), log)
 
 		cfg, err := config.New(viper.GetViper())
 		if err != nil {
@@ -107,7 +106,7 @@ var reconcileSeriesCmd = &cobra.Command{
 	Long:  `Reconcile discovered series/TV shows by matching TMDB metadata and setting up downloads`,
 	Run: func(cmd *cobra.Command, args []string) {
 		log := logger.Get()
-		ctx := logger.WithCtx(context.Background(), log)
+		ctx := logger.WithCtx(cmd.Context(), log)
 
 		cfg, err := config.New(viper.GetViper())
 		if err != nil {

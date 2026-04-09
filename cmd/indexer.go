@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -29,7 +28,7 @@ var listIndexerCmd = &cobra.Command{
 	Long:  `list indexers that are currently managed`,
 	Run: func(cmd *cobra.Command, args []string) {
 		log := logger.Get()
-		ctx := logger.WithCtx(context.Background(), log)
+		ctx := logger.WithCtx(cmd.Context(), log)
 
 		cfg, err := config.New(viper.GetViper())
 		if err != nil {
@@ -64,7 +63,7 @@ var searchIndexerCmd = &cobra.Command{
 	ArgAliases: []string{"query"},
 	Run: func(cmd *cobra.Command, args []string) {
 		log := logger.Get()
-		ctx := logger.WithCtx(context.Background(), log)
+		ctx := logger.WithCtx(cmd.Context(), log)
 
 		cfg, err := config.New(viper.GetViper())
 		if err != nil {
@@ -73,7 +72,8 @@ var searchIndexerCmd = &cobra.Command{
 
 		indexerFactory := indexer.NewIndexerSourceFactory()
 
-		tmdbClient, err := tmdb.New(cfg.TMDB.URI, cfg.TMDB.APIKey)
+		tmdbHttpClient := newTMDBHTTPClient(cfg.TMDB)
+		tmdbClient, err := tmdb.New(cfg.TMDB.URI, cfg.TMDB.APIKey, tmdb.WithHTTPClient(tmdbHttpClient))
 		if err != nil {
 			log.Fatalw("failed to create tmdb client", "error", err)
 		}
