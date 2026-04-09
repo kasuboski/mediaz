@@ -6,7 +6,6 @@ import (
 	"os"
 
 	"github.com/kasuboski/mediaz/config"
-	mhttp "github.com/kasuboski/mediaz/pkg/http"
 	mio "github.com/kasuboski/mediaz/pkg/io"
 	"github.com/kasuboski/mediaz/pkg/library"
 	"github.com/kasuboski/mediaz/pkg/logger"
@@ -68,7 +67,7 @@ var seriesDetailsCmd = &cobra.Command{
 			log.Fatal("failed to read configurations", zap.Error(err))
 		}
 
-		tmdbHttpClient := mhttp.NewRateLimitedClient()
+		tmdbHttpClient := newTMDBHTTPClient(cfg.TMDB)
 		tmdbClient, err := tmdb.New(cfg.TMDB.URI, cfg.TMDB.APIKey, tmdb.WithHTTPClient(tmdbHttpClient))
 		if err != nil {
 			log.Fatal("failed to create tmdb client", zap.Error(err))
@@ -76,7 +75,7 @@ var seriesDetailsCmd = &cobra.Command{
 
 		m := manager.New(tmdbClient, nil, &library.MediaLibrary{}, nil, nil, cfg.Manager, cfg)
 
-		ctx := logger.WithCtx(context.Background(), log)
+		ctx := logger.WithCtx(cmd.Context(), log)
 		details, err := m.GetSeriesDetails(ctx, tmdbID)
 		if err != nil {
 			log.Fatal("failed to get series details", zap.Error(err))

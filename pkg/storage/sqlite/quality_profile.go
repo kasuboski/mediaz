@@ -4,9 +4,11 @@ import (
 	"context"
 
 	"github.com/go-jet/jet/v2/sqlite"
+	"github.com/kasuboski/mediaz/pkg/logger"
 	"github.com/kasuboski/mediaz/pkg/storage"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/table"
+	"go.uber.org/zap"
 )
 
 func (s *SQLite) CreateQualityProfile(ctx context.Context, profile model.QualityProfile) (int64, error) {
@@ -86,7 +88,37 @@ func (s *SQLite) UpdateQualityProfile(ctx context.Context, id int64, profile mod
 
 // DeleteQualityProfile delete a quality profile
 func (s *SQLite) DeleteQualityProfile(ctx context.Context, id int64) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	log := logger.FromCtx(ctx)
+
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		log.Errorw("failed to begin transaction", "id", id, "error", err)
+		return err
+	}
+
+	deleteItems := table.QualityProfileItem.DELETE().WHERE(table.QualityProfileItem.ProfileID.EQ(sqlite.Int64(id)))
+	_, err = deleteItems.ExecContext(ctx, tx)
+	if err != nil {
+		log.Errorw("failed to delete profile items", "id", id, zap.String("query", deleteItems.DebugSql()), "error", err)
+		if rbErr := tx.Rollback(); rbErr != nil {
+			log.Errorw("failed to rollback", "id", id, "error", rbErr)
+		}
+		return err
+	}
+
 	stmt := table.QualityProfile.DELETE().WHERE(table.QualityProfile.ID.EQ(sqlite.Int64(id))).RETURNING(table.QualityProfile.AllColumns)
-	_, err := s.handleDelete(ctx, stmt)
-	return err
+	_, err = stmt.ExecContext(ctx, tx)
+	if err != nil {
+		log.Errorw("failed to delete profile", "id", id, zap.String("query", stmt.DebugSql()), "error", err)
+		if rbErr := tx.Rollback(); rbErr != nil {
+			log.Errorw("failed to rollback", "id", id, "error", rbErr)
+		}
+		return err
+	}
+
+	log.Debugw("deleted quality profile", "id", id)
+	return tx.Commit()
 }

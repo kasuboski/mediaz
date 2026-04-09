@@ -1,10 +1,8 @@
 package cmd
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"os"
 
 	"github.com/dustin/go-humanize"
@@ -17,7 +15,6 @@ import (
 	"github.com/kasuboski/mediaz/pkg/storage"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite"
 	"github.com/oapi-codegen/nullable"
-	"go.uber.org/zap"
 
 	"github.com/kasuboski/mediaz/pkg/tmdb"
 	"github.com/spf13/cobra"
@@ -30,18 +27,19 @@ var listIndexerCmd = &cobra.Command{
 	Short: "list indexers that are currently managed",
 	Long:  `list indexers that are currently managed`,
 	Run: func(cmd *cobra.Command, args []string) {
+		log := logger.Get()
+		ctx := logger.WithCtx(cmd.Context(), log)
+
 		cfg, err := config.New(viper.GetViper())
 		if err != nil {
 			log.Fatalf("failed to read configurations: %v", err)
 		}
 
-		ctx := context.TODO()
-
 		indexerFactory := indexer.NewIndexerSourceFactory()
 
 		store, err := sqlite.New(ctx, cfg.Storage.FilePath)
 		if err != nil {
-			log.Fatal("failed to create storage connection", err)
+			log.Fatalw("failed to create storage connection", "error", err)
 		}
 
 		m := manager.New(nil, indexerFactory, nil, store, nil, cfg.Manager, cfg)
@@ -52,7 +50,7 @@ var listIndexerCmd = &cobra.Command{
 		}
 
 		for _, i := range indexers {
-			log.Println(i.Name)
+			log.Info(i.Name)
 		}
 	},
 }
@@ -65,7 +63,7 @@ var searchIndexerCmd = &cobra.Command{
 	ArgAliases: []string{"query"},
 	Run: func(cmd *cobra.Command, args []string) {
 		log := logger.Get()
-		ctx := logger.WithCtx(context.Background(), log)
+		ctx := logger.WithCtx(cmd.Context(), log)
 
 		cfg, err := config.New(viper.GetViper())
 		if err != nil {
@@ -74,9 +72,10 @@ var searchIndexerCmd = &cobra.Command{
 
 		indexerFactory := indexer.NewIndexerSourceFactory()
 
-		tmdbClient, err := tmdb.New(cfg.TMDB.URI, cfg.TMDB.APIKey)
+		tmdbHttpClient := newTMDBHTTPClient(cfg.TMDB)
+		tmdbClient, err := tmdb.New(cfg.TMDB.URI, cfg.TMDB.APIKey, tmdb.WithHTTPClient(tmdbHttpClient))
 		if err != nil {
-			log.Fatal("failed to create tmdb client", err)
+			log.Fatalw("failed to create tmdb client", "error", err)
 		}
 
 		movieFS := os.DirFS(cfg.Library.MovieDir)
@@ -96,24 +95,24 @@ var searchIndexerCmd = &cobra.Command{
 
 		store, err := sqlite.New(ctx, cfg.Storage.FilePath)
 		if err != nil {
-			log.Fatal("failed to create storage connection", zap.Error(err))
+			log.Fatalw("failed to create storage connection", "error", err)
 		}
 
 		schemas, err := storage.GetSchemas()
 		if err != nil {
-			log.Fatal(err)
+			log.Fatalw("failed to get schemas", "error", err)
 		}
 
 		err = store.Init(ctx, schemas...)
 		if err != nil {
-			log.Fatal("failed to init database", zap.Error(err))
+			log.Fatalw("failed to init database", "error", err)
 		}
 
 		m := manager.New(tmdbClient, indexerFactory, library, store, nil, cfg.Manager, cfg)
 
 		idx, err := m.ListIndexers(ctx)
 		if err != nil {
-			log.Fatal(err)
+			log.Fatalw("failed to list indexers", "error", err)
 		}
 		indexers := make([]int32, len(idx))
 		for i, indexer := range idx {
@@ -135,7 +134,7 @@ var searchIndexerCmd = &cobra.Command{
 			Query: query,
 		})
 		if err != nil {
-			log.Fatal(err)
+			log.Fatalw("failed to search indexers", "error", err)
 		}
 
 		for _, r := range releases {
@@ -156,16 +155,14 @@ var searchIndexerCmd = &cobra.Command{
 			r.MagnetURL = nullable.NewNullNullable[string]()
 		}
 
-		if out, err := cmd.Flags().GetString("output"); err == nil {
+		if out, err := cmd.Flags().GetString("output"); err == nil && out != "" {
 			data, err := json.MarshalIndent(releases, "", "  ")
 			if err != nil {
-				log.Fatal(err)
+				log.Fatalw("failed to marshal releases", "error", err)
 			}
-			f, err := os.Create(out)
-			if err != nil {
-				log.Fatal(err)
+			if err := os.WriteFile(out, data, 0644); err != nil {
+				log.Fatalw("failed to write output file", "path", out, "error", err)
 			}
-			fmt.Fprintln(f, string(data))
 		}
 
 		log.Infof("found %d releases", len(releases))

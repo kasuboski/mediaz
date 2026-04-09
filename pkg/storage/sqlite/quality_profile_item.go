@@ -48,7 +48,7 @@ func (s *SQLite) ListQualityProfileItems(ctx context.Context) ([]*model.QualityP
 	return items, err
 }
 
-// DeleteQualityDefinition deletes a quality
+// DeleteQualityProfileItem deletes a quality profile item
 func (s *SQLite) DeleteQualityProfileItem(ctx context.Context, id int64) error {
 	stmt := table.QualityProfileItem.DELETE().WHERE(table.QualityProfileItem.ID.EQ(sqlite.Int64(id))).RETURNING(table.QualityProfileItem.AllColumns)
 	_, err := s.handleDelete(ctx, stmt)

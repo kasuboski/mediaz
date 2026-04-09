@@ -1969,3 +1969,94 @@ func TestMediaManager_matchEpisodeFileToEpisode(t *testing.T) {
 		assert.Nil(t, result)
 	})
 }
+
+func Test_findMatchingSeriesResult(t *testing.T) {
+	air2024 := "2024-01-15"
+	air2004 := "2004-09-22"
+
+	tests := []struct {
+		name     string
+		year     *int32
+		results  []*SearchMediaResult
+		expected *SearchMediaResult
+	}{
+		{
+			name: "no year - returns first result",
+			year: nil,
+			results: []*SearchMediaResult{
+				{ID: ptr(1), Name: ptr("Battlestar Galactica"), FirstAirDate: &air2004},
+				{ID: ptr(2), Name: ptr("Battlestar Galactica"), FirstAirDate: &air2024},
+			},
+			expected: &SearchMediaResult{ID: ptr(1), Name: ptr("Battlestar Galactica")},
+		},
+		{
+			name: "year matches first result",
+			year: ptr(int32(2004)),
+			results: []*SearchMediaResult{
+				{ID: ptr(1), Name: ptr("Battlestar Galactica"), FirstAirDate: &air2004},
+				{ID: ptr(2), Name: ptr("Battlestar Galactica"), FirstAirDate: &air2024},
+			},
+			expected: &SearchMediaResult{ID: ptr(1), Name: ptr("Battlestar Galactica")},
+		},
+		{
+			name: "year matches second result",
+			year: ptr(int32(2024)),
+			results: []*SearchMediaResult{
+				{ID: ptr(1), Name: ptr("Battlestar Galactica"), FirstAirDate: &air2004},
+				{ID: ptr(2), Name: ptr("Battlestar Galactica"), FirstAirDate: &air2024},
+			},
+			expected: &SearchMediaResult{ID: ptr(2), Name: ptr("Battlestar Galactica")},
+		},
+		{
+			name: "year not found in results",
+			year: ptr(int32(2025)),
+			results: []*SearchMediaResult{
+				{ID: ptr(1), Name: ptr("Battlestar Galactica"), FirstAirDate: &air2004},
+				{ID: ptr(2), Name: ptr("Battlestar Galactica"), FirstAirDate: &air2024},
+			},
+			expected: nil,
+		},
+		{
+			name: "result with nil air date",
+			year: ptr(int32(2024)),
+			results: []*SearchMediaResult{
+				{ID: ptr(1), Name: ptr("Show"), FirstAirDate: nil},
+				{ID: ptr(2), Name: ptr("Show"), FirstAirDate: &air2024},
+			},
+			expected: &SearchMediaResult{ID: ptr(2), Name: ptr("Show")},
+		},
+		{
+			name: "all results have nil air dates",
+			year: ptr(int32(2024)),
+			results: []*SearchMediaResult{
+				{ID: ptr(1), Name: ptr("Show"), FirstAirDate: nil},
+				{ID: ptr(2), Name: ptr("Show"), FirstAirDate: nil},
+			},
+			expected: nil,
+		},
+		{
+			name:     "empty results",
+			year:     ptr(int32(2024)),
+			results:  []*SearchMediaResult{},
+			expected: nil,
+		},
+		{
+			name:     "nil results",
+			year:     ptr(int32(2024)),
+			results:  nil,
+			expected: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := findMatchingSeriesResult(tt.results, tt.year)
+			if tt.expected == nil {
+				assert.Nil(t, result)
+			} else {
+				require.NotNil(t, result)
+				assert.Equal(t, *tt.expected.ID, *result.ID)
+			}
+		})
+	}
+}

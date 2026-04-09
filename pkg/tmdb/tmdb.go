@@ -93,6 +93,7 @@ func (m TMDBClient) GetSeriesDetails(ctx context.Context, tmdbID int) (*SeriesDe
 		}
 
 		b, err := io.ReadAll(resp.Body)
+		resp.Body.Close()
 		if err != nil {
 			log.Debug("failed to read season details", zap.Error(err))
 			continue
@@ -105,7 +106,6 @@ func (m TMDBClient) GetSeriesDetails(ctx context.Context, tmdbID int) (*SeriesDe
 			continue
 		}
 		seasons = append(seasons, season.ToSeason())
-		continue
 	}
 
 	seriesDetails := &SeriesDetails{

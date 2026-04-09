@@ -888,3 +888,103 @@ func Test_Manager_reconcileDownloadingMovie(t *testing.T) {
 		assert.Equal(t, int64(1024), mf.Size)
 	})
 }
+
+func Test_findMatchingMovieResult(t *testing.T) {
+	release2024 := "2024-01-15"
+	release2009 := "2009-06-20"
+	release2001 := "2001-11-03"
+
+	tests := []struct {
+		name     string
+		year     *int32
+		results  []*SearchMediaResult
+		expected *SearchMediaResult
+	}{
+		{
+			name: "no year - returns first result",
+			year: nil,
+			results: []*SearchMediaResult{
+				{ID: ptr(1), Title: ptr("Brothers"), ReleaseDate: &release2024},
+				{ID: ptr(2), Title: ptr("Brothers"), ReleaseDate: &release2009},
+			},
+			expected: &SearchMediaResult{ID: ptr(1), Title: ptr("Brothers")},
+		},
+		{
+			name: "year matches first result",
+			year: ptr(int32(2024)),
+			results: []*SearchMediaResult{
+				{ID: ptr(1), Title: ptr("Brothers"), ReleaseDate: &release2024},
+				{ID: ptr(2), Title: ptr("Brothers"), ReleaseDate: &release2009},
+			},
+			expected: &SearchMediaResult{ID: ptr(1), Title: ptr("Brothers")},
+		},
+		{
+			name: "year matches second result",
+			year: ptr(int32(2009)),
+			results: []*SearchMediaResult{
+				{ID: ptr(1), Title: ptr("Brothers"), ReleaseDate: &release2024},
+				{ID: ptr(2), Title: ptr("Brothers"), ReleaseDate: &release2009},
+			},
+			expected: &SearchMediaResult{ID: ptr(2), Title: ptr("Brothers")},
+		},
+		{
+			name: "year not found in results",
+			year: ptr(int32(2025)),
+			results: []*SearchMediaResult{
+				{ID: ptr(1), Title: ptr("Brothers"), ReleaseDate: &release2024},
+				{ID: ptr(2), Title: ptr("Brothers"), ReleaseDate: &release2009},
+			},
+			expected: nil,
+		},
+		{
+			name: "result with nil release date",
+			year: ptr(int32(2024)),
+			results: []*SearchMediaResult{
+				{ID: ptr(1), Title: ptr("Brothers"), ReleaseDate: nil},
+				{ID: ptr(2), Title: ptr("Brothers"), ReleaseDate: &release2024},
+			},
+			expected: &SearchMediaResult{ID: ptr(2), Title: ptr("Brothers")},
+		},
+		{
+			name: "all results have nil release dates",
+			year: ptr(int32(2024)),
+			results: []*SearchMediaResult{
+				{ID: ptr(1), Title: ptr("Brothers"), ReleaseDate: nil},
+				{ID: ptr(2), Title: ptr("Brothers"), ReleaseDate: nil},
+			},
+			expected: nil,
+		},
+		{
+			name:     "empty results",
+			year:     ptr(int32(2024)),
+			results:  []*SearchMediaResult{},
+			expected: nil,
+		},
+		{
+			name:     "nil results",
+			year:     ptr(int32(2024)),
+			results:  nil,
+			expected: nil,
+		},
+		{
+			name: "single result matching year",
+			year: ptr(int32(2001)),
+			results: []*SearchMediaResult{
+				{ID: ptr(1), Title: ptr("Brothers"), ReleaseDate: &release2001},
+			},
+			expected: &SearchMediaResult{ID: ptr(1), Title: ptr("Brothers")},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := findMatchingMovieResult(tt.results, tt.year)
+			if tt.expected == nil {
+				assert.Nil(t, result)
+			} else {
+				require.NotNil(t, result)
+				assert.Equal(t, *tt.expected.ID, *result.ID)
+			}
+		})
+	}
+}

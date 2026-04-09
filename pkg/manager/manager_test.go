@@ -31,6 +31,7 @@ import (
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/table"
 	"github.com/kasuboski/mediaz/pkg/tmdb"
 	tmdbMocks "github.com/kasuboski/mediaz/pkg/tmdb/mocks"
+	"github.com/oapi-codegen/nullable"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -511,7 +512,11 @@ func TestMovieRejectRelease(t *testing.T) {
 			}},
 		}
 		protocols := map[string]struct{}{"usenet": {}, "torrent": {}}
-		rejectFunc := RejectMovieReleaseFunc(ctx, det.Title, det.Runtime, profile, protocols)
+		params := ReleaseFilterParams{
+			Title:   det.Title,
+			Runtime: det.Runtime,
+		}
+		rejectFunc := RejectMovieReleaseFunc(ctx, params, profile, protocols)
 
 		releases := getReleasesFromFile(t, "./testing/brother-releases.json")
 		for _, r := range releases {
@@ -532,12 +537,58 @@ func TestMovieRejectRelease(t *testing.T) {
 			}},
 		}
 		protocolsAvailable := map[string]struct{}{"torrent": {}, "ftp": {}}
-		rejectFunc := RejectMovieReleaseFunc(ctx, det.Title, det.Runtime, profile, protocolsAvailable)
+		params := ReleaseFilterParams{
+			Title:   det.Title,
+			Runtime: det.Runtime,
+		}
+		rejectFunc := RejectMovieReleaseFunc(ctx, params, profile, protocolsAvailable)
 
 		// Test case where the release protocol is not available
 		r2 := &prowlarr.ReleaseResource{Protocol: ptr(prowlarr.DownloadProtocolUsenet), Size: ptr(int64(500))}
 		if !rejectFunc(r2) {
 			t.Errorf("Expected rejection for protocol 'usenet' since it's unavailable")
+		}
+	})
+
+	t.Run("year matching", func(t *testing.T) {
+		ctx := context.Background()
+		profile := storage.QualityProfile{
+			Name: "test",
+			Qualities: []storage.QualityDefinition{{
+				MinSize:       0,
+				MaxSize:       10000,
+				PreferredSize: 1999,
+			}},
+		}
+		protocols := map[string]struct{}{"torrent": {}}
+		year2024 := int32(2024)
+		params := ReleaseFilterParams{
+			Title:   "Brothers",
+			Year:    &year2024,
+			Runtime: 60,
+		}
+		rejectFunc := RejectMovieReleaseFunc(ctx, params, profile, protocols)
+
+		tests := []struct {
+			title       string
+			shouldMatch bool
+		}{
+			{"Brothers 2024 1080p AMZN WEB DLip ExKinoRay", true},
+			{"Brothers.2024.1080p.AMZN.WEBRip.1400MB.DD5.1.x264-GalaxyRG", true},
+			{"Brothers (2009) 720p BrRip x264 - 700MB -YIFY", false},
+			{"Step Brothers 2008 UNRATED 1080p BluRay HEVC x265 5.1 BONE", false},
+		}
+
+		for _, tt := range tests {
+			r := &prowlarr.ReleaseResource{
+				Title:    nullable.NewNullableWithValue(tt.title),
+				Protocol: ptr(prowlarr.DownloadProtocolTorrent),
+				Size:     ptr(int64(500 << 20)),
+			}
+			got := rejectFunc(r)
+			if got != !tt.shouldMatch {
+				t.Errorf("(%s): expected match=%v, got rejected=%v", tt.title, tt.shouldMatch, got)
+			}
 		}
 	})
 }

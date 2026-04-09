@@ -1,12 +1,10 @@
 package cmd
 
 import (
-	"context"
 	"os"
 
 	"github.com/kasuboski/mediaz/config"
 	"github.com/kasuboski/mediaz/pkg/download"
-	mhttp "github.com/kasuboski/mediaz/pkg/http"
 	"github.com/kasuboski/mediaz/pkg/indexer"
 	mio "github.com/kasuboski/mediaz/pkg/io"
 	"github.com/kasuboski/mediaz/pkg/library"
@@ -37,7 +35,7 @@ var reconcileMoviesCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		// Setup logger and config
 		log := logger.Get()
-		ctx := logger.WithCtx(context.Background(), log)
+		ctx := logger.WithCtx(cmd.Context(), log)
 
 		cfg, err := config.New(viper.GetViper())
 		if err != nil {
@@ -45,7 +43,7 @@ var reconcileMoviesCmd = &cobra.Command{
 		}
 
 		// Create TMDB client
-		tmdbHttpClient := mhttp.NewRateLimitedClient()
+		tmdbHttpClient := newTMDBHTTPClient(cfg.TMDB)
 		tmdbClient, err := tmdb.New(cfg.TMDB.URI, cfg.TMDB.APIKey, tmdb.WithHTTPClient(tmdbHttpClient))
 		if err != nil {
 			log.Fatal("failed to create tmdb client", zap.Error(err))
@@ -109,7 +107,7 @@ var reconcileSeriesCmd = &cobra.Command{
 	Long:  `Reconcile discovered series/TV shows by matching TMDB metadata and setting up downloads`,
 	Run: func(cmd *cobra.Command, args []string) {
 		log := logger.Get()
-		ctx := logger.WithCtx(context.Background(), log)
+		ctx := logger.WithCtx(cmd.Context(), log)
 
 		cfg, err := config.New(viper.GetViper())
 		if err != nil {
@@ -117,7 +115,7 @@ var reconcileSeriesCmd = &cobra.Command{
 		}
 
 		// Create TMDB client
-		tmdbHttpClient := mhttp.NewRateLimitedClient()
+		tmdbHttpClient := newTMDBHTTPClient(cfg.TMDB)
 		tmdbClient, err := tmdb.New(cfg.TMDB.URI, cfg.TMDB.APIKey, tmdb.WithHTTPClient(tmdbHttpClient))
 		if err != nil {
 			log.Fatal("failed to create tmdb client", zap.Error(err))

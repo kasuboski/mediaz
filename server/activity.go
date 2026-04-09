@@ -17,11 +17,11 @@ func (s Server) GetActiveActivity() http.HandlerFunc {
 		response, err := s.manager.GetActiveActivity(r.Context())
 		if err != nil {
 			log.Error("failed to get active activity", zap.Error(err))
-			writeErrorResponse(w, http.StatusInternalServerError, err)
+			s.logWriteError(s.writeErrorResponse(w, http.StatusInternalServerError, err))
 			return
 		}
 
-		writeResponse(w, http.StatusOK, GenericResponse{Response: response})
+		s.logWriteError(s.writeResponse(w, http.StatusOK, GenericResponse{Response: response}))
 	}
 }
 
@@ -42,11 +42,11 @@ func (s Server) GetRecentFailures() http.HandlerFunc {
 		response, err := s.manager.GetRecentFailures(r.Context(), hours)
 		if err != nil {
 			log.Error("failed to get recent failures", zap.Error(err), zap.Int("hours", hours))
-			writeErrorResponse(w, http.StatusInternalServerError, err)
+			s.logWriteError(s.writeErrorResponse(w, http.StatusInternalServerError, err))
 			return
 		}
 
-		writeResponse(w, http.StatusOK, GenericResponse{Response: response})
+		s.logWriteError(s.writeResponse(w, http.StatusOK, GenericResponse{Response: response}))
 	}
 }
 
@@ -67,18 +67,18 @@ func (s Server) GetActivityTimeline() http.HandlerFunc {
 		var params pagination.Params
 		params, err := ParsePaginationParams(r)
 		if err != nil {
-			writeErrorResponse(w, http.StatusBadRequest, err)
+			s.logWriteError(s.writeErrorResponse(w, http.StatusBadRequest, err))
 			return
 		}
 
 		response, err := s.manager.GetActivityTimeline(r.Context(), days, params)
 		if err != nil {
 			log.Error("failed to get activity timeline", zap.Error(err), zap.Int("days", days))
-			writeErrorResponse(w, http.StatusInternalServerError, err)
+			s.logWriteError(s.writeErrorResponse(w, http.StatusInternalServerError, err))
 			return
 		}
 
-		writeResponse(w, http.StatusOK, GenericResponse{Response: response})
+		s.logWriteError(s.writeResponse(w, http.StatusOK, GenericResponse{Response: response}))
 	}
 }
 
@@ -103,10 +103,10 @@ func (s Server) GetEntityTransitionHistory() http.HandlerFunc {
 		response, err := s.manager.GetEntityTransitionHistory(r.Context(), entityType, entityID)
 		if err != nil {
 			log.Error("failed to get entity transition history", zap.Error(err), zap.String("entityType", entityType), zap.Int64("entityID", entityID))
-			writeErrorResponse(w, http.StatusInternalServerError, err)
+			s.logWriteError(s.writeErrorResponse(w, http.StatusInternalServerError, err))
 			return
 		}
 
-		writeResponse(w, http.StatusOK, GenericResponse{Response: response})
+		s.logWriteError(s.writeResponse(w, http.StatusOK, GenericResponse{Response: response}))
 	}
 }

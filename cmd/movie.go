@@ -6,7 +6,6 @@ import (
 	"os"
 
 	"github.com/kasuboski/mediaz/config"
-	mhttp "github.com/kasuboski/mediaz/pkg/http"
 	mio "github.com/kasuboski/mediaz/pkg/io"
 	"github.com/kasuboski/mediaz/pkg/library"
 	"github.com/kasuboski/mediaz/pkg/logger"
@@ -30,12 +29,12 @@ var discoverMovieCmd = &cobra.Command{
 			log.Fatalf("failed to read configurations: %v", err)
 		}
 
-		c, err := tmdb.NewClient(cfg.TMDB.URI, tmdb.WithHTTPClient(mhttp.NewRateLimitedClient()))
+		c, err := tmdb.NewClient(cfg.TMDB.URI, tmdb.WithHTTPClient(newTMDBHTTPClient(cfg.TMDB)))
 		if err != nil {
 			log.Fatalf("failed to create tmdb client: %v", err)
 		}
 
-		ctx := context.TODO()
+		ctx := context.Background()
 		r, err := c.SearchMovie(ctx, &tmdb.SearchMovieParams{Query: movieQuery}, tmdb.SetRequestAPIKey(cfg.TMDB.APIKey))
 		if err != nil {
 			log.Fatalf("failed to query movie: %v", err)
