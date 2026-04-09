@@ -49,19 +49,20 @@ func New(logger *zap.SugaredLogger, manager manager.MediaManager, config config.
 	}
 }
 
-func writeErrorResponse(w http.ResponseWriter, status int, err error) error {
+func (s Server) writeErrorResponse(w http.ResponseWriter, status int, err error) error {
 	errMsg := ""
 	if err != nil {
 		errMsg = err.Error()
 	}
-	return writeResponse(w, status, GenericResponse{
+	return s.writeResponse(w, status, GenericResponse{
 		Error: errMsg,
 	})
 }
 
-func writeResponse(w http.ResponseWriter, status int, body any) error {
+func (s Server) writeResponse(w http.ResponseWriter, status int, body any) error {
 	b, err := json.Marshal(body)
 	if err != nil {
+		s.baseLogger.Errorw("failed to marshal response", zap.Error(err))
 		return err
 	}
 
@@ -70,8 +71,17 @@ func writeResponse(w http.ResponseWriter, status int, body any) error {
 		w.WriteHeader(status)
 	}
 
-	w.Write(b)
+	if _, err := w.Write(b); err != nil {
+		s.baseLogger.Errorw("failed to write response", zap.Error(err))
+		return err
+	}
 	return nil
+}
+
+func (s Server) logWriteError(err error) {
+	if err != nil {
+		s.baseLogger.Errorw("failed to write response", zap.Error(err))
+	}
 }
 
 // Serve starts the http server and is a blocking call
@@ -198,7 +208,7 @@ func (s Server) Healthz() http.HandlerFunc {
 		response := GenericResponse{
 			Response: "ok",
 		}
-		writeResponse(w, http.StatusOK, response)
+		s.logWriteError(s.writeResponse(w, http.StatusOK, response))
 	}
 }
 
@@ -215,7 +225,7 @@ func (s Server) ListMovies() http.HandlerFunc {
 
 		resp := GenericResponse{Response: movies}
 
-		writeResponse(w, http.StatusOK, resp)
+		s.logWriteError(s.writeResponse(w, http.StatusOK, resp))
 	}
 }
 
@@ -235,12 +245,12 @@ func (s Server) GetMovieDetailByTMDBID() http.HandlerFunc {
 		movieDetail, err := s.manager.GetMovieDetailByTMDBID(r.Context(), tmdbID)
 		if err != nil {
 			log.Error("failed to get movie detail", zap.Error(err), zap.Int("tmdbID", tmdbID))
-			writeErrorResponse(w, http.StatusInternalServerError, err)
+			s.logWriteError(s.writeErrorResponse(w, http.StatusInternalServerError, err))
 			return
 		}
 
 		resp := GenericResponse{Response: movieDetail}
-		writeResponse(w, http.StatusOK, resp)
+		s.logWriteError(s.writeResponse(w, http.StatusOK, resp))
 	}
 }
 
@@ -260,12 +270,12 @@ func (s Server) GetTVDetailByTMDBID() http.HandlerFunc {
 		tvDetail, err := s.manager.GetTVDetailByTMDBID(r.Context(), tmdbID)
 		if err != nil {
 			log.Error("failed to get TV detail", zap.Error(err), zap.Int("tmdbID", tmdbID))
-			writeErrorResponse(w, http.StatusInternalServerError, err)
+			s.logWriteError(s.writeErrorResponse(w, http.StatusInternalServerError, err))
 			return
 		}
 
 		resp := GenericResponse{Response: tvDetail}
-		writeResponse(w, http.StatusOK, resp)
+		s.logWriteError(s.writeResponse(w, http.StatusOK, resp))
 	}
 }
 
@@ -285,7 +295,7 @@ func (s Server) ListTVShows() http.HandlerFunc {
 			Response: shows,
 		}
 
-		writeResponse(w, http.StatusOK, resp)
+		s.logWriteError(s.writeResponse(w, http.StatusOK, resp))
 	}
 }
 
@@ -295,11 +305,11 @@ func (s Server) ListIndexers() http.HandlerFunc {
 		log := logger.FromCtx(r.Context())
 		result, err := s.manager.ListIndexers(r.Context())
 		if err != nil {
-			writeErrorResponse(w, http.StatusOK, err)
+			s.logWriteError(s.writeErrorResponse(w, http.StatusInternalServerError, err))
 			return
 		}
 
-		err = writeResponse(w, http.StatusOK, GenericResponse{Response: result})
+		err = s.writeResponse(w, http.StatusOK, GenericResponse{Response: result})
 		if err != nil {
 			log.Error("failed to write response", zap.Error(err))
 			return
@@ -330,14 +340,14 @@ func (s Server) CreateIndexer() http.HandlerFunc {
 		indexer, err := s.manager.AddIndexer(r.Context(), request)
 		if err != nil {
 			log.Debug("failed to create indexer", zap.Error(err))
-			writeErrorResponse(w, http.StatusInternalServerError, err)
+			s.logWriteError(s.writeErrorResponse(w, http.StatusInternalServerError, err))
 			return
 		}
 
 		log.Debug("succesfully added indexer")
-		writeResponse(w, http.StatusCreated, GenericResponse{
+		s.logWriteError(s.writeResponse(w, http.StatusCreated, GenericResponse{
 			Response: indexer,
-		})
+		}))
 	}
 }
 
@@ -364,14 +374,14 @@ func (s Server) DeleteIndexer() http.HandlerFunc {
 		err = s.manager.DeleteIndexer(r.Context(), request)
 		if err != nil {
 			log.Debug("failed to delete indexer", zap.Error(err))
-			writeErrorResponse(w, http.StatusInternalServerError, err)
+			s.logWriteError(s.writeErrorResponse(w, http.StatusInternalServerError, err))
 			return
 		}
 
 		log.Debug("succesfully deleted indexer")
-		writeResponse(w, http.StatusOK, GenericResponse{
+		s.logWriteError(s.writeResponse(w, http.StatusOK, GenericResponse{
 			Response: request,
-		})
+		}))
 	}
 }
 
@@ -406,14 +416,14 @@ func (s Server) UpdateIndexer() http.HandlerFunc {
 		indexer, err := s.manager.UpdateIndexer(r.Context(), int32(id), request)
 		if err != nil {
 			log.Debug("failed to update indexer", zap.Error(err))
-			writeErrorResponse(w, http.StatusInternalServerError, err)
+			s.logWriteError(s.writeErrorResponse(w, http.StatusInternalServerError, err))
 			return
 		}
 
 		log.Debug("successfully updated indexer")
-		writeResponse(w, http.StatusOK, GenericResponse{
+		s.logWriteError(s.writeResponse(w, http.StatusOK, GenericResponse{
 			Response: indexer,
-		})
+		}))
 	}
 }
 
@@ -423,11 +433,11 @@ func (s Server) ListQualityDefinitions() http.HandlerFunc {
 		log := logger.FromCtx(r.Context())
 		result, err := s.manager.ListQualityDefinitions(r.Context())
 		if err != nil {
-			writeErrorResponse(w, http.StatusOK, err)
+			s.logWriteError(s.writeErrorResponse(w, http.StatusInternalServerError, err))
 			return
 		}
 
-		err = writeResponse(w, http.StatusOK, GenericResponse{Response: result})
+		err = s.writeResponse(w, http.StatusOK, GenericResponse{Response: result})
 		if err != nil {
 			log.Error("failed to write response", zap.Error(err))
 			return
@@ -450,11 +460,11 @@ func (s Server) GetQualityDefinition() http.HandlerFunc {
 
 		result, err := s.manager.GetQualityDefinition(r.Context(), id)
 		if err != nil {
-			writeErrorResponse(w, http.StatusOK, err)
+			s.logWriteError(s.writeErrorResponse(w, http.StatusInternalServerError, err))
 			return
 		}
 
-		err = writeResponse(w, http.StatusOK, GenericResponse{Response: result})
+		err = s.writeResponse(w, http.StatusOK, GenericResponse{Response: result})
 		if err != nil {
 			log.Error("failed to write response", zap.Error(err))
 			return
@@ -485,14 +495,14 @@ func (s Server) CreateQualityDefinition() http.HandlerFunc {
 		definition, err := s.manager.AddQualityDefinition(r.Context(), request)
 		if err != nil {
 			log.Debug("failed to create quality definition", zap.Error(err))
-			writeErrorResponse(w, http.StatusInternalServerError, err)
+			s.logWriteError(s.writeErrorResponse(w, http.StatusInternalServerError, err))
 			return
 		}
 
 		log.Debug("succesfully added quality definition")
-		writeResponse(w, http.StatusCreated, GenericResponse{
+		s.logWriteError(s.writeResponse(w, http.StatusCreated, GenericResponse{
 			Response: definition,
-		})
+		}))
 	}
 }
 
@@ -519,14 +529,14 @@ func (s Server) DeleteQualityDefinition() http.HandlerFunc {
 		err = s.manager.DeleteQualityDefinition(r.Context(), request)
 		if err != nil {
 			log.Debug("failed to delete quality definition", zap.Error(err))
-			writeErrorResponse(w, http.StatusInternalServerError, err)
+			s.logWriteError(s.writeErrorResponse(w, http.StatusInternalServerError, err))
 			return
 		}
 
 		log.Debug("succesfully deleted quality definition")
-		writeResponse(w, http.StatusOK, GenericResponse{
+		s.logWriteError(s.writeResponse(w, http.StatusOK, GenericResponse{
 			Response: request,
-		})
+		}))
 	}
 }
 
@@ -539,11 +549,11 @@ func (s Server) SearchMovie() http.HandlerFunc {
 
 		result, err := s.manager.SearchMovie(r.Context(), query)
 		if err != nil {
-			writeErrorResponse(w, http.StatusOK, err)
+			s.logWriteError(s.writeErrorResponse(w, http.StatusInternalServerError, err))
 			return
 		}
 
-		err = writeResponse(w, http.StatusOK, GenericResponse{Response: result})
+		err = s.writeResponse(w, http.StatusOK, GenericResponse{Response: result})
 		if err != nil {
 			log.Error("failed to write response", zap.Error(err))
 			return
@@ -560,11 +570,11 @@ func (s Server) SearchTV() http.HandlerFunc {
 
 		result, err := s.manager.SearchTV(r.Context(), query)
 		if err != nil {
-			writeErrorResponse(w, http.StatusOK, err)
+			s.logWriteError(s.writeErrorResponse(w, http.StatusInternalServerError, err))
 			return
 		}
 
-		err = writeResponse(w, http.StatusOK, GenericResponse{Response: result})
+		err = s.writeResponse(w, http.StatusOK, GenericResponse{Response: result})
 		if err != nil {
 			log.Error("failed to write response", zap.Error(err))
 			return
@@ -594,11 +604,11 @@ func (s Server) AddMovieToLibrary() http.HandlerFunc {
 		release, err := s.manager.AddMovieToLibrary(r.Context(), request)
 		if err != nil {
 			log.Error("couldn't add a movie", zap.Error(err))
-			writeErrorResponse(w, http.StatusInternalServerError, err)
+			s.logWriteError(s.writeErrorResponse(w, http.StatusInternalServerError, err))
 			return
 		}
 
-		err = writeResponse(w, http.StatusOK, GenericResponse{Response: release})
+		err = s.writeResponse(w, http.StatusOK, GenericResponse{Response: release})
 		if err != nil {
 			log.Error("failed to write response", zap.Error(err))
 			return
@@ -623,20 +633,20 @@ func (s Server) DeleteMovieFromLibrary() http.HandlerFunc {
 		if err := s.manager.DeleteMovie(r.Context(), id, deleteFiles); err != nil {
 			log.Error("delete failed", zap.Error(err))
 			if errors.Is(err, storage.ErrNotFound) {
-				writeErrorResponse(w, http.StatusNotFound, err)
+				s.logWriteError(s.writeErrorResponse(w, http.StatusNotFound, err))
 				return
 			}
-			writeErrorResponse(w, http.StatusInternalServerError, err)
+			s.logWriteError(s.writeErrorResponse(w, http.StatusInternalServerError, err))
 			return
 		}
 
-		writeResponse(w, http.StatusOK, GenericResponse{
+		s.logWriteError(s.writeResponse(w, http.StatusOK, GenericResponse{
 			Response: map[string]any{
 				"id":           id,
 				"message":      "Movie deleted",
 				"filesDeleted": deleteFiles,
 			},
-		})
+		}))
 	}
 }
 
@@ -664,14 +674,14 @@ func (s Server) UpdateMovieMonitored() http.HandlerFunc {
 		if err != nil {
 			log.Error("update failed", zap.Error(err))
 			if errors.Is(err, storage.ErrNotFound) {
-				writeErrorResponse(w, http.StatusNotFound, err)
+				s.logWriteError(s.writeErrorResponse(w, http.StatusNotFound, err))
 				return
 			}
-			writeErrorResponse(w, http.StatusInternalServerError, err)
+			s.logWriteError(s.writeErrorResponse(w, http.StatusInternalServerError, err))
 			return
 		}
 
-		writeResponse(w, http.StatusOK, GenericResponse{Response: movie})
+		s.logWriteError(s.writeResponse(w, http.StatusOK, GenericResponse{Response: movie}))
 	}
 }
 
@@ -699,14 +709,14 @@ func (s Server) UpdateMovieQualityProfile() http.HandlerFunc {
 		if err != nil {
 			log.Error("update failed", zap.Error(err))
 			if errors.Is(err, storage.ErrNotFound) {
-				writeErrorResponse(w, http.StatusNotFound, err)
+				s.logWriteError(s.writeErrorResponse(w, http.StatusNotFound, err))
 				return
 			}
-			writeErrorResponse(w, http.StatusInternalServerError, err)
+			s.logWriteError(s.writeErrorResponse(w, http.StatusInternalServerError, err))
 			return
 		}
 
-		writeResponse(w, http.StatusOK, GenericResponse{Response: movie})
+		s.logWriteError(s.writeResponse(w, http.StatusOK, GenericResponse{Response: movie}))
 	}
 }
 
@@ -734,7 +744,7 @@ func (s Server) GetQualityProfile() http.HandlerFunc {
 			Response: profile,
 		}
 
-		writeResponse(w, http.StatusOK, resp)
+		s.logWriteError(s.writeResponse(w, http.StatusOK, resp))
 	}
 }
 
@@ -767,7 +777,7 @@ func (s Server) ListQualityProfiles() http.HandlerFunc {
 			Response: profile,
 		}
 
-		writeResponse(w, http.StatusOK, resp)
+		s.logWriteError(s.writeResponse(w, http.StatusOK, resp))
 	}
 }
 
@@ -791,11 +801,11 @@ func (s Server) CreateQualityProfile() http.HandlerFunc {
 
 		profile, err := s.manager.AddQualityProfile(r.Context(), request)
 		if err != nil {
-			writeErrorResponse(w, http.StatusInternalServerError, err)
+			s.logWriteError(s.writeErrorResponse(w, http.StatusInternalServerError, err))
 			return
 		}
 
-		writeResponse(w, http.StatusCreated, GenericResponse{Response: profile})
+		s.logWriteError(s.writeResponse(w, http.StatusCreated, GenericResponse{Response: profile}))
 	}
 }
 
@@ -828,11 +838,11 @@ func (s Server) UpdateQualityProfile() http.HandlerFunc {
 
 		profile, err := s.manager.UpdateQualityProfile(r.Context(), id, request)
 		if err != nil {
-			writeErrorResponse(w, http.StatusInternalServerError, err)
+			s.logWriteError(s.writeErrorResponse(w, http.StatusInternalServerError, err))
 			return
 		}
 
-		writeResponse(w, http.StatusOK, GenericResponse{Response: profile})
+		s.logWriteError(s.writeResponse(w, http.StatusOK, GenericResponse{Response: profile}))
 	}
 }
 
@@ -853,11 +863,11 @@ func (s Server) DeleteQualityProfile() http.HandlerFunc {
 
 		err = s.manager.DeleteQualityProfile(r.Context(), request)
 		if err != nil {
-			writeErrorResponse(w, http.StatusInternalServerError, err)
+			s.logWriteError(s.writeErrorResponse(w, http.StatusInternalServerError, err))
 			return
 		}
 
-		writeResponse(w, http.StatusOK, GenericResponse{Response: request})
+		s.logWriteError(s.writeResponse(w, http.StatusOK, GenericResponse{Response: request}))
 	}
 }
 
@@ -890,11 +900,11 @@ func (s Server) UpdateQualityDefinition() http.HandlerFunc {
 
 		definition, err := s.manager.UpdateQualityDefinition(r.Context(), id, request)
 		if err != nil {
-			writeErrorResponse(w, http.StatusInternalServerError, err)
+			s.logWriteError(s.writeErrorResponse(w, http.StatusInternalServerError, err))
 			return
 		}
 
-		writeResponse(w, http.StatusOK, GenericResponse{Response: definition})
+		s.logWriteError(s.writeResponse(w, http.StatusOK, GenericResponse{Response: definition}))
 	}
 }
 
@@ -920,11 +930,11 @@ func (s Server) CreateDownloadClient() http.HandlerFunc {
 
 		result, err := s.manager.CreateDownloadClient(r.Context(), request)
 		if err != nil {
-			writeErrorResponse(w, http.StatusOK, err)
+			s.logWriteError(s.writeErrorResponse(w, http.StatusInternalServerError, err))
 			return
 		}
 
-		err = writeResponse(w, http.StatusCreated, GenericResponse{Response: result})
+		err = s.writeResponse(w, http.StatusCreated, GenericResponse{Response: result})
 		if err != nil {
 			log.Error("failed to write response", zap.Error(err))
 			return
@@ -949,13 +959,13 @@ func (s Server) GetDownloadClient() http.HandlerFunc {
 		downloadClient, err := s.manager.GetDownloadClient(r.Context(), id)
 		if err != nil {
 			log.Debug("failed to get download client", zap.Error(err))
-			writeErrorResponse(w, http.StatusInternalServerError, err)
+			s.logWriteError(s.writeErrorResponse(w, http.StatusInternalServerError, err))
 			return
 		}
 
-		writeResponse(w, http.StatusOK, GenericResponse{
+		s.logWriteError(s.writeResponse(w, http.StatusOK, GenericResponse{
 			Response: downloadClient,
-		})
+		}))
 	}
 }
 
@@ -989,11 +999,11 @@ func (s Server) UpdateDownloadClient() http.HandlerFunc {
 
 		result, err := s.manager.UpdateDownloadClient(r.Context(), id, request)
 		if err != nil {
-			writeErrorResponse(w, http.StatusInternalServerError, err)
+			s.logWriteError(s.writeErrorResponse(w, http.StatusInternalServerError, err))
 			return
 		}
 
-		err = writeResponse(w, http.StatusOK, GenericResponse{Response: result})
+		err = s.writeResponse(w, http.StatusOK, GenericResponse{Response: result})
 		if err != nil {
 			log.Error("failed to write response", zap.Error(err))
 			return
@@ -1022,13 +1032,13 @@ func (s Server) TestDownloadClient() http.HandlerFunc {
 
 		err = s.manager.TestDownloadClient(r.Context(), request)
 		if err != nil {
-			writeErrorResponse(w, http.StatusBadRequest, err)
+			s.logWriteError(s.writeErrorResponse(w, http.StatusBadRequest, err))
 			return
 		}
 
-		writeResponse(w, http.StatusOK, GenericResponse{
+		s.logWriteError(s.writeResponse(w, http.StatusOK, GenericResponse{
 			Response: map[string]string{"message": "Connection successful"},
-		})
+		}))
 	}
 }
 
@@ -1048,13 +1058,13 @@ func (s Server) DeleteDownloadClient() http.HandlerFunc {
 		err = s.manager.DeleteDownloadClient(r.Context(), id)
 		if err != nil {
 			log.Debug("failed to get download client", zap.Error(err))
-			writeErrorResponse(w, http.StatusInternalServerError, err)
+			s.logWriteError(s.writeErrorResponse(w, http.StatusInternalServerError, err))
 			return
 		}
 
-		writeResponse(w, http.StatusOK, GenericResponse{
+		s.logWriteError(s.writeResponse(w, http.StatusOK, GenericResponse{
 			Response: id,
-		})
+		}))
 	}
 }
 
@@ -1066,13 +1076,13 @@ func (s Server) ListDownloadClients() http.HandlerFunc {
 		downloadClient, err := s.manager.ListDownloadClients(r.Context())
 		if err != nil {
 			log.Debug("failed to get download client", zap.Error(err))
-			writeErrorResponse(w, http.StatusInternalServerError, err)
+			s.logWriteError(s.writeErrorResponse(w, http.StatusInternalServerError, err))
 			return
 		}
 
-		writeResponse(w, http.StatusOK, GenericResponse{
+		s.logWriteError(s.writeResponse(w, http.StatusOK, GenericResponse{
 			Response: downloadClient,
-		})
+		}))
 	}
 }
 
@@ -1097,11 +1107,11 @@ func (s Server) AddSeriesToLibrary() http.HandlerFunc {
 		release, err := s.manager.AddSeriesToLibrary(r.Context(), request)
 		if err != nil {
 			log.Error("couldn't add a series", zap.Error(err))
-			writeErrorResponse(w, http.StatusInternalServerError, err)
+			s.logWriteError(s.writeErrorResponse(w, http.StatusInternalServerError, err))
 			return
 		}
 
-		err = writeResponse(w, http.StatusOK, GenericResponse{Response: release})
+		err = s.writeResponse(w, http.StatusOK, GenericResponse{Response: release})
 		if err != nil {
 			log.Error("failed to write response", zap.Error(err))
 			return
@@ -1126,20 +1136,20 @@ func (s Server) DeleteSeriesFromLibrary() http.HandlerFunc {
 		if err := s.manager.DeleteSeries(r.Context(), id, deleteDirectory); err != nil {
 			log.Error("delete failed", zap.Error(err))
 			if errors.Is(err, storage.ErrNotFound) {
-				writeErrorResponse(w, http.StatusNotFound, err)
+				s.logWriteError(s.writeErrorResponse(w, http.StatusNotFound, err))
 				return
 			}
-			writeErrorResponse(w, http.StatusInternalServerError, err)
+			s.logWriteError(s.writeErrorResponse(w, http.StatusInternalServerError, err))
 			return
 		}
 
-		writeResponse(w, http.StatusOK, GenericResponse{
+		s.logWriteError(s.writeResponse(w, http.StatusOK, GenericResponse{
 			Response: map[string]any{
 				"id":               id,
 				"message":          "Series deleted",
 				"directoryDeleted": deleteDirectory,
 			},
-		})
+		}))
 	}
 }
 
@@ -1167,14 +1177,14 @@ func (s Server) UpdateSeriesMonitored() http.HandlerFunc {
 		if err != nil {
 			log.Error("update failed", zap.Error(err))
 			if errors.Is(err, storage.ErrNotFound) {
-				writeErrorResponse(w, http.StatusNotFound, err)
+				s.logWriteError(s.writeErrorResponse(w, http.StatusNotFound, err))
 				return
 			}
-			writeErrorResponse(w, http.StatusInternalServerError, err)
+			s.logWriteError(s.writeErrorResponse(w, http.StatusInternalServerError, err))
 			return
 		}
 
-		writeResponse(w, http.StatusOK, GenericResponse{Response: series})
+		s.logWriteError(s.writeResponse(w, http.StatusOK, GenericResponse{Response: series}))
 	}
 }
 
@@ -1194,7 +1204,7 @@ func (s Server) IndexHandler() http.HandlerFunc {
 func (s Server) GetConfig() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		result := s.manager.GetConfigSummary()
-		writeResponse(w, http.StatusOK, GenericResponse{Response: result})
+		s.logWriteError(s.writeResponse(w, http.StatusOK, GenericResponse{Response: result}))
 	}
 }
 
@@ -1203,17 +1213,17 @@ func (s Server) ListJobs() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		params, err := ParsePaginationParams(r)
 		if err != nil {
-			writeErrorResponse(w, http.StatusBadRequest, err)
+			s.logWriteError(s.writeErrorResponse(w, http.StatusBadRequest, err))
 			return
 		}
 
 		jobs, err := s.manager.ListJobs(r.Context(), nil, nil, params)
 		if err != nil {
-			writeErrorResponse(w, http.StatusInternalServerError, err)
+			s.logWriteError(s.writeErrorResponse(w, http.StatusInternalServerError, err))
 			return
 		}
 
-		writeResponse(w, http.StatusOK, GenericResponse{Response: jobs})
+		s.logWriteError(s.writeResponse(w, http.StatusOK, GenericResponse{Response: jobs}))
 	}
 }
 
@@ -1234,11 +1244,11 @@ func (s Server) GetJob() http.HandlerFunc {
 
 		jobs, err := s.manager.GetJob(r.Context(), id)
 		if err != nil {
-			writeErrorResponse(w, http.StatusInternalServerError, err)
+			s.logWriteError(s.writeErrorResponse(w, http.StatusInternalServerError, err))
 			return
 		}
 
-		writeResponse(w, http.StatusOK, GenericResponse{Response: jobs})
+		s.logWriteError(s.writeResponse(w, http.StatusOK, GenericResponse{Response: jobs}))
 	}
 }
 
@@ -1258,11 +1268,11 @@ func (s Server) CancelJob() http.HandlerFunc {
 
 		jobs, err := s.manager.CancelJob(r.Context(), id)
 		if err != nil {
-			writeErrorResponse(w, http.StatusInternalServerError, err)
+			s.logWriteError(s.writeErrorResponse(w, http.StatusInternalServerError, err))
 			return
 		}
 
-		writeResponse(w, http.StatusOK, GenericResponse{Response: jobs})
+		s.logWriteError(s.writeResponse(w, http.StatusOK, GenericResponse{Response: jobs}))
 	}
 }
 
@@ -1287,11 +1297,11 @@ func (s Server) CreateJob() http.HandlerFunc {
 
 		jobs, err := s.manager.CreateJob(r.Context(), request)
 		if err != nil {
-			writeErrorResponse(w, http.StatusInternalServerError, err)
+			s.logWriteError(s.writeErrorResponse(w, http.StatusInternalServerError, err))
 			return
 		}
 
-		writeResponse(w, http.StatusCreated, GenericResponse{Response: jobs})
+		s.logWriteError(s.writeResponse(w, http.StatusCreated, GenericResponse{Response: jobs}))
 	}
 }
 
@@ -1301,10 +1311,10 @@ func (s Server) GetLibraryStats() http.HandlerFunc {
 		ctx := r.Context()
 		stats, err := s.manager.GetLibraryStats(ctx)
 		if err != nil {
-			writeErrorResponse(w, http.StatusInternalServerError, err)
+			s.logWriteError(s.writeErrorResponse(w, http.StatusInternalServerError, err))
 			return
 		}
-		writeResponse(w, http.StatusOK, GenericResponse{Response: stats})
+		s.logWriteError(s.writeResponse(w, http.StatusOK, GenericResponse{Response: stats}))
 	}
 }
 
@@ -1322,13 +1332,13 @@ func (s Server) RefreshSeriesMetadata() http.HandlerFunc {
 		err := s.manager.RefreshSeriesMetadata(r.Context(), req.TmdbIDs...)
 		if err != nil {
 			log.Error("failed to refresh series metadata", zap.Error(err))
-			writeErrorResponse(w, http.StatusInternalServerError, err)
+			s.logWriteError(s.writeErrorResponse(w, http.StatusInternalServerError, err))
 			return
 		}
 
-		writeResponse(w, http.StatusOK, GenericResponse{
+		s.logWriteError(s.writeResponse(w, http.StatusOK, GenericResponse{
 			Response: "Series metadata refresh completed",
-		})
+		}))
 	}
 }
 
@@ -1346,13 +1356,13 @@ func (s Server) RefreshMovieMetadata() http.HandlerFunc {
 		err := s.manager.RefreshMovieMetadata(r.Context(), req.TmdbIDs...)
 		if err != nil {
 			log.Error("failed to refresh movie metadata", zap.Error(err))
-			writeErrorResponse(w, http.StatusInternalServerError, err)
+			s.logWriteError(s.writeErrorResponse(w, http.StatusInternalServerError, err))
 			return
 		}
 
-		writeResponse(w, http.StatusOK, GenericResponse{
+		s.logWriteError(s.writeResponse(w, http.StatusOK, GenericResponse{
 			Response: "Movie metadata refresh completed",
-		})
+		}))
 	}
 }
 
@@ -1371,10 +1381,10 @@ func (s Server) SearchForMovie() http.HandlerFunc {
 		if err != nil {
 			log.Error("search failed", zap.Error(err))
 			if errors.Is(err, storage.ErrNotFound) {
-				writeErrorResponse(w, http.StatusNotFound, err)
+				s.logWriteError(s.writeErrorResponse(w, http.StatusNotFound, err))
 				return
 			}
-			writeErrorResponse(w, http.StatusBadRequest, err)
+			s.logWriteError(s.writeErrorResponse(w, http.StatusBadRequest, err))
 			return
 		}
 
@@ -1397,10 +1407,10 @@ func (s Server) SearchForSeries() http.HandlerFunc {
 		if err != nil {
 			log.Error("search failed", zap.Error(err))
 			if errors.Is(err, storage.ErrNotFound) {
-				writeErrorResponse(w, http.StatusNotFound, err)
+				s.logWriteError(s.writeErrorResponse(w, http.StatusNotFound, err))
 				return
 			}
-			writeErrorResponse(w, http.StatusBadRequest, err)
+			s.logWriteError(s.writeErrorResponse(w, http.StatusBadRequest, err))
 			return
 		}
 
@@ -1423,10 +1433,10 @@ func (s Server) SearchForSeason() http.HandlerFunc {
 		if err != nil {
 			log.Error("search failed", zap.Error(err))
 			if errors.Is(err, storage.ErrNotFound) {
-				writeErrorResponse(w, http.StatusNotFound, err)
+				s.logWriteError(s.writeErrorResponse(w, http.StatusNotFound, err))
 				return
 			}
-			writeErrorResponse(w, http.StatusBadRequest, err)
+			s.logWriteError(s.writeErrorResponse(w, http.StatusBadRequest, err))
 			return
 		}
 
@@ -1449,10 +1459,10 @@ func (s Server) SearchForEpisode() http.HandlerFunc {
 		if err != nil {
 			log.Error("search failed", zap.Error(err))
 			if errors.Is(err, storage.ErrNotFound) {
-				writeErrorResponse(w, http.StatusNotFound, err)
+				s.logWriteError(s.writeErrorResponse(w, http.StatusNotFound, err))
 				return
 			}
-			writeErrorResponse(w, http.StatusBadRequest, err)
+			s.logWriteError(s.writeErrorResponse(w, http.StatusBadRequest, err))
 			return
 		}
 

@@ -104,6 +104,10 @@ func (s *SQLite) ListDownloadingMovies(ctx context.Context) ([]*storage.ActiveMo
 		movies = append(movies, &movie)
 	}
 
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
 	return movies, nil
 }
 
@@ -189,6 +193,10 @@ func (s *SQLite) ListDownloadingSeries(ctx context.Context) ([]*storage.ActiveSe
 		series = append(series, &s)
 	}
 
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
 	return series, nil
 }
 
@@ -222,6 +230,10 @@ func (s *SQLite) ListRunningJobs(ctx context.Context) ([]*storage.ActiveJob, err
 			return nil, err
 		}
 		jobs = append(jobs, &job)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 
 	return jobs, nil
@@ -258,6 +270,10 @@ func (s *SQLite) ListErrorJobs(ctx context.Context, hours int) ([]*storage.Activ
 			return nil, err
 		}
 		jobs = append(jobs, &job)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 
 	return jobs, nil
@@ -332,6 +348,10 @@ func (s *SQLite) GetTransitionsByDate(ctx context.Context, startDate, endDate ti
 		movieEntries = append(movieEntries, &entry)
 	}
 
+	if err := moviesRows.Err(); err != nil {
+		return nil, err
+	}
+
 	s.mu.Lock()
 	seriesRows, err := s.db.QueryContext(ctx, `
 		SELECT
@@ -363,6 +383,10 @@ func (s *SQLite) GetTransitionsByDate(ctx context.Context, startDate, endDate ti
 		seriesEntries = append(seriesEntries, &entry)
 	}
 
+	if err := seriesRows.Err(); err != nil {
+		return nil, err
+	}
+
 	s.mu.Lock()
 	jobsRows, err := s.db.QueryContext(ctx, `
 		SELECT
@@ -391,6 +415,10 @@ func (s *SQLite) GetTransitionsByDate(ctx context.Context, startDate, endDate ti
 			return nil, err
 		}
 		jobEntries = append(jobEntries, &entry)
+	}
+
+	if err := jobsRows.Err(); err != nil {
+		return nil, err
 	}
 
 	timelineMap := make(map[string]*storage.TimelineEntry)
@@ -502,6 +530,10 @@ func (s *SQLite) GetTransitionsByDate(ctx context.Context, startDate, endDate ti
 		transitions = append(transitions, &item)
 	}
 
+	if err := movieTransitionRows.Err(); err != nil {
+		return nil, err
+	}
+
 	s.mu.Lock()
 	var seasonTransitionRows *sql.Rows
 	if limit > 0 {
@@ -563,6 +595,10 @@ func (s *SQLite) GetTransitionsByDate(ctx context.Context, startDate, endDate ti
 			item.FromState = &fromState.String
 		}
 		transitions = append(transitions, &item)
+	}
+
+	if err := seasonTransitionRows.Err(); err != nil {
+		return nil, err
 	}
 
 	s.mu.Lock()
@@ -630,6 +666,10 @@ func (s *SQLite) GetTransitionsByDate(ctx context.Context, startDate, endDate ti
 		transitions = append(transitions, &item)
 	}
 
+	if err := episodeTransitionRows.Err(); err != nil {
+		return nil, err
+	}
+
 	s.mu.Lock()
 	var jobTransitionRows *sql.Rows
 	if limit > 0 {
@@ -687,6 +727,10 @@ func (s *SQLite) GetTransitionsByDate(ctx context.Context, startDate, endDate ti
 			item.FromState = &fromState.String
 		}
 		transitions = append(transitions, &item)
+	}
+
+	if err := jobTransitionRows.Err(); err != nil {
+		return nil, err
 	}
 
 	totalCount, countErr := s.CountTransitionsByDate(ctx, startDate, endDate)
@@ -759,6 +803,10 @@ func (s *SQLite) GetEntityTransitions(ctx context.Context, entityType string, en
 			history = append(history, &item)
 		}
 
+		if err := rows.Err(); err != nil {
+			return nil, err
+		}
+
 	case "series":
 		s.mu.Lock()
 		rows, err = s.db.QueryContext(ctx, `
@@ -808,6 +856,10 @@ func (s *SQLite) GetEntityTransitions(ctx context.Context, entityType string, en
 				}
 			}
 			history = append(history, &item)
+		}
+
+		if err := rows.Err(); err != nil {
+			return nil, err
 		}
 
 	case "season":
@@ -862,6 +914,10 @@ func (s *SQLite) GetEntityTransitions(ctx context.Context, entityType string, en
 			history = append(history, &item)
 		}
 
+		if err := rows.Err(); err != nil {
+			return nil, err
+		}
+
 	case "episode":
 		s.mu.Lock()
 		rows, err = s.db.QueryContext(ctx, `
@@ -903,6 +959,10 @@ func (s *SQLite) GetEntityTransitions(ctx context.Context, entityType string, en
 			history = append(history, &item)
 		}
 
+		if err := rows.Err(); err != nil {
+			return nil, err
+		}
+
 	case "job":
 		s.mu.Lock()
 		rows, err = s.db.QueryContext(ctx, `
@@ -938,6 +998,10 @@ func (s *SQLite) GetEntityTransitions(ctx context.Context, entityType string, en
 				}
 			}
 			history = append(history, &item)
+		}
+
+		if err := rows.Err(); err != nil {
+			return nil, err
 		}
 
 	default:

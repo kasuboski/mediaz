@@ -19,11 +19,11 @@ func (s Server) ListIndexerSources() http.HandlerFunc {
 		sources, err := s.manager.ListIndexerSources(r.Context())
 		if err != nil {
 			log.Error("failed to list indexer sources", zap.Error(err))
-			writeErrorResponse(w, http.StatusInternalServerError, err)
+			s.logWriteError(s.writeErrorResponse(w, http.StatusInternalServerError, err))
 			return
 		}
 
-		writeResponse(w, http.StatusOK, GenericResponse{Response: sources})
+		s.logWriteError(s.writeResponse(w, http.StatusOK, GenericResponse{Response: sources}))
 	}
 }
 
@@ -46,11 +46,11 @@ func (s Server) CreateIndexerSource() http.HandlerFunc {
 		source, err := s.manager.CreateIndexerSource(r.Context(), req)
 		if err != nil {
 			log.Error("failed to create indexer source", zap.Error(err))
-			writeErrorResponse(w, http.StatusInternalServerError, err)
+			s.logWriteError(s.writeErrorResponse(w, http.StatusInternalServerError, err))
 			return
 		}
 
-		writeResponse(w, http.StatusCreated, GenericResponse{Response: source})
+		s.logWriteError(s.writeResponse(w, http.StatusCreated, GenericResponse{Response: source}))
 	}
 }
 
@@ -68,11 +68,11 @@ func (s Server) GetIndexerSource() http.HandlerFunc {
 		source, err := s.manager.GetIndexerSource(r.Context(), id)
 		if err != nil {
 			log.Error("failed to get indexer source", zap.Error(err))
-			writeErrorResponse(w, http.StatusInternalServerError, err)
+			s.logWriteError(s.writeErrorResponse(w, http.StatusInternalServerError, err))
 			return
 		}
 
-		writeResponse(w, http.StatusOK, GenericResponse{Response: source})
+		s.logWriteError(s.writeResponse(w, http.StatusOK, GenericResponse{Response: source}))
 	}
 }
 
@@ -102,11 +102,11 @@ func (s Server) UpdateIndexerSource() http.HandlerFunc {
 		source, err := s.manager.UpdateIndexerSource(r.Context(), id, req)
 		if err != nil {
 			log.Error("failed to update indexer source", zap.Error(err))
-			writeErrorResponse(w, http.StatusInternalServerError, err)
+			s.logWriteError(s.writeErrorResponse(w, http.StatusInternalServerError, err))
 			return
 		}
 
-		writeResponse(w, http.StatusOK, GenericResponse{Response: source})
+		s.logWriteError(s.writeResponse(w, http.StatusOK, GenericResponse{Response: source}))
 	}
 }
 
@@ -123,11 +123,11 @@ func (s Server) DeleteIndexerSource() http.HandlerFunc {
 
 		if err := s.manager.DeleteIndexerSource(r.Context(), id); err != nil {
 			log.Error("failed to delete indexer source", zap.Error(err))
-			writeErrorResponse(w, http.StatusInternalServerError, err)
+			s.logWriteError(s.writeErrorResponse(w, http.StatusInternalServerError, err))
 			return
 		}
 
-		writeResponse(w, http.StatusOK, GenericResponse{Response: map[string]int64{"id": id}})
+		s.logWriteError(s.writeResponse(w, http.StatusOK, GenericResponse{Response: map[string]int64{"id": id}}))
 	}
 }
 
@@ -149,13 +149,13 @@ func (s Server) TestIndexerSource() http.HandlerFunc {
 
 		if err := s.manager.TestIndexerSource(r.Context(), req); err != nil {
 			log.Error("indexer source test failed", zap.Error(err))
-			writeErrorResponse(w, http.StatusBadRequest, err)
+			s.logWriteError(s.writeErrorResponse(w, http.StatusBadRequest, err))
 			return
 		}
 
-		writeResponse(w, http.StatusOK, GenericResponse{
+		s.logWriteError(s.writeResponse(w, http.StatusOK, GenericResponse{
 			Response: map[string]string{"message": "Connection successful"},
-		})
+		}))
 	}
 }
 
@@ -172,12 +172,12 @@ func (s Server) RefreshIndexerSource() http.HandlerFunc {
 
 		if err := s.manager.RefreshIndexerSource(r.Context(), id); err != nil {
 			log.Error("failed to refresh indexer source", zap.Error(err))
-			writeErrorResponse(w, http.StatusInternalServerError, err)
+			s.logWriteError(s.writeErrorResponse(w, http.StatusInternalServerError, err))
 			return
 		}
 
-		writeResponse(w, http.StatusOK, GenericResponse{
+		s.logWriteError(s.writeResponse(w, http.StatusOK, GenericResponse{
 			Response: map[string]string{"message": "Indexer source refreshed"},
-		})
+		}))
 	}
 }

@@ -5,11 +5,20 @@ import (
 	"strings"
 	"time"
 
+	"github.com/kasuboski/mediaz/config"
+	mhttp "github.com/kasuboski/mediaz/pkg/http"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
 
 var cfgFile string
+
+func newTMDBHTTPClient(cfg config.TMDB) *mhttp.RateLimitedClient {
+	return mhttp.NewRateLimitedClient(
+		mhttp.WithMaxRetries(cfg.MaxRetries),
+		mhttp.WithBaseBackoff(cfg.BaseBackoff),
+	)
+}
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{

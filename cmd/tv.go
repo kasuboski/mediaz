@@ -6,7 +6,6 @@ import (
 	"os"
 
 	"github.com/kasuboski/mediaz/config"
-	mhttp "github.com/kasuboski/mediaz/pkg/http"
 	mio "github.com/kasuboski/mediaz/pkg/io"
 	"github.com/kasuboski/mediaz/pkg/library"
 	"github.com/kasuboski/mediaz/pkg/logger"
@@ -67,7 +66,7 @@ var seriesDetailsCmd = &cobra.Command{
 			log.Fatal("failed to read configurations", zap.Error(err))
 		}
 
-		tmdbHttpClient := mhttp.NewRateLimitedClient()
+		tmdbHttpClient := newTMDBHTTPClient(cfg.TMDB)
 		tmdbClient, err := tmdb.New(cfg.TMDB.URI, cfg.TMDB.APIKey, tmdb.WithHTTPClient(tmdbHttpClient))
 		if err != nil {
 			log.Fatal("failed to create tmdb client", zap.Error(err))

@@ -6,7 +6,6 @@ import (
 
 	"github.com/kasuboski/mediaz/config"
 	"github.com/kasuboski/mediaz/pkg/download"
-	mhttp "github.com/kasuboski/mediaz/pkg/http"
 	"github.com/kasuboski/mediaz/pkg/indexer"
 	mio "github.com/kasuboski/mediaz/pkg/io"
 	"github.com/kasuboski/mediaz/pkg/library"
@@ -45,7 +44,7 @@ var reconcileMoviesCmd = &cobra.Command{
 		}
 
 		// Create TMDB client
-		tmdbHttpClient := mhttp.NewRateLimitedClient()
+		tmdbHttpClient := newTMDBHTTPClient(cfg.TMDB)
 		tmdbClient, err := tmdb.New(cfg.TMDB.URI, cfg.TMDB.APIKey, tmdb.WithHTTPClient(tmdbHttpClient))
 		if err != nil {
 			log.Fatal("failed to create tmdb client", zap.Error(err))
@@ -116,7 +115,7 @@ var reconcileSeriesCmd = &cobra.Command{
 		}
 
 		// Create TMDB client
-		tmdbHttpClient := mhttp.NewRateLimitedClient()
+		tmdbHttpClient := newTMDBHTTPClient(cfg.TMDB)
 		tmdbClient, err := tmdb.New(cfg.TMDB.URI, cfg.TMDB.APIKey, tmdb.WithHTTPClient(tmdbHttpClient))
 		if err != nil {
 			log.Fatal("failed to create tmdb client", zap.Error(err))
