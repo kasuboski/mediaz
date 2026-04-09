@@ -154,16 +154,14 @@ var searchIndexerCmd = &cobra.Command{
 			r.MagnetURL = nullable.NewNullNullable[string]()
 		}
 
-		if out, err := cmd.Flags().GetString("output"); err == nil {
+		if out, err := cmd.Flags().GetString("output"); err == nil && out != "" {
 			data, err := json.MarshalIndent(releases, "", "  ")
 			if err != nil {
 				log.Fatalw("failed to marshal releases", "error", err)
 			}
-			f, err := os.Create(out)
-			if err != nil {
-				log.Fatalw("failed to create output file", "path", out, "error", err)
+			if err := os.WriteFile(out, data, 0644); err != nil {
+				log.Fatalw("failed to write output file", "path", out, "error", err)
 			}
-			fmt.Fprintln(f, string(data))
 		}
 
 		log.Infof("found %d releases", len(releases))
