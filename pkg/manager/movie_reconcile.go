@@ -464,7 +464,7 @@ func (m MediaManager) reconcileDiscoveredMovie(ctx context.Context, movie *stora
 	}
 
 	if movie.Path == nil {
-		log.Warn("movie has no path, skipping reconcile")
+		log.Debug("movie path is nil, skipping reconcile")
 		return nil
 	}
 
@@ -486,7 +486,11 @@ func (m MediaManager) reconcileDiscoveredMovie(ctx context.Context, movie *stora
 	result := findMatchingMovieResult(searchResp.Results, year)
 
 	if result == nil {
-		log.Warn("no matching result found for movie", zap.String("path", *movie.Path), zap.String("search_term", searchTerm), zap.Int32("year", *year))
+		if year != nil {
+			log.Warn("no matching result found for movie", zap.String("path", *movie.Path), zap.String("search_term", searchTerm), zap.Int32("year", *year))
+		} else {
+			log.Warn("no matching result found for movie", zap.String("path", *movie.Path), zap.String("search_term", searchTerm))
+		}
 		return nil
 	}
 

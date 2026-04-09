@@ -64,19 +64,19 @@ func RejectMovieReleaseFunc(ctx context.Context, params ReleaseFilterParams, pro
 			return true
 		}
 
-		lowerReleaseTitle := strings.ToLower(releaseTitle)
+		lowerReleaseTitle := strings.ToLower(normalizeSeparators(releaseTitle))
 
-		var titleMatches bool
-		if params.Title != "" {
-			titleMatches = strings.HasPrefix(lowerReleaseTitle, strings.ToLower(params.Title))
+		normalizedTitle := strings.TrimSpace(strings.ToLower(normalizeSeparators(params.Title)))
+		titleMatches := normalizedTitle != "" && strings.HasPrefix(lowerReleaseTitle, normalizedTitle)
+
+		if !titleMatches && params.OriginalTitle != nil {
+			normalizedOriginal := strings.TrimSpace(strings.ToLower(normalizeSeparators(*params.OriginalTitle)))
+			titleMatches = normalizedOriginal != "" && strings.HasPrefix(lowerReleaseTitle, normalizedOriginal)
 		}
 
-		if !titleMatches && params.OriginalTitle != nil && *params.OriginalTitle != "" {
-			titleMatches = strings.HasPrefix(lowerReleaseTitle, strings.ToLower(*params.OriginalTitle))
-		}
-
-		if !titleMatches && params.CleanTitle != nil && *params.CleanTitle != "" {
-			titleMatches = strings.HasPrefix(lowerReleaseTitle, strings.ToLower(*params.CleanTitle))
+		if !titleMatches && params.CleanTitle != nil {
+			normalizedClean := strings.TrimSpace(strings.ToLower(normalizeSeparators(*params.CleanTitle)))
+			titleMatches = normalizedClean != "" && strings.HasPrefix(lowerReleaseTitle, normalizedClean)
 		}
 
 		if !titleMatches {
