@@ -88,6 +88,13 @@ func RejectMovieReleaseFunc(ctx context.Context, params ReleaseFilterParams, pro
 			if releaseYear != nil && *releaseYear != *params.Year {
 				return true
 			}
+
+			if params.Year != nil {
+				releaseYear := extractYear(releaseTitle)
+				if releaseYear != nil && *releaseYear != *params.Year {
+					return true
+				}
+			}
 		}
 
 		return rejectReleaseFunc(ctx, params.Runtime, profile, protocolsAvailable)(r)
@@ -108,7 +115,6 @@ func findYear(normalized string) *int32 {
 			return &y
 		}
 	}
-
 	matches = trailingYearRegex.FindStringSubmatch(normalized)
 	if len(matches) > 1 {
 		year, err := strconv.Atoi(matches[1])
