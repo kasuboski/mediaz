@@ -91,6 +91,7 @@ var searchIndexerCmd = &cobra.Command{
 				FS:   tvFS,
 			},
 			&mio.MediaFileSystem{},
+			cfg.Library.UseHardlinks,
 		)
 
 		store, err := sqlite.New(ctx, cfg.Storage.FilePath)

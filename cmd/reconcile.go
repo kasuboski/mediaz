@@ -84,6 +84,7 @@ var reconcileMoviesCmd = &cobra.Command{
 				FS:   tvFS,
 			},
 			mediaFileSystem,
+			cfg.Library.UseHardlinks,
 		)
 
 		// Create MediaManager
@@ -154,6 +155,7 @@ var reconcileSeriesCmd = &cobra.Command{
 				FS:   tvFS,
 			},
 			mediaFileSystem,
+			cfg.Library.UseHardlinks,
 		)
 
 		// Create MediaManager

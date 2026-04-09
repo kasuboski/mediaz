@@ -83,6 +83,7 @@ var indexMoviesCmd = &cobra.Command{
 				FS:   tvFS,
 			},
 			mediaFileSystem,
+			cfg.Library.UseHardlinks,
 		)
 
 		// Create MediaManager
@@ -154,6 +155,7 @@ var indexSeriesCmd = &cobra.Command{
 				FS:   tvFS,
 			},
 			mediaFileSystem,
+			cfg.Library.UseHardlinks,
 		)
 
 		// Create MediaManager
