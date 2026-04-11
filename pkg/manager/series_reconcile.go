@@ -1110,7 +1110,7 @@ func (m MediaManager) reconcileDiscoveredEpisode(ctx context.Context, snapshot *
 		log.Debug("using episode number from database", zap.Int("episode_number", episodeNumber))
 	} else if episode.EpisodeFileID != nil {
 		// Get episode number from linked episode file
-		episodeFile, err := m.getEpisodeFileByID(ctx, *episode.EpisodeFileID)
+		episodeFile, err := m.storage.GetEpisodeFile(ctx, *episode.EpisodeFileID)
 		if err != nil {
 			log.Error("failed to get episode file", zap.Error(err))
 			return fmt.Errorf("failed to get episode file: %w", err)
@@ -1277,21 +1277,7 @@ func (m MediaManager) matchDiscoveredEpisodeToTMDBMetadataFromDB(ctx context.Con
 	return nil
 }
 
-// getEpisodeFileByID retrieves an episode file by its ID from the database
-func (m MediaManager) getEpisodeFileByID(ctx context.Context, fileID int32) (*model.EpisodeFile, error) {
-	episodeFiles, err := m.storage.ListEpisodeFiles(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to list episode files: %w", err)
-	}
 
-	for _, ef := range episodeFiles {
-		if ef.ID == fileID {
-			return ef, nil
-		}
-	}
-
-	return nil, nil // Not found, but not an error
-}
 
 // ReconcileCompletedSeries evaluates and updates states for series that may have completed
 func (m MediaManager) ReconcileCompletedSeries(ctx context.Context) error {
