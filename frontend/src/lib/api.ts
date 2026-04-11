@@ -783,9 +783,8 @@ export const indexersApi = {
   },
 
   async delete(id: number): Promise<void> {
-    return apiRequest<void>('/indexers', {
+    return apiRequest<void>(`/indexers/${id}`, {
       method: 'DELETE',
-      body: JSON.stringify({ id }),
     });
   },
 };
@@ -926,9 +925,8 @@ export const qualityDefinitionsApi = {
   },
 
   async deleteDefinition(id: number): Promise<void> {
-    return apiRequest<void>('/quality/definitions', {
+    return apiRequest<void>(`/quality/definitions/${id}`, {
       method: 'DELETE',
-      body: JSON.stringify({ id }),
     });
   },
 };

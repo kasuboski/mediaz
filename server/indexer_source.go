@@ -1,183 +1,118 @@
 package server
 
 import (
-	"encoding/json"
-	"io"
 	"net/http"
-	"strconv"
 
-	"github.com/gorilla/mux"
-	"github.com/kasuboski/mediaz/pkg/logger"
 	"github.com/kasuboski/mediaz/pkg/manager"
-	"go.uber.org/zap"
 )
 
 func (s Server) ListIndexerSources() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		log := logger.FromCtx(r.Context())
-
 		sources, err := s.manager.ListIndexerSources(r.Context())
 		if err != nil {
-			log.Error("failed to list indexer sources", zap.Error(err))
-			s.logWriteError(s.writeErrorResponse(w, http.StatusInternalServerError, err))
+			s.respondError(r, w, http.StatusInternalServerError, err)
 			return
 		}
-
-		s.logWriteError(s.writeResponse(w, http.StatusOK, GenericResponse{Response: sources}))
+		s.respond(r, w, http.StatusOK, sources)
 	}
 }
 
 func (s Server) CreateIndexerSource() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		log := logger.FromCtx(r.Context())
-
-		body, err := io.ReadAll(r.Body)
-		if err != nil {
-			http.Error(w, "invalid request body", http.StatusBadRequest)
-			return
-		}
-
 		var req manager.AddIndexerSourceRequest
-		if err := json.Unmarshal(body, &req); err != nil {
-			http.Error(w, "invalid request body", http.StatusBadRequest)
+		if !s.decodeJSON(w, r, &req) {
 			return
 		}
 
 		source, err := s.manager.CreateIndexerSource(r.Context(), req)
 		if err != nil {
-			log.Error("failed to create indexer source", zap.Error(err))
-			s.logWriteError(s.writeErrorResponse(w, http.StatusInternalServerError, err))
+			s.respondError(r, w, http.StatusInternalServerError, err)
 			return
 		}
-
-		s.logWriteError(s.writeResponse(w, http.StatusCreated, GenericResponse{Response: source}))
+		s.respond(r, w, http.StatusCreated, source)
 	}
 }
 
 func (s Server) GetIndexerSource() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		log := logger.FromCtx(r.Context())
-		vars := mux.Vars(r)
-
-		id, err := strconv.ParseInt(vars["id"], 10, 64)
-		if err != nil {
-			http.Error(w, "invalid ID", http.StatusBadRequest)
+		id, ok := s.parseURLInt64(w, r, "id")
+		if !ok {
 			return
 		}
 
 		source, err := s.manager.GetIndexerSource(r.Context(), id)
 		if err != nil {
-			log.Error("failed to get indexer source", zap.Error(err))
-			s.logWriteError(s.writeErrorResponse(w, http.StatusInternalServerError, err))
+			s.respondError(r, w, http.StatusInternalServerError, err)
 			return
 		}
-
-		s.logWriteError(s.writeResponse(w, http.StatusOK, GenericResponse{Response: source}))
+		s.respond(r, w, http.StatusOK, source)
 	}
 }
 
 func (s Server) UpdateIndexerSource() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		log := logger.FromCtx(r.Context())
-		vars := mux.Vars(r)
-
-		id, err := strconv.ParseInt(vars["id"], 10, 64)
-		if err != nil {
-			http.Error(w, "invalid ID", http.StatusBadRequest)
-			return
-		}
-
-		body, err := io.ReadAll(r.Body)
-		if err != nil {
-			http.Error(w, "invalid request body", http.StatusBadRequest)
+		id, ok := s.parseURLInt64(w, r, "id")
+		if !ok {
 			return
 		}
 
 		var req manager.UpdateIndexerSourceRequest
-		if err := json.Unmarshal(body, &req); err != nil {
-			http.Error(w, "invalid request body", http.StatusBadRequest)
+		if !s.decodeJSON(w, r, &req) {
 			return
 		}
 
 		source, err := s.manager.UpdateIndexerSource(r.Context(), id, req)
 		if err != nil {
-			log.Error("failed to update indexer source", zap.Error(err))
-			s.logWriteError(s.writeErrorResponse(w, http.StatusInternalServerError, err))
+			s.respondError(r, w, http.StatusInternalServerError, err)
 			return
 		}
-
-		s.logWriteError(s.writeResponse(w, http.StatusOK, GenericResponse{Response: source}))
+		s.respond(r, w, http.StatusOK, source)
 	}
 }
 
 func (s Server) DeleteIndexerSource() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		log := logger.FromCtx(r.Context())
-		vars := mux.Vars(r)
-
-		id, err := strconv.ParseInt(vars["id"], 10, 64)
-		if err != nil {
-			http.Error(w, "invalid ID", http.StatusBadRequest)
+		id, ok := s.parseURLInt64(w, r, "id")
+		if !ok {
 			return
 		}
 
 		if err := s.manager.DeleteIndexerSource(r.Context(), id); err != nil {
-			log.Error("failed to delete indexer source", zap.Error(err))
-			s.logWriteError(s.writeErrorResponse(w, http.StatusInternalServerError, err))
+			s.respondError(r, w, http.StatusInternalServerError, err)
 			return
 		}
-
-		s.logWriteError(s.writeResponse(w, http.StatusOK, GenericResponse{Response: map[string]int64{"id": id}}))
+		s.respond(r, w, http.StatusOK, map[string]int64{"id": id})
 	}
 }
 
 func (s Server) TestIndexerSource() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		log := logger.FromCtx(r.Context())
-
-		body, err := io.ReadAll(r.Body)
-		if err != nil {
-			http.Error(w, "invalid request body", http.StatusBadRequest)
-			return
-		}
-
 		var req manager.AddIndexerSourceRequest
-		if err := json.Unmarshal(body, &req); err != nil {
-			http.Error(w, "invalid request body", http.StatusBadRequest)
+		if !s.decodeJSON(w, r, &req) {
 			return
 		}
 
 		if err := s.manager.TestIndexerSource(r.Context(), req); err != nil {
-			log.Error("indexer source test failed", zap.Error(err))
-			s.logWriteError(s.writeErrorResponse(w, http.StatusBadRequest, err))
+			s.respondError(r, w, http.StatusBadRequest, err)
 			return
 		}
 
-		s.logWriteError(s.writeResponse(w, http.StatusOK, GenericResponse{
-			Response: map[string]string{"message": "Connection successful"},
-		}))
+		s.respond(r, w, http.StatusOK, map[string]string{"message": "Connection successful"})
 	}
 }
 
 func (s Server) RefreshIndexerSource() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		log := logger.FromCtx(r.Context())
-		vars := mux.Vars(r)
-
-		id, err := strconv.ParseInt(vars["id"], 10, 64)
-		if err != nil {
-			http.Error(w, "invalid ID", http.StatusBadRequest)
+		id, ok := s.parseURLInt64(w, r, "id")
+		if !ok {
 			return
 		}
 
 		if err := s.manager.RefreshIndexerSource(r.Context(), id); err != nil {
-			log.Error("failed to refresh indexer source", zap.Error(err))
-			s.logWriteError(s.writeErrorResponse(w, http.StatusInternalServerError, err))
+			s.respondError(r, w, http.StatusInternalServerError, err)
 			return
 		}
 
-		s.logWriteError(s.writeResponse(w, http.StatusOK, GenericResponse{
-			Response: map[string]string{"message": "Indexer source refreshed"},
-		}))
+		s.respond(r, w, http.StatusOK, map[string]string{"message": "Indexer source refreshed"})
 	}
 }
