@@ -29,6 +29,10 @@ func (s Server) CreateIndexer() http.HandlerFunc {
 
 		indexer, err := s.manager.AddIndexer(r.Context(), req)
 		if err != nil {
+			if errors.Is(err, manager.ErrValidation) {
+				s.respondError(r, w, http.StatusBadRequest, err)
+				return
+			}
 			s.respondError(r, w, http.StatusInternalServerError, err)
 			return
 		}
