@@ -736,32 +736,32 @@ func (m MediaManager) IndexMovieLibrary(ctx context.Context) error {
 		return fmt.Errorf("failed to list movie files: %w", err)
 	}
 
-	for _, discoveredFile := range discoveredFiles {
-		// need to check if the file is already tracked, and if not, add it
-		isTracked := false
-		for _, mf := range movieFiles {
-			if mf == nil {
-				continue
-			}
-
-			if strings.EqualFold(*mf.RelativePath, discoveredFile.RelativePath) {
-				log.Debug("discovered file relative path matches monitored movie file relative path",
-					zap.String("discovered file relative path", discoveredFile.RelativePath),
-					zap.String("monitored file relative path", *mf.RelativePath))
-				isTracked = true
-				break
-			}
-
-			if strings.EqualFold(*mf.OriginalFilePath, discoveredFile.AbsolutePath) {
-				log.Debug("discovered file absolute path matches monitored movie file original path",
-					zap.String("discovered file absolute path", discoveredFile.AbsolutePath),
-					zap.String("monitored file original path", *mf.OriginalFilePath))
-				isTracked = true
-				break
-			}
+	// Build a set of tracked paths for O(1) lookup instead of O(n*m) nested loop
+	tracked := make(map[string]struct{}, len(movieFiles)*2)
+	for _, mf := range movieFiles {
+		if mf == nil {
+			continue
 		}
+		if mf.RelativePath != nil {
+			tracked[strings.ToLower(*mf.RelativePath)] = struct{}{}
+		}
+		if mf.OriginalFilePath != nil {
+			tracked[strings.ToLower(*mf.OriginalFilePath)] = struct{}{}
+		}
+	}
 
-		if isTracked {
+	for _, discoveredFile := range discoveredFiles {
+		_, trackedByRelPath := tracked[strings.ToLower(discoveredFile.RelativePath)]
+		_, trackedByAbsPath := tracked[strings.ToLower(discoveredFile.AbsolutePath)]
+
+		if trackedByRelPath {
+			log.Debug("discovered file relative path matches monitored movie file relative path",
+				zap.String("discovered file relative path", discoveredFile.RelativePath))
+			continue
+		}
+		if trackedByAbsPath {
+			log.Debug("discovered file absolute path matches monitored movie file original path",
+				zap.String("discovered file absolute path", discoveredFile.AbsolutePath))
 			continue
 		}
 
