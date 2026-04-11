@@ -76,6 +76,9 @@ func New(tmbdClient tmdb.ITmdb, indexerFactory indexer.Factory, library library.
 	return m
 }
 
+// ErrValidation is returned when request validation fails.
+var ErrValidation = errors.New("validation error")
+
 func now() time.Time {
 	return time.Now()
 }
@@ -1139,7 +1142,7 @@ func (m MediaManager) AddIndexer(ctx context.Context, request AddIndexerRequest)
 	indexer := request.Indexer
 
 	if indexer.Name == "" {
-		return IndexerResponse{}, fmt.Errorf("indexer name is required")
+		return IndexerResponse{}, fmt.Errorf("%w: indexer name is required", ErrValidation)
 	}
 
 	id, err := m.storage.CreateIndexer(ctx, indexer)
@@ -1154,7 +1157,7 @@ func (m MediaManager) AddIndexer(ctx context.Context, request AddIndexerRequest)
 
 func (m MediaManager) UpdateIndexer(ctx context.Context, id int32, request UpdateIndexerRequest) (IndexerResponse, error) {
 	if request.Name == "" {
-		return IndexerResponse{}, fmt.Errorf("indexer name is required")
+		return IndexerResponse{}, fmt.Errorf("%w: indexer name is required", ErrValidation)
 	}
 
 	indexer := model.Indexer{

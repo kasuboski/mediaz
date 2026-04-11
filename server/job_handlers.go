@@ -34,6 +34,10 @@ func (s Server) GetJob() http.HandlerFunc {
 
 		job, err := s.manager.GetJob(r.Context(), id)
 		if err != nil {
+			if isNotFound(err) {
+				s.respondError(r, w, http.StatusNotFound, err)
+				return
+			}
 			s.respondError(r, w, http.StatusInternalServerError, err)
 			return
 		}
@@ -51,6 +55,10 @@ func (s Server) CancelJob() http.HandlerFunc {
 
 		job, err := s.manager.CancelJob(r.Context(), id)
 		if err != nil {
+			if isNotFound(err) {
+				s.respondError(r, w, http.StatusNotFound, err)
+				return
+			}
 			s.respondError(r, w, http.StatusInternalServerError, err)
 			return
 		}

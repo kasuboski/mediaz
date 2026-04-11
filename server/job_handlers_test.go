@@ -263,7 +263,7 @@ func TestServer_GetJob(t *testing.T) {
 		router.HandleFunc("/jobs/{id}", s.GetJob()).Methods("GET")
 		router.ServeHTTP(rr, req)
 
-		assert.Equal(t, http.StatusInternalServerError, rr.Code)
+		assert.Equal(t, http.StatusNotFound, rr.Code)
 	})
 }
 
@@ -369,7 +369,7 @@ func TestServer_CancelJob(t *testing.T) {
 		router.HandleFunc("/jobs/{id}/cancel", s.CancelJob()).Methods("POST")
 		router.ServeHTTP(rr, req)
 
-		assert.Equal(t, http.StatusInternalServerError, rr.Code)
+		assert.Equal(t, http.StatusNotFound, rr.Code)
 	})
 }
 

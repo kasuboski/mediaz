@@ -1,6 +1,7 @@
 package server
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/kasuboski/mediaz/pkg/manager"
@@ -67,6 +68,10 @@ func (s Server) UpdateIndexer() http.HandlerFunc {
 
 		indexer, err := s.manager.UpdateIndexer(r.Context(), int32(id), req)
 		if err != nil {
+			if errors.Is(err, manager.ErrValidation) {
+				s.respondError(r, w, http.StatusBadRequest, err)
+				return
+			}
 			s.respondError(r, w, http.StatusInternalServerError, err)
 			return
 		}
