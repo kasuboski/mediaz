@@ -102,7 +102,7 @@ func TestGetTVDetailByTMDBID_WithSeasonsAndEpisodes(t *testing.T) {
 		store.EXPECT().ListSeasons(ctx, gomock.Any()).Return([]*storage.Season{season}, nil)
 		store.EXPECT().GetSeasonMetadata(ctx, gomock.Any()).Return(seasonMetadata, nil)
 		store.EXPECT().ListEpisodes(ctx, gomock.Any()).Return([]*storage.Episode{episode}, nil)
-		store.EXPECT().GetEpisodeMetadata(ctx, gomock.Any()).Return(episodeMetadata, nil)
+		store.EXPECT().ListEpisodeMetadata(ctx, gomock.Any()).Return([]*model.EpisodeMetadata{episodeMetadata}, nil)
 
 		result, err := m.GetTVDetailByTMDBID(ctx, tmdbID)
 		require.NoError(t, err)

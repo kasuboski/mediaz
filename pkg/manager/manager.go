@@ -404,18 +404,31 @@ func (m MediaManager) getSeasonsWithEpisodes(ctx context.Context, seriesID int32
 	return results, nil
 }
 
-// resolveEpisodeMetadata looks up episode metadata by ID, returning nil on failure.
-func (m MediaManager) resolveEpisodeMetadata(ctx context.Context, metadataID *int32, log *zap.SugaredLogger) *model.EpisodeMetadata {
-	if metadataID == nil {
+// preloadEpisodeMetadata fetches all episode metadata for the given IDs in a single query,
+// returning a map keyed by metadata ID.
+func (m MediaManager) preloadEpisodeMetadata(ctx context.Context, episodes []*storage.Episode) map[int32]*model.EpisodeMetadata {
+	ids := make([]sqlite.Expression, 0, len(episodes))
+	for _, ep := range episodes {
+		if ep.EpisodeMetadataID != nil {
+			ids = append(ids, sqlite.Int32(*ep.EpisodeMetadataID))
+		}
+	}
+	if len(ids) == 0 {
 		return nil
 	}
-	meta, err := m.storage.GetEpisodeMetadata(ctx,
-		table.EpisodeMetadata.ID.EQ(sqlite.Int32(*metadataID)))
+
+	metas, err := m.storage.ListEpisodeMetadata(ctx, table.EpisodeMetadata.ID.IN(ids...))
 	if err != nil {
-		log.Error("failed to get episode metadata", zap.Error(err), zap.Int32("episodeMetadataID", *metadataID))
+		log := logger.FromCtx(ctx)
+		log.Error("failed to batch fetch episode metadata", zap.Error(err))
 		return nil
 	}
-	return meta
+
+	result := make(map[int32]*model.EpisodeMetadata, len(metas))
+	for _, meta := range metas {
+		result[meta.ID] = meta
+	}
+	return result
 }
 
 // buildEpisodeResult constructs an EpisodeResult from a storage episode and optional metadata.
@@ -467,8 +480,12 @@ func (m MediaManager) getEpisodesForSeason(ctx context.Context, seasonID int32, 
 	}
 
 	results := make([]EpisodeResult, 0, len(episodes))
+	metaMap := m.preloadEpisodeMetadata(ctx, episodes)
 	for _, episode := range episodes {
-		episodeMeta := m.resolveEpisodeMetadata(ctx, episode.EpisodeMetadataID, log)
+		var episodeMeta *model.EpisodeMetadata
+		if episode.EpisodeMetadataID != nil {
+			episodeMeta = metaMap[*episode.EpisodeMetadataID]
+		}
 		results = append(results, buildEpisodeResult(episode, episodeMeta, seriesID, seasonNumber))
 	}
 
@@ -1398,8 +1415,12 @@ func (m MediaManager) ListEpisodesForSeason(ctx context.Context, tmdbID int, sea
 	}
 
 	results := make([]EpisodeResult, 0, len(episodes))
+	metaMap := m.preloadEpisodeMetadata(ctx, episodes)
 	for _, episode := range episodes {
-		episodeMeta := m.resolveEpisodeMetadata(ctx, episode.EpisodeMetadataID, log)
+		var episodeMeta *model.EpisodeMetadata
+		if episode.EpisodeMetadataID != nil {
+			episodeMeta = metaMap[*episode.EpisodeMetadataID]
+		}
 		results = append(results, buildEpisodeResult(episode, episodeMeta, series.ID, seasonNum))
 	}
 
