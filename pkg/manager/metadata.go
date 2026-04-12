@@ -167,7 +167,7 @@ func (m MediaManager) loadSeriesMetadata(ctx context.Context, tmdbID int) (*mode
 		// If metadata already exists, update it and use the existing ID
 		existing, getErr := m.storage.GetSeriesMetadata(ctx, table.SeriesMetadata.TmdbID.EQ(sqlite.Int64(int64(series.TmdbID))))
 		if getErr != nil {
-			log.Error("failed to create or get series metadata", zap.Error(err), zap.Error(getErr))
+			log.Error("failed to create or get series metadata", zap.NamedError("createErr", err), zap.NamedError("getErr", getErr))
 			return nil, err
 		}
 
