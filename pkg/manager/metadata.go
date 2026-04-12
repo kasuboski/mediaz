@@ -164,8 +164,20 @@ func (m MediaManager) loadSeriesMetadata(ctx context.Context, tmdbID int) (*mode
 
 	seriesMetadataID, err := m.storage.CreateSeriesMetadata(ctx, series)
 	if err != nil {
-		log.Error("failed to create series metadata", zap.Error(err))
-		return nil, err
+		// If metadata already exists, update it and use the existing ID
+		existing, getErr := m.storage.GetSeriesMetadata(ctx, table.SeriesMetadata.TmdbID.EQ(sqlite.Int64(int64(series.TmdbID))))
+		if getErr != nil {
+			log.Error("failed to create or get series metadata", zap.Error(err), zap.Error(getErr))
+			return nil, err
+		}
+
+		series.ID = existing.ID
+		series.TmdbID = existing.TmdbID
+		if updateErr := m.storage.UpdateSeriesMetadata(ctx, series); updateErr != nil {
+			log.Error("failed to update existing series metadata", zap.Error(updateErr))
+			return nil, updateErr
+		}
+		seriesMetadataID = int64(existing.ID)
 	}
 
 	for _, s := range details.Seasons {
@@ -419,7 +431,6 @@ func (m MediaManager) fetchWatchProviders(ctx context.Context, tmdbID int) (*str
 
 // parseExternalIDs parses TMDB external IDs response
 func parseExternalIDs(resp *http.Response) (*ExternalIDsData, error) {
-	defer resp.Body.Close()
 	b, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
@@ -434,7 +445,6 @@ func parseExternalIDs(resp *http.Response) (*ExternalIDsData, error) {
 
 // parseWatchProviders parses TMDB watch providers response
 func parseWatchProviders(resp *http.Response) (*WatchProvidersData, error) {
-	defer resp.Body.Close()
 	b, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
