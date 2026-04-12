@@ -496,6 +496,38 @@ func TestIndexMovieLibrary(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, movies, 1)
 	})
+
+	t.Run("skips files tracked with different casing", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		ctx := context.Background()
+
+		store := newStore(t, ctx)
+		mockLibrary := mockLibrary.NewMockLibrary(ctrl)
+
+		_, err := store.CreateMovieFile(ctx, model.MovieFile{
+			Size:             1024,
+			RelativePath:     ptr("Movie 1/MOVIE1.MP4"),
+			OriginalFilePath: ptr("/movies/Movie 1/MOVIE1.MP4"),
+		})
+		require.NoError(t, err)
+
+		discoveredFiles := []library.MovieFile{
+			{RelativePath: "movie 1/movie1.mp4", AbsolutePath: "/movies/movie 1/movie1.mp4"},
+		}
+
+		mockLibrary.EXPECT().FindMovies(ctx).Times(1).Return(discoveredFiles, nil)
+
+		m := New(nil, nil, mockLibrary, store, nil, config.Manager{}, config.Config{})
+		require.NotNil(t, m)
+
+		err = m.IndexMovieLibrary(ctx)
+		assert.NoError(t, err)
+
+		// Should not create a new movie file since it's already tracked (case-insensitive)
+		movieFiles, err := store.ListMovieFiles(ctx)
+		require.NoError(t, err)
+		assert.Len(t, movieFiles, 1)
+	})
 }
 
 func TestMovieRejectRelease(t *testing.T) {
