@@ -13,6 +13,7 @@ import (
 	storeMocks "github.com/kasuboski/mediaz/pkg/storage/mocks"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
 	"github.com/kasuboski/mediaz/pkg/tmdb"
+	"github.com/mattn/go-sqlite3"
 	tmdbMocks "github.com/kasuboski/mediaz/pkg/tmdb/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -493,6 +494,121 @@ func TestMediaManager_fetchWatchProviders(t *testing.T) {
 		result, err := m.fetchWatchProviders(ctx, 1234)
 		require.NoError(t, err)
 		assert.Nil(t, result)
+	})
+}
+
+func TestMediaManager_loadSeriesMetadata_Upsert(t *testing.T) {
+	t.Run("non-constraint create error returns immediately", func(t *testing.T) {
+		ctx := context.Background()
+		ctrl := gomock.NewController(t)
+
+		store := storeMocks.NewMockStorage(ctrl)
+		store.EXPECT().CreateSeriesMetadata(ctx, gomock.Any()).Return(int64(0), errors.New("some db failure"))
+
+		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
+		tmdbMock.EXPECT().GetSeriesDetails(ctx, 1234).Return(&tmdb.SeriesDetails{
+			ID:           1234,
+			Name:         "Test Series",
+			FirstAirDate: "2023-01-01",
+		}, nil)
+		tmdbMock.EXPECT().TvSeriesExternalIds(gomock.Any(), int32(1234)).Return(&http.Response{StatusCode: 404, Body: io.NopCloser(bytes.NewBufferString(``))}, nil)
+		tmdbMock.EXPECT().TvSeriesWatchProviders(gomock.Any(), int32(1234)).Return(&http.Response{StatusCode: 404, Body: io.NopCloser(bytes.NewBufferString(``))}, nil)
+
+		m := MediaManager{
+			tmdb:    tmdbMock,
+			storage: store,
+			configs: config.Manager{},
+		}
+
+		_, err := m.loadSeriesMetadata(ctx, 1234)
+		require.Error(t, err)
+		assert.Equal(t, "some db failure", err.Error())
+	})
+
+	t.Run("upsert on existing metadata", func(t *testing.T) {
+		ctx := context.Background()
+		store := newStore(t, ctx)
+
+		tmdbMock := tmdbMocks.NewMockITmdb(gomock.NewController(t))
+
+		tmdbMock.EXPECT().GetSeriesDetails(ctx, 1234).Return(&tmdb.SeriesDetails{
+			ID:              1234,
+			Name:            "Test Series",
+			FirstAirDate:    "2023-01-01",
+			NumberOfSeasons: 1,
+			Seasons: []tmdb.Season{
+				{
+					ID:           100,
+					Name:         "Season 1",
+					AirDate:      "2023-01-01",
+					SeasonNumber: 1,
+					Episodes: []tmdb.Episode{
+						{ID: 1001, Name: "Ep 1", AirDate: "2023-01-01", EpisodeNumber: 1, Runtime: 45},
+					},
+				},
+			},
+		}, nil).AnyTimes()
+
+		mockResp := func(body string) *http.Response {
+			return &http.Response{StatusCode: 200, Body: io.NopCloser(bytes.NewBufferString(body))}
+		}
+		tmdbMock.EXPECT().TvSeriesExternalIds(gomock.Any(), int32(1234)).Return(mockResp(`{"imdb_id":null}`), nil).AnyTimes()
+		tmdbMock.EXPECT().TvSeriesWatchProviders(gomock.Any(), int32(1234)).Return(mockResp(`{"results":{}}`), nil).AnyTimes()
+
+		m := MediaManager{
+			tmdb:    tmdbMock,
+			storage: store,
+			configs: config.Manager{},
+		}
+
+		// First call: creates metadata successfully
+		result1, err := m.loadSeriesMetadata(ctx, 1234)
+		require.NoError(t, err)
+		require.NotNil(t, result1)
+		assert.Equal(t, "Test Series", result1.Title)
+		assert.Equal(t, int32(1234), result1.TmdbID)
+
+		// Second call: hits unique constraint, falls back to update (upsert)
+		result2, err := m.loadSeriesMetadata(ctx, 1234)
+		require.NoError(t, err)
+		require.NotNil(t, result2)
+		assert.Equal(t, result1.ID, result2.ID, "should return same metadata record")
+		assert.Equal(t, int32(1234), result2.TmdbID)
+	})
+
+	t.Run("upsert when get fails after constraint violation", func(t *testing.T) {
+		ctx := context.Background()
+		ctrl := gomock.NewController(t)
+
+		store := storeMocks.NewMockStorage(ctrl)
+		// Simulate a unique constraint violation from SQLite
+		store.EXPECT().CreateSeriesMetadata(ctx, gomock.Any()).Return(int64(0), sqlite3.Error{
+			Code:         sqlite3.ErrConstraint,
+			ExtendedCode: sqlite3.ErrConstraintUnique,
+		})
+		// Then GetSeriesMetadata also fails
+		store.EXPECT().GetSeriesMetadata(ctx, gomock.Any()).Return(nil, errors.New("get failed"))
+
+		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
+		tmdbMock.EXPECT().GetSeriesDetails(ctx, 1234).Return(&tmdb.SeriesDetails{
+			ID:           1234,
+			Name:         "Test Series",
+			FirstAirDate: "2023-01-01",
+		}, nil)
+		tmdbMock.EXPECT().TvSeriesExternalIds(gomock.Any(), int32(1234)).Return(&http.Response{StatusCode: 404, Body: io.NopCloser(bytes.NewBufferString(``))}, nil)
+		tmdbMock.EXPECT().TvSeriesWatchProviders(gomock.Any(), int32(1234)).Return(&http.Response{StatusCode: 404, Body: io.NopCloser(bytes.NewBufferString(``))}, nil)
+
+		m := MediaManager{
+			tmdb:    tmdbMock,
+			storage: store,
+			configs: config.Manager{},
+		}
+
+		_, err := m.loadSeriesMetadata(ctx, 1234)
+		require.Error(t, err)
+		// Should return the original create error (not the get error)
+		var sqliteErr sqlite3.Error
+		assert.True(t, errors.As(err, &sqliteErr), "error should wrap the original sqlite3 error")
 	})
 }
 
