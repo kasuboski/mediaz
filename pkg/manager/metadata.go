@@ -15,6 +15,7 @@ import (
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/table"
 	"github.com/kasuboski/mediaz/pkg/tmdb"
+	"github.com/mattn/go-sqlite3"
 	"go.uber.org/zap"
 )
 
@@ -164,10 +165,16 @@ func (m MediaManager) loadSeriesMetadata(ctx context.Context, tmdbID int) (*mode
 
 	seriesMetadataID, err := m.storage.CreateSeriesMetadata(ctx, series)
 	if err != nil {
-		// If metadata already exists, update it and use the existing ID
+		var sqliteErr sqlite3.Error
+		if !errors.As(err, &sqliteErr) || sqliteErr.Code != sqlite3.ErrConstraint || sqliteErr.ExtendedCode != sqlite3.ErrConstraintUnique {
+			log.Error("failed to create series metadata", zap.Error(err))
+			return nil, err
+		}
+
+		// Unique constraint violation — metadata already exists, update it
 		existing, getErr := m.storage.GetSeriesMetadata(ctx, table.SeriesMetadata.TmdbID.EQ(sqlite.Int64(int64(series.TmdbID))))
 		if getErr != nil {
-			log.Error("failed to create or get series metadata", zap.NamedError("createErr", err), zap.NamedError("getErr", getErr))
+			log.Error("failed to get existing series metadata", zap.NamedError("createErr", err), zap.NamedError("getErr", getErr))
 			return nil, err
 		}
 

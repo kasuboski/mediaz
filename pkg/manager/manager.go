@@ -404,7 +404,6 @@ func (m MediaManager) getSeasonsWithEpisodes(ctx context.Context, seriesID int32
 	return results, nil
 }
 
-// buildEpisodeResult constructs an EpisodeResult from a storage episode and optional metadata.
 // resolveEpisodeMetadata looks up episode metadata by ID, returning nil on failure.
 func (m MediaManager) resolveEpisodeMetadata(ctx context.Context, metadataID *int32, log *zap.SugaredLogger) *model.EpisodeMetadata {
 	if metadataID == nil {
@@ -419,6 +418,7 @@ func (m MediaManager) resolveEpisodeMetadata(ctx context.Context, metadataID *in
 	return meta
 }
 
+// buildEpisodeResult constructs an EpisodeResult from a storage episode and optional metadata.
 func buildEpisodeResult(episode *storage.Episode, episodeMeta *model.EpisodeMetadata, seriesID int32, seasonNumber int32) EpisodeResult {
 	result := EpisodeResult{
 		SeriesID:     seriesID,
