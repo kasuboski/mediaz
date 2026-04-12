@@ -606,9 +606,7 @@ func TestMediaManager_loadSeriesMetadata_Upsert(t *testing.T) {
 
 		_, err := m.loadSeriesMetadata(ctx, 1234)
 		require.Error(t, err)
-		// Should return the original create error (not the get error)
-		var sqliteErr sqlite3.Error
-		assert.True(t, errors.As(err, &sqliteErr), "error should wrap the original sqlite3 error")
+		assert.Equal(t, "get failed", err.Error(), "should return the get error")
 	})
 }
 
