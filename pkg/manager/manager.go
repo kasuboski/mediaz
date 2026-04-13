@@ -404,6 +404,69 @@ func (m MediaManager) getSeasonsWithEpisodes(ctx context.Context, seriesID int32
 	return results, nil
 }
 
+// preloadEpisodeMetadata fetches all episode metadata for the given IDs in a single query,
+// returning a map keyed by metadata ID.
+func (m MediaManager) preloadEpisodeMetadata(ctx context.Context, episodes []*storage.Episode) map[int32]*model.EpisodeMetadata {
+	ids := make([]sqlite.Expression, 0, len(episodes))
+	for _, ep := range episodes {
+		if ep.EpisodeMetadataID != nil {
+			ids = append(ids, sqlite.Int32(*ep.EpisodeMetadataID))
+		}
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+
+	metas, err := m.storage.ListEpisodeMetadata(ctx, table.EpisodeMetadata.ID.IN(ids...))
+	if err != nil {
+		log := logger.FromCtx(ctx)
+		log.Error("failed to batch fetch episode metadata", zap.Error(err))
+		return nil
+	}
+
+	result := make(map[int32]*model.EpisodeMetadata, len(metas))
+	for _, meta := range metas {
+		result[meta.ID] = meta
+	}
+	return result
+}
+
+// buildEpisodeResult constructs an EpisodeResult from a storage episode and optional metadata.
+func buildEpisodeResult(episode *storage.Episode, episodeMeta *model.EpisodeMetadata, seriesID int32, seasonNumber int32) EpisodeResult {
+	result := EpisodeResult{
+		SeriesID:     seriesID,
+		SeasonNumber: seasonNumber,
+		Monitored:    episode.Monitored == 1,
+		Downloaded:   episode.State == storage.EpisodeStateDownloaded || episode.State == storage.EpisodeStateCompleted,
+	}
+
+	if episodeMeta != nil {
+		result.TMDBID = episodeMeta.TmdbID
+		result.Number = episodeMeta.Number
+		result.Title = episodeMeta.Title
+
+		if episodeMeta.Overview != nil {
+			result.Overview = episodeMeta.Overview
+		}
+		if episodeMeta.AirDate != nil {
+			airDateStr := episodeMeta.AirDate.Format("2006-01-02")
+			result.AirDate = &airDateStr
+		}
+		if episodeMeta.Runtime != nil {
+			result.Runtime = episodeMeta.Runtime
+		}
+		if episodeMeta.StillPath != nil {
+			result.StillPath = episodeMeta.StillPath
+		}
+	} else {
+		result.TMDBID = 0
+		result.Number = episode.EpisodeNumber
+		result.Title = fmt.Sprintf("Episode %d", episode.EpisodeNumber)
+	}
+
+	return result
+}
+
 // getEpisodesForSeason retrieves episodes for a specific season
 func (m MediaManager) getEpisodesForSeason(ctx context.Context, seasonID int32, seriesID int32, seasonNumber int32) ([]EpisodeResult, error) {
 	log := logger.FromCtx(ctx)
@@ -416,60 +479,14 @@ func (m MediaManager) getEpisodesForSeason(ctx context.Context, seasonID int32, 
 		return nil, err
 	}
 
-	// Transform to response format with metadata lookup
-	results := make([]EpisodeResult, 0)
+	results := make([]EpisodeResult, 0, len(episodes))
+	metaMap := m.preloadEpisodeMetadata(ctx, episodes)
 	for _, episode := range episodes {
 		var episodeMeta *model.EpisodeMetadata
-
-		// Try to get episode metadata if available
 		if episode.EpisodeMetadataID != nil {
-			meta, err := m.storage.GetEpisodeMetadata(ctx,
-				table.EpisodeMetadata.ID.EQ(sqlite.Int32(*episode.EpisodeMetadataID)))
-			if err != nil {
-				log.Error("failed to get episode metadata", zap.Error(err), zap.Int32("episodeMetadataID", *episode.EpisodeMetadataID))
-				// Continue without metadata
-			} else {
-				episodeMeta = meta
-			}
+			episodeMeta = metaMap[*episode.EpisodeMetadataID]
 		}
-
-		// Build result with available data
-		result := EpisodeResult{
-			SeriesID:     seriesID,
-			SeasonNumber: seasonNumber,
-			Monitored:    episode.Monitored == 1,
-			Downloaded:   episode.State == storage.EpisodeStateDownloaded || episode.State == storage.EpisodeStateCompleted,
-		}
-
-		// Fill in metadata if available
-		if episodeMeta != nil {
-			result.TMDBID = episodeMeta.TmdbID
-			result.Number = episodeMeta.Number
-			result.Title = episodeMeta.Title
-
-			// Add optional fields
-			if episodeMeta.Overview != nil {
-				result.Overview = episodeMeta.Overview
-			}
-			if episodeMeta.AirDate != nil {
-				airDateStr := episodeMeta.AirDate.Format("2006-01-02")
-				result.AirDate = &airDateStr
-			}
-			if episodeMeta.Runtime != nil {
-				result.Runtime = episodeMeta.Runtime
-			}
-			if episodeMeta.StillPath != nil {
-				result.StillPath = episodeMeta.StillPath
-			}
-
-		} else {
-			// Fallback values for episodes without metadata
-			result.TMDBID = 0
-			result.Number = episode.EpisodeNumber
-			result.Title = fmt.Sprintf("Episode %d", episode.EpisodeNumber)
-		}
-
-		results = append(results, result)
+		results = append(results, buildEpisodeResult(episode, episodeMeta, seriesID, seasonNumber))
 	}
 
 	return results, nil
@@ -1391,66 +1408,20 @@ func (m MediaManager) ListEpisodesForSeason(ctx context.Context, tmdbID int, sea
 		return nil, err
 	}
 
-	// Transform to response format with metadata lookup
-	results := make([]EpisodeResult, 0)
+	// Determine season number for response
+	seasonNum := int32(seasonNumber)
+	if seasonMeta != nil {
+		seasonNum = seasonMeta.Number
+	}
+
+	results := make([]EpisodeResult, 0, len(episodes))
+	metaMap := m.preloadEpisodeMetadata(ctx, episodes)
 	for _, episode := range episodes {
 		var episodeMeta *model.EpisodeMetadata
-
-		// Try to get episode metadata if available
 		if episode.EpisodeMetadataID != nil {
-			meta, err := m.storage.GetEpisodeMetadata(ctx,
-				table.EpisodeMetadata.ID.EQ(sqlite.Int32(*episode.EpisodeMetadataID)))
-			if err != nil {
-				log.Error("failed to get episode metadata", zap.Error(err), zap.Int32("episodeMetadataID", *episode.EpisodeMetadataID))
-				// Continue without metadata
-			} else {
-				episodeMeta = meta
-			}
+			episodeMeta = metaMap[*episode.EpisodeMetadataID]
 		}
-
-		// Determine season number for response
-		seasonNum := int32(seasonNumber)
-		if seasonMeta != nil {
-			seasonNum = seasonMeta.Number
-		}
-
-		// Build result with available data
-		result := EpisodeResult{
-			SeriesID:     series.ID,
-			SeasonNumber: seasonNum,
-			Monitored:    episode.Monitored == 1,
-			Downloaded:   episode.State == storage.EpisodeStateDownloaded || episode.State == storage.EpisodeStateCompleted,
-		}
-
-		// Fill in metadata if available
-		if episodeMeta != nil {
-			result.TMDBID = episodeMeta.TmdbID
-			result.Number = episodeMeta.Number
-			result.Title = episodeMeta.Title
-
-			// Add optional fields
-			if episodeMeta.Overview != nil {
-				result.Overview = episodeMeta.Overview
-			}
-			if episodeMeta.AirDate != nil {
-				airDateStr := episodeMeta.AirDate.Format("2006-01-02")
-				result.AirDate = &airDateStr
-			}
-			if episodeMeta.Runtime != nil {
-				result.Runtime = episodeMeta.Runtime
-			}
-			if episodeMeta.StillPath != nil {
-				result.StillPath = episodeMeta.StillPath
-			}
-
-		} else {
-			// Fallback values for episodes without metadata
-			result.TMDBID = 0
-			result.Number = episode.EpisodeNumber
-			result.Title = fmt.Sprintf("Episode %d", episode.EpisodeNumber)
-		}
-
-		results = append(results, result)
+		results = append(results, buildEpisodeResult(episode, episodeMeta, series.ID, seasonNum))
 	}
 
 	return results, nil

@@ -119,7 +119,7 @@ func TestServer_GetTVDetailByTMDBID(t *testing.T) {
 			TmdbID: 54321,
 			Title:  "Episode 1",
 		}
-		store.EXPECT().GetEpisodeMetadata(gomock.Any(), gomock.Any()).Return(episodeMetadata, nil)
+		store.EXPECT().ListEpisodeMetadata(gomock.Any(), gomock.Any()).Return([]*model.EpisodeMetadata{episodeMetadata}, nil)
 
 		// Create manager with mocked dependencies
 		mgr := manager.New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
