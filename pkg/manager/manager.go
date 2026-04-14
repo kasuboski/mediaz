@@ -661,15 +661,16 @@ func (m MediaManager) ListShowsInLibrary(ctx context.Context) ([]LibraryShow, er
 			ls.Path = *sp.Path
 		}
 		meta, err := m.storage.GetSeriesMetadata(ctx, table.SeriesMetadata.ID.EQ(sqlite.Int(int64(*sp.SeriesMetadataID))))
-		if err == nil && meta != nil {
-			ls.TMDBID = meta.TmdbID
-			ls.Title = meta.Title
-			if meta.PosterPath != nil {
-				ls.PosterPath = *meta.PosterPath
-			}
-			if meta.FirstAirDate != nil {
-				ls.Year = int32(meta.FirstAirDate.Year())
-			}
+		if err != nil || meta == nil {
+			return LibraryShow{}, false
+		}
+		ls.TMDBID = meta.TmdbID
+		ls.Title = meta.Title
+		if meta.PosterPath != nil {
+			ls.PosterPath = *meta.PosterPath
+		}
+		if meta.FirstAirDate != nil {
+			ls.Year = int32(meta.FirstAirDate.Year())
 		}
 		return ls, true
 	})
@@ -692,13 +693,14 @@ func (m MediaManager) ListMoviesInLibrary(ctx context.Context) ([]LibraryMovie, 
 			lm.Path = *mp.Path
 		}
 		meta, err := m.GetMovieMetadataByID(ctx, *mp.MovieMetadataID)
-		if err == nil && meta != nil {
-			lm.TMDBID = meta.TmdbID
-			lm.Title = meta.Title
-			lm.PosterPath = meta.Images
-			if meta.Year != nil {
-				lm.Year = *meta.Year
-			}
+		if err != nil || meta == nil {
+			return LibraryMovie{}, false
+		}
+		lm.TMDBID = meta.TmdbID
+		lm.Title = meta.Title
+		lm.PosterPath = meta.Images
+		if meta.Year != nil {
+			lm.Year = *meta.Year
 		}
 		return lm, true
 	})

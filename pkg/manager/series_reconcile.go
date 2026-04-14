@@ -859,13 +859,14 @@ type seriesStateCounts struct {
 // determineSeriesState counts season states (excluding specials) and derives the series state from them
 // and the TMDB status string. Mirrors determineSeasonState for consistency.
 func determineSeriesState(seasons []*storage.Season, tmdbStatus string) (seriesStateCounts, storage.SeriesState) {
-	total := len(seasons)
+	total := 0
 	var counts seriesStateCounts
 	for _, season := range seasons {
 		// dont count specials
 		if season.SeasonNumber == 0 {
 			continue
 		}
+		total++
 		switch season.State {
 		case storage.SeasonStateCompleted:
 			counts.completed++
@@ -1297,8 +1298,6 @@ func (m MediaManager) matchDiscoveredEpisodeToTMDBMetadataFromDB(ctx context.Con
 
 	return nil
 }
-
-
 
 // ReconcileCompletedSeries evaluates and updates states for series that may have completed
 func (m MediaManager) ReconcileCompletedSeries(ctx context.Context) error {
