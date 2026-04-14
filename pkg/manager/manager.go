@@ -651,35 +651,28 @@ func (m MediaManager) ListShowsInLibrary(ctx context.Context) ([]LibraryShow, er
 	if err != nil {
 		return nil, err
 	}
-	var shows []LibraryShow
-	for _, sp := range series {
-		srec := *sp
+	shows := filterAndMap(series, func(sp *storage.Series) (LibraryShow, bool) {
 		// Skip series without metadata - they haven't been reconciled yet
-		if srec.SeriesMetadataID == nil {
-			continue
+		if sp.SeriesMetadataID == nil {
+			return LibraryShow{}, false
 		}
-
-		ls := LibraryShow{State: string(srec.State)}
-		if srec.Path != nil {
-			ls.Path = *srec.Path
+		ls := LibraryShow{State: string(sp.State)}
+		if sp.Path != nil {
+			ls.Path = *sp.Path
 		}
-
-		if srec.SeriesMetadataID != nil {
-			meta, err := m.storage.GetSeriesMetadata(ctx, table.SeriesMetadata.ID.EQ(sqlite.Int(int64(*srec.SeriesMetadataID))))
-			if err == nil && meta != nil {
-				ls.TMDBID = meta.TmdbID
-				ls.Title = meta.Title
-				if meta.PosterPath != nil {
-					ls.PosterPath = *meta.PosterPath
-				}
-				if meta.FirstAirDate != nil {
-					ls.Year = int32(meta.FirstAirDate.Year())
-				}
+		meta, err := m.storage.GetSeriesMetadata(ctx, table.SeriesMetadata.ID.EQ(sqlite.Int(int64(*sp.SeriesMetadataID))))
+		if err == nil && meta != nil {
+			ls.TMDBID = meta.TmdbID
+			ls.Title = meta.Title
+			if meta.PosterPath != nil {
+				ls.PosterPath = *meta.PosterPath
+			}
+			if meta.FirstAirDate != nil {
+				ls.Year = int32(meta.FirstAirDate.Year())
 			}
 		}
-
-		shows = append(shows, ls)
-	}
+		return ls, true
+	})
 	return shows, nil
 }
 
@@ -689,20 +682,16 @@ func (m MediaManager) ListMoviesInLibrary(ctx context.Context) ([]LibraryMovie, 
 	if err != nil {
 		return nil, err
 	}
-	var movies []LibraryMovie
-	for _, mp := range all {
-		mrec := *mp
+	movies := filterAndMap(all, func(mp *storage.Movie) (LibraryMovie, bool) {
 		// Skip movies without metadata - they haven't been reconciled yet
-		if mrec.MovieMetadataID == nil {
-			continue
+		if mp.MovieMetadataID == nil {
+			return LibraryMovie{}, false
 		}
-
-		lm := LibraryMovie{State: string(mrec.State)}
-		if mrec.Path != nil {
-			lm.Path = *mrec.Path
+		lm := LibraryMovie{State: string(mp.State)}
+		if mp.Path != nil {
+			lm.Path = *mp.Path
 		}
-
-		meta, err := m.GetMovieMetadataByID(ctx, *mrec.MovieMetadataID)
+		meta, err := m.GetMovieMetadataByID(ctx, *mp.MovieMetadataID)
 		if err == nil && meta != nil {
 			lm.TMDBID = meta.TmdbID
 			lm.Title = meta.Title
@@ -711,9 +700,8 @@ func (m MediaManager) ListMoviesInLibrary(ctx context.Context) ([]LibraryMovie, 
 				lm.Year = *meta.Year
 			}
 		}
-
-		movies = append(movies, lm)
-	}
+		return lm, true
+	})
 	return movies, nil
 }
 
@@ -878,10 +866,7 @@ func (m MediaManager) AddMovieToLibrary(ctx context.Context, request AddMovieReq
 		},
 	}
 
-	state := storage.MovieStateMissing
-	if !isReleased(now(), det.ReleaseDate) {
-		state = storage.MovieStateUnreleased
-	}
+	state := initialMovieState(det.ReleaseDate)
 
 	id, err := m.storage.CreateMovie(ctx, *movie, state)
 	if err != nil {
@@ -939,10 +924,7 @@ func (m MediaManager) AddSeriesToLibrary(ctx context.Context, request AddSeriesR
 		},
 	}
 
-	state := storage.SeriesStateMissing
-	if !isReleased(now(), seriesMetadata.FirstAirDate) {
-		state = storage.SeriesStateUnreleased
-	}
+	state := initialSeriesState(seriesMetadata.FirstAirDate)
 
 	seriesID, err := m.storage.CreateSeries(ctx, *series, state)
 	if err != nil {
@@ -1212,6 +1194,22 @@ func nullableDefault[T any](n nullable.Nullable[T]) T {
 	return def
 }
 
+// initialMovieState returns Missing or Unreleased based on the release date.
+func initialMovieState(releaseDate *time.Time) storage.MovieState {
+	if !isReleased(now(), releaseDate) {
+		return storage.MovieStateUnreleased
+	}
+	return storage.MovieStateMissing
+}
+
+// initialSeriesState returns Missing or Unreleased based on the first air date.
+func initialSeriesState(firstAirDate *time.Time) storage.SeriesState {
+	if !isReleased(now(), firstAirDate) {
+		return storage.SeriesStateUnreleased
+	}
+	return storage.SeriesStateMissing
+}
+
 func isReleased(now time.Time, releaseDate *time.Time) bool {
 	if releaseDate == nil {
 		return false
@@ -1229,6 +1227,20 @@ func toIndexerResponse(indexer model.Indexer) IndexerResponse {
 		Priority: indexer.Priority,
 		URI:      indexer.URI,
 	}
+}
+
+// filterAndMap applies fn to each non-nil element of items, collecting results where fn returns ok=true.
+func filterAndMap[T any, R any](items []*T, fn func(*T) (R, bool)) []R {
+	var result []R
+	for _, item := range items {
+		if item == nil {
+			continue
+		}
+		if r, ok := fn(item); ok {
+			result = append(result, r)
+		}
+	}
+	return result
 }
 
 func ptr[A any](thing A) *A {

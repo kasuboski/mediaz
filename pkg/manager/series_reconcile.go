@@ -846,6 +846,66 @@ func (m MediaManager) evaluateAndUpdateSeasonState(ctx context.Context, seasonID
 	return m.updateSeasonState(ctx, int64(seasonID), newSeasonState, nil)
 }
 
+// seriesStateCounts holds per-state counts of seasons used to derive the overall series state.
+type seriesStateCounts struct {
+	completed   int
+	downloading int
+	missing     int
+	unreleased  int
+	discovered  int
+	continuing  int
+}
+
+// determineSeriesState counts season states (excluding specials) and derives the series state from them
+// and the TMDB status string. Mirrors determineSeasonState for consistency.
+func determineSeriesState(seasons []*storage.Season, tmdbStatus string) (seriesStateCounts, storage.SeriesState) {
+	total := len(seasons)
+	var counts seriesStateCounts
+	for _, season := range seasons {
+		// dont count specials
+		if season.SeasonNumber == 0 {
+			continue
+		}
+		switch season.State {
+		case storage.SeasonStateCompleted:
+			counts.completed++
+		case storage.SeasonStateDownloading:
+			counts.downloading++
+		case storage.SeasonStateMissing:
+			counts.missing++
+		case storage.SeasonStateUnreleased:
+			counts.unreleased++
+		case storage.SeasonStateDiscovered:
+			counts.discovered++
+		case storage.SeasonStateContinuing:
+			counts.continuing++
+		}
+	}
+
+	isSeriesEnded := strings.EqualFold(tmdbStatus, "ended") || strings.EqualFold(tmdbStatus, "canceled")
+	isSeriesContinuing := strings.EqualFold(tmdbStatus, "returning series") || strings.EqualFold(tmdbStatus, "in production")
+
+	var state storage.SeriesState
+	switch {
+	case counts.completed == total && isSeriesEnded:
+		state = storage.SeriesStateCompleted
+	case counts.downloading > 0:
+		state = storage.SeriesStateDownloading
+	case counts.discovered == total && isSeriesEnded:
+		state = storage.SeriesStateDiscovered
+	case isSeriesEnded && counts.missing == 0 && counts.discovered == 0 && (counts.completed > 0 || counts.continuing > 0):
+		state = storage.SeriesStateCompleted
+	case counts.continuing > 0 || counts.discovered > 0 || (isSeriesContinuing && (counts.completed > 0 || counts.discovered > 0)):
+		state = storage.SeriesStateContinuing
+	case counts.unreleased == total:
+		state = storage.SeriesStateUnreleased
+	default:
+		state = storage.SeriesStateMissing
+	}
+
+	return counts, state
+}
+
 // evaluateAndUpdateSeriesState evaluates all seasons in a series and updates the series state accordingly
 func (m MediaManager) evaluateAndUpdateSeriesState(ctx context.Context, seriesID int32) error {
 	log := logger.FromCtx(ctx).With("series_id", seriesID)
@@ -877,61 +937,18 @@ func (m MediaManager) evaluateAndUpdateSeriesState(ctx context.Context, seriesID
 		return nil
 	}
 
-	var completed, downloading, missing, unreleased, discovered, continuing int
-	for _, season := range seasons {
-		// dont count specials
-		if season.SeasonNumber == 0 {
-			continue
-		}
-		switch season.State {
-		case storage.SeasonStateCompleted:
-			completed++
-		case storage.SeasonStateDownloading:
-			downloading++
-		case storage.SeasonStateMissing:
-			missing++
-		case storage.SeasonStateUnreleased:
-			unreleased++
-		case storage.SeasonStateDiscovered:
-			discovered++
-		case storage.SeasonStateContinuing:
-			continuing++
-		}
-	}
-
-	isSeriesEnded := strings.EqualFold(tmdbStatus, "ended") || strings.EqualFold(tmdbStatus, "canceled")
-	isSeriesContinuing := strings.EqualFold(tmdbStatus, "returning series") || strings.EqualFold(tmdbStatus, "in production")
-
-	var newSeriesState storage.SeriesState
-
-	switch {
-	case completed == len(seasons) && isSeriesEnded:
-		newSeriesState = storage.SeriesStateCompleted
-	case downloading > 0:
-		newSeriesState = storage.SeriesStateDownloading
-	case discovered == len(seasons) && isSeriesEnded:
-		newSeriesState = storage.SeriesStateDiscovered
-	case isSeriesEnded && missing == 0 && discovered == 0 && (completed > 0 || continuing > 0):
-		newSeriesState = storage.SeriesStateCompleted
-	case continuing > 0 || discovered > 0 || (isSeriesContinuing && (completed > 0 || discovered > 0)):
-		newSeriesState = storage.SeriesStateContinuing
-	case unreleased == len(seasons):
-		newSeriesState = storage.SeriesStateUnreleased
-	default:
-		newSeriesState = storage.SeriesStateMissing
-	}
+	counts, newSeriesState := determineSeriesState(seasons, tmdbStatus)
 
 	log.Debug("evaluating series state",
 		zap.Int("series_id", int(seriesID)),
 		zap.Int("total_seasons", len(seasons)),
-		zap.Int("completed", completed),
-		zap.Int("downloading", downloading),
-		zap.Int("missing", missing),
-		zap.Int("unreleased", unreleased),
-		zap.Int("discovered", discovered),
-		zap.Int("continuing", continuing),
+		zap.Int("completed", counts.completed),
+		zap.Int("downloading", counts.downloading),
+		zap.Int("missing", counts.missing),
+		zap.Int("unreleased", counts.unreleased),
+		zap.Int("discovered", counts.discovered),
+		zap.Int("continuing", counts.continuing),
 		zap.String("tmdb_status", tmdbStatus),
-		zap.Bool("is_series_ended", isSeriesEnded),
 		zap.String("current_state", string(series.State)),
 		zap.String("new_state", string(newSeriesState)))
 
