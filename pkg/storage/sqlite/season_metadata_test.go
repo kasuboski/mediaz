@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/go-jet/jet/v2/sqlite"
+	"github.com/kasuboski/mediaz/pkg/ptr"
 	"github.com/kasuboski/mediaz/pkg/storage"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/table"
@@ -20,7 +21,7 @@ func TestSeasonMetadataStorage(t *testing.T) {
 	metadata := model.SeasonMetadata{
 		TmdbID:   12345,
 		Title:    "Season 1",
-		Overview: ptr("Test season overview"),
+		Overview: ptr.To("Test season overview"),
 		Number:   1,
 	}
 

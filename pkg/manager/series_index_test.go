@@ -8,6 +8,7 @@ import (
 	"github.com/kasuboski/mediaz/config"
 	"github.com/kasuboski/mediaz/pkg/library"
 	mockLibrary "github.com/kasuboski/mediaz/pkg/library/mocks"
+	"github.com/kasuboski/mediaz/pkg/ptr"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -108,8 +109,8 @@ func TestIndexSeriesLibrary(t *testing.T) {
 
 		_, err := store.CreateEpisodeFile(ctx, model.EpisodeFile{
 			Size:             1024,
-			RelativePath:     ptr("Show 1/Season 01/episode1.mkv"),
-			OriginalFilePath: ptr("/tv/Show 1/Season 01/episode1.mkv"),
+			RelativePath:     ptr.To("Show 1/Season 01/episode1.mkv"),
+			OriginalFilePath: ptr.To("/tv/Show 1/Season 01/episode1.mkv"),
 		})
 		require.NoError(t, err)
 
@@ -145,8 +146,8 @@ func TestIndexSeriesLibrary(t *testing.T) {
 
 		_, err := store.CreateEpisodeFile(ctx, model.EpisodeFile{
 			Size:             1024,
-			RelativePath:     ptr("Show 1/Season 01/episode1.mkv"),
-			OriginalFilePath: ptr("/tv/Show 1/Season 01/episode1.mkv"),
+			RelativePath:     ptr.To("Show 1/Season 01/episode1.mkv"),
+			OriginalFilePath: ptr.To("/tv/Show 1/Season 01/episode1.mkv"),
 		})
 		require.NoError(t, err)
 
@@ -200,8 +201,8 @@ func TestIndexSeriesLibrary(t *testing.T) {
 
 		fileID, err := store.CreateEpisodeFile(ctx, model.EpisodeFile{
 			Size:             1024,
-			RelativePath:     ptr("Fargo/Fargo - S01E01.mkv"),
-			OriginalFilePath: ptr("/old/library/tv/Fargo/Fargo - S01E01.mkv"),
+			RelativePath:     ptr.To("Fargo/Fargo - S01E01.mkv"),
+			OriginalFilePath: ptr.To("/old/library/tv/Fargo/Fargo - S01E01.mkv"),
 		})
 		require.NoError(t, err)
 
@@ -243,8 +244,8 @@ func TestIndexSeriesLibrary(t *testing.T) {
 
 		fileID, err := store.CreateEpisodeFile(ctx, model.EpisodeFile{
 			Size:             1024,
-			RelativePath:     ptr("Fargo/Fargo - S01E01.mkv"),
-			OriginalFilePath: ptr("/library/tv/Fargo/Fargo - S01E01.mkv"),
+			RelativePath:     ptr.To("Fargo/Fargo - S01E01.mkv"),
+			OriginalFilePath: ptr.To("/library/tv/Fargo/Fargo - S01E01.mkv"),
 		})
 		require.NoError(t, err)
 
@@ -281,15 +282,15 @@ func TestIndexSeriesLibrary(t *testing.T) {
 
 		existingFileID, err := store.CreateEpisodeFile(ctx, model.EpisodeFile{
 			Size:             1024,
-			RelativePath:     ptr("Fargo/Fargo - S01E01.mkv"),
-			OriginalFilePath: ptr("/old/path/tv/Fargo/Fargo - S01E01.mkv"),
+			RelativePath:     ptr.To("Fargo/Fargo - S01E01.mkv"),
+			OriginalFilePath: ptr.To("/old/path/tv/Fargo/Fargo - S01E01.mkv"),
 		})
 		require.NoError(t, err)
 
 		movedFileID, err := store.CreateEpisodeFile(ctx, model.EpisodeFile{
 			Size:             2048,
-			RelativePath:     ptr("Fargo/Fargo - S01E02.mkv"),
-			OriginalFilePath: ptr("/old/path/tv/Fargo/Fargo - S01E02.mkv"),
+			RelativePath:     ptr.To("Fargo/Fargo - S01E02.mkv"),
+			OriginalFilePath: ptr.To("/old/path/tv/Fargo/Fargo - S01E02.mkv"),
 		})
 		require.NoError(t, err)
 
@@ -361,8 +362,8 @@ func TestIndexSeriesLibrary(t *testing.T) {
 
 		_, err := store.CreateEpisodeFile(ctx, model.EpisodeFile{
 			Size:             1024,
-			RelativePath:     ptr(""),
-			OriginalFilePath: ptr(""),
+			RelativePath:     ptr.To(""),
+			OriginalFilePath: ptr.To(""),
 		})
 		require.NoError(t, err)
 

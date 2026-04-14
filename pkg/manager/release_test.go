@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/kasuboski/mediaz/pkg/prowlarr"
+	"github.com/kasuboski/mediaz/pkg/ptr"
 	"github.com/kasuboski/mediaz/pkg/storage"
 	"github.com/oapi-codegen/nullable"
 
@@ -692,42 +693,42 @@ func TestExtractYear(t *testing.T) {
 		{
 			name:  "numeric title with actual year after",
 			input: "2012 2009 1080p",
-			want:  int32Ptr(2009),
+			want:  ptr.To(int32(2009)),
 		},
 		{
 			name:  "movie title 1917 with release year",
 			input: "1917 2019 1080p",
-			want:  int32Ptr(2019),
+			want:  ptr.To(int32(2019)),
 		},
 		{
 			name:  "year in parentheses",
 			input: "Zoolander (2001)",
-			want:  int32Ptr(2001),
+			want:  ptr.To(int32(2001)),
 		},
 		{
 			name:  "year in square brackets",
 			input: "Movie [2020]",
-			want:  int32Ptr(2020),
+			want:  ptr.To(int32(2020)),
 		},
 		{
 			name:  "year in curly braces",
 			input: "Movie {2019}",
-			want:  int32Ptr(2019),
+			want:  ptr.To(int32(2019)),
 		},
 		{
 			name:  "trailing year after dot separators",
 			input: "Movie.Name.2024",
-			want:  int32Ptr(2024),
+			want:  ptr.To(int32(2024)),
 		},
 		{
 			name:  "trailing year after underscore separators",
 			input: "Movie_Name_2023",
-			want:  int32Ptr(2023),
+			want:  ptr.To(int32(2023)),
 		},
 		{
 			name:  "trailing year after dash separators",
 			input: "Movie-Name-2022",
-			want:  int32Ptr(2022),
+			want:  ptr.To(int32(2022)),
 		},
 		{
 			name:  "no year present",
@@ -742,22 +743,22 @@ func TestExtractYear(t *testing.T) {
 		{
 			name:  "bracketed year preferred over trailing",
 			input: "Movie Name (2019) 2020",
-			want:  int32Ptr(2019),
+			want:  ptr.To(int32(2019)),
 		},
 		{
 			name:  "year with quality after",
 			input: "Movie Name 2017 1080p",
-			want:  int32Ptr(2017),
+			want:  ptr.To(int32(2017)),
 		},
 		{
 			name:  "dot separated with quality and year",
 			input: "Columbus.2017.1080p.WEB-DL.H264",
-			want:  int32Ptr(2017),
+			want:  ptr.To(int32(2017)),
 		},
 		{
 			name:  "year only in brackets mid string",
 			input: "Movie (2019) Extended Edition",
-			want:  int32Ptr(2019),
+			want:  ptr.To(int32(2019)),
 		},
 	}
 
@@ -783,32 +784,32 @@ func TestExtractYearFromPath(t *testing.T) {
 		{
 			name:  "numeric title with release year",
 			input: "2012.2009.1080p",
-			want:  int32Ptr(2009),
+			want:  ptr.To(int32(2009)),
 		},
 		{
 			name:  "year in parentheses",
 			input: "Zoolander (2001)",
-			want:  int32Ptr(2001),
+			want:  ptr.To(int32(2001)),
 		},
 		{
 			name:  "year in square brackets",
 			input: "Guardians of the Galaxy [2014]",
-			want:  int32Ptr(2014),
+			want:  ptr.To(int32(2014)),
 		},
 		{
 			name:  "year in curly braces",
 			input: "Apocalypse Now {1979}",
-			want:  int32Ptr(1979),
+			want:  ptr.To(int32(1979)),
 		},
 		{
 			name:  "underscore separated",
 			input: "Movie_Name_2024_1080p",
-			want:  int32Ptr(2024),
+			want:  ptr.To(int32(2024)),
 		},
 		{
 			name:  "dash separated",
 			input: "Movie-Name-2024",
-			want:  int32Ptr(2024),
+			want:  ptr.To(int32(2024)),
 		},
 		{
 			name:  "no year",
@@ -836,25 +837,25 @@ func TestPathToSearchTermWithYear(t *testing.T) {
 			name:     "dot separated with year and quality",
 			input:    "Columbus.2017.1080p.WEB-DL.H264.AC3-EVO[EtHD]",
 			wantTerm: "Columbus",
-			wantYear: int32Ptr(2017),
+			wantYear: ptr.To(int32(2017)),
 		},
 		{
 			name:     "underscore separated",
 			input:    "Movie_Name_2024_1080p",
 			wantTerm: "Movie Name",
-			wantYear: int32Ptr(2024),
+			wantYear: ptr.To(int32(2024)),
 		},
 		{
 			name:     "dash separated",
 			input:    "Movie-Name-2024",
 			wantTerm: "Movie Name",
-			wantYear: int32Ptr(2024),
+			wantYear: ptr.To(int32(2024)),
 		},
 		{
 			name:     "parentheses year",
 			input:    "Zoolander (2001)",
 			wantTerm: "Zoolander",
-			wantYear: int32Ptr(2001),
+			wantYear: ptr.To(int32(2001)),
 		},
 		{
 			name:     "numeric title 1917 no year",
@@ -866,7 +867,7 @@ func TestPathToSearchTermWithYear(t *testing.T) {
 			name:     "numeric title 2012 with actual year",
 			input:    "2012.2009.1080p",
 			wantTerm: "2012",
-			wantYear: int32Ptr(2009),
+			wantYear: ptr.To(int32(2009)),
 		},
 		{
 			name:     "empty string",
@@ -878,19 +879,19 @@ func TestPathToSearchTermWithYear(t *testing.T) {
 			name:     "year and country code",
 			input:    "Parasite (2019) (KR)",
 			wantTerm: "Parasite",
-			wantYear: int32Ptr(2019),
+			wantYear: ptr.To(int32(2019)),
 		},
 		{
 			name:     "alternate title with year",
 			input:    "Zoolander (Blue Steel) (2001)",
 			wantTerm: "Zoolander (Blue Steel)",
-			wantYear: int32Ptr(2001),
+			wantYear: ptr.To(int32(2001)),
 		},
 		{
 			name:     "mixed separators normalized",
 			input:    "The.Dark-Knight_2008.1080p",
 			wantTerm: "The Dark Knight",
-			wantYear: int32Ptr(2008),
+			wantYear: ptr.To(int32(2008)),
 		},
 	}
 

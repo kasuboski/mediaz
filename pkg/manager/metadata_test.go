@@ -10,11 +10,12 @@ import (
 	"time"
 
 	"github.com/kasuboski/mediaz/config"
+	"github.com/kasuboski/mediaz/pkg/ptr"
 	storeMocks "github.com/kasuboski/mediaz/pkg/storage/mocks"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
 	"github.com/kasuboski/mediaz/pkg/tmdb"
-	"github.com/mattn/go-sqlite3"
 	tmdbMocks "github.com/kasuboski/mediaz/pkg/tmdb/mocks"
+	"github.com/mattn/go-sqlite3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -56,7 +57,7 @@ func TestMediaManager_GetSeriesMetadata(t *testing.T) {
 			TmdbID:         1234,
 			Title:          "Test Series",
 			Status:         "Continuing",
-			FirstAirDate:   ptr(time.Now().Add(-time.Hour * 2)),
+			FirstAirDate:   ptr.To(time.Now().Add(-time.Hour * 2)),
 			ExternalIds:    nil,
 			WatchProviders: nil,
 		})
@@ -179,19 +180,19 @@ func TestMediaManager_GetSeriesMetadata(t *testing.T) {
 		assert.Equal(t, int32(1), episodes[0].ID)
 		assert.Equal(t, int32(1), episodes[0].Number)
 		assert.Equal(t, "Test Season 1 Episode 1", episodes[0].Title)
-		assert.Equal(t, ptr(int32(45)), episodes[0].Runtime)
+		assert.Equal(t, ptr.To(int32(45)), episodes[0].Runtime)
 		assert.Equal(t, int32(2), episodes[1].ID)
 		assert.Equal(t, int32(2), episodes[1].Number)
 		assert.Equal(t, "Test Season 1 Episode 2", episodes[1].Title)
-		assert.Equal(t, ptr(int32(42)), episodes[1].Runtime)
+		assert.Equal(t, ptr.To(int32(42)), episodes[1].Runtime)
 		assert.Equal(t, int32(3), episodes[2].ID)
 		assert.Equal(t, int32(1), episodes[2].Number)
 		assert.Equal(t, "Test Season 2 Episode 1", episodes[2].Title)
-		assert.Equal(t, ptr(int32(45)), episodes[2].Runtime)
+		assert.Equal(t, ptr.To(int32(45)), episodes[2].Runtime)
 		assert.Equal(t, int32(4), episodes[3].ID)
 		assert.Equal(t, int32(2), episodes[3].Number)
 		assert.Equal(t, "Test Season 2 Episode 2", episodes[3].Title)
-		assert.Equal(t, ptr(int32(43)), episodes[3].Runtime)
+		assert.Equal(t, ptr.To(int32(43)), episodes[3].Runtime)
 	})
 }
 
@@ -222,8 +223,8 @@ func TestFromSeriesDetails(t *testing.T) {
 					t, _ := time.Parse(tmdb.ReleaseDateFormat, "2023-01-01")
 					return &t
 				}(),
-				PosterPath: ptr("poster.jpg"),
-				Overview:   ptr("Test Overview"),
+				PosterPath: ptr.To("poster.jpg"),
+				Overview:   ptr.To("Test Overview"),
 			},
 			wantErr: false,
 		},
@@ -248,7 +249,7 @@ func TestFromSeriesDetails(t *testing.T) {
 					return &t
 				}(),
 				PosterPath: nil,
-				Overview:   ptr("Test Overview"),
+				Overview:   ptr.To("Test Overview"),
 			},
 			wantErr: false,
 		},
@@ -304,7 +305,7 @@ func TestFromSeriesSeasons(t *testing.T) {
 					return &t
 				}(),
 				Number:   1,
-				Overview: ptr("Test overview"),
+				Overview: ptr.To("Test overview"),
 			},
 		},
 		{
@@ -321,7 +322,7 @@ func TestFromSeriesSeasons(t *testing.T) {
 				TmdbID:   123,
 				Title:    "Season 1",
 				Number:   1,
-				Overview: ptr("Test overview"),
+				Overview: ptr.To("Test overview"),
 			},
 		},
 	}
@@ -620,36 +621,36 @@ func TestFromMediaDetails(t *testing.T) {
 			name: "all fields present",
 			det: tmdb.MediaDetails{
 				ID:                  123,
-				Title:               ptr("Title"),
-				OriginalTitle:       ptr("Orig"),
-				ImdbID:              ptr("tt100"),
-				Runtime:             ptr(100),
-				Overview:            ptr("Overview"),
-				PosterPath:          ptr("path.jpg"),
+				Title:               ptr.To("Title"),
+				OriginalTitle:       ptr.To("Orig"),
+				ImdbID:              ptr.To("tt100"),
+				Runtime:             ptr.To(100),
+				Overview:            ptr.To("Overview"),
+				PosterPath:          ptr.To("path.jpg"),
 				Genres:              &[]tmdb.Genre{{Name: "G1"}, {Name: "G2"}},
-				Homepage:            ptr("http://"),
-				Popularity:          ptr(float32(1.1)),
-				ProductionCompanies: &[]tmdb.ProductionCompany{{Name: ptr("Studio")}},
+				Homepage:            ptr.To("http://"),
+				Popularity:          ptr.To(float32(1.1)),
+				ProductionCompanies: &[]tmdb.ProductionCompany{{Name: ptr.To("Studio")}},
 				BelongsToCollection: func() *any {
 					v := any(map[string]any{"id": float64(5), "name": "Coll"})
 					return &v
 				}(),
-				ReleaseDate: ptr("2020-02-03"),
+				ReleaseDate: ptr.To("2020-02-03"),
 			},
 			want: model.MovieMetadata{
 				TmdbID:           123,
-				ImdbID:           ptr("tt100"),
+				ImdbID:           ptr.To("tt100"),
 				Images:           "path.jpg",
-				Genres:           ptr("G1,G2"),
+				Genres:           ptr.To("G1,G2"),
 				Title:            "Title",
-				OriginalTitle:    ptr("Orig"),
+				OriginalTitle:    ptr.To("Orig"),
 				Runtime:          100,
-				Overview:         ptr("Overview"),
-				Website:          ptr("http://"),
-				Popularity:       ptr(float64(1.1)),
-				Studio:           ptr("Studio"),
-				CollectionTmdbID: ptr(int32(5)),
-				CollectionTitle:  ptr("Coll"),
+				Overview:         ptr.To("Overview"),
+				Website:          ptr.To("http://"),
+				Popularity:       ptr.To(float64(1.1)),
+				Studio:           ptr.To("Studio"),
+				CollectionTmdbID: ptr.To(int32(5)),
+				CollectionTitle:  ptr.To("Coll"),
 				ReleaseDate: func() *time.Time {
 					t, _ := time.Parse(tmdb.ReleaseDateFormat, "2020-02-03")
 					return &t
@@ -664,9 +665,9 @@ func TestFromMediaDetails(t *testing.T) {
 			name: "missing optional fields",
 			det: tmdb.MediaDetails{
 				ID:       456,
-				Title:    ptr("NoOpt"),
-				Runtime:  ptr(80),
-				Overview: ptr("No optional"),
+				Title:    ptr.To("NoOpt"),
+				Runtime:  ptr.To(80),
+				Overview: ptr.To("No optional"),
 			},
 			want: model.MovieMetadata{
 				TmdbID:           456,
@@ -676,7 +677,7 @@ func TestFromMediaDetails(t *testing.T) {
 				Title:            "NoOpt",
 				OriginalTitle:    nil,
 				Runtime:          80,
-				Overview:         ptr("No optional"),
+				Overview:         ptr.To("No optional"),
 				Website:          nil,
 				Popularity:       nil,
 				Studio:           nil,
@@ -690,16 +691,16 @@ func TestFromMediaDetails(t *testing.T) {
 			name: "invalid release date",
 			det: tmdb.MediaDetails{
 				ID:          789,
-				Title:       ptr("BadDate"),
-				Runtime:     ptr(60),
-				Overview:    ptr("Bad date"),
-				ReleaseDate: ptr("invalid"),
+				Title:       ptr.To("BadDate"),
+				Runtime:     ptr.To(60),
+				Overview:    ptr.To("Bad date"),
+				ReleaseDate: ptr.To("invalid"),
 			},
 			want: model.MovieMetadata{
 				TmdbID:      789,
 				Title:       "BadDate",
 				Runtime:     60,
-				Overview:    ptr("Bad date"),
+				Overview:    ptr.To("Bad date"),
 				ReleaseDate: nil,
 				Year:        nil,
 			},

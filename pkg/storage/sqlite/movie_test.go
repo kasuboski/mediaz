@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/kasuboski/mediaz/pkg/ptr"
 	"github.com/kasuboski/mediaz/pkg/storage"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
 	"github.com/stretchr/testify/assert"
@@ -22,8 +23,8 @@ func TestMovieStorage(t *testing.T) {
 			ID:              1,
 			Path:            &path,
 			Monitored:       1,
-			MovieFileID:     ptr(int32(1)),
-			MovieMetadataID: ptr(int32(1)),
+			MovieFileID:     ptr.To(int32(1)),
+			MovieMetadataID: ptr.To(int32(1)),
 		},
 	}
 
@@ -32,8 +33,8 @@ func TestMovieStorage(t *testing.T) {
 			ID:              1,
 			Path:            &path,
 			Monitored:       1,
-			MovieFileID:     ptr(int32(1)),
-			MovieMetadataID: ptr(int32(1)),
+			MovieFileID:     ptr.To(int32(1)),
+			MovieMetadataID: ptr.To(int32(1)),
 		},
 		State: storage.MovieStateMissing,
 	}
@@ -58,8 +59,8 @@ func TestMovieStorage(t *testing.T) {
 	assert.Equal(t, &wantMovie, actual)
 
 	err = store.UpdateMovieState(ctx, int64(movies[0].ID), storage.MovieStateDownloading, &storage.TransitionStateMetadata{
-		DownloadID:       ptr("123"),
-		DownloadClientID: ptr(int32(1)),
+		DownloadID:       ptr.To("123"),
+		DownloadClientID: ptr.To(int32(1)),
 	})
 	assert.Nil(t, err)
 
@@ -94,7 +95,7 @@ func TestMovieStorage(t *testing.T) {
 		ID:           1,
 		Quality:      "HDTV-720p",
 		Size:         1_000_000_000,
-		RelativePath: ptr("Title/Title.mkv"),
+		RelativePath: ptr.To("Title/Title.mkv"),
 	}
 	res, err = store.CreateMovieFile(ctx, file)
 	assert.Nil(t, err)
@@ -142,7 +143,7 @@ func TestSQLite_UpdateMovieMovieFileID(t *testing.T) {
 				ID:          1,
 				Monitored:   1,
 				Path:        &path,
-				MovieFileID: ptr(int32(1)),
+				MovieFileID: ptr.To(int32(1)),
 			},
 		}
 
@@ -210,7 +211,7 @@ func TestSQLite_GetMovieByMovieFileID(t *testing.T) {
 			Movie: model.Movie{
 				Monitored:   1,
 				Path:        &path,
-				MovieFileID: ptr(int32(1)),
+				MovieFileID: ptr.To(int32(1)),
 			},
 		}
 
@@ -221,7 +222,7 @@ func TestSQLite_GetMovieByMovieFileID(t *testing.T) {
 			Movie: model.Movie{
 				Monitored:   1,
 				Path:        &path,
-				MovieFileID: ptr(int32(2)),
+				MovieFileID: ptr.To(int32(2)),
 			},
 		}
 		_, err = store.CreateMovie(ctx, movie2, storage.MovieStateDiscovered)

@@ -21,6 +21,7 @@ import (
 	"github.com/kasuboski/mediaz/pkg/library"
 	mockLibrary "github.com/kasuboski/mediaz/pkg/library/mocks"
 	"github.com/kasuboski/mediaz/pkg/prowlarr"
+	"github.com/kasuboski/mediaz/pkg/ptr"
 	"github.com/kasuboski/mediaz/pkg/storage"
 	storageMocks "github.com/kasuboski/mediaz/pkg/storage/mocks"
 	mediaSqlite "github.com/kasuboski/mediaz/pkg/storage/sqlite"
@@ -57,13 +58,13 @@ func Test_Manager_reconcileMissingMovie(t *testing.T) {
 	smallestSeeders := nullable.NewNullNullable[int32]()
 	smallestSeeders.Set(10)
 
-	torrentProto := ptr(prowlarr.DownloadProtocolTorrent)
-	usenetProto := ptr(prowlarr.DownloadProtocolUsenet)
+	torrentProto := ptr.To(prowlarr.DownloadProtocolTorrent)
+	usenetProto := ptr.To(prowlarr.DownloadProtocolUsenet)
 
-	wantRelease := &prowlarr.ReleaseResource{ID: ptr(int32(123)), Title: nullable.NewNullableWithValue("test movie"), Size: sizeGBToBytes(23), Seeders: bigSeeders, Protocol: torrentProto}
-	doNotWantRelease := &prowlarr.ReleaseResource{ID: ptr(int32(124)), Title: nullable.NewNullableWithValue("test movie"), Size: sizeGBToBytes(23), Seeders: smallerSeeders, Protocol: torrentProto}
-	smallMovie := &prowlarr.ReleaseResource{ID: ptr(int32(125)), Title: nullable.NewNullableWithValue("test movie - very small"), Size: sizeGBToBytes(1), Seeders: smallestSeeders, Protocol: torrentProto}
-	nzbMovie := &prowlarr.ReleaseResource{ID: ptr(int32(1225)), Title: nullable.NewNullableWithValue("test movie - nzb"), Size: sizeGBToBytes(23), Seeders: smallestSeeders, Protocol: usenetProto}
+	wantRelease := &prowlarr.ReleaseResource{ID: ptr.To(int32(123)), Title: nullable.NewNullableWithValue("test movie"), Size: sizeGBToBytes(23), Seeders: bigSeeders, Protocol: torrentProto}
+	doNotWantRelease := &prowlarr.ReleaseResource{ID: ptr.To(int32(124)), Title: nullable.NewNullableWithValue("test movie"), Size: sizeGBToBytes(23), Seeders: smallerSeeders, Protocol: torrentProto}
+	smallMovie := &prowlarr.ReleaseResource{ID: ptr.To(int32(125)), Title: nullable.NewNullableWithValue("test movie - very small"), Size: sizeGBToBytes(1), Seeders: smallestSeeders, Protocol: torrentProto}
+	nzbMovie := &prowlarr.ReleaseResource{ID: ptr.To(int32(1225)), Title: nullable.NewNullableWithValue("test movie - nzb"), Size: sizeGBToBytes(23), Seeders: smallestSeeders, Protocol: usenetProto}
 
 	releases := []*prowlarr.ReleaseResource{doNotWantRelease, wantRelease, smallMovie, nzbMovie}
 
@@ -506,14 +507,14 @@ func Test_Manager_reconcileDownloadingMovie(t *testing.T) {
 		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
 		require.NotNil(t, m)
 
-		movie := storage.Movie{Movie: model.Movie{ID: 1, Monitored: 1, Path: ptr("Movie 1")}}
+		movie := storage.Movie{Movie: model.Movie{ID: 1, Monitored: 1, Path: ptr.To("Movie 1")}}
 		_, err := store.CreateMovie(ctx, movie, storage.MovieStateMissing)
 		require.NoError(t, err)
 
 		err = m.updateMovieState(ctx, &movie, storage.MovieStateDownloading, nil)
 		require.NoError(t, err)
 
-		_, err = store.CreateMovieFile(ctx, model.MovieFile{RelativePath: ptr("Movie 1/movie1.mp4")})
+		_, err = store.CreateMovieFile(ctx, model.MovieFile{RelativePath: ptr.To("Movie 1/movie1.mp4")})
 		require.NoError(t, err)
 
 		snapshot := newReconcileSnapshot(nil, nil)
@@ -566,7 +567,7 @@ func Test_Manager_reconcileDownloadingMovie(t *testing.T) {
 		m := New(nil, nil, nil, store, mockFactory, config.Manager{}, config.Config{})
 		require.NotNil(t, m)
 
-		movieID, err := m.storage.CreateMovie(ctx, storage.Movie{Movie: model.Movie{ID: 1, Monitored: 1, QualityProfileID: 1, Path: ptr("Movie 1")}}, storage.MovieStateMissing)
+		movieID, err := m.storage.CreateMovie(ctx, storage.Movie{Movie: model.Movie{ID: 1, Monitored: 1, QualityProfileID: 1, Path: ptr.To("Movie 1")}}, storage.MovieStateMissing)
 		require.NoError(t, err)
 
 		movie, err := m.storage.GetMovie(ctx, movieID)
@@ -617,7 +618,7 @@ func Test_Manager_reconcileDownloadingMovie(t *testing.T) {
 		m := New(nil, nil, nil, store, mockFactory, config.Manager{}, config.Config{})
 		require.NotNil(t, m)
 
-		movieID, err := m.storage.CreateMovie(ctx, storage.Movie{Movie: model.Movie{ID: 1, Monitored: 1, QualityProfileID: 1, Path: ptr("Movie 1")}}, storage.MovieStateMissing)
+		movieID, err := m.storage.CreateMovie(ctx, storage.Movie{Movie: model.Movie{ID: 1, Monitored: 1, QualityProfileID: 1, Path: ptr.To("Movie 1")}}, storage.MovieStateMissing)
 		require.NoError(t, err)
 
 		movie, err := m.storage.GetMovie(ctx, movieID)
@@ -671,7 +672,7 @@ func Test_Manager_reconcileDownloadingMovie(t *testing.T) {
 		m := New(nil, nil, nil, store, mockFactory, config.Manager{}, config.Config{})
 		require.NotNil(t, m)
 
-		movieID, err := m.storage.CreateMovie(ctx, storage.Movie{Movie: model.Movie{ID: 1, Monitored: 1, QualityProfileID: 1, Path: ptr("my-movie")}}, storage.MovieStateMissing)
+		movieID, err := m.storage.CreateMovie(ctx, storage.Movie{Movie: model.Movie{ID: 1, Monitored: 1, QualityProfileID: 1, Path: ptr.To("my-movie")}}, storage.MovieStateMissing)
 		require.NoError(t, err)
 
 		movie, err := m.storage.GetMovie(ctx, movieID)
@@ -723,7 +724,7 @@ func Test_Manager_reconcileDownloadingMovie(t *testing.T) {
 		m := New(nil, nil, nil, store, mockFactory, config.Manager{}, config.Config{})
 		require.NotNil(t, m)
 
-		movieID, err := m.storage.CreateMovie(ctx, storage.Movie{Movie: model.Movie{ID: 1, Monitored: 1, QualityProfileID: 1, MovieMetadataID: ptr(int32(1)), Path: ptr("Movie 1")}}, storage.MovieStateMissing)
+		movieID, err := m.storage.CreateMovie(ctx, storage.Movie{Movie: model.Movie{ID: 1, Monitored: 1, QualityProfileID: 1, MovieMetadataID: ptr.To(int32(1)), Path: ptr.To("Movie 1")}}, storage.MovieStateMissing)
 		require.NoError(t, err)
 
 		movie, err := m.storage.GetMovie(ctx, movieID)
@@ -780,7 +781,7 @@ func Test_Manager_reconcileDownloadingMovie(t *testing.T) {
 		m := New(nil, nil, mockLibrary, store, mockFactory, config.Manager{}, config.Config{})
 		require.NotNil(t, m)
 
-		movieID, err := m.storage.CreateMovie(ctx, storage.Movie{Movie: model.Movie{ID: 1, Monitored: 1, QualityProfileID: 1, MovieMetadataID: ptr(int32(1)), Path: ptr("Movie 1")}}, storage.MovieStateMissing)
+		movieID, err := m.storage.CreateMovie(ctx, storage.Movie{Movie: model.Movie{ID: 1, Monitored: 1, QualityProfileID: 1, MovieMetadataID: ptr.To(int32(1)), Path: ptr.To("Movie 1")}}, storage.MovieStateMissing)
 		require.NoError(t, err)
 
 		movie, err := m.storage.GetMovie(ctx, movieID)
@@ -846,7 +847,7 @@ func Test_Manager_reconcileDownloadingMovie(t *testing.T) {
 		m := New(nil, nil, mockLibrary, store, mockFactory, config.Manager{}, config.Config{})
 		require.NotNil(t, m)
 
-		movieID, err := m.storage.CreateMovie(ctx, storage.Movie{Movie: model.Movie{ID: 1, Monitored: 1, QualityProfileID: 1, MovieMetadataID: ptr(int32(1)), Path: ptr("my-movie")}}, storage.MovieStateMissing)
+		movieID, err := m.storage.CreateMovie(ctx, storage.Movie{Movie: model.Movie{ID: 1, Monitored: 1, QualityProfileID: 1, MovieMetadataID: ptr.To(int32(1)), Path: ptr.To("my-movie")}}, storage.MovieStateMissing)
 		require.NoError(t, err)
 
 		movie, err := m.storage.GetMovie(ctx, movieID)
@@ -904,75 +905,75 @@ func Test_findMatchingMovieResult(t *testing.T) {
 			name: "no year - returns first result",
 			year: nil,
 			results: []*SearchMediaResult{
-				{ID: ptr(1), Title: ptr("Brothers"), ReleaseDate: &release2024},
-				{ID: ptr(2), Title: ptr("Brothers"), ReleaseDate: &release2009},
+				{ID: ptr.To(1), Title: ptr.To("Brothers"), ReleaseDate: &release2024},
+				{ID: ptr.To(2), Title: ptr.To("Brothers"), ReleaseDate: &release2009},
 			},
-			expected: &SearchMediaResult{ID: ptr(1), Title: ptr("Brothers")},
+			expected: &SearchMediaResult{ID: ptr.To(1), Title: ptr.To("Brothers")},
 		},
 		{
 			name: "year matches first result",
-			year: ptr(int32(2024)),
+			year: ptr.To(int32(2024)),
 			results: []*SearchMediaResult{
-				{ID: ptr(1), Title: ptr("Brothers"), ReleaseDate: &release2024},
-				{ID: ptr(2), Title: ptr("Brothers"), ReleaseDate: &release2009},
+				{ID: ptr.To(1), Title: ptr.To("Brothers"), ReleaseDate: &release2024},
+				{ID: ptr.To(2), Title: ptr.To("Brothers"), ReleaseDate: &release2009},
 			},
-			expected: &SearchMediaResult{ID: ptr(1), Title: ptr("Brothers")},
+			expected: &SearchMediaResult{ID: ptr.To(1), Title: ptr.To("Brothers")},
 		},
 		{
 			name: "year matches second result",
-			year: ptr(int32(2009)),
+			year: ptr.To(int32(2009)),
 			results: []*SearchMediaResult{
-				{ID: ptr(1), Title: ptr("Brothers"), ReleaseDate: &release2024},
-				{ID: ptr(2), Title: ptr("Brothers"), ReleaseDate: &release2009},
+				{ID: ptr.To(1), Title: ptr.To("Brothers"), ReleaseDate: &release2024},
+				{ID: ptr.To(2), Title: ptr.To("Brothers"), ReleaseDate: &release2009},
 			},
-			expected: &SearchMediaResult{ID: ptr(2), Title: ptr("Brothers")},
+			expected: &SearchMediaResult{ID: ptr.To(2), Title: ptr.To("Brothers")},
 		},
 		{
 			name: "year not found in results",
-			year: ptr(int32(2025)),
+			year: ptr.To(int32(2025)),
 			results: []*SearchMediaResult{
-				{ID: ptr(1), Title: ptr("Brothers"), ReleaseDate: &release2024},
-				{ID: ptr(2), Title: ptr("Brothers"), ReleaseDate: &release2009},
+				{ID: ptr.To(1), Title: ptr.To("Brothers"), ReleaseDate: &release2024},
+				{ID: ptr.To(2), Title: ptr.To("Brothers"), ReleaseDate: &release2009},
 			},
 			expected: nil,
 		},
 		{
 			name: "result with nil release date",
-			year: ptr(int32(2024)),
+			year: ptr.To(int32(2024)),
 			results: []*SearchMediaResult{
-				{ID: ptr(1), Title: ptr("Brothers"), ReleaseDate: nil},
-				{ID: ptr(2), Title: ptr("Brothers"), ReleaseDate: &release2024},
+				{ID: ptr.To(1), Title: ptr.To("Brothers"), ReleaseDate: nil},
+				{ID: ptr.To(2), Title: ptr.To("Brothers"), ReleaseDate: &release2024},
 			},
-			expected: &SearchMediaResult{ID: ptr(2), Title: ptr("Brothers")},
+			expected: &SearchMediaResult{ID: ptr.To(2), Title: ptr.To("Brothers")},
 		},
 		{
 			name: "all results have nil release dates",
-			year: ptr(int32(2024)),
+			year: ptr.To(int32(2024)),
 			results: []*SearchMediaResult{
-				{ID: ptr(1), Title: ptr("Brothers"), ReleaseDate: nil},
-				{ID: ptr(2), Title: ptr("Brothers"), ReleaseDate: nil},
+				{ID: ptr.To(1), Title: ptr.To("Brothers"), ReleaseDate: nil},
+				{ID: ptr.To(2), Title: ptr.To("Brothers"), ReleaseDate: nil},
 			},
 			expected: nil,
 		},
 		{
 			name:     "empty results",
-			year:     ptr(int32(2024)),
+			year:     ptr.To(int32(2024)),
 			results:  []*SearchMediaResult{},
 			expected: nil,
 		},
 		{
 			name:     "nil results",
-			year:     ptr(int32(2024)),
+			year:     ptr.To(int32(2024)),
 			results:  nil,
 			expected: nil,
 		},
 		{
 			name: "single result matching year",
-			year: ptr(int32(2001)),
+			year: ptr.To(int32(2001)),
 			results: []*SearchMediaResult{
-				{ID: ptr(1), Title: ptr("Brothers"), ReleaseDate: &release2001},
+				{ID: ptr.To(1), Title: ptr.To("Brothers"), ReleaseDate: &release2001},
 			},
-			expected: &SearchMediaResult{ID: ptr(1), Title: ptr("Brothers")},
+			expected: &SearchMediaResult{ID: ptr.To(1), Title: ptr.To("Brothers")},
 		},
 	}
 
