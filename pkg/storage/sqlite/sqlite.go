@@ -22,12 +22,7 @@ const (
 
 // New creates a new sqlite database given a path to the database file.
 func New(ctx context.Context, filePath string) (storage.Storage, error) {
-	// DSN parameters are applied to every connection opened by the pool.
-	// busy_timeout and synchronous are per-connection settings and must be
-	// set here rather than via one-shot PRAGMA calls. journal_mode=WAL is
-	// persisted in the database file so it only needs to be set once, but
-	// including it in the DSN is also correct and more explicit.
-	dsn := filePath + "?_busy_timeout=5000&_journal_mode=WAL&_synchronous=NORMAL"
+	dsn := filePath + "?_busy_timeout=5000&_journal_mode=WAL&_synchronous=NORMAL&_txlock=immediate"
 	db, err := sql.Open("sqlite3", dsn)
 	if err != nil {
 		return nil, err
