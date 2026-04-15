@@ -50,9 +50,7 @@ func (s *SQLite) ListDownloadingMovies(ctx context.Context) ([]*storage.ActiveMo
 		ORDER BY mt.sort_key DESC
 	`
 
-	s.mu.Lock()
 	rows, err := s.db.QueryContext(ctx, query)
-	s.mu.Unlock()
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to query downloading movies: %w", err)
@@ -134,9 +132,7 @@ func (s *SQLite) ListDownloadingSeries(ctx context.Context) ([]*storage.ActiveSe
 		ORDER BY st.sort_key DESC
 	`
 
-	s.mu.Lock()
 	rows, err := s.db.QueryContext(ctx, query)
-	s.mu.Unlock()
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to query downloading series: %w", err)
@@ -214,9 +210,7 @@ func (s *SQLite) ListRunningJobs(ctx context.Context) ([]*storage.ActiveJob, err
 		ORDER BY j.created_at DESC
 	`
 
-	s.mu.Lock()
 	rows, err := s.db.QueryContext(ctx, query)
-	s.mu.Unlock()
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to query running jobs: %w", err)
@@ -254,9 +248,7 @@ func (s *SQLite) ListErrorJobs(ctx context.Context, hours int) ([]*storage.Activ
 		ORDER BY jt.updated_at DESC
 	`
 
-	s.mu.Lock()
 	rows, err := s.db.QueryContext(ctx, query, hours)
-	s.mu.Unlock()
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to query error jobs: %w", err)
@@ -282,9 +274,6 @@ func (s *SQLite) ListErrorJobs(ctx context.Context, hours int) ([]*storage.Activ
 func (s *SQLite) CountTransitionsByDate(ctx context.Context, startDate, endDate time.Time) (int, error) {
 	startDateStr := startDate.Format("2006-01-02 15:04:05")
 	endDateStr := endDate.Format("2006-01-02 15:04:05")
-
-	s.mu.Lock()
-	defer s.mu.Unlock()
 
 	var totalCount int64
 	err := s.db.QueryRowContext(ctx, `
@@ -318,7 +307,6 @@ func (s *SQLite) GetTransitionsByDate(ctx context.Context, startDate, endDate ti
 	startDateStr := startDate.Format("2006-01-02 15:04:05")
 	endDateStr := endDate.Format("2006-01-02 15:04:05")
 
-	s.mu.Lock()
 	moviesRows, err := s.db.QueryContext(ctx, `
 		SELECT
 			STRFTIME('%Y-%m-%d', mt.created_at) AS date,
@@ -332,7 +320,6 @@ func (s *SQLite) GetTransitionsByDate(ctx context.Context, startDate, endDate ti
 		GROUP BY STRFTIME('%Y-%m-%d', mt.created_at)
 		ORDER BY date
 	`, startDateStr, endDateStr)
-	s.mu.Unlock()
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to get movie transitions: %w", err)
@@ -352,7 +339,6 @@ func (s *SQLite) GetTransitionsByDate(ctx context.Context, startDate, endDate ti
 		return nil, err
 	}
 
-	s.mu.Lock()
 	seriesRows, err := s.db.QueryContext(ctx, `
 		SELECT
 			STRFTIME('%Y-%m-%d', st.created_at) AS date,
@@ -367,7 +353,6 @@ func (s *SQLite) GetTransitionsByDate(ctx context.Context, startDate, endDate ti
 		GROUP BY STRFTIME('%Y-%m-%d', st.created_at)
 		ORDER BY date
 	`, startDateStr, endDateStr)
-	s.mu.Unlock()
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to get series transitions: %w", err)
@@ -387,7 +372,6 @@ func (s *SQLite) GetTransitionsByDate(ctx context.Context, startDate, endDate ti
 		return nil, err
 	}
 
-	s.mu.Lock()
 	jobsRows, err := s.db.QueryContext(ctx, `
 		SELECT
 			STRFTIME('%Y-%m-%d', jt.created_at) AS date,
@@ -401,7 +385,6 @@ func (s *SQLite) GetTransitionsByDate(ctx context.Context, startDate, endDate ti
 		GROUP BY STRFTIME('%Y-%m-%d', jt.created_at)
 		ORDER BY date
 	`, startDateStr, endDateStr)
-	s.mu.Unlock()
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to get job transitions: %w", err)
@@ -467,7 +450,6 @@ func (s *SQLite) GetTransitionsByDate(ctx context.Context, startDate, endDate ti
 		timeline = append(timeline, entry)
 	}
 
-	s.mu.Lock()
 	var movieTransitionRows *sql.Rows
 	if limit > 0 {
 		movieTransitionQuery := `
@@ -509,7 +491,6 @@ func (s *SQLite) GetTransitionsByDate(ctx context.Context, startDate, endDate ti
 		`
 		movieTransitionRows, err = s.db.QueryContext(ctx, movieTransitionQuery, startDateStr, endDateStr)
 	}
-	s.mu.Unlock()
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to get movie transition items: %w", err)
@@ -534,7 +515,6 @@ func (s *SQLite) GetTransitionsByDate(ctx context.Context, startDate, endDate ti
 		return nil, err
 	}
 
-	s.mu.Lock()
 	var seasonTransitionRows *sql.Rows
 	if limit > 0 {
 		seasonTransitionQuery := `
@@ -578,7 +558,6 @@ func (s *SQLite) GetTransitionsByDate(ctx context.Context, startDate, endDate ti
 		`
 		seasonTransitionRows, err = s.db.QueryContext(ctx, seasonTransitionQuery, startDateStr, endDateStr)
 	}
-	s.mu.Unlock()
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to get season transition items: %w", err)
@@ -601,7 +580,6 @@ func (s *SQLite) GetTransitionsByDate(ctx context.Context, startDate, endDate ti
 		return nil, err
 	}
 
-	s.mu.Lock()
 	var episodeTransitionRows *sql.Rows
 	if limit > 0 {
 		episodeTransitionQuery := `
@@ -647,7 +625,6 @@ func (s *SQLite) GetTransitionsByDate(ctx context.Context, startDate, endDate ti
 		`
 		episodeTransitionRows, err = s.db.QueryContext(ctx, episodeTransitionQuery, startDateStr, endDateStr)
 	}
-	s.mu.Unlock()
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to get episode transition items: %w", err)
@@ -670,7 +647,6 @@ func (s *SQLite) GetTransitionsByDate(ctx context.Context, startDate, endDate ti
 		return nil, err
 	}
 
-	s.mu.Lock()
 	var jobTransitionRows *sql.Rows
 	if limit > 0 {
 		jobTransitionQuery := `
@@ -710,7 +686,6 @@ func (s *SQLite) GetTransitionsByDate(ctx context.Context, startDate, endDate ti
 		`
 		jobTransitionRows, err = s.db.QueryContext(ctx, jobTransitionQuery, startDateStr, endDateStr)
 	}
-	s.mu.Unlock()
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to get job transition items: %w", err)
@@ -753,7 +728,6 @@ func (s *SQLite) GetEntityTransitions(ctx context.Context, entityType string, en
 
 	switch entityType {
 	case "movie":
-		s.mu.Lock()
 		rows, err = s.db.QueryContext(ctx, `
 			SELECT
 				mm.title AS entity_title,
@@ -773,7 +747,6 @@ func (s *SQLite) GetEntityTransitions(ctx context.Context, entityType string, en
 			WHERE m.id = ?
 			ORDER BY mt.sort_key ASC
 		`, entityID)
-		s.mu.Unlock()
 		if err != nil {
 			return nil, fmt.Errorf("failed to get movie transitions: %w", err)
 		}
@@ -808,7 +781,6 @@ func (s *SQLite) GetEntityTransitions(ctx context.Context, entityType string, en
 		}
 
 	case "series":
-		s.mu.Lock()
 		rows, err = s.db.QueryContext(ctx, `
 			SELECT
 				sm.title AS entity_title,
@@ -828,7 +800,6 @@ func (s *SQLite) GetEntityTransitions(ctx context.Context, entityType string, en
 			WHERE s.id = ?
 			ORDER BY st.sort_key ASC
 		`, entityID)
-		s.mu.Unlock()
 		if err != nil {
 			return nil, fmt.Errorf("failed to get series transitions: %w", err)
 		}
@@ -863,7 +834,6 @@ func (s *SQLite) GetEntityTransitions(ctx context.Context, entityType string, en
 		}
 
 	case "season":
-		s.mu.Lock()
 		rows, err = s.db.QueryContext(ctx, `
 			SELECT
 				sm.title AS entity_title,
@@ -884,7 +854,6 @@ func (s *SQLite) GetEntityTransitions(ctx context.Context, entityType string, en
 			WHERE s.id = ?
 			ORDER BY st.sort_key ASC
 		`, entityID)
-		s.mu.Unlock()
 		if err != nil {
 			return nil, fmt.Errorf("failed to get season transitions: %w", err)
 		}
@@ -919,7 +888,6 @@ func (s *SQLite) GetEntityTransitions(ctx context.Context, entityType string, en
 		}
 
 	case "episode":
-		s.mu.Lock()
 		rows, err = s.db.QueryContext(ctx, `
 			SELECT
 				sm.title AS entity_title,
@@ -936,7 +904,6 @@ func (s *SQLite) GetEntityTransitions(ctx context.Context, entityType string, en
 			WHERE e.id = ?
 			ORDER BY et.sort_key ASC
 		`, entityID)
-		s.mu.Unlock()
 		if err != nil {
 			return nil, fmt.Errorf("failed to get episode transitions: %w", err)
 		}
@@ -964,7 +931,6 @@ func (s *SQLite) GetEntityTransitions(ctx context.Context, entityType string, en
 		}
 
 	case "job":
-		s.mu.Lock()
 		rows, err = s.db.QueryContext(ctx, `
 			SELECT
 				j.type AS entity_title,
@@ -978,7 +944,6 @@ func (s *SQLite) GetEntityTransitions(ctx context.Context, entityType string, en
 		WHERE j.id = ?
 		ORDER BY jt.sort_key ASC
 	`, entityID)
-		s.mu.Unlock()
 		if err != nil {
 			return nil, fmt.Errorf("failed to get job transitions: %w", err)
 		}

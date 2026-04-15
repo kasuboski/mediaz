@@ -43,7 +43,8 @@ func init() {
 }
 
 const (
-	defaultJobTicker = time.Minute * 10
+	defaultIndexJobInterval     = time.Minute * 15 // filesystem-only scan; no external API calls
+	defaultReconcileJobInterval = time.Minute * 5  // drives downloads; needs to be responsive
 )
 
 func initConfig() {
@@ -77,11 +78,11 @@ func initConfig() {
 	viper.SetDefault("storage.schemas", []string{"./pkg/storage/sqlite/schema/schema.sql"})
 	viper.SetDefault("storage.tableValueSchemas", []string{"./pkg/storage/sqlite/schema/defaults.sql"})
 
-	viper.SetDefault("manager.jobs.movieIndex", defaultJobTicker)
-	viper.SetDefault("manager.jobs.movieReconcile", defaultJobTicker)
+	viper.SetDefault("manager.jobs.movieIndex", defaultIndexJobInterval)
+	viper.SetDefault("manager.jobs.movieReconcile", defaultReconcileJobInterval)
 
-	viper.SetDefault("manager.jobs.seriesIndex", defaultJobTicker)
-	viper.SetDefault("manager.jobs.seriesReconcile", defaultJobTicker)
+	viper.SetDefault("manager.jobs.seriesIndex", defaultIndexJobInterval)
+	viper.SetDefault("manager.jobs.seriesReconcile", defaultReconcileJobInterval)
 
 	viper.SetDefault("manager.jobs.indexerSync", "1h")
 

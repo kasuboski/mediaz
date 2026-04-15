@@ -22,8 +22,6 @@ func (s *SQLite) CreateSeries(ctx context.Context, series storage.Series, initia
 		return 0, err
 	}
 
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return 0, err
