@@ -24,9 +24,6 @@ func (s *SQLite) CreateMovie(ctx context.Context, movie storage.Movie, initialSt
 		return 0, err
 	}
 
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return 0, err
@@ -219,8 +216,6 @@ func (s *SQLite) UpdateMovieState(ctx context.Context, id int64, state storage.M
 		return err
 	}
 
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
