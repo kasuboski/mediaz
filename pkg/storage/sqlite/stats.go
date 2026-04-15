@@ -21,7 +21,6 @@ type TVStatsByState struct {
 // GetMovieStatsByState returns movie counts aggregated by state in a single query
 func (s *SQLite) GetMovieStatsByState(ctx context.Context) ([]storage.MovieStatsByState, error) {
 	// Use raw SQL since Jet ORM doesn't properly handle aggregate queries with custom structs
-	s.mu.Lock()
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT movie_transition.to_state AS state,
 		       COUNT(movie.id) AS count
@@ -30,7 +29,6 @@ func (s *SQLite) GetMovieStatsByState(ctx context.Context) ([]storage.MovieStats
 		GROUP BY movie_transition.to_state
 		ORDER BY movie_transition.to_state
 	`)
-	s.mu.Unlock()
 
 	if err != nil {
 		return nil, err
@@ -52,7 +50,6 @@ func (s *SQLite) GetMovieStatsByState(ctx context.Context) ([]storage.MovieStats
 // GetTVStatsByState returns TV series counts aggregated by state in a single query
 func (s *SQLite) GetTVStatsByState(ctx context.Context) ([]storage.TVStatsByState, error) {
 	// Use raw SQL since Jet ORM doesn't properly handle aggregate queries with custom structs
-	s.mu.Lock()
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT series_transition.to_state AS state,
 		       COUNT(series.id) AS count
@@ -61,7 +58,6 @@ func (s *SQLite) GetTVStatsByState(ctx context.Context) ([]storage.TVStatsByStat
 		GROUP BY series_transition.to_state
 		ORDER BY series_transition.to_state
 	`)
-	s.mu.Unlock()
 
 	if err != nil {
 		return nil, err

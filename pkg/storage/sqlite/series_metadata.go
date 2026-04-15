@@ -139,8 +139,6 @@ func (s *SQLite) UpdateSeriesState(ctx context.Context, id int64, state storage.
 		return err
 	}
 
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err

@@ -67,9 +67,6 @@ func (s *SQLite) CreateJob(ctx context.Context, job storage.Job, initialState st
 		}
 	}
 
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return 0, err
@@ -228,9 +225,6 @@ func (s *SQLite) UpdateJobState(ctx context.Context, id int64, state storage.Job
 	if err != nil {
 		return err
 	}
-
-	s.mu.Lock()
-	defer s.mu.Unlock()
 
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {

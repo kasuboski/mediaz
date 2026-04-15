@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/kasuboski/mediaz/pkg/storage"
-	_ "github.com/mattn/go-sqlite3"
 	"github.com/stretchr/testify/assert"
 )
 
