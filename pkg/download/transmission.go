@@ -15,6 +15,7 @@ import (
 
 	mhttp "github.com/kasuboski/mediaz/pkg/http"
 	"github.com/kasuboski/mediaz/pkg/logger"
+	"github.com/kasuboski/mediaz/pkg/size"
 	"go.uber.org/zap"
 )
 
@@ -106,11 +107,11 @@ func (t *TransmissionTorrent) ToStatus(mountPrefix string) Status {
 	s := Status{
 		ID:        fmt.Sprintf("%d", t.ID),
 		Name:      t.Name,
-		Size:      t.TotalSize >> 20, // bytes to mb
+		Size:      size.BytesToMB(t.TotalSize),
 		Progress:  t.PercentDone,
-		Speed:     t.RateDownload >> 20, // bytes/s to mb/s
+		Speed:     size.BytesToMB(t.RateDownload),
 		FilePaths: paths,
-		Done:      t.Status > 4 || t.PercentDone == 100.0, // 4 = downloading, 5 = queue'd to seed, 6 = seeding
+		Done:      t.Status > transmissionStatusSeeding || t.PercentDone == 100.0,
 	}
 
 	return s
@@ -412,6 +413,10 @@ func (c *TransmissionClient) Add(ctx context.Context, request AddRequest) (Statu
 
 const (
 	sessionHeader = "x-transmission-session-id"
+
+	// transmissionStatusSeeding is the Transmission torrent status value above which
+	// a torrent is considered done downloading (4 = downloading, 5+ = seeding/queued).
+	transmissionStatusSeeding = 4
 )
 
 func (c *TransmissionClient) do(ctx context.Context, url *url.URL, body []byte, retry ...bool) ([]byte, error) {

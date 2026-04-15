@@ -20,6 +20,7 @@ import (
 	"github.com/kasuboski/mediaz/pkg/library"
 	libraryMocks "github.com/kasuboski/mediaz/pkg/library/mocks"
 	"github.com/kasuboski/mediaz/pkg/prowlarr"
+	"github.com/kasuboski/mediaz/pkg/ptr"
 	"github.com/kasuboski/mediaz/pkg/storage"
 	storageMocks "github.com/kasuboski/mediaz/pkg/storage/mocks"
 	mediaSqlite "github.com/kasuboski/mediaz/pkg/storage/sqlite"
@@ -54,7 +55,7 @@ func TestMediaManager_updateEpisodeState(t *testing.T) {
 			Episode: model.Episode{
 				SeasonID:          1,
 				EpisodeNumber:     1,
-				EpisodeMetadataID: ptr(int32(1)),
+				EpisodeMetadataID: ptr.To(int32(1)),
 			},
 		}
 
@@ -64,9 +65,9 @@ func TestMediaManager_updateEpisodeState(t *testing.T) {
 
 		episode.ID = int32(episodeID)
 		err = manager.updateEpisodeState(ctx, episode, storage.EpisodeStateDownloading, &storage.TransitionStateMetadata{
-			DownloadID:             ptr("123"),
-			DownloadClientID:       ptr(int32(2)),
-			IsEntireSeasonDownload: ptr(true),
+			DownloadID:             ptr.To("123"),
+			DownloadClientID:       ptr.To(int32(2)),
+			IsEntireSeasonDownload: ptr.To(true),
 		})
 		require.NoError(t, err)
 
@@ -119,8 +120,8 @@ func TestMediaManager_reconcileMissingEpisodes(t *testing.T) {
 			Title:  "Test Episode",
 			Number: 1,
 			// time in the past
-			AirDate: ptr(snapshot.time.Add(time.Hour * -2)),
-			Runtime: ptr(int32(42)),
+			AirDate: ptr.To(snapshot.time.Add(time.Hour * -2)),
+			Runtime: ptr.To(int32(42)),
 		}
 
 		metadataID1, err := store.CreateEpisodeMetadata(ctx, episodeMetadata)
@@ -130,7 +131,7 @@ func TestMediaManager_reconcileMissingEpisodes(t *testing.T) {
 			Episode: model.Episode{
 				SeasonID:          1,
 				EpisodeNumber:     1,
-				EpisodeMetadataID: ptr(int32(metadataID1)),
+				EpisodeMetadataID: ptr.To(int32(metadataID1)),
 			},
 		}
 
@@ -142,8 +143,8 @@ func TestMediaManager_reconcileMissingEpisodes(t *testing.T) {
 			Title:  "Test Episode 2",
 			Number: 2,
 			// time in the past
-			AirDate: ptr(snapshot.time.Add(time.Hour * -2)),
-			Runtime: ptr(int32(42)),
+			AirDate: ptr.To(snapshot.time.Add(time.Hour * -2)),
+			Runtime: ptr.To(int32(42)),
 		}
 
 		metadataID2, err := store.CreateEpisodeMetadata(ctx, episodeMetadata)
@@ -153,7 +154,7 @@ func TestMediaManager_reconcileMissingEpisodes(t *testing.T) {
 			Episode: model.Episode{
 				SeasonID:          1,
 				EpisodeNumber:     2,
-				EpisodeMetadataID: ptr(int32(metadataID2)),
+				EpisodeMetadataID: ptr.To(int32(metadataID2)),
 			},
 		}
 		_, err = store.CreateEpisode(ctx, episode2, storage.EpisodeStateMissing)
@@ -164,8 +165,8 @@ func TestMediaManager_reconcileMissingEpisodes(t *testing.T) {
 			Title:  "Test Episode 3",
 			Number: 3,
 			// future time
-			AirDate: ptr(snapshot.time.Add(time.Hour * 2)),
-			Runtime: ptr(int32(42)),
+			AirDate: ptr.To(snapshot.time.Add(time.Hour * 2)),
+			Runtime: ptr.To(int32(42)),
 		}
 
 		metadataID3, err := store.CreateEpisodeMetadata(ctx, episodeMetadata)
@@ -175,7 +176,7 @@ func TestMediaManager_reconcileMissingEpisodes(t *testing.T) {
 			Episode: model.Episode{
 				SeasonID:          1,
 				EpisodeNumber:     3,
-				EpisodeMetadataID: ptr(int32(metadataID3)),
+				EpisodeMetadataID: ptr.To(int32(metadataID3)),
 			},
 		}
 
@@ -184,16 +185,16 @@ func TestMediaManager_reconcileMissingEpisodes(t *testing.T) {
 
 		releases := []*prowlarr.ReleaseResource{
 			{
-				ID:       ptr(int32(1)),
+				ID:       ptr.To(int32(1)),
 				Title:    nullable.NewNullableWithValue("Series.S01E01.1080p.WEB-DL.AAC2.0.x264-GROUP"),
 				Size:     sizeGBToBytes(2),
-				Protocol: ptr(prowlarr.DownloadProtocolTorrent),
+				Protocol: ptr.To(prowlarr.DownloadProtocolTorrent),
 			},
 			{
-				ID:       ptr(int32(2)),
+				ID:       ptr.To(int32(2)),
 				Title:    nullable.NewNullableWithValue("Series.S01E02.1080p.WEB-DL.AAC2.0.x264-GROUP"),
 				Size:     sizeGBToBytes(2),
-				Protocol: ptr(prowlarr.DownloadProtocolTorrent),
+				Protocol: ptr.To(prowlarr.DownloadProtocolTorrent),
 			},
 		}
 
@@ -280,7 +281,7 @@ func TestMediaManager_reconcileMissingEpisodes(t *testing.T) {
 		seasonID, err := store.CreateSeason(ctx, storage.Season{
 			Season: model.Season{
 				SeriesID:         1,
-				SeasonMetadataID: ptr(int32(1)),
+				SeasonMetadataID: ptr.To(int32(1)),
 				Monitored:        1,
 			},
 		}, storage.SeasonStateMissing)
@@ -291,8 +292,8 @@ func TestMediaManager_reconcileMissingEpisodes(t *testing.T) {
 			Title:  "Test Episode",
 			Number: 1,
 			// time in the past
-			AirDate: ptr(snapshot.time.Add(time.Hour * -2)),
-			Runtime: ptr(int32(42)),
+			AirDate: ptr.To(snapshot.time.Add(time.Hour * -2)),
+			Runtime: ptr.To(int32(42)),
 		}
 
 		metadataID1, err := store.CreateEpisodeMetadata(ctx, episodeMetadata)
@@ -302,7 +303,7 @@ func TestMediaManager_reconcileMissingEpisodes(t *testing.T) {
 			Episode: model.Episode{
 				SeasonID:          int32(seasonID),
 				EpisodeNumber:     1,
-				EpisodeMetadataID: ptr(int32(metadataID1)),
+				EpisodeMetadataID: ptr.To(int32(metadataID1)),
 			},
 		}
 
@@ -314,8 +315,8 @@ func TestMediaManager_reconcileMissingEpisodes(t *testing.T) {
 			Title:  "Test Episode 2",
 			Number: 2,
 			// time in the past
-			AirDate: ptr(snapshot.time.Add(time.Hour * -2)),
-			Runtime: ptr(int32(42)),
+			AirDate: ptr.To(snapshot.time.Add(time.Hour * -2)),
+			Runtime: ptr.To(int32(42)),
 		}
 
 		metadataID2, err := store.CreateEpisodeMetadata(ctx, episodeMetadata)
@@ -325,7 +326,7 @@ func TestMediaManager_reconcileMissingEpisodes(t *testing.T) {
 			Episode: model.Episode{
 				SeasonID:          int32(seasonID),
 				EpisodeNumber:     2,
-				EpisodeMetadataID: ptr(int32(metadataID2)),
+				EpisodeMetadataID: ptr.To(int32(metadataID2)),
 			},
 		}
 		_, err = store.CreateEpisode(ctx, episode2, storage.EpisodeStateMissing)
@@ -333,16 +334,16 @@ func TestMediaManager_reconcileMissingEpisodes(t *testing.T) {
 
 		releases := []*prowlarr.ReleaseResource{
 			{
-				ID:       ptr(int32(1)),
+				ID:       ptr.To(int32(1)),
 				Title:    nullable.NewNullableWithValue("Series.S01E01.1080p.WEB-DL.AAC2.0.x264-GROUP"),
 				Size:     sizeGBToBytes(2),
-				Protocol: ptr(prowlarr.DownloadProtocolTorrent),
+				Protocol: ptr.To(prowlarr.DownloadProtocolTorrent),
 			},
 			{
-				ID:       ptr(int32(2)),
+				ID:       ptr.To(int32(2)),
 				Title:    nullable.NewNullableWithValue("Series.S01E02.1080p.WEB-DL.AAC2.0.x264-GROUP"),
 				Size:     sizeGBToBytes(2),
-				Protocol: ptr(prowlarr.DownloadProtocolTorrent),
+				Protocol: ptr.To(prowlarr.DownloadProtocolTorrent),
 			},
 		}
 
@@ -425,7 +426,7 @@ func TestMediaManager_reconcileMissingEpisodes(t *testing.T) {
 
 		episode := storage.Episode{
 			Episode: model.Episode{
-				EpisodeMetadataID: ptr(int32(1)),
+				EpisodeMetadataID: ptr.To(int32(1)),
 			},
 		}
 
@@ -449,7 +450,7 @@ func TestMediaManager_reconcileMissingEpisodes(t *testing.T) {
 
 		episode := storage.Episode{
 			Episode: model.Episode{
-				EpisodeMetadataID: ptr(int32(1)),
+				EpisodeMetadataID: ptr.To(int32(1)),
 			},
 		}
 
@@ -474,7 +475,7 @@ func TestMediaManager_reconcileMissingSeason(t *testing.T) {
 			Season: model.Season{
 				ID:               1,
 				SeriesID:         1,
-				SeasonMetadataID: ptr(int32(999)), // Non-existent metadata ID
+				SeasonMetadataID: ptr.To(int32(999)), // Non-existent metadata ID
 			},
 		}
 
@@ -500,7 +501,7 @@ func TestMediaManager_reconcileMissingSeason(t *testing.T) {
 			Season: model.Season{
 				ID:               1,
 				SeriesID:         1,
-				SeasonMetadataID: ptr(int32(1)),
+				SeasonMetadataID: ptr.To(int32(1)),
 			},
 		}
 
@@ -547,7 +548,7 @@ func TestMediaManager_reconcileMissingSeason(t *testing.T) {
 		seriesID, err := store.CreateSeries(ctx, storage.Series{
 			Series: model.Series{
 				ID:               1,
-				SeriesMetadataID: ptr(int32(seriesMetadataID)),
+				SeriesMetadataID: ptr.To(int32(seriesMetadataID)),
 			},
 		}, storage.SeriesStateMissing)
 		require.NoError(t, err)
@@ -558,7 +559,7 @@ func TestMediaManager_reconcileMissingSeason(t *testing.T) {
 		seasonID, err := store.CreateSeason(ctx, storage.Season{
 			Season: model.Season{
 				SeriesID:         1,
-				SeasonMetadataID: ptr(int32(1)),
+				SeasonMetadataID: ptr.To(int32(1)),
 			},
 		}, storage.SeasonStateMissing)
 		require.NoError(t, err)
@@ -566,7 +567,7 @@ func TestMediaManager_reconcileMissingSeason(t *testing.T) {
 		season, err := store.GetSeason(ctx, table.Season.ID.EQ(sqlite.Int64(seasonID)))
 		require.NoError(t, err)
 		assert.Equal(t, int32(1), season.SeriesID)
-		assert.Equal(t, ptr(int32(1)), season.SeasonMetadataID)
+		assert.Equal(t, ptr.To(int32(1)), season.SeasonMetadataID)
 
 		seasonMetadataID, err := store.CreateSeasonMetadata(ctx, model.SeasonMetadata{
 			SeriesMetadataID: int32(seriesID),
@@ -583,8 +584,8 @@ func TestMediaManager_reconcileMissingSeason(t *testing.T) {
 			Title:            "Hello",
 			Number:           1,
 			SeasonMetadataID: int32(seasonID),
-			AirDate:          ptr(time.Now().Add(time.Hour * -2)),
-			Runtime:          ptr(int32(42)),
+			AirDate:          ptr.To(time.Now().Add(time.Hour * -2)),
+			Runtime:          ptr.To(int32(42)),
 		})
 		require.NoError(t, err)
 
@@ -592,7 +593,7 @@ func TestMediaManager_reconcileMissingSeason(t *testing.T) {
 			Episode: model.Episode{
 				SeasonID:          int32(seasonID),
 				EpisodeNumber:     1,
-				EpisodeMetadataID: ptr(int32(episodeMetadataID1)),
+				EpisodeMetadataID: ptr.To(int32(episodeMetadataID1)),
 			},
 		}, storage.EpisodeStateMissing)
 		require.NoError(t, err)
@@ -602,8 +603,8 @@ func TestMediaManager_reconcileMissingSeason(t *testing.T) {
 			Title:            "There",
 			Number:           2,
 			SeasonMetadataID: int32(seasonID),
-			AirDate:          ptr(time.Now().Add(time.Hour * -2)),
-			Runtime:          ptr(int32(42)),
+			AirDate:          ptr.To(time.Now().Add(time.Hour * -2)),
+			Runtime:          ptr.To(int32(42)),
 		})
 		require.NoError(t, err)
 
@@ -611,17 +612,17 @@ func TestMediaManager_reconcileMissingSeason(t *testing.T) {
 			Episode: model.Episode{
 				SeasonID:          int32(seasonID),
 				EpisodeNumber:     2,
-				EpisodeMetadataID: ptr(int32(episodeMetadataID2)),
+				EpisodeMetadataID: ptr.To(int32(episodeMetadataID2)),
 			},
 		}, storage.EpisodeStateMissing)
 		require.NoError(t, err)
 
 		releases := []*prowlarr.ReleaseResource{
 			{
-				ID:       ptr(int32(1)),
+				ID:       ptr.To(int32(1)),
 				Title:    nullable.NewNullableWithValue("series.S01.1080p.WEB-DL.HEVC.x265"),
 				Size:     sizeGBToBytes(2),
-				Protocol: ptr(prowlarr.DownloadProtocolTorrent),
+				Protocol: ptr.To(prowlarr.DownloadProtocolTorrent),
 			},
 		}
 
@@ -703,7 +704,7 @@ func TestMediaManager_reconcileMissingSeason(t *testing.T) {
 		seriesID, err := store.CreateSeries(ctx, storage.Series{
 			Series: model.Series{
 				ID:               1,
-				SeriesMetadataID: ptr(int32(seriesMetadataID)),
+				SeriesMetadataID: ptr.To(int32(seriesMetadataID)),
 			},
 		}, storage.SeriesStateMissing)
 		require.NoError(t, err)
@@ -714,7 +715,7 @@ func TestMediaManager_reconcileMissingSeason(t *testing.T) {
 		seasonID, err := store.CreateSeason(ctx, storage.Season{
 			Season: model.Season{
 				SeriesID:         1,
-				SeasonMetadataID: ptr(int32(1)),
+				SeasonMetadataID: ptr.To(int32(1)),
 			},
 		}, storage.SeasonStateMissing)
 		require.NoError(t, err)
@@ -722,7 +723,7 @@ func TestMediaManager_reconcileMissingSeason(t *testing.T) {
 		season, err := store.GetSeason(ctx, table.Season.ID.EQ(sqlite.Int64(seasonID)))
 		require.NoError(t, err)
 		assert.Equal(t, int32(1), season.SeriesID)
-		assert.Equal(t, ptr(int32(1)), season.SeasonMetadataID)
+		assert.Equal(t, ptr.To(int32(1)), season.SeasonMetadataID)
 
 		seasonMetadataID, err := store.CreateSeasonMetadata(ctx, model.SeasonMetadata{
 			SeriesMetadataID: int32(seriesID),
@@ -739,8 +740,8 @@ func TestMediaManager_reconcileMissingSeason(t *testing.T) {
 			Title:            "Test",
 			Number:           1,
 			SeasonMetadataID: int32(seasonID),
-			AirDate:          ptr(snapshot.time.Add(time.Hour * -2)),
-			Runtime:          ptr(int32(42)),
+			AirDate:          ptr.To(snapshot.time.Add(time.Hour * -2)),
+			Runtime:          ptr.To(int32(42)),
 		})
 		require.NoError(t, err)
 
@@ -748,7 +749,7 @@ func TestMediaManager_reconcileMissingSeason(t *testing.T) {
 			Episode: model.Episode{
 				SeasonID:          int32(seasonID),
 				EpisodeNumber:     1,
-				EpisodeMetadataID: ptr(int32(episodeMetadataID1)),
+				EpisodeMetadataID: ptr.To(int32(episodeMetadataID1)),
 			},
 		}, storage.EpisodeStateMissing)
 		require.NoError(t, err)
@@ -758,8 +759,8 @@ func TestMediaManager_reconcileMissingSeason(t *testing.T) {
 			Title:            "Testing",
 			Number:           2,
 			SeasonMetadataID: int32(seasonID),
-			AirDate:          ptr(snapshot.time.Add(time.Hour * -2)),
-			Runtime:          ptr(int32(42)),
+			AirDate:          ptr.To(snapshot.time.Add(time.Hour * -2)),
+			Runtime:          ptr.To(int32(42)),
 		})
 		require.NoError(t, err)
 
@@ -767,23 +768,23 @@ func TestMediaManager_reconcileMissingSeason(t *testing.T) {
 			Episode: model.Episode{
 				SeasonID:          int32(seasonID),
 				EpisodeNumber:     2,
-				EpisodeMetadataID: ptr(int32(episodeMetadataID2)),
+				EpisodeMetadataID: ptr.To(int32(episodeMetadataID2)),
 			},
 		}, storage.EpisodeStateMissing)
 		require.NoError(t, err)
 
 		releases := []*prowlarr.ReleaseResource{
 			{
-				ID:       ptr(int32(1)),
+				ID:       ptr.To(int32(1)),
 				Title:    nullable.NewNullableWithValue("Series.S01E01.1080p.WEB-DL.AAC2.0.x264-GROUP"),
 				Size:     sizeGBToBytes(2),
-				Protocol: ptr(prowlarr.DownloadProtocolTorrent),
+				Protocol: ptr.To(prowlarr.DownloadProtocolTorrent),
 			},
 			{
-				ID:       ptr(int32(2)),
+				ID:       ptr.To(int32(2)),
 				Title:    nullable.NewNullableWithValue("Series.S01E02.1080p.WEB-DL.AAC2.0.x264-GROUP"),
 				Size:     sizeGBToBytes(2),
-				Protocol: ptr(prowlarr.DownloadProtocolTorrent),
+				Protocol: ptr.To(prowlarr.DownloadProtocolTorrent),
 			},
 		}
 
@@ -828,9 +829,9 @@ func Test_getSeasonRuntime(t *testing.T) {
 		{
 			name: "all episodes have runtime",
 			episodeMetadata: []*model.EpisodeMetadata{
-				{Runtime: ptr(int32(30))},
-				{Runtime: ptr(int32(30))},
-				{Runtime: ptr(int32(30))},
+				{Runtime: ptr.To(int32(30))},
+				{Runtime: ptr.To(int32(30))},
+				{Runtime: ptr.To(int32(30))},
 			},
 			totalSeasonEpisodes: 3,
 			want:                90,
@@ -838,9 +839,9 @@ func Test_getSeasonRuntime(t *testing.T) {
 		{
 			name: "some episodes missing runtime",
 			episodeMetadata: []*model.EpisodeMetadata{
-				{Runtime: ptr(int32(30))},
+				{Runtime: ptr.To(int32(30))},
 				{Runtime: nil},
-				{Runtime: ptr(int32(30))},
+				{Runtime: ptr.To(int32(30))},
 			},
 			totalSeasonEpisodes: 3,
 			want:                90, // Average of 30 mins applied to missing episode
@@ -864,8 +865,8 @@ func Test_getSeasonRuntime(t *testing.T) {
 		{
 			name: "more total episodes than provided",
 			episodeMetadata: []*model.EpisodeMetadata{
-				{Runtime: ptr(int32(30))},
-				{Runtime: ptr(int32(30))},
+				{Runtime: ptr.To(int32(30))},
+				{Runtime: ptr.To(int32(30))},
 			},
 			totalSeasonEpisodes: 4,
 			want:                120, // (30+30) + (30*2) for missing episodes
@@ -971,7 +972,7 @@ func TestMediaManager_ReconcileMissingSeries(t *testing.T) {
 		seriesID, err := store.CreateSeries(ctx, storage.Series{
 			Series: model.Series{
 				ID:               1,
-				SeriesMetadataID: ptr(int32(seriesMetadataID)),
+				SeriesMetadataID: ptr.To(int32(seriesMetadataID)),
 				Monitored:        1,
 				QualityProfileID: 4,
 			},
@@ -984,7 +985,7 @@ func TestMediaManager_ReconcileMissingSeries(t *testing.T) {
 		seasonID, err := store.CreateSeason(ctx, storage.Season{
 			Season: model.Season{
 				SeriesID:         1,
-				SeasonMetadataID: ptr(int32(1)),
+				SeasonMetadataID: ptr.To(int32(1)),
 				Monitored:        1,
 			},
 		}, storage.SeasonStateMissing)
@@ -993,7 +994,7 @@ func TestMediaManager_ReconcileMissingSeries(t *testing.T) {
 		season, err := store.GetSeason(ctx, table.Season.ID.EQ(sqlite.Int64(seasonID)))
 		require.NoError(t, err)
 		assert.Equal(t, int32(1), season.SeriesID)
-		assert.Equal(t, ptr(int32(1)), season.SeasonMetadataID)
+		assert.Equal(t, ptr.To(int32(1)), season.SeasonMetadataID)
 
 		_, err = store.CreateSeasonMetadata(ctx, model.SeasonMetadata{
 			SeriesMetadataID: int32(seriesID),
@@ -1007,8 +1008,8 @@ func TestMediaManager_ReconcileMissingSeries(t *testing.T) {
 			Title:            "Hello",
 			Number:           1,
 			SeasonMetadataID: int32(seasonID),
-			AirDate:          ptr(snapshot.time.Add(time.Hour * -2)),
-			Runtime:          ptr(int32(42)),
+			AirDate:          ptr.To(snapshot.time.Add(time.Hour * -2)),
+			Runtime:          ptr.To(int32(42)),
 		})
 		require.NoError(t, err)
 
@@ -1016,7 +1017,7 @@ func TestMediaManager_ReconcileMissingSeries(t *testing.T) {
 			Episode: model.Episode{
 				SeasonID:          int32(seasonID),
 				EpisodeNumber:     1,
-				EpisodeMetadataID: ptr(int32(episodeMetadataID1)),
+				EpisodeMetadataID: ptr.To(int32(episodeMetadataID1)),
 				Monitored:         1,
 			},
 		}, storage.EpisodeStateMissing)
@@ -1027,8 +1028,8 @@ func TestMediaManager_ReconcileMissingSeries(t *testing.T) {
 			Title:            "There",
 			Number:           2,
 			SeasonMetadataID: int32(seasonID),
-			AirDate:          ptr(snapshot.time.Add(time.Hour * -2)),
-			Runtime:          ptr(int32(42)),
+			AirDate:          ptr.To(snapshot.time.Add(time.Hour * -2)),
+			Runtime:          ptr.To(int32(42)),
 		})
 		require.NoError(t, err)
 
@@ -1036,23 +1037,23 @@ func TestMediaManager_ReconcileMissingSeries(t *testing.T) {
 			Episode: model.Episode{
 				SeasonID:          int32(seasonID),
 				EpisodeNumber:     2,
-				EpisodeMetadataID: ptr(int32(episodeMetadataID2)),
+				EpisodeMetadataID: ptr.To(int32(episodeMetadataID2)),
 			},
 		}, storage.EpisodeStateMissing)
 		require.NoError(t, err)
 
 		releases := []*prowlarr.ReleaseResource{
 			{
-				ID:       ptr(int32(1)),
+				ID:       ptr.To(int32(1)),
 				Title:    nullable.NewNullableWithValue("Series.S01E01.1080p.WEB-DL.AAC2.0.x264-GROUP"),
 				Size:     sizeGBToBytes(2),
-				Protocol: ptr(prowlarr.DownloadProtocolTorrent),
+				Protocol: ptr.To(prowlarr.DownloadProtocolTorrent),
 			},
 			{
-				ID:       ptr(int32(2)),
+				ID:       ptr.To(int32(2)),
 				Title:    nullable.NewNullableWithValue("Series.S01E02.1080p.WEB-DL.AAC2.0.x264-GROUP"),
 				Size:     sizeGBToBytes(2),
-				Protocol: ptr(prowlarr.DownloadProtocolTorrent),
+				Protocol: ptr.To(prowlarr.DownloadProtocolTorrent),
 			},
 		}
 
@@ -1074,7 +1075,7 @@ func TestMediaManager_ReconcileMissingSeries(t *testing.T) {
 
 		// Create indexers linked to the source
 		_, err = store.CreateIndexer(ctx, model.Indexer{
-			IndexerSourceID: ptr(int32(sourceID)),
+			IndexerSourceID: ptr.To(int32(sourceID)),
 			Name:            "test",
 			Priority:        1,
 			URI:             "http://test/indexer1",
@@ -1208,7 +1209,7 @@ func TestMediaManager_ReconcileContinuingSeries(t *testing.T) {
 
 		seriesID, err := store.CreateSeries(ctx, storage.Series{
 			Series: model.Series{
-				SeriesMetadataID: ptr(int32(seriesMetadataID)),
+				SeriesMetadataID: ptr.To(int32(seriesMetadataID)),
 				Monitored:        1,
 				QualityProfileID: 4, // Episode profile from defaults.sql
 			},
@@ -1229,7 +1230,7 @@ func TestMediaManager_ReconcileContinuingSeries(t *testing.T) {
 		seasonID, err := store.CreateSeason(ctx, storage.Season{
 			Season: model.Season{
 				SeriesID:         int32(seriesID),
-				SeasonMetadataID: ptr(int32(seasonMetadataID)),
+				SeasonMetadataID: ptr.To(int32(seasonMetadataID)),
 				Monitored:        1,
 			},
 		}, storage.SeasonStateMissing)
@@ -1244,8 +1245,8 @@ func TestMediaManager_ReconcileContinuingSeries(t *testing.T) {
 			Title:            "New Episode",
 			Number:           3,
 			SeasonMetadataID: int32(seasonID),
-			AirDate:          ptr(snapshot.time.Add(time.Hour * -2)),
-			Runtime:          ptr(int32(42)),
+			AirDate:          ptr.To(snapshot.time.Add(time.Hour * -2)),
+			Runtime:          ptr.To(int32(42)),
 		})
 		require.NoError(t, err)
 
@@ -1253,7 +1254,7 @@ func TestMediaManager_ReconcileContinuingSeries(t *testing.T) {
 			Episode: model.Episode{
 				SeasonID:          int32(seasonID),
 				EpisodeNumber:     3,
-				EpisodeMetadataID: ptr(int32(episodeMetadataID)),
+				EpisodeMetadataID: ptr.To(int32(episodeMetadataID)),
 				Monitored:         1,
 			},
 		}, storage.EpisodeStateMissing)
@@ -1261,10 +1262,10 @@ func TestMediaManager_ReconcileContinuingSeries(t *testing.T) {
 
 		releases := []*prowlarr.ReleaseResource{
 			{
-				ID:       ptr(int32(1)),
+				ID:       ptr.To(int32(1)),
 				Title:    nullable.NewNullableWithValue("Continuing.Series.S01E03.1080p.WEB-DL.AAC2.0.x264-GROUP"),
 				Size:     sizeGBToBytes(2),
-				Protocol: ptr(prowlarr.DownloadProtocolTorrent),
+				Protocol: ptr.To(prowlarr.DownloadProtocolTorrent),
 			},
 		}
 
@@ -1314,7 +1315,7 @@ func TestMediaManager_ReconcileContinuingSeries(t *testing.T) {
 
 		seriesID, err := store.CreateSeries(ctx, storage.Series{
 			Series: model.Series{
-				SeriesMetadataID: ptr(int32(seriesMetadataID)),
+				SeriesMetadataID: ptr.To(int32(seriesMetadataID)),
 				Monitored:        1,
 				QualityProfileID: 4, // Episode profile from defaults.sql
 			},
@@ -1340,7 +1341,7 @@ func TestMediaManager_ReconcileContinuingSeries(t *testing.T) {
 		seasonID, err := store.CreateSeason(ctx, storage.Season{
 			Season: model.Season{
 				SeriesID:         int32(seriesID),
-				SeasonMetadataID: ptr(int32(seasonMetadataID)),
+				SeasonMetadataID: ptr.To(int32(seasonMetadataID)),
 				Monitored:        1,
 			},
 		}, storage.SeasonStateMissing)
@@ -1374,7 +1375,7 @@ func TestMediaManager_ReconcileContinuingSeries(t *testing.T) {
 				Episode: model.Episode{
 					SeasonID:          int32(seasonID),
 					EpisodeNumber:     int32(i),
-					EpisodeMetadataID: ptr(int32(episodeMetadataID)),
+					EpisodeMetadataID: ptr.To(int32(episodeMetadataID)),
 					Monitored:         1,
 				},
 			}, storage.EpisodeStateMissing)
@@ -1767,8 +1768,8 @@ func TestMediaManager_ReconcileDiscoveredEpisodes(t *testing.T) {
 		// Create a series with path and linked metadata
 		seriesID, err := store.CreateSeries(ctx, storage.Series{
 			Series: model.Series{
-				SeriesMetadataID: ptr(int32(seriesMetadataID)),
-				Path:             ptr("test-series"),
+				SeriesMetadataID: ptr.To(int32(seriesMetadataID)),
+				Path:             ptr.To("test-series"),
 				Monitored:        1,
 			},
 		}, storage.SeriesStateMissing)
@@ -1787,7 +1788,7 @@ func TestMediaManager_ReconcileDiscoveredEpisodes(t *testing.T) {
 			Season: model.Season{
 				SeriesID:         int32(seriesID),
 				SeasonNumber:     1,
-				SeasonMetadataID: ptr(int32(seasonMetadataID)),
+				SeasonMetadataID: ptr.To(int32(seasonMetadataID)),
 				Monitored:        1,
 			},
 		}, storage.SeasonStateMissing)
@@ -1806,7 +1807,7 @@ func TestMediaManager_ReconcileDiscoveredEpisodes(t *testing.T) {
 			Episode: model.Episode{
 				SeasonID:          int32(seasonID),
 				EpisodeNumber:     1,
-				EpisodeMetadataID: ptr(int32(episodeMetadataID)),
+				EpisodeMetadataID: ptr.To(int32(episodeMetadataID)),
 				Monitored:         1,
 			},
 		}, storage.EpisodeStateDiscovered)
@@ -1902,9 +1903,9 @@ func TestMediaManager_matchEpisodeFileToEpisode(t *testing.T) {
 
 		// Create episodes
 		episodes := []*storage.Episode{
-			{Episode: model.Episode{ID: 1, EpisodeMetadataID: ptr(int32(episodeMetadataID1))}},
-			{Episode: model.Episode{ID: 2, EpisodeMetadataID: ptr(int32(episodeMetadataID2))}},
-			{Episode: model.Episode{ID: 3, EpisodeMetadataID: ptr(int32(episodeMetadataID3))}},
+			{Episode: model.Episode{ID: 1, EpisodeMetadataID: ptr.To(int32(episodeMetadataID1))}},
+			{Episode: model.Episode{ID: 2, EpisodeMetadataID: ptr.To(int32(episodeMetadataID2))}},
+			{Episode: model.Episode{ID: 3, EpisodeMetadataID: ptr.To(int32(episodeMetadataID3))}},
 		}
 
 		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
@@ -1926,8 +1927,8 @@ func TestMediaManager_matchEpisodeFileToEpisode(t *testing.T) {
 		require.NoError(t, err)
 
 		episodes := []*storage.Episode{
-			{Episode: model.Episode{ID: 4, EpisodeMetadataID: ptr(int32(episodeMetadataID4))}},
-			{Episode: model.Episode{ID: 5, EpisodeMetadataID: ptr(int32(episodeMetadataID5))}},
+			{Episode: model.Episode{ID: 4, EpisodeMetadataID: ptr.To(int32(episodeMetadataID4))}},
+			{Episode: model.Episode{ID: 5, EpisodeMetadataID: ptr.To(int32(episodeMetadataID5))}},
 		}
 
 		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
@@ -1943,7 +1944,7 @@ func TestMediaManager_matchEpisodeFileToEpisode(t *testing.T) {
 		episodeMetadataID6, err := store.CreateEpisodeMetadata(ctx, model.EpisodeMetadata{TmdbID: 6, Title: "Episode 1", Number: 1, SeasonMetadataID: 1})
 		require.NoError(t, err)
 
-		episodes := []*storage.Episode{{Episode: model.Episode{ID: 6, EpisodeMetadataID: ptr(int32(episodeMetadataID6))}}}
+		episodes := []*storage.Episode{{Episode: model.Episode{ID: 6, EpisodeMetadataID: ptr.To(int32(episodeMetadataID6))}}}
 
 		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
 		result := m.matchEpisodeFileToEpisode(ctx, "/downloads/Series.Name.Some.Random.File.mkv", episodes)
@@ -1960,8 +1961,8 @@ func TestMediaManager_matchEpisodeFileToEpisode(t *testing.T) {
 		require.NoError(t, err)
 
 		episodes := []*storage.Episode{
-			{Episode: model.Episode{ID: 7, EpisodeMetadataID: ptr(int32(episodeMetadataID7))}},
-			{Episode: model.Episode{ID: 8, EpisodeMetadataID: ptr(int32(episodeMetadataID8))}},
+			{Episode: model.Episode{ID: 7, EpisodeMetadataID: ptr.To(int32(episodeMetadataID7))}},
+			{Episode: model.Episode{ID: 8, EpisodeMetadataID: ptr.To(int32(episodeMetadataID8))}},
 		}
 
 		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
@@ -1984,65 +1985,65 @@ func Test_findMatchingSeriesResult(t *testing.T) {
 			name: "no year - returns first result",
 			year: nil,
 			results: []*SearchMediaResult{
-				{ID: ptr(1), Name: ptr("Battlestar Galactica"), FirstAirDate: &air2004},
-				{ID: ptr(2), Name: ptr("Battlestar Galactica"), FirstAirDate: &air2024},
+				{ID: ptr.To(1), Name: ptr.To("Battlestar Galactica"), FirstAirDate: &air2004},
+				{ID: ptr.To(2), Name: ptr.To("Battlestar Galactica"), FirstAirDate: &air2024},
 			},
-			expected: &SearchMediaResult{ID: ptr(1), Name: ptr("Battlestar Galactica")},
+			expected: &SearchMediaResult{ID: ptr.To(1), Name: ptr.To("Battlestar Galactica")},
 		},
 		{
 			name: "year matches first result",
-			year: ptr(int32(2004)),
+			year: ptr.To(int32(2004)),
 			results: []*SearchMediaResult{
-				{ID: ptr(1), Name: ptr("Battlestar Galactica"), FirstAirDate: &air2004},
-				{ID: ptr(2), Name: ptr("Battlestar Galactica"), FirstAirDate: &air2024},
+				{ID: ptr.To(1), Name: ptr.To("Battlestar Galactica"), FirstAirDate: &air2004},
+				{ID: ptr.To(2), Name: ptr.To("Battlestar Galactica"), FirstAirDate: &air2024},
 			},
-			expected: &SearchMediaResult{ID: ptr(1), Name: ptr("Battlestar Galactica")},
+			expected: &SearchMediaResult{ID: ptr.To(1), Name: ptr.To("Battlestar Galactica")},
 		},
 		{
 			name: "year matches second result",
-			year: ptr(int32(2024)),
+			year: ptr.To(int32(2024)),
 			results: []*SearchMediaResult{
-				{ID: ptr(1), Name: ptr("Battlestar Galactica"), FirstAirDate: &air2004},
-				{ID: ptr(2), Name: ptr("Battlestar Galactica"), FirstAirDate: &air2024},
+				{ID: ptr.To(1), Name: ptr.To("Battlestar Galactica"), FirstAirDate: &air2004},
+				{ID: ptr.To(2), Name: ptr.To("Battlestar Galactica"), FirstAirDate: &air2024},
 			},
-			expected: &SearchMediaResult{ID: ptr(2), Name: ptr("Battlestar Galactica")},
+			expected: &SearchMediaResult{ID: ptr.To(2), Name: ptr.To("Battlestar Galactica")},
 		},
 		{
 			name: "year not found in results",
-			year: ptr(int32(2025)),
+			year: ptr.To(int32(2025)),
 			results: []*SearchMediaResult{
-				{ID: ptr(1), Name: ptr("Battlestar Galactica"), FirstAirDate: &air2004},
-				{ID: ptr(2), Name: ptr("Battlestar Galactica"), FirstAirDate: &air2024},
+				{ID: ptr.To(1), Name: ptr.To("Battlestar Galactica"), FirstAirDate: &air2004},
+				{ID: ptr.To(2), Name: ptr.To("Battlestar Galactica"), FirstAirDate: &air2024},
 			},
 			expected: nil,
 		},
 		{
 			name: "result with nil air date",
-			year: ptr(int32(2024)),
+			year: ptr.To(int32(2024)),
 			results: []*SearchMediaResult{
-				{ID: ptr(1), Name: ptr("Show"), FirstAirDate: nil},
-				{ID: ptr(2), Name: ptr("Show"), FirstAirDate: &air2024},
+				{ID: ptr.To(1), Name: ptr.To("Show"), FirstAirDate: nil},
+				{ID: ptr.To(2), Name: ptr.To("Show"), FirstAirDate: &air2024},
 			},
-			expected: &SearchMediaResult{ID: ptr(2), Name: ptr("Show")},
+			expected: &SearchMediaResult{ID: ptr.To(2), Name: ptr.To("Show")},
 		},
 		{
 			name: "all results have nil air dates",
-			year: ptr(int32(2024)),
+			year: ptr.To(int32(2024)),
 			results: []*SearchMediaResult{
-				{ID: ptr(1), Name: ptr("Show"), FirstAirDate: nil},
-				{ID: ptr(2), Name: ptr("Show"), FirstAirDate: nil},
+				{ID: ptr.To(1), Name: ptr.To("Show"), FirstAirDate: nil},
+				{ID: ptr.To(2), Name: ptr.To("Show"), FirstAirDate: nil},
 			},
 			expected: nil,
 		},
 		{
 			name:     "empty results",
-			year:     ptr(int32(2024)),
+			year:     ptr.To(int32(2024)),
 			results:  []*SearchMediaResult{},
 			expected: nil,
 		},
 		{
 			name:     "nil results",
-			year:     ptr(int32(2024)),
+			year:     ptr.To(int32(2024)),
 			results:  nil,
 			expected: nil,
 		},

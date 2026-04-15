@@ -24,6 +24,7 @@ import (
 	mockLibrary "github.com/kasuboski/mediaz/pkg/library/mocks"
 	"github.com/kasuboski/mediaz/pkg/pagination"
 	"github.com/kasuboski/mediaz/pkg/prowlarr"
+	"github.com/kasuboski/mediaz/pkg/ptr"
 	"github.com/kasuboski/mediaz/pkg/storage"
 	storageMocks "github.com/kasuboski/mediaz/pkg/storage/mocks"
 	mediaSqlite "github.com/kasuboski/mediaz/pkg/storage/sqlite"
@@ -114,7 +115,7 @@ func TestAddMovietoLibrary(t *testing.T) {
 			Monitored:        1,
 			QualityProfileID: 1,
 			MovieMetadataID:  &movieMetadataID,
-			Path:             ptr("test movie"),
+			Path:             ptr.To("test movie"),
 		},
 		State: storage.MovieStateMissing,
 	}, movie)
@@ -259,7 +260,7 @@ func TestListShowsInLibrary(t *testing.T) {
 			TmdbID:         321,
 			Title:          "Test Series",
 			Status:         "Continuing",
-			PosterPath:     ptr("poster.jpg"),
+			PosterPath:     ptr.To("poster.jpg"),
 			ExternalIds:    nil,
 			WatchProviders: nil,
 		}
@@ -412,8 +413,8 @@ func TestIndexMovieLibrary(t *testing.T) {
 
 		_, err := store.CreateMovieFile(ctx, model.MovieFile{
 			Size:             1024,
-			RelativePath:     ptr("Movie 1/movie1.mp4"),
-			OriginalFilePath: ptr("/movies/Movie 1/movie1.mp4"),
+			RelativePath:     ptr.To("Movie 1/movie1.mp4"),
+			OriginalFilePath: ptr.To("/movies/Movie 1/movie1.mp4"),
 		})
 		require.NoError(t, err)
 
@@ -450,8 +451,8 @@ func TestIndexMovieLibrary(t *testing.T) {
 
 		_, err := store.CreateMovieFile(ctx, model.MovieFile{
 			Size:             1024,
-			RelativePath:     ptr("Movie 1/movie1.mp4"),
-			OriginalFilePath: ptr("/movies/Movie 1/movie1.mp4"),
+			RelativePath:     ptr.To("Movie 1/movie1.mp4"),
+			OriginalFilePath: ptr.To("/movies/Movie 1/movie1.mp4"),
 		})
 		require.NoError(t, err)
 
@@ -506,8 +507,8 @@ func TestIndexMovieLibrary(t *testing.T) {
 
 		_, err := store.CreateMovieFile(ctx, model.MovieFile{
 			Size:             1024,
-			RelativePath:     ptr("Movie 1/MOVIE1.MP4"),
-			OriginalFilePath: ptr("/movies/Movie 1/MOVIE1.MP4"),
+			RelativePath:     ptr.To("Movie 1/MOVIE1.MP4"),
+			OriginalFilePath: ptr.To("/movies/Movie 1/MOVIE1.MP4"),
 		})
 		require.NoError(t, err)
 
@@ -576,7 +577,7 @@ func TestMovieRejectRelease(t *testing.T) {
 		rejectFunc := RejectMovieReleaseFunc(ctx, params, profile, protocolsAvailable)
 
 		// Test case where the release protocol is not available
-		r2 := &prowlarr.ReleaseResource{Protocol: ptr(prowlarr.DownloadProtocolUsenet), Size: ptr(int64(500))}
+		r2 := &prowlarr.ReleaseResource{Protocol: ptr.To(prowlarr.DownloadProtocolUsenet), Size: ptr.To(int64(500))}
 		if !rejectFunc(r2) {
 			t.Errorf("Expected rejection for protocol 'usenet' since it's unavailable")
 		}
@@ -614,8 +615,8 @@ func TestMovieRejectRelease(t *testing.T) {
 		for _, tt := range tests {
 			r := &prowlarr.ReleaseResource{
 				Title:    nullable.NewNullableWithValue(tt.title),
-				Protocol: ptr(prowlarr.DownloadProtocolTorrent),
-				Size:     ptr(int64(500 << 20)),
+				Protocol: ptr.To(prowlarr.DownloadProtocolTorrent),
+				Size:     ptr.To(int64(500 << 20)),
 			}
 			got := rejectFunc(r)
 			if got != !tt.shouldMatch {
@@ -701,16 +702,16 @@ func TestGetMovieDetailByTMDBID(t *testing.T) {
 			ID:               1,
 			TmdbID:           123,
 			Title:            "Test Movie",
-			OriginalTitle:    ptr("Original Test Movie"),
-			Overview:         ptr("Test movie overview"),
+			OriginalTitle:    ptr.To("Original Test Movie"),
+			Overview:         ptr.To("Test movie overview"),
 			Images:           "poster.jpg",
 			Runtime:          120,
-			Genres:           ptr("Action, Drama"),
-			Studio:           ptr("Test Studio"),
-			Website:          ptr("https://test.com"),
-			CollectionTmdbID: ptr(int32(456)),
-			CollectionTitle:  ptr("Test Collection"),
-			Popularity:       ptr(8.5),
+			Genres:           ptr.To("Action, Drama"),
+			Studio:           ptr.To("Test Studio"),
+			Website:          ptr.To("https://test.com"),
+			CollectionTmdbID: ptr.To(int32(456)),
+			CollectionTitle:  ptr.To("Test Collection"),
+			Popularity:       ptr.To(8.5),
 			Year:             &year,
 			ReleaseDate:      &releaseDate,
 		}
@@ -723,19 +724,19 @@ func TestGetMovieDetailByTMDBID(t *testing.T) {
 		require.NotNil(t, result)
 
 		assert.Equal(t, int32(123), result.TMDBID)
-		assert.Equal(t, ptr("Original Test Movie"), result.OriginalTitle)
+		assert.Equal(t, ptr.To("Original Test Movie"), result.OriginalTitle)
 		assert.Equal(t, "Test Movie", result.Title)
-		assert.Equal(t, ptr("Test movie overview"), result.Overview)
+		assert.Equal(t, ptr.To("Test movie overview"), result.Overview)
 		assert.Equal(t, "poster.jpg", result.PosterPath)
-		assert.Equal(t, ptr(int32(120)), result.Runtime)
-		assert.Equal(t, ptr("Action, Drama"), result.Genres)
-		assert.Equal(t, ptr("Test Studio"), result.Studio)
-		assert.Equal(t, ptr("https://test.com"), result.Website)
-		assert.Equal(t, ptr(int32(456)), result.CollectionTmdbID)
-		assert.Equal(t, ptr("Test Collection"), result.CollectionTitle)
-		assert.Equal(t, ptr(8.5), result.Popularity)
+		assert.Equal(t, ptr.To(int32(120)), result.Runtime)
+		assert.Equal(t, ptr.To("Action, Drama"), result.Genres)
+		assert.Equal(t, ptr.To("Test Studio"), result.Studio)
+		assert.Equal(t, ptr.To("https://test.com"), result.Website)
+		assert.Equal(t, ptr.To(int32(456)), result.CollectionTmdbID)
+		assert.Equal(t, ptr.To("Test Collection"), result.CollectionTitle)
+		assert.Equal(t, ptr.To(8.5), result.Popularity)
 		assert.Equal(t, &year, result.Year)
-		assert.Equal(t, ptr("2023-01-15"), result.ReleaseDate)
+		assert.Equal(t, ptr.To("2023-01-15"), result.ReleaseDate)
 		assert.Equal(t, "Not In Library", result.LibraryStatus)
 		assert.Nil(t, result.Path)
 		assert.Nil(t, result.QualityProfileID)
@@ -760,7 +761,7 @@ func TestGetMovieDetailByTMDBID(t *testing.T) {
 		movie := &storage.Movie{
 			Movie: model.Movie{
 				ID:               1,
-				MovieMetadataID:  ptr(int32(1)),
+				MovieMetadataID:  ptr.To(int32(1)),
 				Path:             &path,
 				QualityProfileID: qualityProfileID,
 				Monitored:        1,
@@ -826,7 +827,7 @@ func TestGetMovieDetailByTMDBID(t *testing.T) {
 		movie := &storage.Movie{
 			Movie: model.Movie{
 				ID:               1,
-				MovieMetadataID:  ptr(int32(1)),
+				MovieMetadataID:  ptr.To(int32(1)),
 				QualityProfileID: 1,
 				Monitored:        0, // Unmonitored
 			},
@@ -900,7 +901,7 @@ func TestBuildTVDetailResult(t *testing.T) {
 			TmdbID:         123,
 			Title:          "Test Series",
 			Status:         "Continuing",
-			Overview:       ptr("Test series overview"),
+			Overview:       ptr.To("Test series overview"),
 			FirstAirDate:   &firstAirDate,
 			LastAirDate:    &lastAirDate,
 			SeasonCount:    2,
@@ -931,7 +932,7 @@ func TestBuildTVDetailResult(t *testing.T) {
 		series := &storage.Series{
 			Series: model.Series{
 				ID:               1,
-				SeriesMetadataID: ptr(int32(1)),
+				SeriesMetadataID: ptr.To(int32(1)),
 				Path:             &path,
 				QualityProfileID: qualityProfileID,
 				Monitored:        1,
@@ -945,16 +946,16 @@ func TestBuildTVDetailResult(t *testing.T) {
 		assert.Equal(t, "Test Series", result.Title)
 		assert.Equal(t, "Test series overview", result.Overview)
 		assert.Equal(t, "poster.jpg", result.PosterPath)
-		assert.Equal(t, ptr("backdrop.jpg"), result.BackdropPath)
-		assert.Equal(t, ptr("2023-01-15"), result.FirstAirDate)
-		assert.Equal(t, ptr("2023-12-15"), result.LastAirDate)
+		assert.Equal(t, ptr.To("backdrop.jpg"), result.BackdropPath)
+		assert.Equal(t, ptr.To("2023-01-15"), result.FirstAirDate)
+		assert.Equal(t, ptr.To("2023-12-15"), result.LastAirDate)
 		assert.Equal(t, int32(2), result.SeasonCount)
 		assert.Equal(t, int32(20), result.EpisodeCount)
 		require.Len(t, result.Networks, 2)
 		assert.Equal(t, "HBO", result.Networks[0].Name)
 		assert.Equal(t, "Netflix", result.Networks[1].Name)
 		assert.Equal(t, []string{"Drama", "Thriller"}, result.Genres)
-		assert.Equal(t, ptr(true), result.Adult)
+		assert.Equal(t, ptr.To(true), result.Adult)
 		pop := float64(8.5)
 		assert.Equal(t, &pop, result.Popularity)
 		assert.Equal(t, string(storage.SeriesStateDiscovered), result.LibraryStatus)
@@ -1050,7 +1051,7 @@ func TestBuildTVDetailResult(t *testing.T) {
 		series := &storage.Series{
 			Series: model.Series{
 				ID:               1,
-				SeriesMetadataID: ptr(int32(1)),
+				SeriesMetadataID: ptr.To(int32(1)),
 				QualityProfileID: 1,
 				Monitored:        0, // Unmonitored
 			},
@@ -1082,7 +1083,7 @@ func TestGetTVDetailByTMDBID(t *testing.T) {
 			ID:             1,
 			TmdbID:         123,
 			Title:          "Test Series",
-			Overview:       ptr("Test series overview"),
+			Overview:       ptr.To("Test series overview"),
 			FirstAirDate:   &firstAirDate,
 			SeasonCount:    2,
 			EpisodeCount:   20,
@@ -1115,8 +1116,8 @@ func TestGetTVDetailByTMDBID(t *testing.T) {
 		assert.Equal(t, "Test Series", result.Title)
 		assert.Equal(t, "Test series overview", result.Overview)
 		assert.Equal(t, "poster.jpg", result.PosterPath)
-		assert.Equal(t, ptr("backdrop.jpg"), result.BackdropPath)
-		assert.Equal(t, ptr("2023-01-15"), result.FirstAirDate)
+		assert.Equal(t, ptr.To("backdrop.jpg"), result.BackdropPath)
+		assert.Equal(t, ptr.To("2023-01-15"), result.FirstAirDate)
 		assert.Equal(t, int32(2), result.SeasonCount)
 		assert.Equal(t, int32(20), result.EpisodeCount)
 		require.Len(t, result.Networks, 1)
@@ -1128,14 +1129,14 @@ func TestGetTVDetailByTMDBID(t *testing.T) {
 		assert.Nil(t, result.Monitored)
 		// Check external IDs from stored data
 		require.NotNil(t, result.ExternalIDs)
-		assert.Equal(t, ptr("tt7654321"), result.ExternalIDs.ImdbID)
+		assert.Equal(t, ptr.To("tt7654321"), result.ExternalIDs.ImdbID)
 		tvdbID := 54321
 		assert.Equal(t, &tvdbID, result.ExternalIDs.TvdbID)
 		// Check watch providers from stored data
 		require.Len(t, result.WatchProviders, 1)
 		assert.Equal(t, 8, result.WatchProviders[0].ProviderID)
 		assert.Equal(t, "Netflix", result.WatchProviders[0].Name)
-		assert.Equal(t, ptr("/net.png"), result.WatchProviders[0].LogoPath)
+		assert.Equal(t, ptr.To("/net.png"), result.WatchProviders[0].LogoPath)
 	})
 
 	t.Run("success - TV show in library", func(t *testing.T) {
@@ -1165,7 +1166,7 @@ func TestGetTVDetailByTMDBID(t *testing.T) {
 		series := &storage.Series{
 			Series: model.Series{
 				ID:               1,
-				SeriesMetadataID: ptr(int32(1)),
+				SeriesMetadataID: ptr.To(int32(1)),
 				Path:             &path,
 				QualityProfileID: qualityProfileID,
 				Monitored:        1,
@@ -1445,10 +1446,10 @@ func TestMediaManager_AddSeriesToLibrary(t *testing.T) {
 		seriesID, err := store.CreateSeries(ctx, storage.Series{
 			Series: model.Series{
 				ID:               1,
-				SeriesMetadataID: ptr(int32(metadataID)),
+				SeriesMetadataID: ptr.To(int32(metadataID)),
 				Monitored:        1,
 				QualityProfileID: 1,
-				Added:            ptr(time.Now()),
+				Added:            ptr.To(time.Now()),
 			},
 		}, storage.SeriesStateMissing)
 		require.NoError(t, err)
@@ -1467,7 +1468,7 @@ func TestMediaManager_AddSeriesToLibrary(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Equal(t, series.ID, int32(seriesID))
-		assert.Equal(t, series.SeriesMetadataID, ptr(int32(metadataID)))
+		assert.Equal(t, series.SeriesMetadataID, ptr.To(int32(metadataID)))
 		assert.Equal(t, series.Monitored, int32(1))
 		assert.Equal(t, series.QualityProfileID, int32(1))
 		assert.Equal(t, storage.SeriesStateMissing, series.State)
@@ -1491,7 +1492,7 @@ func TestMediaManager_AddSeriesToLibrary(t *testing.T) {
 			SeasonCount:    1,
 			EpisodeCount:   1,
 			Status:         "Continuing",
-			FirstAirDate:   ptr(time.Now().Add(time.Hour * 24 * 7)),
+			FirstAirDate:   ptr.To(time.Now().Add(time.Hour * 24 * 7)),
 			ExternalIds:    nil, // Optional field
 			WatchProviders: nil, // Optional field
 		})
@@ -1511,7 +1512,7 @@ func TestMediaManager_AddSeriesToLibrary(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Equal(t, series.ID, int32(1))
-		assert.Equal(t, series.SeriesMetadataID, ptr(int32(metadataID)))
+		assert.Equal(t, series.SeriesMetadataID, ptr.To(int32(metadataID)))
 		assert.Equal(t, series.Monitored, int32(1))
 		assert.Equal(t, series.QualityProfileID, int32(1))
 		assert.Equal(t, storage.SeriesStateUnreleased, series.State)
@@ -1571,7 +1572,7 @@ func TestMediaManager_AddSeriesToLibrary(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Equal(t, int32(1), series.ID)
-		assert.Equal(t, ptr(int32(1)), series.SeriesMetadataID)
+		assert.Equal(t, ptr.To(int32(1)), series.SeriesMetadataID)
 		assert.Equal(t, int32(1), series.Monitored)
 		assert.Equal(t, int32(1), series.QualityProfileID)
 		assert.Equal(t, storage.SeriesStateMissing, series.State)

@@ -37,7 +37,7 @@ func (m MediaManager) IndexSeriesLibrary(ctx context.Context) error {
 	for _, discoveredFile := range discoveredFiles {
 		matchedID, matchedPath := matchEpisodeFile(discoveredFile, episodeFiles, log)
 		if err := m.upsertEpisodeFile(ctx, discoveredFile, matchedID, matchedPath); err != nil {
-			log.Errorf("failed to upsert episode file: %v", err)
+			log.Error("failed to upsert episode file", zap.Error(err))
 		}
 	}
 
@@ -60,7 +60,7 @@ func (m MediaManager) IndexSeriesLibrary(ctx context.Context) error {
 			}
 		}
 		if df.SeriesName == "" {
-			log.Warnf("skipping episode file because series name is empty after matching", zap.String("episode_file_relative_path", *f.RelativePath))
+			log.Warn("skipping episode file because series name is empty after matching", zap.String("episode_file_relative_path", *f.RelativePath))
 			continue
 		}
 
@@ -79,13 +79,13 @@ func (m MediaManager) IndexSeriesLibrary(ctx context.Context) error {
 
 		seriesID, err := m.ensureSeries(ctx, df.SeriesName)
 		if err != nil {
-			log.Errorf("couldn't ensure series for discovered file: %w", err)
+			log.Error("couldn't ensure series for discovered file", zap.Error(err))
 			continue
 		}
 
 		seasonID, err := m.getOrCreateSeason(ctx, seriesID, int32(df.SeasonNumber), nil, storage.SeasonStateDiscovered)
 		if err != nil {
-			log.Errorf("couldn't ensure season for discovered file: %w", err)
+			log.Error("couldn't ensure season for discovered file", zap.Error(err))
 			continue
 		}
 
@@ -99,7 +99,7 @@ func (m MediaManager) IndexSeriesLibrary(ctx context.Context) error {
 		}}
 		_, err = m.storage.CreateEpisode(ctx, episode, storage.EpisodeStateDiscovered)
 		if err != nil {
-			log.Warnf("failed to create new episode", zap.Error(err))
+			log.Warn("failed to create new episode", zap.Error(err))
 			continue
 		}
 
@@ -260,9 +260,9 @@ func (m *MediaManager) upsertEpisodeFile(ctx context.Context, discoveredFile lib
 		return nil
 	}
 
-	log.Infow("updating episode file absolute path",
-		"old_absolute_path", matchedPath,
-		"new_absolute_path", discoveredFile.AbsolutePath)
+	log.Info("updating episode file absolute path",
+		zap.String("old_absolute_path", matchedPath),
+		zap.String("new_absolute_path", discoveredFile.AbsolutePath))
 
 	existingFile, err := m.storage.GetEpisodeFile(ctx, matchedID)
 	if err != nil {

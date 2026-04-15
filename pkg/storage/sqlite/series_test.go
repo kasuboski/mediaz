@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/go-jet/jet/v2/sqlite"
+	"github.com/kasuboski/mediaz/pkg/ptr"
 	"github.com/kasuboski/mediaz/pkg/storage"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/table"
@@ -27,7 +28,7 @@ func TestSeriesStorage(t *testing.T) {
 		Series: model.Series{
 			Monitored:        1,
 			QualityProfileID: 1,
-			Added:            ptr(time.Now()),
+			Added:            ptr.To(time.Now()),
 		},
 	}
 
@@ -72,7 +73,7 @@ func TestSQLite_UpdateSeriesState(t *testing.T) {
 				ID:               1,
 				Monitored:        1,
 				QualityProfileID: 1,
-				Added:            ptr(time.Now()),
+				Added:            ptr.To(time.Now()),
 			},
 		}
 
@@ -116,7 +117,7 @@ func TestSQLite_UpdateSeriesState(t *testing.T) {
 				ID:               2,
 				Monitored:        1,
 				QualityProfileID: 1,
-				Added:            ptr(time.Now()),
+				Added:            ptr.To(time.Now()),
 			},
 		}
 
@@ -149,7 +150,7 @@ func TestSQLite_UpdateSeriesState(t *testing.T) {
 				ID:               3,
 				Monitored:        1,
 				QualityProfileID: 1,
-				Added:            ptr(time.Now()),
+				Added:            ptr.To(time.Now()),
 			},
 		}
 
@@ -199,7 +200,7 @@ func TestSQLite_UpdateSeriesState(t *testing.T) {
 				ID:               4,
 				Monitored:        1,
 				QualityProfileID: 1,
-				Added:            ptr(time.Now()),
+				Added:            ptr.To(time.Now()),
 			},
 		}
 

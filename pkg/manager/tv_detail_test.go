@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/kasuboski/mediaz/config"
+	"github.com/kasuboski/mediaz/pkg/ptr"
 	"github.com/kasuboski/mediaz/pkg/storage"
 	"github.com/kasuboski/mediaz/pkg/storage/mocks"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
@@ -17,9 +18,9 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
-func int32Ptr(v int32) *int32 {
-	return &v
-}
+// func int32Ptr(v int32) *int32 {
+// 	return &v
+// }
 
 func TestGetTVDetailByTMDBID_WithSeasonsAndEpisodes(t *testing.T) {
 	ctx := context.Background()
@@ -81,7 +82,7 @@ func TestGetTVDetailByTMDBID_WithSeasonsAndEpisodes(t *testing.T) {
 		series := &storage.Series{
 			Series: model.Series{
 				ID:               1,
-				SeriesMetadataID: int32Ptr(1),
+				SeriesMetadataID: ptr.To(int32(1)),
 			},
 		}
 
@@ -198,7 +199,7 @@ func TestGetTVDetailByTMDBID_WithSeasonsAndEpisodes(t *testing.T) {
 		series := &storage.Series{
 			Series: model.Series{
 				ID:               1,
-				SeriesMetadataID: int32Ptr(1),
+				SeriesMetadataID: ptr.To(int32(1)),
 			},
 		}
 

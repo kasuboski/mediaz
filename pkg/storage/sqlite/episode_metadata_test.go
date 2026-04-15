@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/go-jet/jet/v2/sqlite"
+	"github.com/kasuboski/mediaz/pkg/ptr"
 	"github.com/kasuboski/mediaz/pkg/storage"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/table"
@@ -20,8 +21,8 @@ func TestEpisodeMetadataStorage(t *testing.T) {
 	metadata := model.EpisodeMetadata{
 		TmdbID:   12345,
 		Title:    "Test Episode",
-		Overview: ptr("Test episode overview"),
-		Runtime:  ptr(int32(45)),
+		Overview: ptr.To("Test episode overview"),
+		Runtime:  ptr.To(int32(45)),
 	}
 
 	id, err := store.CreateEpisodeMetadata(ctx, metadata)

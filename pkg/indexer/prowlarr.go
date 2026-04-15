@@ -9,6 +9,7 @@ import (
 
 	"github.com/kasuboski/mediaz/pkg/logger"
 	"github.com/kasuboski/mediaz/pkg/prowlarr"
+	"github.com/kasuboski/mediaz/pkg/ptr"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
 	"go.uber.org/zap"
 )
@@ -108,7 +109,7 @@ func (p *ProwlarrIndexerSource) Search(ctx context.Context, indexerID int32, cat
 		IndexerIds: &[]int32{indexerID},
 		Query:      &query,
 		Categories: &categories,
-		Limit:      ptr(int32(100)),
+		Limit:      ptr.To(int32(100)),
 		Type:       opts.Type,
 	})
 	if err != nil {
@@ -133,6 +134,3 @@ func (p *ProwlarrIndexerSource) Search(ctx context.Context, indexerID int32, cat
 	return releases, nil
 }
 
-func ptr[T any](v T) *T {
-	return &v
-}

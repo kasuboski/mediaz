@@ -297,7 +297,7 @@ func (m MediaManager) SearchForSeason(ctx context.Context, seasonID int64) error
 	}
 
 	searchType := indexer.TypeTV
-	releases, err := m.executeSearch(ctx, snapshot, TV_CATEGORIES, indexer.SearchOptions{
+	releases, err := m.executeSearch(ctx, snapshot, TVCategories, indexer.SearchOptions{
 		Query:  seriesMetadata.Title,
 		Season: &season.SeasonNumber,
 		Type:   &searchType,
@@ -376,7 +376,7 @@ func (m MediaManager) SearchForEpisode(ctx context.Context, episodeID int64) err
 	}
 
 	searchType := indexer.TypeTV
-	releases, err := m.executeSearch(ctx, snapshot, TV_CATEGORIES, indexer.SearchOptions{
+	releases, err := m.executeSearch(ctx, snapshot, TVCategories, indexer.SearchOptions{
 		Query:   seriesMetadata.Title,
 		Season:  &season.SeasonNumber,
 		Episode: &episode.EpisodeNumber,

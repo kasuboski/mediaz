@@ -26,6 +26,8 @@ const (
 	IndexerSync     JobType = "IndexerSync"
 )
 
+const jobCancelTimeout = 30 * time.Second
+
 type JobExecutor func(ctx context.Context, jobID int64) error
 
 type Scheduler struct {
@@ -398,7 +400,7 @@ func (s *Scheduler) CancelJob(ctx context.Context, jobID int64) error {
 		log.Debug("cancelling running job")
 		cancel()
 
-		timeout := time.After(30 * time.Second)
+		timeout := time.After(jobCancelTimeout)
 		ticker := time.NewTicker(100 * time.Millisecond)
 		defer ticker.Stop()
 
