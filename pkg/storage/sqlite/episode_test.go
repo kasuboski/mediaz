@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/go-jet/jet/v2/sqlite"
+	"github.com/kasuboski/mediaz/pkg/ptr"
 	"github.com/kasuboski/mediaz/pkg/storage"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/table"
@@ -22,7 +23,7 @@ func TestUpdateEpisodeState(t *testing.T) {
 		Series: model.Series{
 			Monitored:        1,
 			QualityProfileID: 1,
-			Added:            ptr(time.Now()),
+			Added:            ptr.To(time.Now()),
 		},
 	}
 	seriesID, err := store.CreateSeries(ctx, series, storage.SeriesStateMissing)
@@ -50,7 +51,7 @@ func TestUpdateEpisodeState(t *testing.T) {
 	isSeasonDownload := true
 	metadata := &storage.TransitionStateMetadata{
 		DownloadID:             &downloadID,
-		DownloadClientID:       ptr(int32(1)),
+		DownloadClientID:       ptr.To(int32(1)),
 		IsEntireSeasonDownload: &isSeasonDownload,
 	}
 

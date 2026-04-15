@@ -19,6 +19,7 @@ import (
 	"github.com/kasuboski/mediaz/pkg/library"
 	"github.com/kasuboski/mediaz/pkg/logger"
 	"github.com/kasuboski/mediaz/pkg/pagination"
+	"github.com/kasuboski/mediaz/pkg/ptr"
 	"github.com/kasuboski/mediaz/pkg/storage"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/table"
@@ -582,7 +583,7 @@ func (m MediaManager) listIndexersInternal(ctx context.Context) ([]model.Indexer
 		for _, idx := range cached.Indexers {
 			all = append(all, model.Indexer{
 				ID:              idx.ID,
-				IndexerSourceID: ptr(int32(sourceID)),
+				IndexerSourceID: ptr.To(int32(sourceID)),
 				Name:            idx.Name,
 				Priority:        idx.Priority,
 				URI:             idx.URI,
@@ -792,7 +793,7 @@ func (m MediaManager) IndexMovieLibrary(ctx context.Context) error {
 
 		id, err := m.storage.CreateMovieFile(ctx, mf)
 		if err != nil {
-			log.Errorf("couldn't store movie file: %w", err)
+			log.Error("couldn't store movie file", zap.Error(err))
 			continue
 		}
 
@@ -829,7 +830,7 @@ func (m MediaManager) IndexMovieLibrary(ctx context.Context) error {
 
 		_, err = m.storage.CreateMovie(ctx, movie, storage.MovieStateDiscovered)
 		if err != nil {
-			log.Errorf("couldn't create new movie for discovered file: %w", err)
+			log.Error("couldn't create new movie for discovered file", zap.Error(err))
 			continue
 		}
 
@@ -864,7 +865,7 @@ func (m MediaManager) AddMovieToLibrary(ctx context.Context, request AddMovieReq
 
 	// anything other than a not found error is an internal error
 	if !errors.Is(err, storage.ErrNotFound) {
-		log.Warnw("couldn't find movie by metadata", "meta_id", det.ID, "err", err)
+		log.Warn("couldn't find movie by metadata", zap.Int32("meta_id", det.ID), zap.Error(err))
 		return nil, err
 	}
 
@@ -885,7 +886,7 @@ func (m MediaManager) AddMovieToLibrary(ctx context.Context, request AddMovieReq
 
 	id, err := m.storage.CreateMovie(ctx, *movie, state)
 	if err != nil {
-		log.Warnw("failed to create movie", "err", err)
+		log.Warn("failed to create movie", zap.Error(err))
 		return nil, err
 	}
 
@@ -893,7 +894,7 @@ func (m MediaManager) AddMovieToLibrary(ctx context.Context, request AddMovieReq
 
 	movie, err = m.storage.GetMovie(ctx, id)
 	if err != nil {
-		log.Warnw("failed to get created movie", "err", err)
+		log.Warn("failed to get created movie", zap.Error(err))
 	}
 
 	return movie, nil
@@ -921,7 +922,7 @@ func (m MediaManager) AddSeriesToLibrary(ctx context.Context, request AddSeriesR
 		return series, err
 	}
 	if !errors.Is(err, storage.ErrNotFound) {
-		log.Warnw("couldn't find series by metadata", "meta_id", seriesMetadata.ID, "err", err)
+		log.Warn("couldn't find series by metadata", zap.Int32("meta_id", seriesMetadata.ID), zap.Error(err))
 		return nil, err
 	}
 
@@ -969,7 +970,7 @@ func (m MediaManager) AddSeriesToLibrary(ctx context.Context, request AddSeriesR
 		season := storage.Season{
 			Season: model.Season{
 				SeriesID:         int32(seriesID),
-				SeasonMetadataID: ptr(s.ID),
+				SeasonMetadataID: ptr.To(s.ID),
 				Monitored:        1,
 			},
 		}
@@ -1000,7 +1001,7 @@ func (m MediaManager) AddSeriesToLibrary(ctx context.Context, request AddSeriesR
 		for _, e := range episodesMetadata {
 			episode := storage.Episode{
 				Episode: model.Episode{
-					EpisodeMetadataID: ptr(e.ID),
+					EpisodeMetadataID: ptr.To(e.ID),
 					SeasonID:          int32(seasonID),
 					Monitored:         1,
 					EpisodeNumber:     e.Number,
@@ -1019,7 +1020,7 @@ func (m MediaManager) AddSeriesToLibrary(ctx context.Context, request AddSeriesR
 
 	series, err = m.storage.GetSeries(ctx, table.Series.ID.EQ(sqlite.Int64(seriesID)))
 	if err != nil {
-		log.Warnw("failed to get created series", "err", err)
+		log.Warn("failed to get created series", zap.Error(err))
 	}
 
 	return series, err
@@ -1231,9 +1232,6 @@ func toIndexerResponse(indexer model.Indexer) IndexerResponse {
 	}
 }
 
-func ptr[A any](thing A) *A {
-	return &thing
-}
 
 // GetMovieMetadataByID retrieves movie metadata by its primary key
 func (m MediaManager) GetMovieMetadataByID(ctx context.Context, metadataID int32) (*model.MovieMetadata, error) {

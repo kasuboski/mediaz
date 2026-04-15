@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/go-jet/jet/v2/sqlite"
+	"github.com/kasuboski/mediaz/pkg/ptr"
 	"github.com/kasuboski/mediaz/pkg/storage"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/table"
@@ -22,7 +23,7 @@ func TestEpisodeStorage(t *testing.T) {
 		Series: model.Series{
 			Monitored:        1,
 			QualityProfileID: 1,
-			Added:            ptr(time.Now()),
+			Added:            ptr.To(time.Now()),
 		},
 	}
 
@@ -105,7 +106,7 @@ func TestEpisodeFileStorage(t *testing.T) {
 	file := model.EpisodeFile{
 		Quality:      "HD",
 		Size:         1024,
-		RelativePath: ptr("test/path.mp4"),
+		RelativePath: ptr.To("test/path.mp4"),
 	}
 
 	id, err := store.CreateEpisodeFile(ctx, file)
@@ -149,8 +150,8 @@ func TestGetEpisodeFile(t *testing.T) {
 		file := model.EpisodeFile{
 			Quality:          "HD",
 			Size:             2048,
-			RelativePath:     ptr("series/episode.mp4"),
-			OriginalFilePath: ptr("/tv/series/episode.mp4"),
+			RelativePath:     ptr.To("series/episode.mp4"),
+			OriginalFilePath: ptr.To("/tv/series/episode.mp4"),
 		}
 
 		id, err := store.CreateEpisodeFile(ctx, file)
@@ -186,8 +187,8 @@ func TestUpdateEpisodeFile(t *testing.T) {
 		file := model.EpisodeFile{
 			Quality:          "HD",
 			Size:             1024,
-			RelativePath:     ptr("series/episode1.mp4"),
-			OriginalFilePath: ptr("/old/path/tv/series/episode1.mp4"),
+			RelativePath:     ptr.To("series/episode1.mp4"),
+			OriginalFilePath: ptr.To("/old/path/tv/series/episode1.mp4"),
 		}
 
 		id, err := store.CreateEpisodeFile(ctx, file)
@@ -222,8 +223,8 @@ func TestUpdateEpisodeFile(t *testing.T) {
 		file := model.EpisodeFile{
 			Quality:          "SD",
 			Size:             512,
-			RelativePath:     ptr("series/episode2.mp4"),
-			OriginalFilePath: ptr("/tv/series/episode2.mp4"),
+			RelativePath:     ptr.To("series/episode2.mp4"),
+			OriginalFilePath: ptr.To("/tv/series/episode2.mp4"),
 		}
 
 		id, err := store.CreateEpisodeFile(ctx, file)
@@ -259,8 +260,8 @@ func TestUpdateEpisodeFile(t *testing.T) {
 			ID:               99999,
 			Quality:          "HD",
 			Size:             1024,
-			RelativePath:     ptr("series/episode.mp4"),
-			OriginalFilePath: ptr("/tv/series/episode.mp4"),
+			RelativePath:     ptr.To("series/episode.mp4"),
+			OriginalFilePath: ptr.To("/tv/series/episode.mp4"),
 		}
 
 		err := store.UpdateEpisodeFile(ctx, 99999, nonExistentFile)

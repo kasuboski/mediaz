@@ -13,6 +13,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/kasuboski/mediaz/config"
 	"github.com/kasuboski/mediaz/pkg/manager"
+	"github.com/kasuboski/mediaz/pkg/ptr"
 	"github.com/kasuboski/mediaz/pkg/storage"
 	storeMocks "github.com/kasuboski/mediaz/pkg/storage/mocks"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
@@ -41,9 +42,9 @@ func TestServer_GetTVDetailByTMDBID(t *testing.T) {
 			ID:             1,
 			TmdbID:         12345,
 			Title:          "Test TV Show",
-			Overview:       ptr("A test TV show overview"),
-			FirstAirDate:   ptr(time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC)),
-			LastAirDate:    ptr(time.Date(2023, 12, 31, 0, 0, 0, 0, time.UTC)),
+			Overview:       ptr.To("A test TV show overview"),
+			FirstAirDate:   ptr.To(time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC)),
+			LastAirDate:    ptr.To(time.Date(2023, 12, 31, 0, 0, 0, 0, time.UTC)),
 			SeasonCount:    3,
 			EpisodeCount:   30,
 			Status:         "Continuing",
@@ -72,10 +73,10 @@ func TestServer_GetTVDetailByTMDBID(t *testing.T) {
 		expectedSeries := &storage.Series{
 			Series: model.Series{
 				ID:               1,
-				SeriesMetadataID: ptr(int32(1)),
+				SeriesMetadataID: ptr.To(int32(1)),
 				QualityProfileID: 1,
 				Monitored:        1,
-				Path:             ptr("/tv/Test TV Show (2023)"),
+				Path:             ptr.To("/tv/Test TV Show (2023)"),
 			},
 			State: storage.SeriesStateDiscovered,
 		}

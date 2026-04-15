@@ -12,6 +12,7 @@ import (
 	"github.com/kasuboski/mediaz/pkg/indexer"
 	"github.com/kasuboski/mediaz/pkg/logger"
 	"github.com/kasuboski/mediaz/pkg/prowlarr"
+	"github.com/kasuboski/mediaz/pkg/ptr"
 	"github.com/kasuboski/mediaz/pkg/storage"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/table"
@@ -20,8 +21,8 @@ import (
 
 var (
 	// TODO: these are specific per indexer it seems.. need to store categories with the indexer
-	MOVIE_CATEGORIES = []int32{2000}
-	TV_CATEGORIES    = []int32{5000}
+	MovieCategories = []int32{2000}
+	TVCategories    = []int32{5000}
 )
 
 // ReconcileSnapshot is a thread safe snapshot of the current reconcile loop state
@@ -305,28 +306,28 @@ func (m MediaManager) reconcileMissingMovie(ctx context.Context, movie *storage.
 
 	det, err := m.storage.GetMovieMetadata(ctx, table.MovieMetadata.ID.EQ(sqlite.Int32(*movie.MovieMetadataID)))
 	if err != nil {
-		log.Debugw("failed to find movie metadata", "meta_id", *movie.MovieMetadataID)
+		log.Debug("failed to find movie metadata", zap.Int32("meta_id", *movie.MovieMetadataID))
 		return err
 	}
 
 	profile, err := m.storage.GetQualityProfile(ctx, int64(movie.QualityProfileID))
 	if err != nil {
-		log.Warnw("failed to find movie qualityprofile", "quality_id", movie.QualityProfileID)
+		log.Warn("failed to find movie qualityprofile", zap.Int32("quality_id", movie.QualityProfileID))
 		return err
 	}
 
 	indexerIDs := snapshot.GetIndexerIDs()
-	releases, err := m.SearchIndexers(ctx, indexerIDs, MOVIE_CATEGORIES, indexer.SearchOptions{
+	releases, err := m.SearchIndexers(ctx, indexerIDs, MovieCategories, indexer.SearchOptions{
 		Query: det.Title,
-		Type:  ptr(indexer.TypeMovie),
+		Type:  ptr.To(indexer.TypeMovie),
 	})
 	if err != nil {
-		log.Debugw("failed to search indexer", "indexers", indexerIDs, zap.Error(err))
+		log.Debug("failed to search indexer", zap.Int32s("indexers", indexerIDs), zap.Error(err))
 		return err
 	}
 
 	availableProtocols := snapshot.GetProtocols()
-	log.Debugw("releases for consideration", "releases", len(releases))
+	log.Debug("releases for consideration", zap.Int("releases", len(releases)))
 	params := ReleaseFilterParams{
 		Title:         det.Title,
 		OriginalTitle: det.OriginalTitle,
@@ -337,7 +338,7 @@ func (m MediaManager) reconcileMissingMovie(ctx context.Context, movie *storage.
 		Studio:        det.Studio,
 	}
 	releases = slices.DeleteFunc(releases, RejectMovieReleaseFunc(ctx, params, profile, availableProtocols))
-	log.Debugw("releases after rejection", "releases", len(releases))
+	log.Debug("releases after rejection", zap.Int("releases", len(releases)))
 	if len(releases) == 0 {
 		return nil
 	}
@@ -345,7 +346,7 @@ func (m MediaManager) reconcileMissingMovie(ctx context.Context, movie *storage.
 	slices.SortFunc(releases, sortReleaseFunc())
 	chosenRelease := releases[len(releases)-1]
 
-	log.Infow("found release", "title", chosenRelease.Title, "proto", *chosenRelease.Protocol)
+	log.Info("found release", zap.Any("title", chosenRelease.Title), zap.String("proto", string(*chosenRelease.Protocol)))
 
 	clientID, status, err := m.requestReleaseDownload(ctx, snapshot, chosenRelease)
 	if err != nil {

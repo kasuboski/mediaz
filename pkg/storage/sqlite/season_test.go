@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/go-jet/jet/v2/sqlite"
+	"github.com/kasuboski/mediaz/pkg/ptr"
 	"github.com/kasuboski/mediaz/pkg/storage"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/table"
@@ -22,7 +23,7 @@ func TestSeasonStorage(t *testing.T) {
 		Series: model.Series{
 			Monitored:        1,
 			QualityProfileID: 1,
-			Added:            ptr(time.Now()),
+			Added:            ptr.To(time.Now()),
 		},
 	}
 
@@ -79,7 +80,7 @@ func TestSQLite_UpdateSeasonState(t *testing.T) {
 			Season: model.Season{
 				ID:               1,
 				SeriesID:         1,
-				SeasonMetadataID: ptr(int32(1)),
+				SeasonMetadataID: ptr.To(int32(1)),
 				Monitored:        1,
 			},
 		}
@@ -90,9 +91,9 @@ func TestSQLite_UpdateSeasonState(t *testing.T) {
 
 		season.ID = int32(seasonID)
 		err = store.UpdateSeasonState(ctx, seasonID, storage.SeasonStateDownloading, &storage.TransitionStateMetadata{
-			DownloadID:             ptr("123"),
-			DownloadClientID:       ptr(int32(2)),
-			IsEntireSeasonDownload: ptr(true),
+			DownloadID:             ptr.To("123"),
+			DownloadClientID:       ptr.To(int32(2)),
+			IsEntireSeasonDownload: ptr.To(true),
 		})
 		require.NoError(t, err)
 
@@ -103,7 +104,7 @@ func TestSQLite_UpdateSeasonState(t *testing.T) {
 		assert.Equal(t, storage.SeasonStateDownloading, foundSeason.State)
 		assert.Equal(t, "123", foundSeason.DownloadID)
 		assert.Equal(t, int32(1), foundSeason.SeriesID)
-		assert.Equal(t, ptr(int32(1)), foundSeason.SeasonMetadataID)
+		assert.Equal(t, ptr.To(int32(1)), foundSeason.SeasonMetadataID)
 
 		err = store.UpdateSeasonState(ctx, 999999, storage.SeasonStateMissing, nil)
 		assert.ErrorIs(t, err, storage.ErrNotFound)

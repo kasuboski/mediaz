@@ -10,7 +10,9 @@ import (
 
 	"github.com/kasuboski/mediaz/pkg/logger"
 	"github.com/kasuboski/mediaz/pkg/prowlarr"
+	"github.com/kasuboski/mediaz/pkg/size"
 	"github.com/kasuboski/mediaz/pkg/storage"
+	"go.uber.org/zap"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 )
@@ -238,20 +240,19 @@ func rejectReleaseFunc(ctx context.Context, runtime int32, profile storage.Quali
 			}
 		}
 
-		// bytes to megabytes
-		sizeMB := *r.Size >> 20
+		sizeMB := size.BytesToMB(*r.Size)
 
 		// items are assumed to be sorted quality so the highest media quality available is selected
 		for _, quality := range profile.Qualities {
 
 			metQuality := MeetsQualitySize(quality, uint64(sizeMB), uint64(runtime))
 			if metQuality {
-				log.Debugw("accepting release", "release", r.Title, "metQuality", metQuality, "size", r.Size, "runtime", runtime)
+				log.Debug("accepting release", zap.Any("release", r.Title), zap.Bool("metQuality", metQuality), zap.Any("size", r.Size), zap.Int32("runtime", runtime))
 				return false
 			}
 
 			// try again with the next item
-			log.Debugw("rejecting release", "release", r.Title, "metQuality", metQuality, "size", r.Size, "runtime", runtime)
+			log.Debug("rejecting release", zap.Any("release", r.Title), zap.Bool("metQuality", metQuality), zap.Any("size", r.Size), zap.Int32("runtime", runtime))
 		}
 
 		return true

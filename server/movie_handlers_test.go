@@ -12,6 +12,7 @@ import (
 	"github.com/kasuboski/mediaz/config"
 	"github.com/kasuboski/mediaz/pkg/manager"
 	"github.com/kasuboski/mediaz/pkg/storage"
+	"github.com/kasuboski/mediaz/pkg/ptr"
 	storeMocks "github.com/kasuboski/mediaz/pkg/storage/mocks"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
 	tmdbMocks "github.com/kasuboski/mediaz/pkg/tmdb/mocks"
@@ -37,18 +38,18 @@ func TestServer_GetMovieDetailByTMDBID(t *testing.T) {
 			ID:               1,
 			TmdbID:           12345,
 			Title:            "Test Movie",
-			OriginalTitle:    ptr("Original Test Movie"),
-			Overview:         ptr("A test movie overview"),
+			OriginalTitle:    ptr.To("Original Test Movie"),
+			Overview:         ptr.To("A test movie overview"),
 			Images:           "/test-poster.jpg",
 			Runtime:          120,
-			Year:             ptr(int32(2023)),
-			ReleaseDate:      ptr(time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC)),
-			Genres:           ptr("Action,Adventure"),
-			Studio:           ptr("Test Studio"),
-			Website:          ptr("https://testmovie.com"),
-			Popularity:       ptr(85.5),
-			CollectionTmdbID: ptr(int32(5000)),
-			CollectionTitle:  ptr("Test Collection"),
+			Year:             ptr.To(int32(2023)),
+			ReleaseDate:      ptr.To(time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC)),
+			Genres:           ptr.To("Action,Adventure"),
+			Studio:           ptr.To("Test Studio"),
+			Website:          ptr.To("https://testmovie.com"),
+			Popularity:       ptr.To(85.5),
+			CollectionTmdbID: ptr.To(int32(5000)),
+			CollectionTitle:  ptr.To("Test Collection"),
 		}
 
 		store.EXPECT().GetMovieMetadata(gomock.Any(), gomock.Any()).Return(expectedMetadata, nil)
@@ -57,10 +58,10 @@ func TestServer_GetMovieDetailByTMDBID(t *testing.T) {
 		expectedMovie := &storage.Movie{
 			Movie: model.Movie{
 				ID:               1,
-				MovieMetadataID:  ptr(int32(1)),
+				MovieMetadataID:  ptr.To(int32(1)),
 				QualityProfileID: 1,
 				Monitored:        1,
-				Path:             ptr("/movies/Test Movie (2023)"),
+				Path:             ptr.To("/movies/Test Movie (2023)"),
 			},
 			State: storage.MovieStateDownloaded,
 		}

@@ -124,10 +124,10 @@ var searchIndexerCmd = &cobra.Command{
 
 		categories := make([]int32, 0)
 		if m, err := cmd.Flags().GetBool("movie"); err == nil && m {
-			categories = append(categories, manager.MOVIE_CATEGORIES...)
+			categories = append(categories, manager.MovieCategories...)
 		}
 		if s, err := cmd.Flags().GetBool("show"); err == nil && s {
-			categories = append(categories, manager.TV_CATEGORIES...)
+			categories = append(categories, manager.TVCategories...)
 		}
 
 		releases, err := m.SearchIndexers(ctx, indexers, categories, indexer.SearchOptions{
