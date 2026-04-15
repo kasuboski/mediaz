@@ -88,9 +88,6 @@ func (s *SQLite) UpdateQualityProfile(ctx context.Context, id int64, profile mod
 
 // DeleteQualityProfile delete a quality profile
 func (s *SQLite) DeleteQualityProfile(ctx context.Context, id int64) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	log := logger.FromCtx(ctx)
 
 	tx, err := s.db.BeginTx(ctx, nil)

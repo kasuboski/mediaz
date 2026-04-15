@@ -29,8 +29,6 @@ func (s *SQLite) CreateSeason(ctx context.Context, season storage.Season, initia
 		return 0, err
 	}
 
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return 0, err
@@ -171,8 +169,6 @@ func (s *SQLite) UpdateSeasonState(ctx context.Context, id int64, state storage.
 		return err
 	}
 
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err

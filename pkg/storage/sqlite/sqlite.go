@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"sync"
 
 	"github.com/go-jet/jet/v2/sqlite"
 	"github.com/kasuboski/mediaz/pkg/logger"
@@ -15,7 +14,6 @@ import (
 
 type SQLite struct {
 	db *sql.DB
-	mu sync.Mutex
 }
 
 const (
@@ -24,29 +22,19 @@ const (
 
 // New creates a new sqlite database given a path to the database file.
 func New(ctx context.Context, filePath string) (storage.Storage, error) {
-	db, err := sql.Open("sqlite3", filePath)
+	// DSN parameters are applied to every connection opened by the pool.
+	// busy_timeout and synchronous are per-connection settings and must be
+	// set here rather than via one-shot PRAGMA calls. journal_mode=WAL is
+	// persisted in the database file so it only needs to be set once, but
+	// including it in the DSN is also correct and more explicit.
+	dsn := filePath + "?_busy_timeout=5000&_journal_mode=WAL&_synchronous=NORMAL"
+	db, err := sql.Open("sqlite3", dsn)
 	if err != nil {
 		return nil, err
 	}
 
-	if _, err := db.Exec(`PRAGMA journal_mode=WAL;`); err != nil {
-		db.Close()
-		return nil, fmt.Errorf("failed to enable WAL: %w", err)
-	}
-
-	if _, err := db.Exec(`PRAGMA synchronous = NORMAL;`); err != nil {
-		db.Close()
-		return nil, fmt.Errorf("failed to set synchronous: %w", err)
-	}
-
-	if _, err := db.Exec(`PRAGMA busy_timeout = 5000;`); err != nil {
-		db.Close()
-		return nil, fmt.Errorf("failed to set busy_timeout: %w", err)
-	}
-
 	s := &SQLite{
 		db: db,
-		mu: sync.Mutex{},
 	}
 
 	if err := s.RunMigrations(ctx); err != nil {
@@ -88,8 +76,6 @@ func (s *SQLite) handleDelete(ctx context.Context, stmt sqlite.DeleteStatement) 
 }
 
 func (s *SQLite) handleStatement(ctx context.Context, stmt sqlite.Statement) (sql.Result, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	log := logger.FromCtx(ctx)
 	var result sql.Result
 
