@@ -1525,3 +1525,27 @@ func (m MediaManager) UpdateQualityProfile(ctx context.Context, id int64, reques
 func (m MediaManager) DeleteQualityProfile(ctx context.Context, request DeleteQualityProfileRequest) error {
 	return m.downloadService.DeleteDownloadClient(ctx, int64(*request.ID))
 }
+
+func (m MediaManager) CreateDownloadClient(ctx context.Context, request AddDownloadClientRequest) (model.DownloadClient, error) {
+	return m.downloadService.CreateDownloadClient(ctx, request)
+}
+
+func (m MediaManager) UpdateDownloadClient(ctx context.Context, id int64, request UpdateDownloadClientRequest) (model.DownloadClient, error) {
+	return m.downloadService.UpdateDownloadClient(ctx, id, request)
+}
+
+func (m MediaManager) TestDownloadClient(ctx context.Context, request AddDownloadClientRequest) error {
+	return m.downloadService.TestDownloadClient(ctx, request)
+}
+
+func (m MediaManager) GetDownloadClient(ctx context.Context, id int64) (download.DownloadClient, error) {
+	return m.downloadService.GetDownloadClient(ctx, id)
+}
+
+func (m MediaManager) ListDownloadClients(ctx context.Context) ([]*model.DownloadClient, error) {
+	return m.downloadService.ListDownloadClients(ctx)
+}
+
+func (m MediaManager) DeleteDownloadClient(ctx context.Context, id int64) error {
+	return m.downloadService.DeleteDownloadClient(ctx, id)
+}
