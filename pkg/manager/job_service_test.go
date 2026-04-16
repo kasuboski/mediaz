@@ -252,13 +252,13 @@ func TestJobService_CancelJob(t *testing.T) {
 		ctx := context.Background()
 		store := newStore(t, ctx)
 
-		jobExecuted := false
-		jobCancelled := false
+		startedCh := make(chan struct{})
+		cancelledCh := make(chan struct{})
 		executors := map[JobType]JobExecutor{
 			MovieIndex: func(ctx context.Context, jobID int64) error {
-				jobExecuted = true
+				close(startedCh)
 				<-ctx.Done()
-				jobCancelled = true
+				close(cancelledCh)
 				return ctx.Err()
 			},
 		}
@@ -275,15 +275,13 @@ func TestJobService_CancelJob(t *testing.T) {
 			State: storage.JobStatePending,
 		})
 
-		time.Sleep(100 * time.Millisecond)
-		require.True(t, jobExecuted, "job should have started executing")
+		<-startedCh
 
 		result, err := js.CancelJob(ctx, job.ID)
 		require.NoError(t, err)
 		assert.Equal(t, job.ID, result.ID)
 
-		time.Sleep(200 * time.Millisecond)
-		require.True(t, jobCancelled, "job should have been cancelled")
+		<-cancelledCh
 
 		cancelledJob, err := store.GetJob(ctx, job.ID)
 		require.NoError(t, err)

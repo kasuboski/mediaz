@@ -1540,7 +1540,7 @@ func (m MediaManager) TestDownloadClient(ctx context.Context, request AddDownloa
 	return m.downloadClientService.TestDownloadClient(ctx, request)
 }
 
-func (m MediaManager) GetDownloadClient(ctx context.Context, id int64) (download.DownloadClient, error) {
+func (m MediaManager) GetDownloadClient(ctx context.Context, id int64) (model.DownloadClient, error) {
 	return m.downloadClientService.GetDownloadClient(ctx, id)
 }
 

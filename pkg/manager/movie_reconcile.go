@@ -216,7 +216,7 @@ func (m MediaManager) reconcileDownloadingMovie(ctx context.Context, movie *stor
 		return nil
 	}
 
-	downloadClient, err := m.downloadClientService.newDownloadClient(*dc)
+	downloadClient, err := m.downloadClientService.buildRuntimeDownloadClient(ctx, *dc)
 	if err != nil {
 		log.Warn("failed to create download client", zap.Error(err))
 		return err
@@ -551,7 +551,7 @@ func (m MediaManager) requestReleaseDownload(ctx context.Context, snapshot *Reco
 
 	id := c.ID
 
-	downloadClient, err := m.downloadClientService.newDownloadClient(*c)
+	downloadClient, err := m.downloadClientService.buildRuntimeDownloadClient(ctx, *c)
 	if err != nil {
 		return id, download.Status{}, fmt.Errorf("failed to create download client: %w", err)
 	}

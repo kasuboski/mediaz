@@ -299,6 +299,34 @@ func TestMeetsQualitySize(t *testing.T) {
 			runtime:  10,
 			expected: true,
 		},
+		{
+			name:     "zero runtime",
+			quality:  storage.QualityDefinition{MinSize: 10, MaxSize: 100},
+			fileSize: 500,
+			runtime:  0,
+			expected: false,
+		},
+		{
+			name:     "negative min size",
+			quality:  storage.QualityDefinition{MinSize: -1, MaxSize: 100},
+			fileSize: 500,
+			runtime:  10,
+			expected: false,
+		},
+		{
+			name:     "negative max size",
+			quality:  storage.QualityDefinition{MinSize: 0, MaxSize: -1},
+			fileSize: 500,
+			runtime:  10,
+			expected: false,
+		},
+		{
+			name:     "min greater than max",
+			quality:  storage.QualityDefinition{MinSize: 100, MaxSize: 10},
+			fileSize: 500,
+			runtime:  10,
+			expected: false,
+		},
 	}
 
 	for _, tt := range tests {

@@ -21,8 +21,8 @@ func NewDownloadClientService(downloadStorage storage.DownloadClientStorage, fac
 	}
 }
 
-func (ds DownloadClientService) newDownloadClient(cfg model.DownloadClient) (download.DownloadClient, error) {
-	return ds.factory.NewDownloadClient(cfg)
+func (ds DownloadClientService) buildRuntimeDownloadClient(ctx context.Context, client model.DownloadClient) (download.DownloadClient, error) {
+	return ds.factory.NewDownloadClient(client)
 }
 
 type AddDownloadClientRequest struct {
@@ -75,13 +75,8 @@ func (ds DownloadClientService) TestDownloadClient(ctx context.Context, request 
 	return err
 }
 
-func (ds DownloadClientService) GetDownloadClient(ctx context.Context, id int64) (download.DownloadClient, error) {
-	client, err := ds.downloadStorage.GetDownloadClient(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-
-	return ds.factory.NewDownloadClient(client)
+func (ds DownloadClientService) GetDownloadClient(ctx context.Context, id int64) (model.DownloadClient, error) {
+	return ds.downloadStorage.GetDownloadClient(ctx, id)
 }
 
 func (ds DownloadClientService) ListDownloadClients(ctx context.Context) ([]*model.DownloadClient, error) {

@@ -70,7 +70,7 @@ func (qs QualityService) AddQualityDefinition(ctx context.Context, request AddQu
 
 func (qs QualityService) DeleteQualityDefinition(ctx context.Context, request DeleteQualityDefinitionRequest) error {
 	if request.ID == nil {
-		return fmt.Errorf("indexer id is required")
+		return fmt.Errorf("quality definition id is required")
 	}
 
 	return qs.qualityStorage.DeleteQualityDefinition(ctx, int64(*request.ID))
@@ -260,6 +260,19 @@ func (qs QualityService) DeleteQualityProfile(ctx context.Context, request Delet
 }
 
 func MeetsQualitySize(qs storage.QualityDefinition, fileSize uint64, runtime uint64) bool {
+	if runtime == 0 {
+		return false
+	}
+	if qs.MinSize < 0 {
+		return false
+	}
+	if qs.MaxSize < 0 {
+		return false
+	}
+	if qs.MinSize > qs.MaxSize {
+		return false
+	}
+
 	fileRatio := float64(fileSize) / float64(runtime)
 
 	if fileRatio < qs.MinSize {
