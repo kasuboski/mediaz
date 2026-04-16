@@ -29,15 +29,17 @@ func TestDownloadService_GetQualityProfile(t *testing.T) {
 
 		profile, err := ds.GetQualityProfile(ctx, 1)
 		require.NoError(t, err)
-		assert.Equal(t, int32(1), profile.ID)
-		assert.Equal(t, "Standard Definition", profile.Name)
-		assert.Nil(t, profile.CutoffQualityID)
-		assert.Equal(t, false, profile.UpgradeAllowed)
-		assert.Equal(t, "HDTV-720p", profile.Qualities[0].Name)
-		assert.Equal(t, float64(1999), profile.Qualities[0].PreferredSize)
-		assert.Equal(t, float64(17.1), profile.Qualities[0].MinSize)
-		assert.Equal(t, float64(2000), profile.Qualities[0].MaxSize)
-		assert.Equal(t, "movie", profile.Qualities[0].MediaType)
+		want := storage.QualityProfile{
+			ID:              1,
+			Name:            "Standard Definition",
+			CutoffQualityID: nil,
+			UpgradeAllowed:  false,
+			Qualities: []storage.QualityDefinition{
+				{ID: 1, Name: "HDTV-720p", MediaType: "movie", PreferredSize: 1999, MinSize: 17.1, MaxSize: 2000},
+				{ID: 2, Name: "WEBDL-720p", MediaType: "movie", PreferredSize: 1999, MinSize: 12.5, MaxSize: 2000},
+			},
+		}
+		assert.Equal(t, want, profile)
 	})
 
 	t.Run("episode quality profile", func(t *testing.T) {
@@ -46,15 +48,22 @@ func TestDownloadService_GetQualityProfile(t *testing.T) {
 
 		profile, err := ds.GetQualityProfile(ctx, 5)
 		require.NoError(t, err)
-		assert.Equal(t, int32(5), profile.ID)
-		assert.Equal(t, "High Definition", profile.Name)
-		assert.Nil(t, profile.CutoffQualityID)
-		assert.Equal(t, false, profile.UpgradeAllowed)
-		assert.Equal(t, "Remux-1080p", profile.Qualities[0].Name)
-		assert.Equal(t, float64(995), profile.Qualities[0].PreferredSize)
-		assert.Equal(t, float64(69.1), profile.Qualities[0].MinSize)
-		assert.Equal(t, float64(1000), profile.Qualities[0].MaxSize)
-		assert.Equal(t, "episode", profile.Qualities[0].MediaType)
+		want := storage.QualityProfile{
+			ID:              5,
+			Name:            "High Definition",
+			CutoffQualityID: nil,
+			UpgradeAllowed:  false,
+			Qualities: []storage.QualityDefinition{
+				{ID: 23, Name: "Remux-1080p", MediaType: "episode", PreferredSize: 995, MinSize: 69.1, MaxSize: 1000},
+				{ID: 22, Name: "Bluray-1080p", MediaType: "episode", PreferredSize: 995, MinSize: 50.4, MaxSize: 1000},
+				{ID: 18, Name: "Bluray-720p", MediaType: "episode", PreferredSize: 995, MinSize: 17.1, MaxSize: 1000},
+				{ID: 19, Name: "HDTV-1080p", MediaType: "episode", PreferredSize: 995, MinSize: 15, MaxSize: 1000},
+				{ID: 20, Name: "WEBDL-1080p", MediaType: "episode", PreferredSize: 995, MinSize: 15, MaxSize: 1000},
+				{ID: 21, Name: "WEBRip-1080p", MediaType: "episode", PreferredSize: 995, MinSize: 15, MaxSize: 1000},
+				{ID: 17, Name: "WEBRip-720p", MediaType: "episode", PreferredSize: 995, MinSize: 10, MaxSize: 1000},
+			},
+		}
+		assert.Equal(t, want, profile)
 	})
 }
 
@@ -65,15 +74,38 @@ func TestDownloadService_ListMovieQualityProfiles(t *testing.T) {
 	profiles, err := ds.ListMovieQualityProfiles(ctx)
 	require.NoError(t, err)
 	require.Len(t, profiles, 3)
-	assert.Equal(t, int32(3), profiles[0].ID)
-	assert.Equal(t, "Ultra High Definition", profiles[0].Name)
-	assert.Nil(t, profiles[0].CutoffQualityID)
-	assert.Equal(t, int32(2), profiles[1].ID)
-	assert.Equal(t, "High Definition", profiles[1].Name)
-	assert.Nil(t, profiles[1].CutoffQualityID)
-	assert.Equal(t, "Standard Definition", profiles[2].Name)
-	assert.Equal(t, int32(1), profiles[2].ID)
-	assert.Nil(t, profiles[2].CutoffQualityID)
+
+	want := []*storage.QualityProfile{
+		{
+			ID: 3, Name: "Ultra High Definition", CutoffQualityID: nil, UpgradeAllowed: false,
+			Qualities: []storage.QualityDefinition{
+				{ID: 9, Name: "Remux-1080p", MediaType: "movie", PreferredSize: 1999, MinSize: 102, MaxSize: 2000},
+				{ID: 13, Name: "Bluray-2160p", MediaType: "movie", PreferredSize: 1999, MinSize: 102, MaxSize: 2000},
+				{ID: 10, Name: "HDTV-2160p", MediaType: "movie", PreferredSize: 1999, MinSize: 85, MaxSize: 2000},
+				{ID: 11, Name: "WEBDL-2160p", MediaType: "movie", PreferredSize: 1999, MinSize: 34.5, MaxSize: 2000},
+				{ID: 12, Name: "WEBRip-2160p", MediaType: "movie", PreferredSize: 1999, MinSize: 34.5, MaxSize: 2000},
+			},
+		},
+		{
+			ID: 2, Name: "High Definition", CutoffQualityID: nil, UpgradeAllowed: false,
+			Qualities: []storage.QualityDefinition{
+				{ID: 8, Name: "Bluray-1080p", MediaType: "movie", PreferredSize: 1999, MinSize: 50.8, MaxSize: 2000},
+				{ID: 5, Name: "HDTV-1080p", MediaType: "movie", PreferredSize: 1999, MinSize: 33.8, MaxSize: 2000},
+				{ID: 4, Name: "Bluray-720p", MediaType: "movie", PreferredSize: 1999, MinSize: 25.7, MaxSize: 2000},
+				{ID: 3, Name: "WEBRip-720p", MediaType: "movie", PreferredSize: 1999, MinSize: 12.5, MaxSize: 2000},
+				{ID: 6, Name: "WEBDL-1080p", MediaType: "movie", PreferredSize: 1999, MinSize: 12.5, MaxSize: 2000},
+				{ID: 7, Name: "WEBRip-1080p", MediaType: "movie", PreferredSize: 1999, MinSize: 12.5, MaxSize: 2000},
+			},
+		},
+		{
+			ID: 1, Name: "Standard Definition", CutoffQualityID: nil, UpgradeAllowed: false,
+			Qualities: []storage.QualityDefinition{
+				{ID: 1, Name: "HDTV-720p", MediaType: "movie", PreferredSize: 1999, MinSize: 17.1, MaxSize: 2000},
+				{ID: 2, Name: "WEBDL-720p", MediaType: "movie", PreferredSize: 1999, MinSize: 12.5, MaxSize: 2000},
+			},
+		},
+	}
+	assert.Equal(t, want, profiles)
 }
 
 func TestDownloadService_ListEpisodeQualityProfiles(t *testing.T) {
@@ -83,15 +115,39 @@ func TestDownloadService_ListEpisodeQualityProfiles(t *testing.T) {
 	profiles, err := ds.ListEpisodeQualityProfiles(ctx)
 	require.NoError(t, err)
 	require.Len(t, profiles, 3)
-	assert.Equal(t, "Ultra High Definition", profiles[0].Name)
-	assert.Equal(t, int32(6), profiles[0].ID)
-	assert.Nil(t, profiles[0].CutoffQualityID)
-	assert.Equal(t, "High Definition", profiles[1].Name)
-	assert.Equal(t, int32(5), profiles[1].ID)
-	assert.Nil(t, profiles[1].CutoffQualityID)
-	assert.Equal(t, "Standard Definition", profiles[2].Name)
-	assert.Equal(t, int32(4), profiles[2].ID)
-	assert.Nil(t, profiles[2].CutoffQualityID)
+
+	want := []*storage.QualityProfile{
+		{
+			ID: 6, Name: "Ultra High Definition", CutoffQualityID: nil, UpgradeAllowed: false,
+			Qualities: []storage.QualityDefinition{
+				{ID: 27, Name: "Bluray-2160p", MediaType: "episode", PreferredSize: 995, MinSize: 94.6, MaxSize: 1000},
+				{ID: 23, Name: "Remux-1080p", MediaType: "episode", PreferredSize: 995, MinSize: 69.1, MaxSize: 1000},
+				{ID: 24, Name: "HDTV-2160p", MediaType: "episode", PreferredSize: 995, MinSize: 25, MaxSize: 1000},
+				{ID: 25, Name: "WEBDL-2160p", MediaType: "episode", PreferredSize: 995, MinSize: 25, MaxSize: 1000},
+				{ID: 26, Name: "WEBRip-2160p", MediaType: "episode", PreferredSize: 995, MinSize: 25, MaxSize: 1000},
+			},
+		},
+		{
+			ID: 5, Name: "High Definition", CutoffQualityID: nil, UpgradeAllowed: false,
+			Qualities: []storage.QualityDefinition{
+				{ID: 23, Name: "Remux-1080p", MediaType: "episode", PreferredSize: 995, MinSize: 69.1, MaxSize: 1000},
+				{ID: 22, Name: "Bluray-1080p", MediaType: "episode", PreferredSize: 995, MinSize: 50.4, MaxSize: 1000},
+				{ID: 18, Name: "Bluray-720p", MediaType: "episode", PreferredSize: 995, MinSize: 17.1, MaxSize: 1000},
+				{ID: 19, Name: "HDTV-1080p", MediaType: "episode", PreferredSize: 995, MinSize: 15, MaxSize: 1000},
+				{ID: 20, Name: "WEBDL-1080p", MediaType: "episode", PreferredSize: 995, MinSize: 15, MaxSize: 1000},
+				{ID: 21, Name: "WEBRip-1080p", MediaType: "episode", PreferredSize: 995, MinSize: 15, MaxSize: 1000},
+				{ID: 17, Name: "WEBRip-720p", MediaType: "episode", PreferredSize: 995, MinSize: 10, MaxSize: 1000},
+			},
+		},
+		{
+			ID: 4, Name: "Standard Definition", CutoffQualityID: nil, UpgradeAllowed: false,
+			Qualities: []storage.QualityDefinition{
+				{ID: 15, Name: "HDTV-720p", MediaType: "episode", PreferredSize: 995, MinSize: 10, MaxSize: 1000},
+				{ID: 16, Name: "WEBDL-720p", MediaType: "episode", PreferredSize: 995, MinSize: 10, MaxSize: 1000},
+			},
+		},
+	}
+	assert.Equal(t, want, profiles)
 }
 
 func TestDownloadService_UpdateQualityProfile(t *testing.T) {
@@ -109,15 +165,17 @@ func TestDownloadService_UpdateQualityProfile(t *testing.T) {
 			QualityIDs:     []int32{3, 7},
 		})
 		require.NoError(t, err)
-		assert.Equal(t, "Updated Profile", updated.Name)
-		assert.Nil(t, updated.CutoffQualityID)
-		assert.Equal(t, false, updated.UpgradeAllowed)
-		require.Len(t, updated.Qualities, 2)
-		qualityIDs := make([]int32, len(updated.Qualities))
-		for i, q := range updated.Qualities {
-			qualityIDs[i] = q.ID
+		want := storage.QualityProfile{
+			ID:              1,
+			Name:            "Updated Profile",
+			CutoffQualityID: nil,
+			UpgradeAllowed:  false,
+			Qualities: []storage.QualityDefinition{
+				{ID: 3, Name: "WEBRip-720p", MediaType: "movie", PreferredSize: 1999, MinSize: 12.5, MaxSize: 2000},
+				{ID: 7, Name: "WEBRip-1080p", MediaType: "movie", PreferredSize: 1999, MinSize: 12.5, MaxSize: 2000},
+			},
 		}
-		assert.ElementsMatch(t, []int32{3, 7}, qualityIDs)
+		assert.Equal(t, want, updated)
 	})
 
 	t.Run("fails with empty quality IDs", func(t *testing.T) {
@@ -167,9 +225,17 @@ func TestDownloadService_AddQualityProfile(t *testing.T) {
 			QualityIDs: []int32{3, 7},
 		})
 		require.NoError(t, err)
-		assert.Equal(t, "Test Profile", profile.Name)
-		assert.Nil(t, profile.CutoffQualityID)
-		assert.Equal(t, false, profile.UpgradeAllowed)
+		want := storage.QualityProfile{
+			ID:              profile.ID,
+			Name:            "Test Profile",
+			CutoffQualityID: nil,
+			UpgradeAllowed:  false,
+			Qualities: []storage.QualityDefinition{
+				{ID: 3, Name: "WEBRip-720p", MediaType: "movie", PreferredSize: 1999, MinSize: 12.5, MaxSize: 2000},
+				{ID: 7, Name: "WEBRip-1080p", MediaType: "movie", PreferredSize: 1999, MinSize: 12.5, MaxSize: 2000},
+			},
+		}
+		assert.Equal(t, want, profile)
 	})
 
 	t.Run("fails when cutoff not in quality list", func(t *testing.T) {
