@@ -29,38 +29,40 @@ import (
 )
 
 type MediaManager struct {
-	tmdb              tmdb.ITmdb
-	indexerFactory    indexer.Factory
-	indexerCache      *cache.Cache[int64, indexerCacheEntry]
-	library           library.Library
-	movieStorage      storage.MovieStorage
-	movieMetaStorage  storage.MovieMetadataStorage
-	seriesStorage     storage.SeriesStorage
-	seriesMetaStorage storage.SeriesMetadataStorage
-	indexerStorage    storage.IndexerStorage
-	indexerSrcStorage storage.IndexerSourceStorage
-	downloadService   *DownloadService
-	jobService        *JobService
-	config            config.Config
-	configs           config.Manager
+	tmdb                  tmdb.ITmdb
+	indexerFactory        indexer.Factory
+	indexerCache          *cache.Cache[int64, indexerCacheEntry]
+	library               library.Library
+	movieStorage          storage.MovieStorage
+	movieMetaStorage      storage.MovieMetadataStorage
+	seriesStorage         storage.SeriesStorage
+	seriesMetaStorage     storage.SeriesMetadataStorage
+	indexerStorage        storage.IndexerStorage
+	indexerSrcStorage     storage.IndexerSourceStorage
+	downloadClientService *DownloadClientService
+	qualityService        *QualityService
+	jobService            *JobService
+	config                config.Config
+	configs               config.Manager
 }
 
 func New(tmbdClient tmdb.ITmdb, indexerFactory indexer.Factory, library library.Library, store storage.Storage, factory download.Factory, managerConfigs config.Manager, fullConfig config.Config) MediaManager {
 
 	m := MediaManager{
-		tmdb:              tmbdClient,
-		indexerFactory:    indexerFactory,
-		indexerCache:      cache.New[int64, indexerCacheEntry](),
-		library:           library,
-		movieStorage:      store,
-		movieMetaStorage:  store,
-		seriesStorage:     store,
-		seriesMetaStorage: store,
-		indexerStorage:    store,
-		indexerSrcStorage: store,
-		downloadService:   NewDownloadService(store, store, factory),
-		config:            fullConfig,
-		configs:           managerConfigs,
+		tmdb:                  tmbdClient,
+		indexerFactory:        indexerFactory,
+		indexerCache:          cache.New[int64, indexerCacheEntry](),
+		library:               library,
+		movieStorage:          store,
+		movieMetaStorage:      store,
+		seriesStorage:         store,
+		seriesMetaStorage:     store,
+		indexerStorage:        store,
+		indexerSrcStorage:     store,
+		downloadClientService: NewDownloadClientService(store, factory),
+		qualityService:        NewQualityService(store),
+		config:                fullConfig,
+		configs:               managerConfigs,
 	}
 
 	executors := map[JobType]JobExecutor{
@@ -1479,73 +1481,73 @@ func (m MediaManager) CancelJob(ctx context.Context, id int64) (JobResponse, err
 }
 
 func (m MediaManager) AddQualityDefinition(ctx context.Context, request AddQualityDefinitionRequest) (model.QualityDefinition, error) {
-	return m.downloadService.AddQualityDefinition(ctx, request)
+	return m.qualityService.AddQualityDefinition(ctx, request)
 }
 
 func (m MediaManager) DeleteQualityDefinition(ctx context.Context, request DeleteQualityDefinitionRequest) error {
-	return m.downloadService.DeleteQualityDefinition(ctx, request)
+	return m.qualityService.DeleteQualityDefinition(ctx, request)
 }
 
 func (m MediaManager) ListQualityDefinitions(ctx context.Context) ([]*model.QualityDefinition, error) {
-	return m.downloadService.ListQualityDefinitions(ctx)
+	return m.qualityService.ListQualityDefinitions(ctx)
 }
 
 func (m MediaManager) GetQualityDefinition(ctx context.Context, id int64) (model.QualityDefinition, error) {
-	return m.downloadService.GetQualityDefinition(ctx, id)
+	return m.qualityService.GetQualityDefinition(ctx, id)
 }
 
 func (m MediaManager) GetQualityProfile(ctx context.Context, id int64) (storage.QualityProfile, error) {
-	return m.downloadService.GetQualityProfile(ctx, id)
+	return m.qualityService.GetQualityProfile(ctx, id)
 }
 
 func (m MediaManager) ListEpisodeQualityProfiles(ctx context.Context) ([]*storage.QualityProfile, error) {
-	return m.downloadService.ListEpisodeQualityProfiles(ctx)
+	return m.qualityService.ListEpisodeQualityProfiles(ctx)
 }
 
 func (m MediaManager) ListMovieQualityProfiles(ctx context.Context) ([]*storage.QualityProfile, error) {
-	return m.downloadService.ListMovieQualityProfiles(ctx)
+	return m.qualityService.ListMovieQualityProfiles(ctx)
 }
 
 func (m MediaManager) ListQualityProfiles(ctx context.Context) ([]*storage.QualityProfile, error) {
-	return m.downloadService.ListQualityProfiles(ctx)
+	return m.qualityService.ListQualityProfiles(ctx)
 }
 
 func (m MediaManager) UpdateQualityDefinition(ctx context.Context, id int64, request UpdateQualityDefinitionRequest) (model.QualityDefinition, error) {
-	return m.downloadService.UpdateQualityDefinition(ctx, id, request)
+	return m.qualityService.UpdateQualityDefinition(ctx, id, request)
 }
 
 func (m MediaManager) AddQualityProfile(ctx context.Context, request AddQualityProfileRequest) (storage.QualityProfile, error) {
-	return m.downloadService.AddQualityProfile(ctx, request)
+	return m.qualityService.AddQualityProfile(ctx, request)
 }
 
 func (m MediaManager) UpdateQualityProfile(ctx context.Context, id int64, request UpdateQualityProfileRequest) (storage.QualityProfile, error) {
-	return m.downloadService.UpdateQualityProfile(ctx, id, request)
+	return m.qualityService.UpdateQualityProfile(ctx, id, request)
 }
 
 func (m MediaManager) DeleteQualityProfile(ctx context.Context, request DeleteQualityProfileRequest) error {
-	return m.downloadService.DeleteDownloadClient(ctx, int64(*request.ID))
+	return m.qualityService.DeleteQualityProfile(ctx, request)
 }
 
 func (m MediaManager) CreateDownloadClient(ctx context.Context, request AddDownloadClientRequest) (model.DownloadClient, error) {
-	return m.downloadService.CreateDownloadClient(ctx, request)
+	return m.downloadClientService.CreateDownloadClient(ctx, request)
 }
 
 func (m MediaManager) UpdateDownloadClient(ctx context.Context, id int64, request UpdateDownloadClientRequest) (model.DownloadClient, error) {
-	return m.downloadService.UpdateDownloadClient(ctx, id, request)
+	return m.downloadClientService.UpdateDownloadClient(ctx, id, request)
 }
 
 func (m MediaManager) TestDownloadClient(ctx context.Context, request AddDownloadClientRequest) error {
-	return m.downloadService.TestDownloadClient(ctx, request)
+	return m.downloadClientService.TestDownloadClient(ctx, request)
 }
 
 func (m MediaManager) GetDownloadClient(ctx context.Context, id int64) (download.DownloadClient, error) {
-	return m.downloadService.GetDownloadClient(ctx, id)
+	return m.downloadClientService.GetDownloadClient(ctx, id)
 }
 
 func (m MediaManager) ListDownloadClients(ctx context.Context) ([]*model.DownloadClient, error) {
-	return m.downloadService.ListDownloadClients(ctx)
+	return m.downloadClientService.ListDownloadClients(ctx)
 }
 
 func (m MediaManager) DeleteDownloadClient(ctx context.Context, id int64) error {
-	return m.downloadService.DeleteDownloadClient(ctx, id)
+	return m.downloadClientService.DeleteDownloadClient(ctx, id)
 }

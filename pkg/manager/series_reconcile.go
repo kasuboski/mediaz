@@ -1457,7 +1457,7 @@ func (m MediaManager) reconcileSeasonPackDownload(ctx context.Context, episode *
 		return nil
 	}
 
-	downloadClient, err := m.downloadService.newDownloadClient(*dc)
+	downloadClient, err := m.downloadClientService.newDownloadClient(*dc)
 	if err != nil {
 		log.Warn("failed to create download client", zap.Error(err))
 		return err
@@ -1543,7 +1543,7 @@ func (m MediaManager) reconcileDownloadingEpisode(ctx context.Context, episode *
 		return nil
 	}
 
-	downloadClient, err := m.downloadService.newDownloadClient(*dc)
+	downloadClient, err := m.downloadClientService.newDownloadClient(*dc)
 	if err != nil {
 		log.Warn("failed to create download client", zap.Error(err))
 		return err
