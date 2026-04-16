@@ -1462,7 +1462,21 @@ func (m MediaManager) ListEpisodesForSeason(ctx context.Context, tmdbID int, sea
 	return results, nil
 }
 
-// MediaManager delegation methods
+func (m MediaManager) CreateJob(ctx context.Context, request TriggerJobRequest) (JobResponse, error) {
+	return m.jobService.CreateJob(ctx, request)
+}
+
+func (m MediaManager) GetJob(ctx context.Context, id int64) (JobResponse, error) {
+	return m.jobService.GetJob(ctx, id)
+}
+
+func (m MediaManager) ListJobs(ctx context.Context, jobType *string, state *string, params pagination.Params) (JobListResponse, error) {
+	return m.jobService.ListJobs(ctx, jobType, state, params)
+}
+
+func (m MediaManager) CancelJob(ctx context.Context, id int64) (JobResponse, error) {
+	return m.jobService.CancelJob(ctx, id)
+}
 
 func (m MediaManager) AddQualityDefinition(ctx context.Context, request AddQualityDefinitionRequest) (model.QualityDefinition, error) {
 	return m.downloadService.AddQualityDefinition(ctx, request)
@@ -1509,5 +1523,5 @@ func (m MediaManager) UpdateQualityProfile(ctx context.Context, id int64, reques
 }
 
 func (m MediaManager) DeleteQualityProfile(ctx context.Context, request DeleteQualityProfileRequest) error {
-	return m.downloadService.DeleteQualityProfile(ctx, request)
+	return m.downloadService.DeleteDownloadClient(ctx, int64(*request.ID))
 }
