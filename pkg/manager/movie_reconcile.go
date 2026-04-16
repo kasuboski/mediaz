@@ -142,7 +142,7 @@ func (m MediaManager) ReconcileMissingMovies(ctx context.Context, snapshot *Reco
 	}
 	snapshot = newReconcileSnapshot(indexers, snapshot.GetDownloadClients())
 
-	movies, err := m.storage.ListMoviesByState(ctx, storage.MovieStateMissing)
+	movies, err := m.movieStorage.ListMoviesByState(ctx, storage.MovieStateMissing)
 	if err != nil {
 		return fmt.Errorf("couldn't list missing movies: %w", err)
 	}
@@ -165,7 +165,7 @@ func (m MediaManager) ReconcileDownloadingMovies(ctx context.Context, snapshot *
 	log := logger.FromCtx(ctx)
 	log.Debug("starting downloading movies reconciliation")
 
-	movies, err := m.storage.ListMoviesByState(ctx, storage.MovieStateDownloading)
+	movies, err := m.movieStorage.ListMoviesByState(ctx, storage.MovieStateDownloading)
 	if err != nil {
 		return fmt.Errorf("couldn't list downloading movies: %w", err)
 	}
@@ -204,7 +204,7 @@ func (m MediaManager) reconcileDownloadingMovie(ctx context.Context, movie *stor
 		return nil
 	}
 
-	_, err := m.storage.GetMovieFilesByMovieName(ctx, *movie.Path)
+	_, err := m.movieStorage.GetMovieFilesByMovieName(ctx, *movie.Path)
 	if err == nil {
 		log.Info("movie files already tracked")
 		return m.updateMovieState(ctx, movie, storage.MovieStateDownloaded, nil)
@@ -216,7 +216,7 @@ func (m MediaManager) reconcileDownloadingMovie(ctx context.Context, movie *stor
 		return nil
 	}
 
-	downloadClient, err := m.factory.NewDownloadClient(*dc)
+	downloadClient, err := m.downloadService.newDownloadClient(*dc)
 	if err != nil {
 		log.Warn("failed to create download client", zap.Error(err))
 		return err
@@ -236,7 +236,7 @@ func (m MediaManager) reconcileDownloadingMovie(ctx context.Context, movie *stor
 		return nil
 	}
 
-	movieMetadata, err := m.storage.GetMovieMetadata(ctx, table.MovieMetadata.ID.EQ(sqlite.Int32(*movie.MovieMetadataID)))
+	movieMetadata, err := m.movieMetaStorage.GetMovieMetadata(ctx, table.MovieMetadata.ID.EQ(sqlite.Int32(*movie.MovieMetadataID)))
 	if err != nil {
 		log.Error("failed to get movie metadata", zap.Error(err))
 		return err
@@ -265,7 +265,7 @@ func (m MediaManager) addMovieFileToLibrary(ctx context.Context, title, filePath
 		return fmt.Errorf("failed to add movie to library: %w", err)
 	}
 
-	_, err = m.storage.CreateMovieFile(ctx, model.MovieFile{
+	_, err = m.movieStorage.CreateMovieFile(ctx, model.MovieFile{
 		RelativePath:     &mf.RelativePath,
 		Size:             mf.Size,
 		OriginalFilePath: &filePath,
@@ -304,13 +304,13 @@ func (m MediaManager) reconcileMissingMovie(ctx context.Context, movie *storage.
 		return nil
 	}
 
-	det, err := m.storage.GetMovieMetadata(ctx, table.MovieMetadata.ID.EQ(sqlite.Int32(*movie.MovieMetadataID)))
+	det, err := m.movieMetaStorage.GetMovieMetadata(ctx, table.MovieMetadata.ID.EQ(sqlite.Int32(*movie.MovieMetadataID)))
 	if err != nil {
 		log.Debug("failed to find movie metadata", zap.Int32("meta_id", *movie.MovieMetadataID))
 		return err
 	}
 
-	profile, err := m.storage.GetQualityProfile(ctx, int64(movie.QualityProfileID))
+	profile, err := m.GetQualityProfile(ctx, int64(movie.QualityProfileID))
 	if err != nil {
 		log.Warn("failed to find movie qualityprofile", zap.Int32("quality_id", movie.QualityProfileID))
 		return err
@@ -368,7 +368,7 @@ func (m MediaManager) ReconcileUnreleasedMovies(ctx context.Context, snapshot *R
 		return fmt.Errorf("snapshot is nil")
 	}
 
-	movies, err := m.storage.ListMoviesByState(ctx, storage.MovieStateUnreleased)
+	movies, err := m.movieStorage.ListMoviesByState(ctx, storage.MovieStateUnreleased)
 	if err != nil {
 		log.Warn("failed to list unreleased movies", zap.Error(err))
 		return fmt.Errorf("couldn't list movies during unrelease reconcile: %w", err)
@@ -402,7 +402,7 @@ func (m *MediaManager) reconcileUnreleasedMovie(ctx context.Context, movie *stor
 		return nil
 	}
 
-	det, err := m.storage.GetMovieMetadata(ctx, table.MovieMetadata.ID.EQ(sqlite.Int32(*movie.MovieMetadataID)))
+	det, err := m.movieMetaStorage.GetMovieMetadata(ctx, table.MovieMetadata.ID.EQ(sqlite.Int32(*movie.MovieMetadataID)))
 	if err != nil {
 		log.Debug("failed to find movie metadata", zap.Error(err))
 		return err
@@ -418,7 +418,7 @@ func (m *MediaManager) reconcileUnreleasedMovie(ctx context.Context, movie *stor
 
 func (m MediaManager) updateMovieState(ctx context.Context, movie *storage.Movie, state storage.MovieState, metadata *storage.TransitionStateMetadata) error {
 	log := logger.FromCtx(ctx).With("movie id", movie.ID, "from state", movie.State, "to state", state)
-	err := m.storage.UpdateMovieState(ctx, int64(movie.ID), state, metadata)
+	err := m.movieStorage.UpdateMovieState(ctx, int64(movie.ID), state, metadata)
 	if err != nil {
 		log.Warn("failed to update movie state", zap.Error(err))
 		return err
@@ -436,7 +436,7 @@ func (m MediaManager) ReconcileDiscoveredMovies(ctx context.Context, snapshot *R
 		return fmt.Errorf("snapshot is nil")
 	}
 
-	movies, err := m.storage.ListMoviesByState(ctx, storage.MovieStateDiscovered)
+	movies, err := m.movieStorage.ListMoviesByState(ctx, storage.MovieStateDiscovered)
 	if err != nil {
 		return fmt.Errorf("couldn't list discovered movies: %w", err)
 	}
@@ -504,13 +504,13 @@ func (m MediaManager) reconcileDiscoveredMovie(ctx context.Context, movie *stora
 		return fmt.Errorf("failed to get movie metadata: %w", err)
 	}
 
-	existingMovie, err := m.storage.GetMovieByMetadataID(ctx, int(metadata.ID))
+	existingMovie, err := m.movieStorage.GetMovieByMetadataID(ctx, int(metadata.ID))
 	if err == nil && existingMovie != nil {
 		log.Warn("metadata already linked to another movie, skipping", zap.Int32("metadata_id", metadata.ID), zap.Int32("existing_movie_id", existingMovie.ID), zap.String("path", *movie.Path))
 		return nil
 	}
 
-	err = m.storage.LinkMovieMetadata(ctx, int64(movie.ID), metadata.ID)
+	err = m.movieStorage.LinkMovieMetadata(ctx, int64(movie.ID), metadata.ID)
 	if err != nil {
 		return fmt.Errorf("failed to update movie: %w", err)
 	}
@@ -551,7 +551,7 @@ func (m MediaManager) requestReleaseDownload(ctx context.Context, snapshot *Reco
 
 	id := c.ID
 
-	downloadClient, err := m.factory.NewDownloadClient(*c)
+	downloadClient, err := m.downloadService.newDownloadClient(*c)
 	if err != nil {
 		return id, download.Status{}, fmt.Errorf("failed to create download client: %w", err)
 	}

@@ -16,22 +16,22 @@ type MovieMetadataImages struct {
 	PosterPath string `json:"poster_path,omitempty"`
 }
 
-func (m MediaManager) GetActiveActivity(ctx context.Context) (*ActiveActivityResponse, error) {
+func (js *JobService) GetActiveActivity(ctx context.Context) (*ActiveActivityResponse, error) {
 	log := logger.FromCtx(ctx)
 
-	movies, err := m.storage.ListDownloadingMovies(ctx)
+	movies, err := js.activityStorage.ListDownloadingMovies(ctx)
 	if err != nil {
 		log.Error("failed to list downloading movies", zap.Error(err))
 		return nil, err
 	}
 
-	series, err := m.storage.ListDownloadingSeries(ctx)
+	series, err := js.activityStorage.ListDownloadingSeries(ctx)
 	if err != nil {
 		log.Error("failed to list downloading series", zap.Error(err))
 		return nil, err
 	}
 
-	jobs, err := m.storage.ListRunningJobs(ctx)
+	jobs, err := js.activityStorage.ListRunningJobs(ctx)
 	if err != nil {
 		log.Error("failed to list running jobs", zap.Error(err))
 		return nil, err
@@ -131,10 +131,10 @@ func transformDownloadClient(dc *storage.DownloadClientInfo) *DownloadClientInfo
 	}
 }
 
-func (m MediaManager) GetRecentFailures(ctx context.Context, hours int) (*FailuresResponse, error) {
+func (js *JobService) GetRecentFailures(ctx context.Context, hours int) (*FailuresResponse, error) {
 	log := logger.FromCtx(ctx)
 
-	jobs, err := m.storage.ListErrorJobs(ctx, hours)
+	jobs, err := js.activityStorage.ListErrorJobs(ctx, hours)
 	if err != nil {
 		log.Error("failed to list error jobs", zap.Error(err))
 		return nil, err
@@ -163,7 +163,7 @@ func (m MediaManager) GetRecentFailures(ctx context.Context, hours int) (*Failur
 	}, nil
 }
 
-func (m MediaManager) GetActivityTimeline(ctx context.Context, days int, params pagination.Params) (*TimelineResponse, error) {
+func (js *JobService) GetActivityTimeline(ctx context.Context, days int, params pagination.Params) (*TimelineResponse, error) {
 	log := logger.FromCtx(ctx)
 
 	startDate := time.Now().AddDate(0, 0, -days)
@@ -171,7 +171,7 @@ func (m MediaManager) GetActivityTimeline(ctx context.Context, days int, params 
 
 	offset, limit := params.CalculateOffsetLimit()
 
-	storageResp, err := m.storage.GetTransitionsByDate(ctx, startDate, endDate, offset, limit)
+	storageResp, err := js.activityStorage.GetTransitionsByDate(ctx, startDate, endDate, offset, limit)
 	if err != nil {
 		log.Error("failed to get transitions by date", zap.Error(err))
 		return nil, err
@@ -237,10 +237,10 @@ func transformJobCounts(counts *storage.JobCounts) *JobCounts {
 	}
 }
 
-func (m MediaManager) GetEntityTransitionHistory(ctx context.Context, entityType string, entityID int64) (*HistoryResponse, error) {
+func (js *JobService) GetEntityTransitionHistory(ctx context.Context, entityType string, entityID int64) (*HistoryResponse, error) {
 	log := logger.FromCtx(ctx)
 
-	storageResp, err := m.storage.GetEntityTransitions(ctx, entityType, entityID)
+	storageResp, err := js.activityStorage.GetEntityTransitions(ctx, entityType, entityID)
 	if err != nil {
 		log.Error("failed to get entity transitions", zap.Error(err), zap.String("entityType", entityType), zap.Int64("entityID", entityID))
 		return nil, err

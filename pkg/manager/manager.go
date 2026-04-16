@@ -29,28 +29,38 @@ import (
 )
 
 type MediaManager struct {
-	tmdb           tmdb.ITmdb
-	indexerFactory indexer.Factory
-	indexerCache   *cache.Cache[int64, indexerCacheEntry]
-	library        library.Library
-	storage        storage.Storage
-	factory        download.Factory
-	config         config.Config
-	configs        config.Manager
-	scheduler      *Scheduler
+	tmdb              tmdb.ITmdb
+	indexerFactory    indexer.Factory
+	indexerCache      *cache.Cache[int64, indexerCacheEntry]
+	library           library.Library
+	movieStorage      storage.MovieStorage
+	movieMetaStorage  storage.MovieMetadataStorage
+	seriesStorage     storage.SeriesStorage
+	seriesMetaStorage storage.SeriesMetadataStorage
+	indexerStorage    storage.IndexerStorage
+	indexerSrcStorage storage.IndexerSourceStorage
+	downloadService   *DownloadService
+	jobService        *JobService
+	config            config.Config
+	configs           config.Manager
 }
 
-func New(tmbdClient tmdb.ITmdb, indexerFactory indexer.Factory, library library.Library, storage storage.Storage, factory download.Factory, managerConfigs config.Manager, fullConfig config.Config) MediaManager {
+func New(tmbdClient tmdb.ITmdb, indexerFactory indexer.Factory, library library.Library, store storage.Storage, factory download.Factory, managerConfigs config.Manager, fullConfig config.Config) MediaManager {
 
 	m := MediaManager{
-		tmdb:           tmbdClient,
-		indexerFactory: indexerFactory,
-		indexerCache:   cache.New[int64, indexerCacheEntry](),
-		library:        library,
-		storage:        storage,
-		factory:        factory,
-		config:         fullConfig,
-		configs:        managerConfigs,
+		tmdb:              tmbdClient,
+		indexerFactory:    indexerFactory,
+		indexerCache:      cache.New[int64, indexerCacheEntry](),
+		library:           library,
+		movieStorage:      store,
+		movieMetaStorage:  store,
+		seriesStorage:     store,
+		seriesMetaStorage: store,
+		indexerStorage:    store,
+		indexerSrcStorage: store,
+		downloadService:   NewDownloadService(store, store, factory),
+		config:            fullConfig,
+		configs:           managerConfigs,
 	}
 
 	executors := map[JobType]JobExecutor{
@@ -71,8 +81,7 @@ func New(tmbdClient tmdb.ITmdb, indexerFactory indexer.Factory, library library.
 		},
 	}
 
-	scheduler := NewScheduler(storage, managerConfigs, executors)
-	m.scheduler = scheduler
+	m.jobService = NewJobService(store, store, store, managerConfigs, executors)
 
 	return m
 }
@@ -146,7 +155,7 @@ func (m MediaManager) GetMovieDetailByTMDBID(ctx context.Context, tmdbID int) (*
 	}
 
 	// Try to get library information (movie record)
-	movie, err := m.storage.GetMovieByMetadataID(ctx, int(metadata.ID))
+	movie, err := m.movieStorage.GetMovieByMetadataID(ctx, int(metadata.ID))
 	if err == nil && movie != nil {
 		result.ID = &movie.ID
 		result.LibraryStatus = string(movie.State)
@@ -173,7 +182,7 @@ func (m MediaManager) GetTVDetailByTMDBID(ctx context.Context, tmdbID int) (*TVD
 	}
 
 	// Get library information
-	series, err := m.storage.GetSeries(ctx, table.Series.SeriesMetadataID.EQ(sqlite.Int32(metadata.ID)))
+	series, err := m.seriesStorage.GetSeries(ctx, table.Series.SeriesMetadataID.EQ(sqlite.Int32(metadata.ID)))
 	if err != nil && !errors.Is(err, storage.ErrNotFound) {
 		log.Debug("error checking series library status", zap.Error(err), zap.Int32("metadataID", metadata.ID))
 	}
@@ -349,7 +358,7 @@ func (m MediaManager) getSeasonsWithEpisodes(ctx context.Context, seriesID int32
 	log := logger.FromCtx(ctx)
 
 	// Query seasons for this series
-	seasons, err := m.storage.ListSeasons(ctx,
+	seasons, err := m.seriesStorage.ListSeasons(ctx,
 		table.Season.SeriesID.EQ(sqlite.Int32(seriesID)))
 	if err != nil {
 		log.Error("failed to list seasons", zap.Error(err), zap.Int32("seriesID", seriesID))
@@ -365,7 +374,7 @@ func (m MediaManager) getSeasonsWithEpisodes(ctx context.Context, seriesID int32
 			continue
 		}
 
-		seasonMeta, err := m.storage.GetSeasonMetadata(ctx,
+		seasonMeta, err := m.seriesMetaStorage.GetSeasonMetadata(ctx,
 			table.SeasonMetadata.ID.EQ(sqlite.Int32(*season.SeasonMetadataID)))
 		if err != nil {
 			log.Error("failed to get season metadata", zap.Error(err), zap.Int32("seasonMetadataID", *season.SeasonMetadataID))
@@ -418,7 +427,7 @@ func (m MediaManager) preloadEpisodeMetadata(ctx context.Context, episodes []*st
 		return nil
 	}
 
-	metas, err := m.storage.ListEpisodeMetadata(ctx, table.EpisodeMetadata.ID.IN(ids...))
+	metas, err := m.seriesMetaStorage.ListEpisodeMetadata(ctx, table.EpisodeMetadata.ID.IN(ids...))
 	if err != nil {
 		log := logger.FromCtx(ctx)
 		log.Error("failed to batch fetch episode metadata", zap.Error(err))
@@ -473,7 +482,7 @@ func (m MediaManager) getEpisodesForSeason(ctx context.Context, seasonID int32, 
 	log := logger.FromCtx(ctx)
 
 	// Query episodes for this season
-	episodes, err := m.storage.ListEpisodes(ctx,
+	episodes, err := m.seriesStorage.ListEpisodes(ctx,
 		table.Episode.SeasonID.EQ(sqlite.Int32(seasonID)))
 	if err != nil {
 		log.Error("failed to list episodes", zap.Error(err), zap.Int32("seasonID", seasonID))
@@ -515,8 +524,23 @@ func (m MediaManager) GetConfigSummary() ConfigSummary {
 
 // GetLibraryStats returns aggregate statistics about the library using optimized queries
 func (m MediaManager) GetLibraryStats(ctx context.Context) (*storage.LibraryStats, error) {
-	// Use the new optimized storage method that aggregates in the database
-	return m.storage.GetLibraryStats(ctx)
+	return m.jobService.GetLibraryStats(ctx)
+}
+
+func (m MediaManager) GetActiveActivity(ctx context.Context) (*ActiveActivityResponse, error) {
+	return m.jobService.GetActiveActivity(ctx)
+}
+
+func (m MediaManager) GetRecentFailures(ctx context.Context, hours int) (*FailuresResponse, error) {
+	return m.jobService.GetRecentFailures(ctx, hours)
+}
+
+func (m MediaManager) GetActivityTimeline(ctx context.Context, days int, params pagination.Params) (*TimelineResponse, error) {
+	return m.jobService.GetActivityTimeline(ctx, days, params)
+}
+
+func (m MediaManager) GetEntityTransitionHistory(ctx context.Context, entityType string, entityID int64) (*HistoryResponse, error) {
+	return m.jobService.GetEntityTransitionHistory(ctx, entityType, entityID)
 }
 
 // SearchMovie query tmdb for tv shows
@@ -592,7 +616,7 @@ func (m MediaManager) listIndexersInternal(ctx context.Context) ([]model.Indexer
 		}
 	}
 
-	dbIndexers, err := m.storage.ListIndexers(ctx)
+	dbIndexers, err := m.indexerStorage.ListIndexers(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -627,7 +651,7 @@ func (m MediaManager) ListIndexers(ctx context.Context) ([]IndexerResponse, erro
 		}
 	}
 
-	dbIndexers, err := m.storage.ListIndexers(ctx)
+	dbIndexers, err := m.indexerStorage.ListIndexers(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -648,7 +672,7 @@ func (m MediaManager) ListIndexers(ctx context.Context) ([]IndexerResponse, erro
 }
 
 func (m MediaManager) ListShowsInLibrary(ctx context.Context) ([]LibraryShow, error) {
-	series, err := m.storage.ListSeries(ctx)
+	series, err := m.seriesStorage.ListSeries(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -661,7 +685,7 @@ func (m MediaManager) ListShowsInLibrary(ctx context.Context) ([]LibraryShow, er
 		if sp.Path != nil {
 			ls.Path = *sp.Path
 		}
-		meta, err := m.storage.GetSeriesMetadata(ctx, table.SeriesMetadata.ID.EQ(sqlite.Int(int64(*sp.SeriesMetadataID))))
+		meta, err := m.seriesMetaStorage.GetSeriesMetadata(ctx, table.SeriesMetadata.ID.EQ(sqlite.Int(int64(*sp.SeriesMetadataID))))
 		if err != nil || meta == nil {
 			return LibraryShow{}, false
 		}
@@ -680,7 +704,7 @@ func (m MediaManager) ListShowsInLibrary(ctx context.Context) ([]LibraryShow, er
 
 // ListMoviesInLibrary returns library movies enriched with metadata
 func (m MediaManager) ListMoviesInLibrary(ctx context.Context) ([]LibraryMovie, error) {
-	all, err := m.storage.ListMovies(ctx)
+	all, err := m.movieStorage.ListMovies(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -715,7 +739,7 @@ func (m MediaManager) Run(ctx context.Context) error {
 		log.Warn("failed to refresh indexer sources on startup", zap.Error(err))
 	}
 
-	go m.scheduler.Run(ctx)
+	go m.jobService.Run(ctx)
 
 	for range ctx.Done() {
 		log.Info("shutting down manager")
@@ -739,7 +763,7 @@ func (m MediaManager) IndexMovieLibrary(ctx context.Context) error {
 		return nil
 	}
 
-	movieFiles, err := m.storage.ListMovieFiles(ctx)
+	movieFiles, err := m.movieStorage.ListMovieFiles(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to list movie files: %w", err)
 	}
@@ -781,7 +805,7 @@ func (m MediaManager) IndexMovieLibrary(ctx context.Context) error {
 
 		log.Debug("discovered new movie file", zap.String("path", discoveredFile.RelativePath))
 
-		id, err := m.storage.CreateMovieFile(ctx, mf)
+		id, err := m.movieStorage.CreateMovieFile(ctx, mf)
 		if err != nil {
 			log.Error("couldn't store movie file", zap.Error(err))
 			continue
@@ -791,14 +815,14 @@ func (m MediaManager) IndexMovieLibrary(ctx context.Context) error {
 	}
 
 	// pull the updated movie file list in case we added anything above
-	movieFiles, err = m.storage.ListMovieFiles(ctx)
+	movieFiles, err = m.movieStorage.ListMovieFiles(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to list movie files: %w", err)
 	}
 
 	for _, f := range movieFiles {
 		movieName := library.MovieNameFromFilepath(*f.RelativePath)
-		foundMovie, err := m.storage.GetMovieByPath(ctx, movieName)
+		foundMovie, err := m.movieStorage.GetMovieByPath(ctx, movieName)
 		if err == nil {
 			log.Debug("movie file associated with movie already", zap.Any("movie id", foundMovie.ID))
 			continue
@@ -818,7 +842,7 @@ func (m MediaManager) IndexMovieLibrary(ctx context.Context) error {
 			},
 		}
 
-		_, err = m.storage.CreateMovie(ctx, movie, storage.MovieStateDiscovered)
+		_, err = m.movieStorage.CreateMovie(ctx, movie, storage.MovieStateDiscovered)
 		if err != nil {
 			log.Error("couldn't create new movie for discovered file", zap.Error(err))
 			continue
@@ -847,7 +871,7 @@ func (m MediaManager) AddMovieToLibrary(ctx context.Context, request AddMovieReq
 		return nil, err
 	}
 
-	movie, err := m.storage.GetMovieByMetadataID(ctx, int(det.ID))
+	movie, err := m.movieStorage.GetMovieByMetadataID(ctx, int(det.ID))
 	// if we find the movie we're done
 	if err == nil {
 		return movie, err
@@ -871,7 +895,7 @@ func (m MediaManager) AddMovieToLibrary(ctx context.Context, request AddMovieReq
 
 	state := initialMovieState(det.ReleaseDate)
 
-	id, err := m.storage.CreateMovie(ctx, *movie, state)
+	id, err := m.movieStorage.CreateMovie(ctx, *movie, state)
 	if err != nil {
 		log.Warn("failed to create movie", zap.Error(err))
 		return nil, err
@@ -879,7 +903,7 @@ func (m MediaManager) AddMovieToLibrary(ctx context.Context, request AddMovieReq
 
 	log.Debug("created movie", zap.Any("movie", movie))
 
-	movie, err = m.storage.GetMovie(ctx, id)
+	movie, err = m.movieStorage.GetMovie(ctx, id)
 	if err != nil {
 		log.Warn("failed to get created movie", zap.Error(err))
 	}
@@ -903,7 +927,7 @@ func (m MediaManager) AddSeriesToLibrary(ctx context.Context, request AddSeriesR
 		return nil, err
 	}
 
-	series, err := m.storage.GetSeries(ctx, table.Series.ID.EQ(sqlite.Int32(seriesMetadata.ID)))
+	series, err := m.seriesStorage.GetSeries(ctx, table.Series.ID.EQ(sqlite.Int32(seriesMetadata.ID)))
 	// if we find the series we dont need to add it
 	if err == nil {
 		return series, err
@@ -929,7 +953,7 @@ func (m MediaManager) AddSeriesToLibrary(ctx context.Context, request AddSeriesR
 
 	state := initialSeriesState(seriesMetadata.FirstAirDate)
 
-	seriesID, err := m.storage.CreateSeries(ctx, *series, state)
+	seriesID, err := m.seriesStorage.CreateSeries(ctx, *series, state)
 	if err != nil {
 		log.Error("failed to create new missing series", zap.Error(err))
 		return nil, err
@@ -938,14 +962,14 @@ func (m MediaManager) AddSeriesToLibrary(ctx context.Context, request AddSeriesR
 	log.Debug("created new missing series", zap.Any("series", series))
 
 	// Get series to access its metadata ID
-	seriesEntity, err := m.storage.GetSeries(ctx, table.Series.ID.EQ(sqlite.Int(seriesID)))
+	seriesEntity, err := m.seriesStorage.GetSeries(ctx, table.Series.ID.EQ(sqlite.Int(seriesID)))
 	if err != nil || seriesEntity.SeriesMetadataID == nil {
 		log.Error("failed to get series or series has no metadata")
 		return nil, fmt.Errorf("series has no metadata")
 	}
 
 	where := table.SeasonMetadata.SeriesMetadataID.EQ(sqlite.Int32(*seriesEntity.SeriesMetadataID))
-	seasonMetadata, err := m.storage.ListSeasonMetadata(ctx, where)
+	seasonMetadata, err := m.seriesMetaStorage.ListSeasonMetadata(ctx, where)
 	if err != nil {
 		return nil, err
 	}
@@ -959,7 +983,7 @@ func (m MediaManager) AddSeriesToLibrary(ctx context.Context, request AddSeriesR
 			},
 		}
 
-		seasonID, err := m.storage.CreateSeason(ctx, season, storage.SeasonStateMissing)
+		seasonID, err := m.seriesStorage.CreateSeason(ctx, season, storage.SeasonStateMissing)
 		if err != nil {
 			log.Error("failed to create season", zap.Error(err))
 			return nil, err
@@ -968,7 +992,7 @@ func (m MediaManager) AddSeriesToLibrary(ctx context.Context, request AddSeriesR
 		log.Debug("created new missing season", zap.Any("season", season))
 
 		// Get the season to access its metadata ID for proper episode metadata querying
-		seasonEntity, err := m.storage.GetSeason(ctx, table.Season.ID.EQ(sqlite.Int64(seasonID)))
+		seasonEntity, err := m.seriesStorage.GetSeason(ctx, table.Season.ID.EQ(sqlite.Int64(seasonID)))
 		if err != nil || seasonEntity.SeasonMetadataID == nil {
 			log.Error("failed to get season or season has no metadata linked")
 			return nil, fmt.Errorf("season has no metadata")
@@ -976,7 +1000,7 @@ func (m MediaManager) AddSeriesToLibrary(ctx context.Context, request AddSeriesR
 
 		where := table.EpisodeMetadata.SeasonMetadataID.EQ(sqlite.Int32(*seasonEntity.SeasonMetadataID))
 
-		episodesMetadata, err := m.storage.ListEpisodeMetadata(ctx, where)
+		episodesMetadata, err := m.seriesMetaStorage.ListEpisodeMetadata(ctx, where)
 		if err != nil {
 			log.Error("failed to list episode metadata", zap.Error(err))
 			return nil, err
@@ -992,7 +1016,7 @@ func (m MediaManager) AddSeriesToLibrary(ctx context.Context, request AddSeriesR
 				},
 			}
 
-			_, err := m.storage.CreateEpisode(ctx, episode, storage.EpisodeStateMissing)
+			_, err := m.seriesStorage.CreateEpisode(ctx, episode, storage.EpisodeStateMissing)
 			if err != nil {
 				log.Error("failed to create episode", zap.Error(err))
 				return nil, err
@@ -1002,7 +1026,7 @@ func (m MediaManager) AddSeriesToLibrary(ctx context.Context, request AddSeriesR
 		}
 	}
 
-	series, err = m.storage.GetSeries(ctx, table.Series.ID.EQ(sqlite.Int64(seriesID)))
+	series, err = m.seriesStorage.GetSeries(ctx, table.Series.ID.EQ(sqlite.Int64(seriesID)))
 	if err != nil {
 		log.Warn("failed to get created series", zap.Error(err))
 	}
@@ -1013,7 +1037,7 @@ func (m MediaManager) AddSeriesToLibrary(ctx context.Context, request AddSeriesR
 func (m MediaManager) DeleteMovie(ctx context.Context, movieID int64, deleteFiles bool) error {
 	log := logger.FromCtx(ctx)
 
-	movie, err := m.storage.GetMovie(ctx, movieID)
+	movie, err := m.movieStorage.GetMovie(ctx, movieID)
 	if err != nil {
 		return fmt.Errorf("failed to get movie: %w", err)
 	}
@@ -1028,7 +1052,7 @@ func (m MediaManager) DeleteMovie(ctx context.Context, movieID int64, deleteFile
 		}
 	}
 
-	if err := m.storage.DeleteMovie(ctx, movieID); err != nil {
+	if err := m.movieStorage.DeleteMovie(ctx, movieID); err != nil {
 		return fmt.Errorf("failed to delete movie: %w", err)
 	}
 
@@ -1039,18 +1063,18 @@ func (m MediaManager) DeleteMovie(ctx context.Context, movieID int64, deleteFile
 func (m MediaManager) DeleteSeries(ctx context.Context, seriesID int64, deleteDirectory bool) error {
 	log := logger.FromCtx(ctx)
 
-	series, err := m.storage.GetSeries(ctx, table.Series.ID.EQ(sqlite.Int64(seriesID)))
+	series, err := m.seriesStorage.GetSeries(ctx, table.Series.ID.EQ(sqlite.Int64(seriesID)))
 	if err != nil {
 		return fmt.Errorf("failed to get series: %w", err)
 	}
 
-	seasons, err := m.storage.ListSeasons(ctx, table.Season.SeriesID.EQ(sqlite.Int64(seriesID)))
+	seasons, err := m.seriesStorage.ListSeasons(ctx, table.Season.SeriesID.EQ(sqlite.Int64(seriesID)))
 	if err != nil {
 		log.Warn("failed to get seasons for cleanup", zap.Error(err))
 	}
 
 	for _, season := range seasons {
-		episodes, err := m.storage.ListEpisodes(ctx, table.Episode.SeasonID.EQ(sqlite.Int64(int64(season.ID))))
+		episodes, err := m.seriesStorage.ListEpisodes(ctx, table.Episode.SeasonID.EQ(sqlite.Int64(int64(season.ID))))
 		if err != nil {
 			log.Warn("failed to get episodes for cleanup", zap.Int32("season_id", season.ID), zap.Error(err))
 			continue
@@ -1059,7 +1083,7 @@ func (m MediaManager) DeleteSeries(ctx context.Context, seriesID int64, deleteDi
 			if episode.EpisodeFileID == nil {
 				continue
 			}
-			if err := m.storage.DeleteEpisodeFile(ctx, int64(*episode.EpisodeFileID)); err != nil {
+			if err := m.seriesStorage.DeleteEpisodeFile(ctx, int64(*episode.EpisodeFileID)); err != nil {
 				log.Warn("failed to delete episode file", zap.Int32("episode_file_id", *episode.EpisodeFileID), zap.Error(err))
 			}
 		}
@@ -1075,7 +1099,7 @@ func (m MediaManager) DeleteSeries(ctx context.Context, seriesID int64, deleteDi
 		}
 	}
 
-	if err := m.storage.DeleteSeries(ctx, seriesID); err != nil {
+	if err := m.seriesStorage.DeleteSeries(ctx, seriesID); err != nil {
 		return fmt.Errorf("failed to delete series: %w", err)
 	}
 
@@ -1090,12 +1114,12 @@ func (m MediaManager) UpdateMovieMonitored(ctx context.Context, movieID int64, m
 	}
 
 	movieUpdate := model.Movie{Monitored: monitoredInt}
-	err := m.storage.UpdateMovie(ctx, movieUpdate, table.Movie.ID.EQ(sqlite.Int64(movieID)))
+	err := m.movieStorage.UpdateMovie(ctx, movieUpdate, table.Movie.ID.EQ(sqlite.Int64(movieID)))
 	if err != nil {
 		return nil, err
 	}
 
-	movie, err := m.storage.GetMovie(ctx, movieID)
+	movie, err := m.movieStorage.GetMovie(ctx, movieID)
 	if err != nil {
 		return nil, err
 	}
@@ -1105,12 +1129,12 @@ func (m MediaManager) UpdateMovieMonitored(ctx context.Context, movieID int64, m
 }
 
 func (m MediaManager) UpdateMovieQualityProfile(ctx context.Context, movieID int64, qualityProfileID int32) (*storage.Movie, error) {
-	err := m.storage.UpdateMovieQualityProfile(ctx, movieID, qualityProfileID)
+	err := m.movieStorage.UpdateMovieQualityProfile(ctx, movieID, qualityProfileID)
 	if err != nil {
 		return nil, err
 	}
 
-	movie, err := m.storage.GetMovie(ctx, movieID)
+	movie, err := m.movieStorage.GetMovie(ctx, movieID)
 	if err != nil {
 		return nil, err
 	}
@@ -1126,12 +1150,12 @@ func (m MediaManager) UpdateSeriesMonitored(ctx context.Context, seriesID int64,
 	}
 
 	seriesUpdate := model.Series{Monitored: monitoredInt}
-	err := m.storage.UpdateSeries(ctx, seriesUpdate, table.Series.ID.EQ(sqlite.Int64(seriesID)))
+	err := m.seriesStorage.UpdateSeries(ctx, seriesUpdate, table.Series.ID.EQ(sqlite.Int64(seriesID)))
 	if err != nil {
 		return nil, err
 	}
 
-	series, err := m.storage.GetSeries(ctx, table.Series.ID.EQ(sqlite.Int64(seriesID)))
+	series, err := m.seriesStorage.GetSeries(ctx, table.Series.ID.EQ(sqlite.Int64(seriesID)))
 	if err != nil {
 		return nil, err
 	}
@@ -1147,7 +1171,7 @@ func (m MediaManager) AddIndexer(ctx context.Context, request AddIndexerRequest)
 		return IndexerResponse{}, fmt.Errorf("%w: indexer name is required", ErrValidation)
 	}
 
-	id, err := m.storage.CreateIndexer(ctx, indexer)
+	id, err := m.indexerStorage.CreateIndexer(ctx, indexer)
 	if err != nil {
 		return IndexerResponse{}, err
 	}
@@ -1170,7 +1194,7 @@ func (m MediaManager) UpdateIndexer(ctx context.Context, id int32, request Updat
 		APIKey:   request.APIKey,
 	}
 
-	err := m.storage.UpdateIndexer(ctx, int64(id), indexer)
+	err := m.indexerStorage.UpdateIndexer(ctx, int64(id), indexer)
 	if err != nil {
 		return IndexerResponse{}, err
 	}
@@ -1184,7 +1208,7 @@ func (m MediaManager) DeleteIndexer(ctx context.Context, request DeleteIndexerRe
 		return fmt.Errorf("indexer id is required")
 	}
 
-	return m.storage.DeleteIndexer(ctx, int64(*request.ID))
+	return m.indexerStorage.DeleteIndexer(ctx, int64(*request.ID))
 }
 
 func nullableDefault[T any](n nullable.Nullable[T]) T {
@@ -1249,7 +1273,7 @@ func filterAndMap[T any, R any](items []*T, fn func(*T) (R, bool)) []R {
 // GetMovieMetadataByID retrieves movie metadata by its primary key
 func (m MediaManager) GetMovieMetadataByID(ctx context.Context, metadataID int32) (*model.MovieMetadata, error) {
 	// fetch metadata record
-	return m.storage.GetMovieMetadata(ctx, table.MovieMetadata.ID.EQ(sqlite.Int(int64(metadataID))))
+	return m.movieMetaStorage.GetMovieMetadata(ctx, table.MovieMetadata.ID.EQ(sqlite.Int(int64(metadataID))))
 }
 
 // ListSeasonsForSeries retrieves all seasons for a TV series by TMDB ID
@@ -1264,7 +1288,7 @@ func (m MediaManager) ListSeasonsForSeries(ctx context.Context, tmdbID int) ([]S
 	}
 
 	// Find the series record that uses this metadata
-	series, err := m.storage.GetSeries(ctx,
+	series, err := m.seriesStorage.GetSeries(ctx,
 		table.Series.SeriesMetadataID.EQ(sqlite.Int32(metadata.ID)))
 	if err != nil {
 		log.Error("failed to get series", zap.Error(err), zap.Int32("metadataID", metadata.ID))
@@ -1272,7 +1296,7 @@ func (m MediaManager) ListSeasonsForSeries(ctx context.Context, tmdbID int) ([]S
 	}
 
 	// Query seasons with metadata join
-	seasons, err := m.storage.ListSeasons(ctx,
+	seasons, err := m.seriesStorage.ListSeasons(ctx,
 		table.Season.SeriesID.EQ(sqlite.Int32(series.ID)))
 	if err != nil {
 		log.Error("failed to list seasons", zap.Error(err), zap.Int32("seriesID", series.ID))
@@ -1288,7 +1312,7 @@ func (m MediaManager) ListSeasonsForSeries(ctx context.Context, tmdbID int) ([]S
 			continue
 		}
 
-		seasonMeta, err := m.storage.GetSeasonMetadata(ctx,
+		seasonMeta, err := m.seriesMetaStorage.GetSeasonMetadata(ctx,
 			table.SeasonMetadata.ID.EQ(sqlite.Int32(*season.SeasonMetadataID)))
 		if err != nil {
 			log.Error("failed to get season metadata", zap.Error(err), zap.Int32("seasonMetadataID", *season.SeasonMetadataID))
@@ -1296,7 +1320,7 @@ func (m MediaManager) ListSeasonsForSeries(ctx context.Context, tmdbID int) ([]S
 		}
 
 		// Count episodes for this season
-		episodes, err := m.storage.ListEpisodes(ctx,
+		episodes, err := m.seriesStorage.ListEpisodes(ctx,
 			table.Episode.SeasonID.EQ(sqlite.Int32(season.ID)))
 		if err != nil {
 			log.Debug("failed to count episodes for season", zap.Error(err), zap.Int32("seasonID", season.ID))
@@ -1338,7 +1362,7 @@ func (m MediaManager) ListEpisodesForSeason(ctx context.Context, tmdbID int, sea
 	}
 
 	// Find the series record that uses this metadata
-	series, err := m.storage.GetSeries(ctx,
+	series, err := m.seriesStorage.GetSeries(ctx,
 		table.Series.SeriesMetadataID.EQ(sqlite.Int32(seriesMetadata.ID)))
 	if err != nil {
 		log.Error("failed to get series", zap.Error(err), zap.Int32("metadataID", seriesMetadata.ID))
@@ -1346,7 +1370,7 @@ func (m MediaManager) ListEpisodesForSeason(ctx context.Context, tmdbID int, sea
 	}
 
 	// Find all seasons for this series
-	seasons, err := m.storage.ListSeasons(ctx,
+	seasons, err := m.seriesStorage.ListSeasons(ctx,
 		table.Season.SeriesID.EQ(sqlite.Int32(series.ID)))
 	if err != nil {
 		log.Error("failed to list seasons", zap.Error(err), zap.Int32("seriesID", series.ID))
@@ -1361,7 +1385,7 @@ func (m MediaManager) ListEpisodesForSeason(ctx context.Context, tmdbID int, sea
 	for _, season := range seasons {
 		// Check if season has metadata with the right number
 		if season.SeasonMetadataID != nil {
-			meta, err := m.storage.GetSeasonMetadata(ctx,
+			meta, err := m.seriesMetaStorage.GetSeasonMetadata(ctx,
 				table.SeasonMetadata.ID.EQ(sqlite.Int32(*season.SeasonMetadataID)))
 			if err == nil && meta.Number == int32(seasonNumber) {
 				candidateSeasons = append(candidateSeasons, season)
@@ -1395,7 +1419,7 @@ func (m MediaManager) ListEpisodesForSeason(ctx context.Context, tmdbID int, sea
 	} else {
 		// Multiple candidates - check which one has episodes
 		for i, season := range candidateSeasons {
-			episodes, err := m.storage.ListEpisodes(ctx,
+			episodes, err := m.seriesStorage.ListEpisodes(ctx,
 				table.Episode.SeasonID.EQ(sqlite.Int32(season.ID)))
 			if err == nil && len(episodes) > 0 {
 				targetSeason = season
@@ -1412,7 +1436,7 @@ func (m MediaManager) ListEpisodesForSeason(ctx context.Context, tmdbID int, sea
 	}
 
 	// Query episodes for this season
-	episodes, err := m.storage.ListEpisodes(ctx,
+	episodes, err := m.seriesStorage.ListEpisodes(ctx,
 		table.Episode.SeasonID.EQ(sqlite.Int32(targetSeason.ID)))
 	if err != nil {
 		log.Error("failed to list episodes", zap.Error(err), zap.Int32("seasonID", targetSeason.ID))
@@ -1438,111 +1462,52 @@ func (m MediaManager) ListEpisodesForSeason(ctx context.Context, tmdbID int, sea
 	return results, nil
 }
 
-func (m MediaManager) CreateJob(ctx context.Context, request TriggerJobRequest) (JobResponse, error) {
-	log := logger.FromCtx(ctx)
+// MediaManager delegation methods
 
-	jobID, err := m.scheduler.createPendingJob(ctx, JobType(request.Type))
-	if err == storage.ErrJobAlreadyPending {
-		log.Debug("job already pending, returning existing job")
-		jobs, err := m.scheduler.listPendingJobsByType(ctx, JobType(request.Type))
-		if err != nil {
-			return JobResponse{}, err
-		}
-		if len(jobs) == 0 {
-			return JobResponse{}, fmt.Errorf("pending job not found after conflict")
-		}
-		return toJobResponse(jobs[0]), nil
-	}
-	if err != nil {
-		return JobResponse{}, err
-	}
-
-	job, err := m.storage.GetJob(ctx, jobID)
-	if err != nil {
-		return JobResponse{}, err
-	}
-
-	return toJobResponse(job), nil
+func (m MediaManager) AddQualityDefinition(ctx context.Context, request AddQualityDefinitionRequest) (model.QualityDefinition, error) {
+	return m.downloadService.AddQualityDefinition(ctx, request)
 }
 
-func (m MediaManager) GetJob(ctx context.Context, id int64) (JobResponse, error) {
-	job, err := m.storage.GetJob(ctx, id)
-	if err != nil {
-		return JobResponse{}, err
-	}
-
-	return toJobResponse(job), nil
+func (m MediaManager) DeleteQualityDefinition(ctx context.Context, request DeleteQualityDefinitionRequest) error {
+	return m.downloadService.DeleteQualityDefinition(ctx, request)
 }
 
-func (m MediaManager) ListJobs(ctx context.Context, jobType *string, state *string, params pagination.Params) (JobListResponse, error) {
-	var conditions []sqlite.BoolExpression
-
-	if jobType != nil {
-		if !isValidJobType(*jobType) {
-			return JobListResponse{}, fmt.Errorf("invalid job type: %s", *jobType)
-		}
-		conditions = append(conditions, table.Job.Type.EQ(sqlite.String(*jobType)))
-	}
-
-	if state != nil {
-		switch storage.JobState(*state) {
-		case storage.JobStatePending, storage.JobStateRunning, storage.JobStateDone,
-			storage.JobStateError, storage.JobStateCancelled:
-			conditions = append(conditions, table.JobTransition.ToState.EQ(sqlite.String(*state)))
-		default:
-			return JobListResponse{}, fmt.Errorf("invalid job state: %s", *state)
-		}
-	}
-
-	conditions = append(conditions, table.JobTransition.MostRecent.EQ(sqlite.Bool(true)))
-
-	where := sqlite.AND(conditions...)
-
-	totalCount, err := m.storage.CountJobs(ctx, where)
-	if err != nil {
-		return JobListResponse{}, err
-	}
-
-	offset, limit := params.CalculateOffsetLimit()
-
-	jobs, err := m.storage.ListJobs(ctx, offset, limit, where)
-	if err != nil {
-		return JobListResponse{}, err
-	}
-
-	responses := make([]JobResponse, len(jobs))
-	for i, job := range jobs {
-		responses[i] = toJobResponse(job)
-	}
-
-	if params.PageSize == 0 {
-		return JobListResponse{
-			Jobs:  responses,
-			Count: totalCount,
-		}, nil
-	}
-
-	meta := params.BuildMeta(totalCount)
-	return JobListResponse{
-		Jobs:       responses,
-		Count:      totalCount,
-		Pagination: &meta,
-	}, nil
+func (m MediaManager) ListQualityDefinitions(ctx context.Context) ([]*model.QualityDefinition, error) {
+	return m.downloadService.ListQualityDefinitions(ctx)
 }
 
-func (m MediaManager) CancelJob(ctx context.Context, id int64) (JobResponse, error) {
-	log := logger.FromCtx(ctx)
+func (m MediaManager) GetQualityDefinition(ctx context.Context, id int64) (model.QualityDefinition, error) {
+	return m.downloadService.GetQualityDefinition(ctx, id)
+}
 
-	err := m.scheduler.CancelJob(ctx, id)
-	if err != nil {
-		log.Error("failed to cancel job", zap.Error(err), zap.Int64("job_id", id))
-		return JobResponse{}, err
-	}
+func (m MediaManager) GetQualityProfile(ctx context.Context, id int64) (storage.QualityProfile, error) {
+	return m.downloadService.GetQualityProfile(ctx, id)
+}
 
-	job, err := m.storage.GetJob(ctx, id)
-	if err != nil {
-		return JobResponse{}, err
-	}
+func (m MediaManager) ListEpisodeQualityProfiles(ctx context.Context) ([]*storage.QualityProfile, error) {
+	return m.downloadService.ListEpisodeQualityProfiles(ctx)
+}
 
-	return toJobResponse(job), nil
+func (m MediaManager) ListMovieQualityProfiles(ctx context.Context) ([]*storage.QualityProfile, error) {
+	return m.downloadService.ListMovieQualityProfiles(ctx)
+}
+
+func (m MediaManager) ListQualityProfiles(ctx context.Context) ([]*storage.QualityProfile, error) {
+	return m.downloadService.ListQualityProfiles(ctx)
+}
+
+func (m MediaManager) UpdateQualityDefinition(ctx context.Context, id int64, request UpdateQualityDefinitionRequest) (model.QualityDefinition, error) {
+	return m.downloadService.UpdateQualityDefinition(ctx, id, request)
+}
+
+func (m MediaManager) AddQualityProfile(ctx context.Context, request AddQualityProfileRequest) (storage.QualityProfile, error) {
+	return m.downloadService.AddQualityProfile(ctx, request)
+}
+
+func (m MediaManager) UpdateQualityProfile(ctx context.Context, id int64, request UpdateQualityProfileRequest) (storage.QualityProfile, error) {
+	return m.downloadService.UpdateQualityProfile(ctx, id, request)
+}
+
+func (m MediaManager) DeleteQualityProfile(ctx context.Context, request DeleteQualityProfileRequest) error {
+	return m.downloadService.DeleteQualityProfile(ctx, request)
 }

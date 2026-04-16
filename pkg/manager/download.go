@@ -18,10 +18,10 @@ type UpdateDownloadClientRequest struct {
 	model.DownloadClient
 }
 
-func (m MediaManager) CreateDownloadClient(ctx context.Context, request AddDownloadClientRequest) (model.DownloadClient, error) {
+func (ds DownloadService) CreateDownloadClient(ctx context.Context, request AddDownloadClientRequest) (model.DownloadClient, error) {
 	downloadClient := request.DownloadClient
 
-	id, err := m.storage.CreateDownloadClient(ctx, request.DownloadClient)
+	id, err := ds.downloadStorage.CreateDownloadClient(ctx, request.DownloadClient)
 	if err != nil {
 		return downloadClient, err
 	}
@@ -30,10 +30,9 @@ func (m MediaManager) CreateDownloadClient(ctx context.Context, request AddDownl
 	return downloadClient, nil
 }
 
-func (m MediaManager) UpdateDownloadClient(ctx context.Context, id int64, request UpdateDownloadClientRequest) (model.DownloadClient, error) {
-	// If API key is not provided, preserve the existing one
+func (ds DownloadService) UpdateDownloadClient(ctx context.Context, id int64, request UpdateDownloadClientRequest) (model.DownloadClient, error) {
 	if request.APIKey == nil || (request.APIKey != nil && *request.APIKey == "") {
-		existing, err := m.storage.GetDownloadClient(ctx, id)
+		existing, err := ds.downloadStorage.GetDownloadClient(ctx, id)
 		if err != nil {
 			return model.DownloadClient{}, err
 		}
@@ -43,7 +42,7 @@ func (m MediaManager) UpdateDownloadClient(ctx context.Context, id int64, reques
 	downloadClient := request.DownloadClient
 	downloadClient.ID = int32(id)
 
-	err := m.storage.UpdateDownloadClient(ctx, id, downloadClient)
+	err := ds.downloadStorage.UpdateDownloadClient(ctx, id, downloadClient)
 	if err != nil {
 		return model.DownloadClient{}, err
 	}
@@ -51,33 +50,57 @@ func (m MediaManager) UpdateDownloadClient(ctx context.Context, id int64, reques
 	return downloadClient, nil
 }
 
-func (m MediaManager) TestDownloadClient(ctx context.Context, request AddDownloadClientRequest) error {
-	// Create a temporary download client to test connectivity
-	client, err := m.factory.NewDownloadClient(request.DownloadClient)
+func (ds DownloadService) TestDownloadClient(ctx context.Context, request AddDownloadClientRequest) error {
+	client, err := ds.factory.NewDownloadClient(request.DownloadClient)
 	if err != nil {
 		return err
 	}
 
-	// Test connection by calling List - simple operation to verify connectivity
 	_, err = client.List(ctx)
 	return err
 }
 
-func (m MediaManager) GetDownloadClient(ctx context.Context, id int64) (download.DownloadClient, error) {
-	client, err := m.storage.GetDownloadClient(ctx, id)
+func (ds DownloadService) GetDownloadClient(ctx context.Context, id int64) (download.DownloadClient, error) {
+	client, err := ds.downloadStorage.GetDownloadClient(ctx, id)
 	if err != nil {
 		return nil, err
 	}
 
-	return m.factory.NewDownloadClient(client)
+	return ds.factory.NewDownloadClient(client)
+}
+
+func (ds DownloadService) ListDownloadClients(ctx context.Context) ([]*model.DownloadClient, error) {
+	return ds.downloadStorage.ListDownloadClients(ctx)
+}
+
+func (ds DownloadService) DeleteDownloadClient(ctx context.Context, id int64) error {
+	return ds.downloadStorage.DeleteDownloadClient(ctx, id)
+}
+
+// MediaManager delegation methods
+
+func (m MediaManager) CreateDownloadClient(ctx context.Context, request AddDownloadClientRequest) (model.DownloadClient, error) {
+	return m.downloadService.CreateDownloadClient(ctx, request)
+}
+
+func (m MediaManager) UpdateDownloadClient(ctx context.Context, id int64, request UpdateDownloadClientRequest) (model.DownloadClient, error) {
+	return m.downloadService.UpdateDownloadClient(ctx, id, request)
+}
+
+func (m MediaManager) TestDownloadClient(ctx context.Context, request AddDownloadClientRequest) error {
+	return m.downloadService.TestDownloadClient(ctx, request)
+}
+
+func (m MediaManager) GetDownloadClient(ctx context.Context, id int64) (download.DownloadClient, error) {
+	return m.downloadService.GetDownloadClient(ctx, id)
 }
 
 func (m MediaManager) ListDownloadClients(ctx context.Context) ([]*model.DownloadClient, error) {
-	return m.storage.ListDownloadClients(ctx)
+	return m.downloadService.ListDownloadClients(ctx)
 }
 
 func (m MediaManager) DeleteDownloadClient(ctx context.Context, id int64) error {
-	return m.storage.DeleteDownloadClient(ctx, id)
+	return m.downloadService.DeleteDownloadClient(ctx, id)
 }
 
 func availableProtocols(clients []*model.DownloadClient) map[string]struct{} {

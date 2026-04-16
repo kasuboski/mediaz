@@ -34,8 +34,7 @@ func TestMediaManager_GetSeriesMetadata(t *testing.T) {
 		m := MediaManager{
 			tmdb:    tmdbMock,
 			library: nil,
-			storage: store,
-			factory: nil,
+			seriesMetaStorage: store,
 			configs: config.Manager{},
 		}
 
@@ -68,8 +67,7 @@ func TestMediaManager_GetSeriesMetadata(t *testing.T) {
 		m := MediaManager{
 			tmdb:    tmdbMock,
 			library: nil,
-			storage: store,
-			factory: nil,
+			seriesMetaStorage: store,
 			configs: config.Manager{},
 		}
 
@@ -150,8 +148,7 @@ func TestMediaManager_GetSeriesMetadata(t *testing.T) {
 		m := MediaManager{
 			tmdb:    tmdbMock,
 			library: nil,
-			storage: store,
-			factory: nil,
+			seriesMetaStorage: store,
 			configs: config.Manager{},
 		}
 
@@ -517,7 +514,7 @@ func TestMediaManager_loadSeriesMetadata_Upsert(t *testing.T) {
 
 		m := MediaManager{
 			tmdb:    tmdbMock,
-			storage: store,
+			seriesMetaStorage: store,
 			configs: config.Manager{},
 		}
 
@@ -558,7 +555,7 @@ func TestMediaManager_loadSeriesMetadata_Upsert(t *testing.T) {
 
 		m := MediaManager{
 			tmdb:    tmdbMock,
-			storage: store,
+			seriesMetaStorage: store,
 			configs: config.Manager{},
 		}
 
@@ -601,7 +598,7 @@ func TestMediaManager_loadSeriesMetadata_Upsert(t *testing.T) {
 
 		m := MediaManager{
 			tmdb:    tmdbMock,
-			storage: store,
+			seriesMetaStorage: store,
 			configs: config.Manager{},
 		}
 

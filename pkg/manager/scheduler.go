@@ -31,14 +31,14 @@ const jobCancelTimeout = 30 * time.Second
 type JobExecutor func(ctx context.Context, jobID int64) error
 
 type Scheduler struct {
-	storage     storage.Storage
+	storage     storage.JobStorage
 	config      config.Manager
 	executors   map[JobType]JobExecutor
 	runningJobs *cache.Cache[int64, context.CancelFunc]
 }
 
 // New creates a new scheduler for jobs
-func NewScheduler(storage storage.Storage, config config.Manager, executors map[JobType]JobExecutor) *Scheduler {
+func NewScheduler(storage storage.JobStorage, config config.Manager, executors map[JobType]JobExecutor) *Scheduler {
 	return &Scheduler{
 		storage:     storage,
 		config:      config,

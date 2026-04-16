@@ -5,10 +5,31 @@ import (
 	"fmt"
 
 	"github.com/go-jet/jet/v2/sqlite"
+	"github.com/kasuboski/mediaz/pkg/download"
 	"github.com/kasuboski/mediaz/pkg/storage"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/table"
 )
+
+// DownloadService owns download client interactions, quality profile evaluation, and release selection.
+// It depends only on storage.DownloadClientStorage and storage.QualityStorage.
+type DownloadService struct {
+	downloadStorage storage.DownloadClientStorage
+	qualityStorage  storage.QualityStorage
+	factory         download.Factory
+}
+
+func NewDownloadService(downloadStorage storage.DownloadClientStorage, qualityStorage storage.QualityStorage, factory download.Factory) *DownloadService {
+	return &DownloadService{
+		downloadStorage: downloadStorage,
+		qualityStorage:  qualityStorage,
+		factory:         factory,
+	}
+}
+
+func (ds DownloadService) newDownloadClient(cfg model.DownloadClient) (download.DownloadClient, error) {
+	return ds.factory.NewDownloadClient(cfg)
+}
 
 // MeetsQualitySize checks if the given fileSize (MB) and runtime (min) fall within the QualitySize
 func MeetsQualitySize(qs storage.QualityDefinition, fileSize uint64, runtime uint64) bool {
@@ -33,8 +54,7 @@ type AddQualityDefinitionRequest struct {
 	MaxSize       float64 `json:"maxSize"`
 }
 
-// AddQualityDefinition stores a new quality definition in the database
-func (m MediaManager) AddQualityDefinition(ctx context.Context, request AddQualityDefinitionRequest) (model.QualityDefinition, error) {
+func (ds DownloadService) AddQualityDefinition(ctx context.Context, request AddQualityDefinitionRequest) (model.QualityDefinition, error) {
 	if request.Name == "" {
 		return model.QualityDefinition{}, fmt.Errorf("name is required")
 	}
@@ -53,7 +73,7 @@ func (m MediaManager) AddQualityDefinition(ctx context.Context, request AddQuali
 		MaxSize:       request.MaxSize,
 	}
 
-	id, err := m.storage.CreateQualityDefinition(ctx, definition)
+	id, err := ds.qualityStorage.CreateQualityDefinition(ctx, definition)
 	if err != nil {
 		return definition, err
 	}
@@ -93,44 +113,41 @@ type DeleteQualityProfileRequest struct {
 	ID *int `json:"id"`
 }
 
-// AddQualityDefinition deletes a quality definition
-func (m MediaManager) DeleteQualityDefinition(ctx context.Context, request DeleteQualityDefinitionRequest) error {
+func (ds DownloadService) DeleteQualityDefinition(ctx context.Context, request DeleteQualityDefinitionRequest) error {
 	if request.ID == nil {
 		return fmt.Errorf("indexer id is required")
 	}
 
-	return m.storage.DeleteQualityDefinition(ctx, int64(*request.ID))
+	return ds.qualityStorage.DeleteQualityDefinition(ctx, int64(*request.ID))
 }
 
-// ListQualityDefinitions list stored quality definitions
-func (m MediaManager) ListQualityDefinitions(ctx context.Context) ([]*model.QualityDefinition, error) {
-	return m.storage.ListQualityDefinitions(ctx)
+func (ds DownloadService) ListQualityDefinitions(ctx context.Context) ([]*model.QualityDefinition, error) {
+	return ds.qualityStorage.ListQualityDefinitions(ctx)
 }
 
-// ListQualityDefinitions get a stored quality definitions
-func (m MediaManager) GetQualityDefinition(ctx context.Context, id int64) (model.QualityDefinition, error) {
-	return m.storage.GetQualityDefinition(ctx, id)
+func (ds DownloadService) GetQualityDefinition(ctx context.Context, id int64) (model.QualityDefinition, error) {
+	return ds.qualityStorage.GetQualityDefinition(ctx, id)
 }
 
-func (m MediaManager) GetQualityProfile(ctx context.Context, id int64) (storage.QualityProfile, error) {
-	return m.storage.GetQualityProfile(ctx, id)
+func (ds DownloadService) GetQualityProfile(ctx context.Context, id int64) (storage.QualityProfile, error) {
+	return ds.qualityStorage.GetQualityProfile(ctx, id)
 }
 
-func (m MediaManager) ListEpisodeQualityProfiles(ctx context.Context) ([]*storage.QualityProfile, error) {
+func (ds DownloadService) ListEpisodeQualityProfiles(ctx context.Context) ([]*storage.QualityProfile, error) {
 	where := table.QualityDefinition.MediaType.EQ(sqlite.String("episode"))
-	return m.storage.ListQualityProfiles(ctx, where)
+	return ds.qualityStorage.ListQualityProfiles(ctx, where)
 }
 
-func (m MediaManager) ListMovieQualityProfiles(ctx context.Context) ([]*storage.QualityProfile, error) {
+func (ds DownloadService) ListMovieQualityProfiles(ctx context.Context) ([]*storage.QualityProfile, error) {
 	where := table.QualityDefinition.MediaType.EQ(sqlite.String("movie"))
-	return m.storage.ListQualityProfiles(ctx, where)
+	return ds.qualityStorage.ListQualityProfiles(ctx, where)
 }
 
-func (m MediaManager) ListQualityProfiles(ctx context.Context) ([]*storage.QualityProfile, error) {
-	return m.storage.ListQualityProfiles(ctx)
+func (ds DownloadService) ListQualityProfiles(ctx context.Context) ([]*storage.QualityProfile, error) {
+	return ds.qualityStorage.ListQualityProfiles(ctx)
 }
 
-func (m MediaManager) UpdateQualityDefinition(ctx context.Context, id int64, request UpdateQualityDefinitionRequest) (model.QualityDefinition, error) {
+func (ds DownloadService) UpdateQualityDefinition(ctx context.Context, id int64, request UpdateQualityDefinitionRequest) (model.QualityDefinition, error) {
 	if request.Name == "" {
 		return model.QualityDefinition{}, fmt.Errorf("name is required")
 	}
@@ -150,11 +167,11 @@ func (m MediaManager) UpdateQualityDefinition(ctx context.Context, id int64, req
 		MaxSize:       request.MaxSize,
 	}
 
-	err := m.storage.UpdateQualityDefinition(ctx, id, definition)
+	err := ds.qualityStorage.UpdateQualityDefinition(ctx, id, definition)
 	if err != nil {
 		return model.QualityDefinition{}, err
 	}
-	return m.storage.GetQualityDefinition(ctx, id)
+	return ds.qualityStorage.GetQualityDefinition(ctx, id)
 }
 
 func validateQualityProfileCutoff(cutoffQualityID *int32, upgradeAllowed bool, qualityIDs []int32) error {
@@ -175,7 +192,7 @@ func validateQualityProfileCutoff(cutoffQualityID *int32, upgradeAllowed bool, q
 	return fmt.Errorf("cutoff quality must be one of the selected qualities")
 }
 
-func (m MediaManager) AddQualityProfile(ctx context.Context, request AddQualityProfileRequest) (storage.QualityProfile, error) {
+func (ds DownloadService) AddQualityProfile(ctx context.Context, request AddQualityProfileRequest) (storage.QualityProfile, error) {
 	if request.Name == "" {
 		return storage.QualityProfile{}, fmt.Errorf("name is required")
 	}
@@ -193,7 +210,7 @@ func (m MediaManager) AddQualityProfile(ctx context.Context, request AddQualityP
 		UpgradeAllowed:  request.UpgradeAllowed,
 	}
 
-	id, err := m.storage.CreateQualityProfile(ctx, profile)
+	id, err := ds.qualityStorage.CreateQualityProfile(ctx, profile)
 	if err != nil {
 		return storage.QualityProfile{}, err
 	}
@@ -205,15 +222,15 @@ func (m MediaManager) AddQualityProfile(ctx context.Context, request AddQualityP
 			QualityID: qualityID,
 		}
 	}
-	err = m.storage.CreateQualityProfileItems(ctx, items)
+	err = ds.qualityStorage.CreateQualityProfileItems(ctx, items)
 	if err != nil {
 		return storage.QualityProfile{}, err
 	}
 
-	return m.storage.GetQualityProfile(ctx, id)
+	return ds.qualityStorage.GetQualityProfile(ctx, id)
 }
 
-func (m MediaManager) UpdateQualityProfile(ctx context.Context, id int64, request UpdateQualityProfileRequest) (storage.QualityProfile, error) {
+func (ds DownloadService) UpdateQualityProfile(ctx context.Context, id int64, request UpdateQualityProfileRequest) (storage.QualityProfile, error) {
 	if request.Name == "" {
 		return storage.QualityProfile{}, fmt.Errorf("name is required")
 	}
@@ -225,7 +242,7 @@ func (m MediaManager) UpdateQualityProfile(ctx context.Context, id int64, reques
 		return storage.QualityProfile{}, err
 	}
 
-	existingProfile, err := m.storage.GetQualityProfile(ctx, id)
+	existingProfile, err := ds.qualityStorage.GetQualityProfile(ctx, id)
 	if err != nil {
 		return storage.QualityProfile{}, err
 	}
@@ -237,12 +254,12 @@ func (m MediaManager) UpdateQualityProfile(ctx context.Context, id int64, reques
 		UpgradeAllowed:  request.UpgradeAllowed,
 	}
 
-	err = m.storage.UpdateQualityProfile(ctx, id, profile)
+	err = ds.qualityStorage.UpdateQualityProfile(ctx, id, profile)
 	if err != nil {
 		return storage.QualityProfile{}, err
 	}
 
-	err = m.storage.DeleteQualityProfileItemsByProfileID(ctx, id)
+	err = ds.qualityStorage.DeleteQualityProfileItemsByProfileID(ctx, id)
 	if err != nil {
 		return storage.QualityProfile{}, err
 	}
@@ -254,17 +271,17 @@ func (m MediaManager) UpdateQualityProfile(ctx context.Context, id int64, reques
 			QualityID: qualityID,
 		}
 	}
-	err = m.storage.CreateQualityProfileItems(ctx, items)
+	err = ds.qualityStorage.CreateQualityProfileItems(ctx, items)
 	if err != nil {
 		return storage.QualityProfile{}, err
 	}
 
-	return m.storage.GetQualityProfile(ctx, id)
+	return ds.qualityStorage.GetQualityProfile(ctx, id)
 }
 
-func (m MediaManager) DeleteQualityProfile(ctx context.Context, request DeleteQualityProfileRequest) error {
+func (ds DownloadService) DeleteQualityProfile(ctx context.Context, request DeleteQualityProfileRequest) error {
 	if request.ID == nil {
 		return fmt.Errorf("profile id is required")
 	}
-	return m.storage.DeleteQualityProfile(ctx, int64(*request.ID))
+	return ds.qualityStorage.DeleteQualityProfile(ctx, int64(*request.ID))
 }

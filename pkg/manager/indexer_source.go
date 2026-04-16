@@ -59,7 +59,7 @@ func (m MediaManager) CreateIndexerSource(ctx context.Context, req AddIndexerSou
 		Enabled:        req.Enabled,
 	}
 
-	id, err := m.storage.CreateIndexerSource(ctx, source)
+	id, err := m.indexerSrcStorage.CreateIndexerSource(ctx, source)
 	if err != nil {
 		return IndexerSourceResponse{}, err
 	}
@@ -74,7 +74,7 @@ func (m MediaManager) CreateIndexerSource(ctx context.Context, req AddIndexerSou
 }
 
 func (m MediaManager) ListIndexerSources(ctx context.Context) ([]IndexerSourceResponse, error) {
-	sources, err := m.storage.ListIndexerSources(ctx)
+	sources, err := m.indexerSrcStorage.ListIndexerSources(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -88,7 +88,7 @@ func (m MediaManager) ListIndexerSources(ctx context.Context) ([]IndexerSourceRe
 }
 
 func (m MediaManager) GetIndexerSource(ctx context.Context, id int64) (IndexerSourceResponse, error) {
-	source, err := m.storage.GetIndexerSource(ctx, id)
+	source, err := m.indexerSrcStorage.GetIndexerSource(ctx, id)
 	if err != nil {
 		return IndexerSourceResponse{}, err
 	}
@@ -97,7 +97,7 @@ func (m MediaManager) GetIndexerSource(ctx context.Context, id int64) (IndexerSo
 }
 
 func (m MediaManager) UpdateIndexerSource(ctx context.Context, id int64, req UpdateIndexerSourceRequest) (IndexerSourceResponse, error) {
-	existing, err := m.storage.GetIndexerSource(ctx, id)
+	existing, err := m.indexerSrcStorage.GetIndexerSource(ctx, id)
 	if err != nil {
 		return IndexerSourceResponse{}, err
 	}
@@ -118,7 +118,7 @@ func (m MediaManager) UpdateIndexerSource(ctx context.Context, id int64, req Upd
 		Enabled:        req.Enabled,
 	}
 
-	if err := m.storage.UpdateIndexerSource(ctx, id, source); err != nil {
+	if err := m.indexerSrcStorage.UpdateIndexerSource(ctx, id, source); err != nil {
 		return IndexerSourceResponse{}, err
 	}
 
@@ -131,20 +131,20 @@ func (m MediaManager) UpdateIndexerSource(ctx context.Context, id int64, req Upd
 
 func (m MediaManager) DeleteIndexerSource(ctx context.Context, id int64) error {
 	where := table.Indexer.IndexerSourceID.EQ(sqlite.Int64(id))
-	indexers, err := m.storage.ListIndexers(ctx, where)
+	indexers, err := m.indexerStorage.ListIndexers(ctx, where)
 	if err != nil {
 		return err
 	}
 
 	for _, idx := range indexers {
-		if err := m.storage.DeleteIndexer(ctx, int64(idx.ID)); err != nil {
+		if err := m.indexerStorage.DeleteIndexer(ctx, int64(idx.ID)); err != nil {
 			return err
 		}
 	}
 
 	m.indexerCache.Delete(id)
 
-	return m.storage.DeleteIndexerSource(ctx, id)
+	return m.indexerSrcStorage.DeleteIndexerSource(ctx, id)
 }
 
 func (m MediaManager) TestIndexerSource(ctx context.Context, req AddIndexerSourceRequest) error {
@@ -170,7 +170,7 @@ func (m MediaManager) TestIndexerSource(ctx context.Context, req AddIndexerSourc
 func (m MediaManager) RefreshIndexerSource(ctx context.Context, id int64) error {
 	log := logger.FromCtx(ctx)
 
-	sourceConfig, err := m.storage.GetIndexerSource(ctx, id)
+	sourceConfig, err := m.indexerSrcStorage.GetIndexerSource(ctx, id)
 	if err != nil {
 		return err
 	}
@@ -207,7 +207,7 @@ func (m MediaManager) RefreshIndexerSource(ctx context.Context, id int64) error 
 func (m MediaManager) RefreshAllIndexerSources(ctx context.Context) error {
 	log := logger.FromCtx(ctx)
 
-	sources, err := m.storage.ListIndexerSources(ctx, table.IndexerSource.Enabled.EQ(sqlite.Bool(true)))
+	sources, err := m.indexerSrcStorage.ListIndexerSources(ctx, table.IndexerSource.Enabled.EQ(sqlite.Bool(true)))
 	if err != nil {
 		return err
 	}
