@@ -1082,16 +1082,13 @@ func TestMediaManager_ReconcileMissingSeries(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		m := New(nil, indexerFactory, nil, store, mockFactory, config.Manager{}, config.Config{})
-
-		sourceIndexers := []indexer.SourceIndexer{
+		mockIndexerSource.EXPECT().ListIndexers(ctx).Return([]indexer.SourceIndexer{
 			{ID: 1, Name: "test", Priority: 1},
-		}
-		m.indexerCache.Set(sourceID, indexerCacheEntry{
-			Indexers:   sourceIndexers,
-			SourceName: "test-source",
-			SourceURI:  "http://test",
-		})
+		}, nil)
+
+		m := New(nil, indexerFactory, nil, store, mockFactory, config.Manager{}, config.Config{})
+		err = m.RefreshIndexerSource(ctx, sourceID)
+		require.NoError(t, err)
 
 		err = m.ReconcileMissingSeries(ctx, snapshot)
 		require.NoError(t, err)

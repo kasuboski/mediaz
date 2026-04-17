@@ -130,15 +130,12 @@ func Test_Manager_reconcileMissingMovie(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	sourceIndexers := []indexer.SourceIndexer{
+	mockIndexerSource.EXPECT().ListIndexers(ctx).Return([]indexer.SourceIndexer{
 		{ID: 1, Name: "test", Priority: 1},
 		{ID: 3, Name: "test2", Priority: 10},
-	}
-	m.indexerCache.Set(sourceID, indexerCacheEntry{
-		Indexers:   sourceIndexers,
-		SourceName: "test-source",
-		SourceURI:  "http://test",
-	})
+	}, nil)
+	err = m.RefreshIndexerSource(ctx, sourceID)
+	require.NoError(t, err)
 
 	req := AddMovieRequest{
 		TMDBID:           1234,
