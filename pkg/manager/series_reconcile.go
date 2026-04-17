@@ -355,7 +355,7 @@ func (m MediaManager) reconcileMissingSeries(ctx context.Context, series *storag
 		return err
 	}
 
-	releases, err := m.SearchIndexers(ctx, snapshot.GetIndexerIDs(), TVCategories, indexer.SearchOptions{
+	releases, err := m.indexerService.SearchIndexers(ctx, snapshot.GetIndexerIDs(), TVCategories, indexer.SearchOptions{
 		Query: seriesMetadata.Title,
 		Type:  ptr.To(indexer.TypeTV),
 	})

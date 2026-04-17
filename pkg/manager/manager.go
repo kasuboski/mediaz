@@ -17,6 +17,7 @@ import (
 	"github.com/kasuboski/mediaz/pkg/download"
 	"github.com/kasuboski/mediaz/pkg/indexer"
 	"github.com/kasuboski/mediaz/pkg/library"
+	"github.com/kasuboski/mediaz/pkg/prowlarr"
 	"github.com/kasuboski/mediaz/pkg/logger"
 	"github.com/kasuboski/mediaz/pkg/pagination"
 	"github.com/kasuboski/mediaz/pkg/ptr"
@@ -30,15 +31,13 @@ import (
 
 type MediaManager struct {
 	tmdb                  tmdb.ITmdb
-	indexerFactory        indexer.Factory
 	indexerCache          *cache.Cache[int64, indexerCacheEntry]
+	indexerService        *IndexerService
 	library               library.Library
 	movieStorage          storage.MovieStorage
 	movieMetaStorage      storage.MovieMetadataStorage
 	seriesStorage         storage.SeriesStorage
 	seriesMetaStorage     storage.SeriesMetadataStorage
-	indexerStorage        storage.IndexerStorage
-	indexerSrcStorage     storage.IndexerSourceStorage
 	downloadClientService *DownloadClientService
 	qualityService        *QualityService
 	jobService            *JobService
@@ -47,18 +46,17 @@ type MediaManager struct {
 }
 
 func New(tmbdClient tmdb.ITmdb, indexerFactory indexer.Factory, library library.Library, store storage.Storage, factory download.Factory, managerConfigs config.Manager, fullConfig config.Config) MediaManager {
+	indexerCache := cache.New[int64, indexerCacheEntry]()
 
 	m := MediaManager{
 		tmdb:                  tmbdClient,
-		indexerFactory:        indexerFactory,
-		indexerCache:          cache.New[int64, indexerCacheEntry](),
+		indexerCache:          indexerCache,
+		indexerService:        NewIndexerService(store, store, indexerFactory, indexerCache),
 		library:               library,
 		movieStorage:          store,
 		movieMetaStorage:      store,
 		seriesStorage:         store,
 		seriesMetaStorage:     store,
-		indexerStorage:        store,
-		indexerSrcStorage:     store,
 		downloadClientService: NewDownloadClientService(store, factory),
 		qualityService:        NewQualityService(store),
 		config:                fullConfig,
@@ -79,7 +77,7 @@ func New(tmbdClient tmdb.ITmdb, indexerFactory indexer.Factory, library library.
 			return m.IndexSeriesLibrary(ctx)
 		},
 		IndexerSync: func(ctx context.Context, jobID int64) error {
-			return m.RefreshAllIndexerSources(ctx)
+			return m.indexerService.RefreshAllIndexerSources(ctx)
 		},
 	}
 
@@ -597,80 +595,11 @@ func parseMediaResult(res *http.Response) (*SearchMediaResponse, error) {
 }
 
 func (m MediaManager) listIndexersInternal(ctx context.Context) ([]model.Indexer, error) {
-	var all []model.Indexer
-
-	keys := m.indexerCache.Keys()
-	for _, sourceID := range keys {
-		cached, ok := m.indexerCache.Get(sourceID)
-		if !ok {
-			continue
-		}
-
-		for _, idx := range cached.Indexers {
-			all = append(all, model.Indexer{
-				ID:              idx.ID,
-				IndexerSourceID: ptr.To(int32(sourceID)),
-				Name:            idx.Name,
-				Priority:        idx.Priority,
-				URI:             idx.URI,
-				APIKey:          nil,
-			})
-		}
-	}
-
-	dbIndexers, err := m.indexerStorage.ListIndexers(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, idx := range dbIndexers {
-		if idx.IndexerSourceID == nil {
-			all = append(all, *idx)
-		}
-	}
-
-	return all, nil
+	return m.indexerService.listIndexersInternal(ctx)
 }
 
 func (m MediaManager) ListIndexers(ctx context.Context) ([]IndexerResponse, error) {
-	var all []IndexerResponse
-
-	keys := m.indexerCache.Keys()
-	for _, sourceID := range keys {
-		cached, ok := m.indexerCache.Get(sourceID)
-		if !ok {
-			continue
-		}
-
-		for _, idx := range cached.Indexers {
-			all = append(all, IndexerResponse{
-				ID:       idx.ID,
-				Name:     idx.Name,
-				Source:   cached.SourceName,
-				Priority: idx.Priority,
-				URI:      idx.URI,
-			})
-		}
-	}
-
-	dbIndexers, err := m.indexerStorage.ListIndexers(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, idx := range dbIndexers {
-		if idx.IndexerSourceID == nil {
-			all = append(all, IndexerResponse{
-				ID:       idx.ID,
-				Name:     idx.Name,
-				Source:   "Internal",
-				Priority: idx.Priority,
-				URI:      idx.URI,
-			})
-		}
-	}
-
-	return all, nil
+	return m.indexerService.ListIndexers(ctx)
 }
 
 func (m MediaManager) ListShowsInLibrary(ctx context.Context) ([]LibraryShow, error) {
@@ -1167,50 +1096,51 @@ func (m MediaManager) UpdateSeriesMonitored(ctx context.Context, seriesID int64,
 }
 
 func (m MediaManager) AddIndexer(ctx context.Context, request AddIndexerRequest) (IndexerResponse, error) {
-	indexer := request.Indexer
-
-	if indexer.Name == "" {
-		return IndexerResponse{}, fmt.Errorf("%w: indexer name is required", ErrValidation)
-	}
-
-	id, err := m.indexerStorage.CreateIndexer(ctx, indexer)
-	if err != nil {
-		return IndexerResponse{}, err
-	}
-
-	indexer.ID = int32(id)
-
-	return toIndexerResponse(indexer), nil
+	return m.indexerService.AddIndexer(ctx, request)
 }
 
 func (m MediaManager) UpdateIndexer(ctx context.Context, id int32, request UpdateIndexerRequest) (IndexerResponse, error) {
-	if request.Name == "" {
-		return IndexerResponse{}, fmt.Errorf("%w: indexer name is required", ErrValidation)
-	}
-
-	indexer := model.Indexer{
-		ID:       id,
-		Name:     request.Name,
-		Priority: request.Priority,
-		URI:      request.URI,
-		APIKey:   request.APIKey,
-	}
-
-	err := m.indexerStorage.UpdateIndexer(ctx, int64(id), indexer)
-	if err != nil {
-		return IndexerResponse{}, err
-	}
-
-	return toIndexerResponse(indexer), nil
+	return m.indexerService.UpdateIndexer(ctx, id, request)
 }
 
-// AddIndexer stores a new indexer in the database
 func (m MediaManager) DeleteIndexer(ctx context.Context, request DeleteIndexerRequest) error {
-	if request.ID == nil {
-		return fmt.Errorf("indexer id is required")
-	}
+	return m.indexerService.DeleteIndexer(ctx, request)
+}
 
-	return m.indexerStorage.DeleteIndexer(ctx, int64(*request.ID))
+func (m MediaManager) CreateIndexerSource(ctx context.Context, req AddIndexerSourceRequest) (IndexerSourceResponse, error) {
+	return m.indexerService.CreateIndexerSource(ctx, req)
+}
+
+func (m MediaManager) ListIndexerSources(ctx context.Context) ([]IndexerSourceResponse, error) {
+	return m.indexerService.ListIndexerSources(ctx)
+}
+
+func (m MediaManager) GetIndexerSource(ctx context.Context, id int64) (IndexerSourceResponse, error) {
+	return m.indexerService.GetIndexerSource(ctx, id)
+}
+
+func (m MediaManager) UpdateIndexerSource(ctx context.Context, id int64, req UpdateIndexerSourceRequest) (IndexerSourceResponse, error) {
+	return m.indexerService.UpdateIndexerSource(ctx, id, req)
+}
+
+func (m MediaManager) DeleteIndexerSource(ctx context.Context, id int64) error {
+	return m.indexerService.DeleteIndexerSource(ctx, id)
+}
+
+func (m MediaManager) TestIndexerSource(ctx context.Context, req AddIndexerSourceRequest) error {
+	return m.indexerService.TestIndexerSource(ctx, req)
+}
+
+func (m MediaManager) RefreshIndexerSource(ctx context.Context, id int64) error {
+	return m.indexerService.RefreshIndexerSource(ctx, id)
+}
+
+func (m MediaManager) RefreshAllIndexerSources(ctx context.Context) error {
+	return m.indexerService.RefreshAllIndexerSources(ctx)
+}
+
+func (m MediaManager) SearchIndexers(ctx context.Context, indexers, categories []int32, opts indexer.SearchOptions) ([]*prowlarr.ReleaseResource, error) {
+	return m.indexerService.SearchIndexers(ctx, indexers, categories, opts)
 }
 
 func nullableDefault[T any](n nullable.Nullable[T]) T {
@@ -1247,15 +1177,6 @@ func isReleased(now time.Time, releaseDate *time.Time) bool {
 		return false
 	}
 	return now.After(*releaseDate)
-}
-
-func toIndexerResponse(indexer model.Indexer) IndexerResponse {
-	return IndexerResponse{
-		ID:       indexer.ID,
-		Name:     indexer.Name,
-		Priority: indexer.Priority,
-		URI:      indexer.URI,
-	}
 }
 
 // filterAndMap applies fn to each non-nil element of items, collecting results where fn returns ok=true.
