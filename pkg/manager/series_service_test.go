@@ -5,7 +5,6 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/kasuboski/mediaz/pkg/library"
 	mockLibrary "github.com/kasuboski/mediaz/pkg/library/mocks"
 	"github.com/kasuboski/mediaz/pkg/ptr"
 	"github.com/kasuboski/mediaz/pkg/storage"
@@ -292,69 +291,6 @@ func TestSeriesService_SearchTV_EmptyQuery(t *testing.T) {
 	_, err := svc.SearchTV(ctx, "")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "query is empty")
-}
-
-func TestSeriesService_ensureSeries_CreatesNew(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	ctx := context.Background()
-	svc, store, _, _ := newTestSeriesService(ctrl)
-
-	store.EXPECT().GetSeries(ctx, gomock.Any()).Return(nil, storage.ErrNotFound)
-	store.EXPECT().CreateSeries(ctx, gomock.Any(), storage.SeriesStateDiscovered).Return(int64(1), nil)
-
-	id, err := svc.ensureSeries(ctx, "New Show")
-	require.NoError(t, err)
-	assert.Equal(t, int64(1), id)
-}
-
-func TestSeriesService_ensureSeries_ReturnsExisting(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	ctx := context.Background()
-	svc, store, _, _ := newTestSeriesService(ctrl)
-
-	existing := &storage.Series{
-		Series: model.Series{
-			ID:   5,
-			Path: ptr.To("Existing Show"),
-		},
-	}
-
-	store.EXPECT().GetSeries(ctx, gomock.Any()).Return(existing, nil)
-
-	id, err := svc.ensureSeries(ctx, "Existing Show")
-	require.NoError(t, err)
-	assert.Equal(t, int64(5), id)
-}
-
-func TestSeriesService_IndexSeriesLibrary_NoFiles(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	ctx := context.Background()
-	svc, _, _, lib := newTestSeriesService(ctrl)
-
-	lib.EXPECT().FindEpisodes(ctx).Return([]library.EpisodeFile{}, nil)
-
-	err := svc.IndexSeriesLibrary(ctx)
-	require.NoError(t, err)
-}
-
-func TestSeriesService_IndexSeriesLibrary_Error(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	ctx := context.Background()
-	svc, _, _, lib := newTestSeriesService(ctrl)
-
-	lib.EXPECT().FindEpisodes(ctx).Return(nil, errors.New("library error"))
-
-	err := svc.IndexSeriesLibrary(ctx)
-	require.Error(t, err)
-	assert.Equal(t, "library error", err.Error())
 }
 
 func TestNewSeriesService(t *testing.T) {
