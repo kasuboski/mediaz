@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/kasuboski/mediaz/config"
 	"github.com/kasuboski/mediaz/pkg/download"
 	downloadMocks "github.com/kasuboski/mediaz/pkg/download/mocks"
 	"github.com/kasuboski/mediaz/pkg/prowlarr"
@@ -69,7 +68,7 @@ func TestUpdateDownloadClient(t *testing.T) {
 
 	ctx := context.Background()
 	store := mocks.NewMockStorage(ctrl)
-	m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
+	ds := NewDownloadClientService(store, nil)
 
 	t.Run("update with new API key", func(t *testing.T) {
 		newApiKey := "new-api-key"
@@ -86,7 +85,7 @@ func TestUpdateDownloadClient(t *testing.T) {
 
 		store.EXPECT().UpdateDownloadClient(ctx, int64(1), gomock.Any()).Return(nil)
 
-		result, err := m.UpdateDownloadClient(ctx, 1, request)
+		result, err := ds.UpdateDownloadClient(ctx, 1, request)
 		require.NoError(t, err)
 		assert.Equal(t, int32(1), result.ID)
 		assert.Equal(t, "usenet", result.Type)
@@ -125,7 +124,7 @@ func TestUpdateDownloadClient(t *testing.T) {
 			},
 		)
 
-		result, err := m.UpdateDownloadClient(ctx, 1, request)
+		result, err := ds.UpdateDownloadClient(ctx, 1, request)
 		require.NoError(t, err)
 		assert.Equal(t, &existingApiKey, result.APIKey)
 	})
@@ -161,7 +160,7 @@ func TestUpdateDownloadClient(t *testing.T) {
 			},
 		)
 
-		result, err := m.UpdateDownloadClient(ctx, 1, request)
+		result, err := ds.UpdateDownloadClient(ctx, 1, request)
 		require.NoError(t, err)
 		assert.Equal(t, &existingApiKey, result.APIKey)
 	})
@@ -173,7 +172,7 @@ func TestTestDownloadClient(t *testing.T) {
 
 	ctx := context.Background()
 	factory := downloadMocks.NewMockFactory(ctrl)
-	m := New(nil, nil, nil, nil, factory, config.Manager{}, config.Config{})
+	ds := NewDownloadClientService(nil, factory)
 
 	t.Run("successful connection test", func(t *testing.T) {
 		client := downloadMocks.NewMockDownloadClient(ctrl)
@@ -191,7 +190,7 @@ func TestTestDownloadClient(t *testing.T) {
 		factory.EXPECT().NewDownloadClient(request.DownloadClient).Return(client, nil)
 		client.EXPECT().List(ctx).Return([]download.Status{}, nil)
 
-		err := m.TestDownloadClient(ctx, request)
+		err := ds.TestDownloadClient(ctx, request)
 		assert.NoError(t, err)
 	})
 
@@ -211,7 +210,7 @@ func TestTestDownloadClient(t *testing.T) {
 		factory.EXPECT().NewDownloadClient(request.DownloadClient).Return(client, nil)
 		client.EXPECT().List(ctx).Return(nil, assert.AnError)
 
-		err := m.TestDownloadClient(ctx, request)
+		err := ds.TestDownloadClient(ctx, request)
 		assert.Error(t, err)
 	})
 }
