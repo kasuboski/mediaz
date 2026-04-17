@@ -214,8 +214,13 @@ func (is IndexerService) CreateIndexerSource(ctx context.Context, req AddIndexer
 
 	source.ID = int32(id)
 
-	if source.Enabled {
-		is.RefreshIndexerSource(ctx, id)
+	if !source.Enabled {
+		is.indexerCache.Delete(id)
+		return toIndexerSourceResponse(source), nil
+	}
+
+	if err := is.RefreshIndexerSource(ctx, id); err != nil {
+		return IndexerSourceResponse{}, err
 	}
 
 	return toIndexerSourceResponse(source), nil
@@ -270,8 +275,13 @@ func (is IndexerService) UpdateIndexerSource(ctx context.Context, id int64, req 
 		return IndexerSourceResponse{}, err
 	}
 
-	if source.Enabled {
-		is.RefreshIndexerSource(ctx, id)
+	if !source.Enabled {
+		is.indexerCache.Delete(id)
+		return toIndexerSourceResponse(source), nil
+	}
+
+	if err := is.RefreshIndexerSource(ctx, id); err != nil {
+		return IndexerSourceResponse{}, err
 	}
 
 	return toIndexerSourceResponse(source), nil
