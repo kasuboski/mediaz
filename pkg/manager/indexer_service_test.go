@@ -5,7 +5,6 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/kasuboski/mediaz/pkg/cache"
 	"github.com/kasuboski/mediaz/pkg/indexer"
 	indexerMock "github.com/kasuboski/mediaz/pkg/indexer/mocks"
 	"github.com/kasuboski/mediaz/pkg/prowlarr"
@@ -21,8 +20,7 @@ func newTestIndexerService(ctrl *gomock.Controller) (*IndexerService, *storageMo
 	idxStorage := storageMocks.NewMockIndexerStorage(ctrl)
 	srcStorage := storageMocks.NewMockIndexerSourceStorage(ctrl)
 	factory := indexerMock.NewMockFactory(ctrl)
-	c := cache.New[int64, indexerCacheEntry]()
-	svc := NewIndexerService(idxStorage, srcStorage, factory, c)
+	svc := NewIndexerService(idxStorage, srcStorage, factory)
 	return svc, idxStorage, srcStorage, factory
 }
 
@@ -163,12 +161,16 @@ func TestIndexerService_ListIndexers(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
-		svc, idxStorage, _, _ := newTestIndexerService(ctrl)
+		svc, idxStorage, srcStorage, factory := newTestIndexerService(ctrl)
 
-		svc.indexerCache.Set(int64(10), indexerCacheEntry{
-			Indexers:   []indexer.SourceIndexer{{ID: 99, Name: "cached-indexer", Priority: 3}},
-			SourceName: "prowlarr",
-		})
+		src := indexerMock.NewMockIndexerSource(ctrl)
+		srcStorage.EXPECT().GetIndexerSource(ctx, int64(10)).Return(model.IndexerSource{
+			ID: 10, Name: "prowlarr", Scheme: "http", Host: "prowlarr-host", Enabled: true,
+		}, nil)
+		factory.EXPECT().NewIndexerSource(gomock.Any()).Return(src, nil)
+		src.EXPECT().ListIndexers(ctx).Return([]indexer.SourceIndexer{{ID: 99, Name: "cached-indexer", Priority: 3}}, nil)
+		require.NoError(t, svc.RefreshIndexerSource(ctx, 10))
+
 		idxStorage.EXPECT().ListIndexers(ctx).Return(nil, nil)
 
 		got, err := svc.ListIndexers(ctx)
@@ -458,9 +460,15 @@ func TestIndexerService_DeleteIndexerSource(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
-		svc, idxStorage, srcStorage, _ := newTestIndexerService(ctrl)
+		svc, idxStorage, srcStorage, factory := newTestIndexerService(ctrl)
 
-		svc.indexerCache.Set(int64(1), indexerCacheEntry{SourceName: "prowlarr"})
+		src := indexerMock.NewMockIndexerSource(ctrl)
+		srcStorage.EXPECT().GetIndexerSource(ctx, int64(1)).Return(model.IndexerSource{
+			ID: 1, Name: "prowlarr", Scheme: "http", Host: "prowlarr-host", Enabled: true,
+		}, nil)
+		factory.EXPECT().NewIndexerSource(gomock.Any()).Return(src, nil)
+		src.EXPECT().ListIndexers(ctx).Return(nil, nil)
+		require.NoError(t, svc.RefreshIndexerSource(ctx, 1))
 
 		idxStorage.EXPECT().ListIndexers(ctx, gomock.Any()).Return([]*model.Indexer{
 			{ID: 10}, {ID: 11},
@@ -702,15 +710,14 @@ func TestIndexerService_SearchIndexers(t *testing.T) {
 		svc, _, srcStorage, factory := newTestIndexerService(ctrl)
 
 		src := indexerMock.NewMockIndexerSource(ctrl)
-		svc.indexerCache.Set(int64(1), indexerCacheEntry{
-			Indexers:   []indexer.SourceIndexer{{ID: 1, Name: "indexer-1"}},
-			SourceName: "prowlarr",
-		})
+		srcStorage.EXPECT().GetIndexerSource(ctx, int64(1)).Return(model.IndexerSource{
+			ID: 1, Name: "prowlarr", Scheme: "http", Host: "prowlarr-host", Enabled: true,
+		}, nil).Times(2)
+		factory.EXPECT().NewIndexerSource(gomock.Any()).Return(src, nil).Times(2)
+		src.EXPECT().ListIndexers(ctx).Return([]indexer.SourceIndexer{{ID: 1, Name: "indexer-1"}}, nil)
+		require.NoError(t, svc.RefreshIndexerSource(ctx, 1))
 
 		want := []*prowlarr.ReleaseResource{{Title: nullable.NewNullableWithValue("Test Movie")}}
-
-		srcStorage.EXPECT().GetIndexerSource(ctx, int64(1)).Return(model.IndexerSource{ID: 1}, nil)
-		factory.EXPECT().NewIndexerSource(gomock.Any()).Return(src, nil)
 		src.EXPECT().Search(ctx, int32(1), gomock.Any(), gomock.Any()).Return(want, nil)
 
 		got, err := svc.SearchIndexers(ctx, []int32{1}, nil, indexer.SearchOptions{Query: "test movie"})

@@ -13,7 +13,6 @@ import (
 	"github.com/go-jet/jet/v2/qrm"
 	"github.com/go-jet/jet/v2/sqlite"
 	"github.com/kasuboski/mediaz/config"
-	"github.com/kasuboski/mediaz/pkg/cache"
 	"github.com/kasuboski/mediaz/pkg/download"
 	"github.com/kasuboski/mediaz/pkg/indexer"
 	"github.com/kasuboski/mediaz/pkg/library"
@@ -30,9 +29,8 @@ import (
 )
 
 type MediaManager struct {
-	tmdb                  tmdb.ITmdb
-	indexerCache          *cache.Cache[int64, indexerCacheEntry]
-	indexerService        *IndexerService
+	tmdb           tmdb.ITmdb
+	indexerService *IndexerService
 	library               library.Library
 	movieStorage          storage.MovieStorage
 	movieMetaStorage      storage.MovieMetadataStorage
@@ -46,12 +44,9 @@ type MediaManager struct {
 }
 
 func New(tmbdClient tmdb.ITmdb, indexerFactory indexer.Factory, library library.Library, store storage.Storage, factory download.Factory, managerConfigs config.Manager, fullConfig config.Config) MediaManager {
-	indexerCache := cache.New[int64, indexerCacheEntry]()
-
 	m := MediaManager{
-		tmdb:                  tmbdClient,
-		indexerCache:          indexerCache,
-		indexerService:        NewIndexerService(store, store, indexerFactory, indexerCache),
+		tmdb:           tmbdClient,
+		indexerService: NewIndexerService(store, store, indexerFactory),
 		library:               library,
 		movieStorage:          store,
 		movieMetaStorage:      store,

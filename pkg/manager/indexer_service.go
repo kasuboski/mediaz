@@ -65,13 +65,12 @@ func NewIndexerService(
 	indexerStorage storage.IndexerStorage,
 	indexerSrcStorage storage.IndexerSourceStorage,
 	indexerFactory indexer.Factory,
-	indexerCache *cache.Cache[int64, indexerCacheEntry],
 ) *IndexerService {
 	return &IndexerService{
 		indexerStorage:    indexerStorage,
 		indexerSrcStorage: indexerSrcStorage,
 		indexerFactory:    indexerFactory,
-		indexerCache:      indexerCache,
+		indexerCache:      cache.New[int64, indexerCacheEntry](),
 	}
 }
 
