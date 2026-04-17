@@ -48,7 +48,7 @@ func newTestMovieService(ctrl *gomock.Controller) (*MovieService, *storageMocks.
 	qualityService := NewQualityService(store)
 	metadataProvider := &mockMovieMetadataProvider{}
 
-	svc := NewMovieService(tmdbClient, lib, store, store, qualityService, metadataProvider)
+	svc := NewMovieService(tmdbClient, lib, store, qualityService, metadataProvider)
 	return svc, store, tmdbClient, lib
 }
 
@@ -62,7 +62,7 @@ func TestNewMovieService(t *testing.T) {
 	qualityService := NewQualityService(store)
 	metadataProvider := &mockMovieMetadataProvider{}
 
-	svc := NewMovieService(tmdbClient, lib, store, store, qualityService, metadataProvider)
+	svc := NewMovieService(tmdbClient, lib, store, qualityService, metadataProvider)
 	require.NotNil(t, svc)
 	assert.Equal(t, tmdbClient, svc.tmdb)
 	assert.Equal(t, lib, svc.library)
@@ -73,6 +73,170 @@ func TestNewMovieService(t *testing.T) {
 // ---------------------------------------------------------------------------
 // CRUD Tests
 // ---------------------------------------------------------------------------
+
+func TestMovieService_AddMovieToLibrary(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	ctx := context.Background()
+	svc, store, _, _ := newTestMovieService(ctrl)
+
+	releaseDate := time.Now().AddDate(0, 0, -1)
+	metadata := &model.MovieMetadata{
+		ID:          1,
+		TmdbID:      1234,
+		Title:       "Test Movie",
+		ReleaseDate: &releaseDate,
+	}
+
+	svc.metadataProvider = &mockMovieMetadataProvider{metadata: metadata}
+
+	store.EXPECT().GetQualityProfile(ctx, int64(1)).Return(storage.QualityProfile{ID: 1}, nil)
+	store.EXPECT().GetMovieByMetadataID(ctx, 1).Return(nil, storage.ErrNotFound)
+	store.EXPECT().CreateMovie(ctx, gomock.Any(), storage.MovieStateMissing).Return(int64(1), nil)
+	store.EXPECT().GetMovie(ctx, int64(1)).Return(&storage.Movie{
+		Movie: model.Movie{
+			ID:               1,
+			Monitored:        1,
+			QualityProfileID: 1,
+			MovieMetadataID:  ptr.To(int32(1)),
+			Path:             ptr.To("Test Movie"),
+		},
+		State: storage.MovieStateMissing,
+	}, nil)
+
+	movie, err := svc.AddMovieToLibrary(ctx, AddMovieRequest{TMDBID: 1234, QualityProfileID: 1})
+	require.NoError(t, err)
+	require.NotNil(t, movie)
+	assert.Equal(t, int32(1), movie.ID)
+	assert.Equal(t, storage.MovieStateMissing, movie.State)
+}
+
+func TestMovieService_AddMovieToLibrary_AlreadyExists(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	ctx := context.Background()
+	svc, store, _, _ := newTestMovieService(ctrl)
+
+	metadata := &model.MovieMetadata{
+		ID:     1,
+		TmdbID: 1234,
+		Title:  "Existing Movie",
+	}
+
+	svc.metadataProvider = &mockMovieMetadataProvider{metadata: metadata}
+
+	store.EXPECT().GetQualityProfile(ctx, int64(1)).Return(storage.QualityProfile{ID: 1}, nil)
+	store.EXPECT().GetMovieByMetadataID(ctx, 1).Return(&storage.Movie{
+		Movie: model.Movie{
+			ID:               5,
+			MovieMetadataID:  ptr.To(int32(1)),
+			Monitored:        1,
+			QualityProfileID: 1,
+		},
+		State: storage.MovieStateDownloaded,
+	}, nil)
+
+	movie, err := svc.AddMovieToLibrary(ctx, AddMovieRequest{TMDBID: 1234, QualityProfileID: 1})
+	require.NoError(t, err)
+	require.NotNil(t, movie)
+	assert.Equal(t, int32(5), movie.ID)
+}
+
+func TestMovieService_AddMovieToLibrary_QualityProfileError(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	ctx := context.Background()
+	svc, store, _, _ := newTestMovieService(ctrl)
+
+	store.EXPECT().GetQualityProfile(ctx, int64(99)).Return(storage.QualityProfile{}, errors.New("quality profile not found"))
+
+	movie, err := svc.AddMovieToLibrary(ctx, AddMovieRequest{TMDBID: 1234, QualityProfileID: 99})
+	require.Error(t, err)
+	assert.Nil(t, movie)
+}
+
+func TestMovieService_AddMovieToLibrary_MetadataError(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	ctx := context.Background()
+	svc, store, _, _ := newTestMovieService(ctrl)
+
+	svc.metadataProvider = &mockMovieMetadataProvider{err: errors.New("metadata fetch failed")}
+
+	store.EXPECT().GetQualityProfile(ctx, int64(1)).Return(storage.QualityProfile{ID: 1}, nil)
+
+	movie, err := svc.AddMovieToLibrary(ctx, AddMovieRequest{TMDBID: 1234, QualityProfileID: 1})
+	require.Error(t, err)
+	assert.Nil(t, movie)
+}
+
+func TestMovieService_AddMovieToLibrary_Unreleased(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	ctx := context.Background()
+	svc, store, _, _ := newTestMovieService(ctrl)
+
+	// Future release date → state should be Unreleased
+	releaseDate := time.Now().AddDate(1, 0, 0)
+	metadata := &model.MovieMetadata{
+		ID:          1,
+		TmdbID:      1234,
+		Title:       "Future Movie",
+		ReleaseDate: &releaseDate,
+	}
+
+	svc.metadataProvider = &mockMovieMetadataProvider{metadata: metadata}
+
+	store.EXPECT().GetQualityProfile(ctx, int64(1)).Return(storage.QualityProfile{ID: 1}, nil)
+	store.EXPECT().GetMovieByMetadataID(ctx, 1).Return(nil, storage.ErrNotFound)
+	store.EXPECT().CreateMovie(ctx, gomock.Any(), storage.MovieStateUnreleased).Return(int64(1), nil)
+	store.EXPECT().GetMovie(ctx, int64(1)).Return(&storage.Movie{
+		Movie: model.Movie{
+			ID:               1,
+			Monitored:        1,
+			QualityProfileID: 1,
+			MovieMetadataID:  ptr.To(int32(1)),
+			Path:             ptr.To("Future Movie"),
+		},
+		State: storage.MovieStateUnreleased,
+	}, nil)
+
+	movie, err := svc.AddMovieToLibrary(ctx, AddMovieRequest{TMDBID: 1234, QualityProfileID: 1})
+	require.NoError(t, err)
+	require.NotNil(t, movie)
+	assert.Equal(t, storage.MovieStateUnreleased, movie.State)
+}
+
+func TestMovieService_AddMovieToLibrary_CreateError(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	ctx := context.Background()
+	svc, store, _, _ := newTestMovieService(ctrl)
+
+	releaseDate := time.Now().AddDate(0, 0, -1)
+	metadata := &model.MovieMetadata{
+		ID:          1,
+		TmdbID:      1234,
+		Title:       "Test Movie",
+		ReleaseDate: &releaseDate,
+	}
+
+	svc.metadataProvider = &mockMovieMetadataProvider{metadata: metadata}
+
+	store.EXPECT().GetQualityProfile(ctx, int64(1)).Return(storage.QualityProfile{ID: 1}, nil)
+	store.EXPECT().GetMovieByMetadataID(ctx, 1).Return(nil, storage.ErrNotFound)
+	store.EXPECT().CreateMovie(ctx, gomock.Any(), gomock.Any()).Return(int64(0), errors.New("db insert failed"))
+
+	movie, err := svc.AddMovieToLibrary(ctx, AddMovieRequest{TMDBID: 1234, QualityProfileID: 1})
+	require.Error(t, err)
+	assert.Nil(t, movie)
+}
 
 func TestMovieService_UpdateMovieMonitored(t *testing.T) {
 	ctrl := gomock.NewController(t)

@@ -59,7 +59,7 @@ func New(tmbdClient tmdb.ITmdb, indexerFactory indexer.Factory, library library.
 		configs:               managerConfigs,
 	}
 
-	m.movieService = NewMovieService(tmbdClient, library, store, store, m.qualityService, &m)
+	m.movieService = NewMovieService(tmbdClient, library, store, m.qualityService, &m)
 
 	executors := map[JobType]JobExecutor{
 		MovieReconcile: func(ctx context.Context, jobID int64) error {

@@ -26,21 +26,19 @@ type MovieMetadataProvider interface {
 // MovieService handles movie CRUD, search, and detail lookups.
 // Indexing and reconciliation remain on MediaManager for now.
 type MovieService struct {
-	tmdb              tmdb.ITmdb
-	library           library.Library
-	movieStorage      storage.MovieStorage
-	movieMetaStorage  storage.MovieMetadataStorage
-	qualityService    *QualityService
-	metadataProvider  MovieMetadataProvider
+	tmdb             tmdb.ITmdb
+	library          library.Library
+	movieStorage     storage.MovieStorage
+	qualityService   *QualityService
+	metadataProvider MovieMetadataProvider
 }
 
 // NewMovieService creates a MovieService with the given dependencies.
-func NewMovieService(tmdbClient tmdb.ITmdb, lib library.Library, movieStorage storage.MovieStorage, movieMetaStorage storage.MovieMetadataStorage, qualityService *QualityService, metadataProvider MovieMetadataProvider) *MovieService {
+func NewMovieService(tmdbClient tmdb.ITmdb, lib library.Library, movieStorage storage.MovieStorage, qualityService *QualityService, metadataProvider MovieMetadataProvider) *MovieService {
 	return &MovieService{
 		tmdb:             tmdbClient,
 		library:          lib,
 		movieStorage:     movieStorage,
-		movieMetaStorage: movieMetaStorage,
 		qualityService:   qualityService,
 		metadataProvider: metadataProvider,
 	}
@@ -52,7 +50,7 @@ func NewMovieService(tmdbClient tmdb.ITmdb, lib library.Library, movieStorage st
 
 // AddMovieToLibrary adds a movie to be managed by mediaz.
 // TODO: check status of movie before doing anything else.. do we already have it tracked? is it downloaded or already discovered? error state?
-func (s MovieService) AddMovieToLibrary(ctx context.Context, request AddMovieRequest) (*storage.Movie, error) {
+func (s *MovieService) AddMovieToLibrary(ctx context.Context, request AddMovieRequest) (*storage.Movie, error) {
 	log := logger.FromCtx(ctx)
 
 	profile, err := s.qualityService.GetQualityProfile(ctx, int64(request.QualityProfileID))
@@ -108,7 +106,7 @@ func (s MovieService) AddMovieToLibrary(ctx context.Context, request AddMovieReq
 }
 
 // DeleteMovie removes a movie and optionally its files from disk.
-func (s MovieService) DeleteMovie(ctx context.Context, movieID int64, deleteFiles bool) error {
+func (s *MovieService) DeleteMovie(ctx context.Context, movieID int64, deleteFiles bool) error {
 	log := logger.FromCtx(ctx)
 
 	movie, err := s.movieStorage.GetMovie(ctx, movieID)
@@ -135,7 +133,7 @@ func (s MovieService) DeleteMovie(ctx context.Context, movieID int64, deleteFile
 }
 
 // UpdateMovieMonitored toggles the monitored state of a movie.
-func (s MovieService) UpdateMovieMonitored(ctx context.Context, movieID int64, monitored bool) (*storage.Movie, error) {
+func (s *MovieService) UpdateMovieMonitored(ctx context.Context, movieID int64, monitored bool) (*storage.Movie, error) {
 	monitoredInt := int32(0)
 	if monitored {
 		monitoredInt = 1
@@ -157,7 +155,7 @@ func (s MovieService) UpdateMovieMonitored(ctx context.Context, movieID int64, m
 }
 
 // UpdateMovieQualityProfile updates the quality profile for a movie.
-func (s MovieService) UpdateMovieQualityProfile(ctx context.Context, movieID int64, qualityProfileID int32) (*storage.Movie, error) {
+func (s *MovieService) UpdateMovieQualityProfile(ctx context.Context, movieID int64, qualityProfileID int32) (*storage.Movie, error) {
 	err := s.movieStorage.UpdateMovieQualityProfile(ctx, movieID, qualityProfileID)
 	if err != nil {
 		return nil, err
@@ -177,7 +175,7 @@ func (s MovieService) UpdateMovieQualityProfile(ctx context.Context, movieID int
 // ---------------------------------------------------------------------------
 
 // SearchMovie queries TMDB for a movie matching the given query.
-func (s MovieService) SearchMovie(ctx context.Context, query string) (*SearchMediaResponse, error) {
+func (s *MovieService) SearchMovie(ctx context.Context, query string) (*SearchMediaResponse, error) {
 	log := logger.FromCtx(ctx)
 	if query == "" {
 		log.Debug("search movie query is empty", zap.String("query", query))
@@ -202,7 +200,7 @@ func (s MovieService) SearchMovie(ctx context.Context, query string) (*SearchMed
 }
 
 // GetMovieDetailByTMDBID retrieves detailed information for a single movie by TMDB ID.
-func (s MovieService) GetMovieDetailByTMDBID(ctx context.Context, tmdbID int) (*MovieDetailResult, error) {
+func (s *MovieService) GetMovieDetailByTMDBID(ctx context.Context, tmdbID int) (*MovieDetailResult, error) {
 	log := logger.FromCtx(ctx)
 
 	// Get movie metadata from TMDB (creates if not exists)
@@ -258,7 +256,7 @@ func (s MovieService) GetMovieDetailByTMDBID(ctx context.Context, tmdbID int) (*
 // ---------------------------------------------------------------------------
 
 // ListMoviesInLibrary returns all tracked movies enriched with metadata.
-func (s MovieService) ListMoviesInLibrary(ctx context.Context) ([]LibraryMovie, error) {
+func (s *MovieService) ListMoviesInLibrary(ctx context.Context) ([]LibraryMovie, error) {
 	all, err := s.movieStorage.ListMovies(ctx)
 	if err != nil {
 		return nil, err
