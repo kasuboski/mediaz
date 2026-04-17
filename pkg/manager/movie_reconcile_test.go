@@ -185,6 +185,7 @@ func Test_Manager_reconcileDiscoveredMovie(t *testing.T) {
 
 		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
 		m.tmdb = tClient
+		m.movieService.tmdb = tClient
 
 		movie := storage.Movie{
 			Movie: model.Movie{
@@ -233,6 +234,7 @@ func Test_Manager_reconcileDiscoveredMovie(t *testing.T) {
 
 		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
 		m.tmdb = tClient
+		m.movieService.tmdb = tClient
 
 		movie := storage.Movie{
 			Movie: model.Movie{
@@ -282,6 +284,7 @@ func Test_Manager_reconcileDiscoveredMovie(t *testing.T) {
 
 		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
 		m.tmdb = tClient
+		m.movieService.tmdb = tClient
 
 		movie := storage.Movie{
 			Movie: model.Movie{
@@ -334,6 +337,7 @@ func Test_Manager_reconcileDiscoveredMovie(t *testing.T) {
 
 		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
 		m.tmdb = tClient
+		m.movieService.tmdb = tClient
 
 		movie := storage.Movie{
 			Movie: model.Movie{
@@ -371,6 +375,7 @@ func Test_Manager_reconcileDiscoveredMovie(t *testing.T) {
 
 		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
 		m.tmdb = tClient
+		m.movieService.tmdb = tClient
 
 		metadataID := int32(120)
 		movie := storage.Movie{
