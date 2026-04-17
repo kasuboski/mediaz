@@ -16,9 +16,9 @@ import (
 	"github.com/kasuboski/mediaz/pkg/download"
 	"github.com/kasuboski/mediaz/pkg/indexer"
 	"github.com/kasuboski/mediaz/pkg/library"
-	"github.com/kasuboski/mediaz/pkg/prowlarr"
 	"github.com/kasuboski/mediaz/pkg/logger"
 	"github.com/kasuboski/mediaz/pkg/pagination"
+	"github.com/kasuboski/mediaz/pkg/prowlarr"
 	"github.com/kasuboski/mediaz/pkg/ptr"
 	"github.com/kasuboski/mediaz/pkg/storage"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
@@ -29,8 +29,8 @@ import (
 )
 
 type MediaManager struct {
-	tmdb           tmdb.ITmdb
-	indexerService *IndexerService
+	tmdb                  tmdb.ITmdb
+	indexerService        *IndexerService
 	library               library.Library
 	movieStorage          storage.MovieStorage
 	movieMetaStorage      storage.MovieMetadataStorage
@@ -45,8 +45,8 @@ type MediaManager struct {
 
 func New(tmbdClient tmdb.ITmdb, indexerFactory indexer.Factory, library library.Library, store storage.Storage, factory download.Factory, managerConfigs config.Manager, fullConfig config.Config) MediaManager {
 	m := MediaManager{
-		tmdb:           tmbdClient,
-		indexerService: NewIndexerService(store, store, indexerFactory),
+		tmdb:                  tmbdClient,
+		indexerService:        NewIndexerService(store, store, indexerFactory),
 		library:               library,
 		movieStorage:          store,
 		movieMetaStorage:      store,
