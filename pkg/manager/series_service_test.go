@@ -163,7 +163,7 @@ func TestSeriesService_DeleteSeries_WithEpisodeFiles(t *testing.T) {
 	defer ctrl.Finish()
 
 	ctx := context.Background()
-	svc, store, _, _ := newTestSeriesService(ctrl)
+	svc, store, _, lib := newTestSeriesService(ctrl)
 
 	path := "Test Series"
 	series := &storage.Series{
@@ -193,6 +193,40 @@ func TestSeriesService_DeleteSeries_WithEpisodeFiles(t *testing.T) {
 	store.EXPECT().ListSeasons(ctx, gomock.Any()).Return([]*storage.Season{season}, nil)
 	store.EXPECT().ListEpisodes(ctx, gomock.Any()).Return([]*storage.Episode{episode}, nil)
 	store.EXPECT().DeleteEpisodeFile(ctx, int64(episodeFileID)).Return(nil)
+	lib.EXPECT().DeleteSeriesDirectory(ctx, path).Return(nil)
+	store.EXPECT().DeleteSeries(ctx, int64(1)).Return(nil)
+
+	err := svc.DeleteSeries(ctx, 1, true)
+	require.NoError(t, err)
+}
+
+func TestSeriesService_DeleteSeries_WithEpisodeFiles_NoDeleteDirectory(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	ctx := context.Background()
+	svc, store, _, _ := newTestSeriesService(ctrl)
+
+	path := "Test Series"
+	series := &storage.Series{
+		Series: model.Series{
+			ID:   1,
+			Path: &path,
+		},
+	}
+
+	season := &storage.Season{
+		Season: model.Season{
+			ID:       1,
+			SeriesID: 1,
+		},
+	}
+
+	// When deleteDirectory is false, episode files should NOT be deleted.
+	// ListSeasons is still called but episodes loop is skipped entirely.
+	store.EXPECT().GetSeries(ctx, gomock.Any()).Return(series, nil)
+	store.EXPECT().ListSeasons(ctx, gomock.Any()).Return([]*storage.Season{season}, nil)
+	// No ListEpisodes, DeleteEpisodeFile, or DeleteSeriesDirectory calls expected
 	store.EXPECT().DeleteSeries(ctx, int64(1)).Return(nil)
 
 	err := svc.DeleteSeries(ctx, 1, false)

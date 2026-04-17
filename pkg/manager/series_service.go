@@ -68,7 +68,7 @@ func (s SeriesService) AddSeriesToLibrary(ctx context.Context, request AddSeries
 		return nil, err
 	}
 
-	series, err := s.seriesStorage.GetSeries(ctx, table.Series.ID.EQ(sqlite.Int32(seriesMetadata.ID)))
+	series, err := s.seriesStorage.GetSeries(ctx, table.Series.SeriesMetadataID.EQ(sqlite.Int32(seriesMetadata.ID)))
 	// if we find the series we dont need to add it
 	if err == nil {
 		return series, err
@@ -189,18 +189,20 @@ func (s SeriesService) DeleteSeries(ctx context.Context, seriesID int64, deleteD
 		log.Warn("failed to get seasons for cleanup", zap.Error(err))
 	}
 
-	for _, season := range seasons {
-		episodes, err := s.seriesStorage.ListEpisodes(ctx, table.Episode.SeasonID.EQ(sqlite.Int64(int64(season.ID))))
-		if err != nil {
-			log.Warn("failed to get episodes for cleanup", zap.Int32("season_id", season.ID), zap.Error(err))
-			continue
-		}
-		for _, episode := range episodes {
-			if episode.EpisodeFileID == nil {
+	if deleteDirectory {
+		for _, season := range seasons {
+			episodes, err := s.seriesStorage.ListEpisodes(ctx, table.Episode.SeasonID.EQ(sqlite.Int64(int64(season.ID))))
+			if err != nil {
+				log.Warn("failed to get episodes for cleanup", zap.Int32("season_id", season.ID), zap.Error(err))
 				continue
 			}
-			if err := s.seriesStorage.DeleteEpisodeFile(ctx, int64(*episode.EpisodeFileID)); err != nil {
-				log.Warn("failed to delete episode file", zap.Int32("episode_file_id", *episode.EpisodeFileID), zap.Error(err))
+			for _, episode := range episodes {
+				if episode.EpisodeFileID == nil {
+					continue
+				}
+				if err := s.seriesStorage.DeleteEpisodeFile(ctx, int64(*episode.EpisodeFileID)); err != nil {
+					log.Warn("failed to delete episode file", zap.Int32("episode_file_id", *episode.EpisodeFileID), zap.Error(err))
+				}
 			}
 		}
 	}
@@ -581,6 +583,10 @@ func (s SeriesService) getTVMetadataAndDetails(ctx context.Context, tmdbID int) 
 	b, err := io.ReadAll(res.Body)
 	if err != nil {
 		return nil, nil, err
+	}
+
+	if res.StatusCode < 200 || res.StatusCode > 299 {
+		return nil, nil, fmt.Errorf("unexpected TV series details status %s: %s", res.Status, string(b))
 	}
 
 	var seriesDetailsResponse tmdb.SeriesDetailsResponse
