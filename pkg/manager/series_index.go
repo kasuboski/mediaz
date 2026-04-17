@@ -29,7 +29,7 @@ func (m MediaManager) IndexSeriesLibrary(ctx context.Context) error {
 		return nil
 	}
 
-	episodeFiles, err := m.storage.ListEpisodeFiles(ctx)
+	episodeFiles, err := m.seriesStorage.ListEpisodeFiles(ctx)
 	if err != nil {
 		return err
 	}
@@ -42,7 +42,7 @@ func (m MediaManager) IndexSeriesLibrary(ctx context.Context) error {
 	}
 
 	// pull the updated episode file list in case we added anything above
-	episodeFiles, err = m.storage.ListEpisodeFiles(ctx)
+	episodeFiles, err = m.seriesStorage.ListEpisodeFiles(ctx)
 	if err != nil {
 		return err
 	}
@@ -65,7 +65,7 @@ func (m MediaManager) IndexSeriesLibrary(ctx context.Context) error {
 		}
 
 		// Check if this specific episode file already has an associated episode
-		existingEpisode, err := m.storage.GetEpisodeByEpisodeFileID(ctx, int64(f.ID))
+		existingEpisode, err := m.seriesStorage.GetEpisodeByEpisodeFileID(ctx, int64(f.ID))
 		if err == nil && existingEpisode != nil {
 			log.Debug("episode file already has associated episode",
 				zap.Int32("file_id", f.ID),
@@ -97,7 +97,7 @@ func (m MediaManager) IndexSeriesLibrary(ctx context.Context) error {
 			EpisodeFileID: &f.ID,
 			EpisodeNumber: int32(df.EpisodeNumber),
 		}}
-		_, err = m.storage.CreateEpisode(ctx, episode, storage.EpisodeStateDiscovered)
+		_, err = m.seriesStorage.CreateEpisode(ctx, episode, storage.EpisodeStateDiscovered)
 		if err != nil {
 			log.Warn("failed to create new episode", zap.Error(err))
 			continue
@@ -112,11 +112,11 @@ func (m MediaManager) IndexSeriesLibrary(ctx context.Context) error {
 func (m MediaManager) ensureSeries(ctx context.Context, seriesName string) (int64, error) {
 	log := logger.FromCtx(ctx)
 
-	series, err := m.storage.GetSeries(ctx, table.Series.Path.EQ(sqlite.String(seriesName)))
+	series, err := m.seriesStorage.GetSeries(ctx, table.Series.Path.EQ(sqlite.String(seriesName)))
 	if errors.Is(err, storage.ErrNotFound) || series == nil {
 		log.Debug("episode file does not have associated series, creating new series")
 		seriesModel := storage.Series{Series: model.Series{Path: &seriesName, Monitored: 0}}
-		seriesID, err := m.storage.CreateSeries(ctx, seriesModel, storage.SeriesStateDiscovered)
+		seriesID, err := m.seriesStorage.CreateSeries(ctx, seriesModel, storage.SeriesStateDiscovered)
 		if err != nil {
 			return 0, err
 		}
@@ -141,7 +141,7 @@ func (m MediaManager) getOrCreateSeason(ctx context.Context, seriesID int64, sea
 	)
 
 	// First try to find existing season by series_id + season_number (our unique constraint)
-	season, err := m.storage.GetSeason(ctx,
+	season, err := m.seriesStorage.GetSeason(ctx,
 		table.Season.SeriesID.EQ(sqlite.Int64(seriesID)).
 			AND(table.Season.SeasonNumber.EQ(sqlite.Int32(seasonNumber))))
 
@@ -152,7 +152,7 @@ func (m MediaManager) getOrCreateSeason(ctx context.Context, seriesID int64, sea
 	if season != nil {
 		// Season exists, update metadata link if provided and missing
 		if seasonMetadataID != nil && season.SeasonMetadataID == nil {
-			err = m.storage.LinkSeasonMetadata(ctx, int64(season.ID), *seasonMetadataID)
+			err = m.seriesStorage.LinkSeasonMetadata(ctx, int64(season.ID), *seasonMetadataID)
 			if err != nil {
 				log.Error("failed to link season metadata", zap.Error(err))
 				return 0, err
@@ -174,7 +174,7 @@ func (m MediaManager) getOrCreateSeason(ctx context.Context, seriesID int64, sea
 		},
 	}
 
-	seasonID, err := m.storage.CreateSeason(ctx, newSeason, initialState)
+	seasonID, err := m.seriesStorage.CreateSeason(ctx, newSeason, initialState)
 	if err != nil {
 		return 0, err
 	}
@@ -235,7 +235,7 @@ func (m *MediaManager) upsertEpisodeFile(ctx context.Context, discoveredFile lib
 	if matchedID == 0 {
 		ef := modelEpisodeFile(discoveredFile)
 		log.Debug("creating new episode file", zap.Int64("size", discoveredFile.Size))
-		_, err := m.storage.CreateEpisodeFile(ctx, ef)
+		_, err := m.seriesStorage.CreateEpisodeFile(ctx, ef)
 		if err != nil {
 			return fmt.Errorf("couldn't store episode file: %w", err)
 		}
@@ -264,13 +264,13 @@ func (m *MediaManager) upsertEpisodeFile(ctx context.Context, discoveredFile lib
 		zap.String("old_absolute_path", matchedPath),
 		zap.String("new_absolute_path", discoveredFile.AbsolutePath))
 
-	existingFile, err := m.storage.GetEpisodeFile(ctx, matchedID)
+	existingFile, err := m.seriesStorage.GetEpisodeFile(ctx, matchedID)
 	if err != nil {
 		return fmt.Errorf("failed to get episode file for update: %w", err)
 	}
 
 	existingFile.OriginalFilePath = &discoveredFile.AbsolutePath
-	err = m.storage.UpdateEpisodeFile(ctx, matchedID, *existingFile)
+	err = m.seriesStorage.UpdateEpisodeFile(ctx, matchedID, *existingFile)
 	if err != nil {
 		return fmt.Errorf("failed to update episode file absolute path: %w", err)
 	}

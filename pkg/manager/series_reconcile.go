@@ -90,7 +90,7 @@ func (m MediaManager) ReconcileMissingSeries(ctx context.Context, snapshot *Reco
 		AND(table.SeriesTransition.MostRecent.EQ(sqlite.Bool(true))).
 		AND(table.Series.Monitored.EQ(sqlite.Int(1)))
 
-	series, err := m.storage.ListSeries(ctx, where)
+	series, err := m.seriesStorage.ListSeries(ctx, where)
 	if err != nil {
 		if !errors.Is(err, storage.ErrNotFound) {
 			log.Error("failed to list missing series", zap.Error(err))
@@ -131,7 +131,7 @@ func (m MediaManager) ReconcileContinuingSeries(ctx context.Context, snapshot *R
 		sqlite.String(string(storage.SeriesStateDownloading)),
 	).AND(table.SeriesTransition.MostRecent.EQ(sqlite.Bool(true)))
 
-	series, err := m.storage.ListSeries(ctx, where)
+	series, err := m.seriesStorage.ListSeries(ctx, where)
 	if err != nil {
 		if !errors.Is(err, storage.ErrNotFound) {
 			log.Error("failed to list continuing series", zap.Error(err))
@@ -166,7 +166,7 @@ func (m MediaManager) reconcileContinuingSeries(ctx context.Context, series *sto
 	// Process both monitored and unmonitored series for metadata refresh
 	// The series' monitored status will be inherited by new episodes
 
-	seriesMetadata, err := m.storage.GetSeriesMetadata(ctx, table.SeriesMetadata.ID.EQ(sqlite.Int32(*series.SeriesMetadataID)))
+	seriesMetadata, err := m.seriesMetaStorage.GetSeriesMetadata(ctx, table.SeriesMetadata.ID.EQ(sqlite.Int32(*series.SeriesMetadataID)))
 	if err != nil {
 		log.Debug("failed to find series metadata", zap.Int32("meta_id", *series.SeriesMetadataID))
 		return err
@@ -195,7 +195,7 @@ func (m MediaManager) refreshSeriesEpisodes(ctx context.Context, series *storage
 	}
 
 	where := table.Season.SeriesID.EQ(sqlite.Int32(series.ID))
-	existingSeasons, err := m.storage.ListSeasons(ctx, where)
+	existingSeasons, err := m.seriesStorage.ListSeasons(ctx, where)
 	if err != nil {
 		log.Error("failed to list existing seasons", zap.Error(err))
 		return err
@@ -211,7 +211,7 @@ func (m MediaManager) refreshSeriesEpisodes(ctx context.Context, series *storage
 			continue
 		}
 
-		seasonMetadata, err := m.storage.GetSeasonMetadata(ctx, table.SeasonMetadata.ID.EQ(sqlite.Int32(*season.SeasonMetadataID)))
+		seasonMetadata, err := m.seriesMetaStorage.GetSeasonMetadata(ctx, table.SeasonMetadata.ID.EQ(sqlite.Int32(*season.SeasonMetadataID)))
 		if err != nil {
 			continue
 		}
@@ -220,7 +220,7 @@ func (m MediaManager) refreshSeriesEpisodes(ctx context.Context, series *storage
 	}
 
 	seasonMetadataWhere := table.SeasonMetadata.SeriesMetadataID.EQ(sqlite.Int32(seriesMetadata.ID))
-	allSeasonMetadata, err := m.storage.ListSeasonMetadata(ctx, seasonMetadataWhere)
+	allSeasonMetadata, err := m.seriesMetaStorage.ListSeasonMetadata(ctx, seasonMetadataWhere)
 	if err != nil {
 		log.Error("failed to list season metadata", zap.Error(err))
 		return err
@@ -244,7 +244,7 @@ func (m MediaManager) refreshSeriesEpisodes(ctx context.Context, series *storage
 		}
 
 		episodeWhere := table.Episode.SeasonID.EQ(sqlite.Int64(seasonID))
-		existingEpisodes, err := m.storage.ListEpisodes(ctx, episodeWhere)
+		existingEpisodes, err := m.seriesStorage.ListEpisodes(ctx, episodeWhere)
 		if err != nil {
 			log.Error("failed to list existing episodes", zap.Error(err))
 			continue
@@ -256,14 +256,14 @@ func (m MediaManager) refreshSeriesEpisodes(ctx context.Context, series *storage
 		}
 
 		// Get season to access its metadata ID
-		seasonEntity, err := m.storage.GetSeason(ctx, table.Season.ID.EQ(sqlite.Int32(int32(seasonID))))
+		seasonEntity, err := m.seriesStorage.GetSeason(ctx, table.Season.ID.EQ(sqlite.Int32(int32(seasonID))))
 		if err != nil || seasonEntity.SeasonMetadataID == nil {
 			log.Error("failed to get season or season has no metadata", zap.Error(err))
 			continue
 		}
 
 		episodeMetadataWhere := table.EpisodeMetadata.SeasonMetadataID.EQ(sqlite.Int32(*seasonEntity.SeasonMetadataID))
-		episodeMetadataList, err := m.storage.ListEpisodeMetadata(ctx, episodeMetadataWhere)
+		episodeMetadataList, err := m.seriesMetaStorage.ListEpisodeMetadata(ctx, episodeMetadataWhere)
 		if err != nil {
 			log.Error("failed to list episode metadata", zap.Error(err))
 			continue
@@ -287,7 +287,7 @@ func (m MediaManager) refreshSeriesEpisodes(ctx context.Context, series *storage
 					episodeState = storage.EpisodeStateUnreleased
 				}
 
-				_, err := m.storage.CreateEpisode(ctx, episode, episodeState)
+				_, err := m.seriesStorage.CreateEpisode(ctx, episode, episodeState)
 				if err != nil {
 					log.Error("failed to create new episode",
 						zap.Error(err),
@@ -312,7 +312,7 @@ func (m MediaManager) refreshSeriesEpisodes(ctx context.Context, series *storage
 		// Find matching season metadata
 		for _, seasonMeta := range allSeasonMetadata {
 			if seasonMeta.Number == seasonNumber {
-				err := m.storage.LinkSeasonMetadata(ctx, int64(season.ID), seasonMeta.ID)
+				err := m.seriesStorage.LinkSeasonMetadata(ctx, int64(season.ID), seasonMeta.ID)
 				if err != nil {
 					log.Error("failed to link season metadata", zap.Error(err))
 				} else {
@@ -343,13 +343,13 @@ func (m MediaManager) reconcileMissingSeries(ctx context.Context, series *storag
 		return nil
 	}
 
-	qualityProfile, err := m.storage.GetQualityProfile(ctx, int64(series.QualityProfileID))
+	qualityProfile, err := m.GetQualityProfile(ctx, int64(series.QualityProfileID))
 	if err != nil {
 		log.Warn("failed to find series qualityprofile", zap.Int32("quality_id", series.QualityProfileID))
 		return err
 	}
 
-	seriesMetadata, err := m.storage.GetSeriesMetadata(ctx, table.SeriesMetadata.ID.EQ(sqlite.Int32(*series.SeriesMetadataID)))
+	seriesMetadata, err := m.seriesMetaStorage.GetSeriesMetadata(ctx, table.SeriesMetadata.ID.EQ(sqlite.Int32(*series.SeriesMetadataID)))
 	if err != nil {
 		log.Debug("failed to find series metadata", zap.Int32("meta_id", *series.SeriesMetadataID))
 		return err
@@ -370,7 +370,7 @@ func (m MediaManager) reconcileMissingSeries(ctx context.Context, series *storag
 		AND(table.Season.Monitored.EQ(sqlite.Int(1))).
 		AND(table.SeasonTransition.ToState.EQ(sqlite.String(string(storage.SeasonStateMissing))))
 
-	seasons, err := m.storage.ListSeasons(ctx, where)
+	seasons, err := m.seriesStorage.ListSeasons(ctx, where)
 	if err != nil {
 		log.Error("failed to list missing seasons", zap.Error(err))
 		return fmt.Errorf("couldn't list missing seasons: %w", err)
@@ -385,7 +385,7 @@ func (m MediaManager) reconcileMissingSeries(ctx context.Context, series *storag
 	allMissingSeasonsUnreleased := true
 	for _, season := range seasons {
 		where := table.Episode.SeasonID.EQ(sqlite.Int32(season.ID))
-		episodes, err := m.storage.ListEpisodes(ctx, where)
+		episodes, err := m.seriesStorage.ListEpisodes(ctx, where)
 		if err != nil {
 			log.Error("failed to list episodes for season", zap.Error(err))
 			allMissingSeasonsUnreleased = false
@@ -393,7 +393,7 @@ func (m MediaManager) reconcileMissingSeries(ctx context.Context, series *storag
 		}
 		for _, e := range episodes {
 			if e.State == storage.EpisodeStateMissing && e.EpisodeMetadataID != nil {
-				episodeMetadata, err := m.storage.GetEpisodeMetadata(ctx, table.EpisodeMetadata.ID.EQ(sqlite.Int32(*e.EpisodeMetadataID)))
+				episodeMetadata, err := m.seriesMetaStorage.GetEpisodeMetadata(ctx, table.EpisodeMetadata.ID.EQ(sqlite.Int32(*e.EpisodeMetadataID)))
 				if err == nil && isReleased(snapshot.time, episodeMetadata.AirDate) {
 					allMissingSeasonsUnreleased = false
 					break
@@ -436,14 +436,14 @@ func (m MediaManager) reconcileMissingSeason(ctx context.Context, seriesTitle st
 		return fmt.Errorf("season is nil")
 	}
 
-	metadata, err := m.storage.GetSeasonMetadata(ctx, table.SeasonMetadata.ID.EQ(sqlite.Int32(*season.SeasonMetadataID)))
+	metadata, err := m.seriesMetaStorage.GetSeasonMetadata(ctx, table.SeasonMetadata.ID.EQ(sqlite.Int32(*season.SeasonMetadataID)))
 	if err != nil {
 		log.Debug("failed to find season metadata", zap.Int32("meta_id", *season.SeasonMetadataID))
 		return err
 	}
 
 	where := table.Episode.SeasonID.EQ(sqlite.Int32(season.ID))
-	episodes, err := m.storage.ListEpisodes(ctx, where)
+	episodes, err := m.seriesStorage.ListEpisodes(ctx, where)
 	if err != nil {
 		log.Error("failed to list missing episodes", zap.Error(err))
 		return fmt.Errorf("couldn't list missing episodes: %w", err)
@@ -462,7 +462,7 @@ func (m MediaManager) reconcileMissingSeason(ctx context.Context, seriesTitle st
 			missingEpisodes = append(missingEpisodes, e)
 			// Check if episode is unreleased
 			if e.EpisodeMetadataID != nil {
-				episodeMetadata, err := m.storage.GetEpisodeMetadata(ctx, table.EpisodeMetadata.ID.EQ(sqlite.Int32(*e.EpisodeMetadataID)))
+				episodeMetadata, err := m.seriesMetaStorage.GetEpisodeMetadata(ctx, table.EpisodeMetadata.ID.EQ(sqlite.Int32(*e.EpisodeMetadataID)))
 				if err == nil && isReleased(snapshot.time, episodeMetadata.AirDate) {
 					allMissingUnreleased = false
 				}
@@ -494,7 +494,7 @@ func (m MediaManager) reconcileMissingSeason(ctx context.Context, seriesTitle st
 	var missingEpisodesMetadata []*model.EpisodeMetadata
 	for _, e := range missingEpisodes {
 		if e.EpisodeMetadataID != nil {
-			episodeMetadata, err := m.storage.GetEpisodeMetadata(ctx, table.EpisodeMetadata.ID.EQ(sqlite.Int32(*e.EpisodeMetadataID)))
+			episodeMetadata, err := m.seriesMetaStorage.GetEpisodeMetadata(ctx, table.EpisodeMetadata.ID.EQ(sqlite.Int32(*e.EpisodeMetadataID)))
 			if err != nil {
 				log.Warn("failed to get episode metadata for runtime calculation", zap.Error(err))
 				continue
@@ -596,7 +596,7 @@ func (m MediaManager) reconcileMissingEpisode(ctx context.Context, seriesTitle s
 		return false, nil
 	}
 
-	episodeMetadata, err := m.storage.GetEpisodeMetadata(ctx, table.EpisodeMetadata.ID.EQ(sqlite.Int32(*episode.EpisodeMetadataID)))
+	episodeMetadata, err := m.seriesMetaStorage.GetEpisodeMetadata(ctx, table.EpisodeMetadata.ID.EQ(sqlite.Int32(*episode.EpisodeMetadataID)))
 	if err != nil {
 		log.Debug("failed to find episode metadata", zap.Int32("meta_id", *episode.EpisodeMetadataID))
 		return false, err
@@ -660,7 +660,7 @@ func (m MediaManager) updateEpisodeState(ctx context.Context, episode storage.Ep
 		return nil
 	}
 
-	err := m.storage.UpdateEpisodeState(ctx, int64(episode.ID), state, metadata)
+	err := m.seriesStorage.UpdateEpisodeState(ctx, int64(episode.ID), state, metadata)
 	if err != nil {
 		log.Error("failed to update episode state", zap.Error(err))
 		return err
@@ -676,7 +676,7 @@ func (m MediaManager) updateEpisodeState(ctx context.Context, episode storage.Ep
 		log.Warn("failed to update season state after episode state change", zap.Error(err))
 	}
 
-	season, err := m.storage.GetSeason(ctx, table.Season.ID.EQ(sqlite.Int32(episode.SeasonID)))
+	season, err := m.seriesStorage.GetSeason(ctx, table.Season.ID.EQ(sqlite.Int32(episode.SeasonID)))
 	if err != nil {
 		log.Warn("failed to get season for series state update", zap.Error(err))
 		return nil
@@ -692,7 +692,7 @@ func (m MediaManager) updateEpisodeState(ctx context.Context, episode storage.Ep
 func (m MediaManager) updateSeasonState(ctx context.Context, id int64, state storage.SeasonState, metadata *storage.TransitionStateMetadata) error {
 	log := logger.FromCtx(ctx).With("season id", id, "to state", state)
 
-	season, err := m.storage.GetSeason(ctx, table.Season.ID.EQ(sqlite.Int64(id)))
+	season, err := m.seriesStorage.GetSeason(ctx, table.Season.ID.EQ(sqlite.Int64(id)))
 	if err != nil {
 		log.Error("failed to get season for state check", zap.Error(err))
 		return err
@@ -703,7 +703,7 @@ func (m MediaManager) updateSeasonState(ctx context.Context, id int64, state sto
 		return nil
 	}
 
-	err = m.storage.UpdateSeasonState(ctx, id, state, metadata)
+	err = m.seriesStorage.UpdateSeasonState(ctx, id, state, metadata)
 	if err != nil {
 		log.Error("failed to update season state", zap.Error(err))
 		return err
@@ -796,7 +796,7 @@ func determineSeasonState(episodes []*storage.Episode) (map[string]int, storage.
 // updateSeriesState updates the series state and handles cascading updates
 func (m MediaManager) updateSeriesState(ctx context.Context, id int64, state storage.SeriesState, metadata *storage.TransitionStateMetadata) error {
 	log := logger.FromCtx(ctx).With("series id", id, "to state", state)
-	err := m.storage.UpdateSeriesState(ctx, id, state, metadata)
+	err := m.seriesStorage.UpdateSeriesState(ctx, id, state, metadata)
 	if err != nil {
 		log.Error("failed to update series state", zap.Error(err))
 		return err
@@ -810,14 +810,14 @@ func (m MediaManager) updateSeriesState(ctx context.Context, id int64, state sto
 func (m MediaManager) evaluateAndUpdateSeasonState(ctx context.Context, seasonID int32) error {
 	log := logger.FromCtx(ctx).With("season_id", seasonID)
 
-	currentSeason, err := m.storage.GetSeason(ctx, table.Season.ID.EQ(sqlite.Int32(seasonID)))
+	currentSeason, err := m.seriesStorage.GetSeason(ctx, table.Season.ID.EQ(sqlite.Int32(seasonID)))
 	if err != nil {
 		log.Error("failed to get season for state evaluation", zap.Error(err))
 		return err
 	}
 
 	where := table.Episode.SeasonID.EQ(sqlite.Int32(seasonID))
-	episodes, err := m.storage.ListEpisodes(ctx, where)
+	episodes, err := m.seriesStorage.ListEpisodes(ctx, where)
 	if err != nil {
 		log.Error("failed to list episodes for season state evaluation", zap.Error(err))
 		return err
@@ -912,7 +912,7 @@ func determineSeriesState(seasons []*storage.Season, tmdbStatus string) (seriesS
 func (m MediaManager) evaluateAndUpdateSeriesState(ctx context.Context, seriesID int32) error {
 	log := logger.FromCtx(ctx).With("series_id", seriesID)
 
-	series, err := m.storage.GetSeries(ctx, table.Series.ID.EQ(sqlite.Int32(seriesID)))
+	series, err := m.seriesStorage.GetSeries(ctx, table.Series.ID.EQ(sqlite.Int32(seriesID)))
 	if err != nil {
 		log.Error("failed to get series for state evaluation", zap.Error(err))
 		return err
@@ -920,7 +920,7 @@ func (m MediaManager) evaluateAndUpdateSeriesState(ctx context.Context, seriesID
 
 	var tmdbStatus string
 	if series.SeriesMetadataID != nil {
-		metadata, err := m.storage.GetSeriesMetadata(ctx, table.SeriesMetadata.ID.EQ(sqlite.Int32(*series.SeriesMetadataID)))
+		metadata, err := m.seriesMetaStorage.GetSeriesMetadata(ctx, table.SeriesMetadata.ID.EQ(sqlite.Int32(*series.SeriesMetadataID)))
 		if err == nil && metadata != nil {
 			tmdbStatus = metadata.Status
 			log.Debug("retrieved TMDB status", zap.String("status", tmdbStatus))
@@ -928,7 +928,7 @@ func (m MediaManager) evaluateAndUpdateSeriesState(ctx context.Context, seriesID
 	}
 
 	where := table.Season.SeriesID.EQ(sqlite.Int32(seriesID))
-	seasons, err := m.storage.ListSeasons(ctx, where)
+	seasons, err := m.seriesStorage.ListSeasons(ctx, where)
 	if err != nil {
 		log.Error("failed to list seasons for series state evaluation", zap.Error(err))
 		return err
@@ -975,7 +975,7 @@ func (m MediaManager) ReconcileDiscoveredEpisodes(ctx context.Context, snapshot 
 	where := table.EpisodeTransition.ToState.EQ(sqlite.String(string(storage.EpisodeStateDiscovered))).
 		AND(table.EpisodeTransition.MostRecent.EQ(sqlite.Bool(true)))
 
-	episodes, err := m.storage.ListEpisodes(ctx, where)
+	episodes, err := m.seriesStorage.ListEpisodes(ctx, where)
 	if err != nil {
 		if !errors.Is(err, storage.ErrNotFound) {
 			log.Error("failed to list discovered episodes", zap.Error(err))
@@ -1007,13 +1007,13 @@ func (m MediaManager) reconcileDiscoveredEpisode(ctx context.Context, snapshot *
 	}
 	log.Debug("starting episode reconciliation", zap.Int32("episode_id", episode.ID))
 
-	season, err := m.storage.GetSeason(ctx, table.Season.ID.EQ(sqlite.Int32(episode.SeasonID)))
+	season, err := m.seriesStorage.GetSeason(ctx, table.Season.ID.EQ(sqlite.Int32(episode.SeasonID)))
 	if err != nil || season == nil {
 		log.Error("failed to get season for discovered episode", zap.Error(err))
 		return fmt.Errorf("failed to get season: %w", err)
 	}
 
-	series, err := m.storage.GetSeries(ctx, table.Series.ID.EQ(sqlite.Int32(season.SeriesID)))
+	series, err := m.seriesStorage.GetSeries(ctx, table.Series.ID.EQ(sqlite.Int32(season.SeriesID)))
 	if err != nil || series == nil {
 		log.Error("failed to get series for discovered episode", zap.Error(err))
 		return fmt.Errorf("failed to get series: %w", err)
@@ -1033,14 +1033,14 @@ func (m MediaManager) reconcileDiscoveredEpisode(ctx context.Context, snapshot *
 		}
 
 		// Reload series to get the updated metadata ID
-		series, err = m.storage.GetSeries(ctx, table.Series.ID.EQ(sqlite.Int32(series.ID)))
+		series, err = m.seriesStorage.GetSeries(ctx, table.Series.ID.EQ(sqlite.Int32(series.ID)))
 		if err != nil {
 			return fmt.Errorf("failed to reload series after metadata linking: %w", err)
 		}
 	}
 
 	// Step 2: Get series metadata and refresh from TMDB to ensure all season/episode metadata exists
-	seriesMetadata, err := m.storage.GetSeriesMetadata(ctx, table.SeriesMetadata.ID.EQ(sqlite.Int32(*series.SeriesMetadataID)))
+	seriesMetadata, err := m.seriesMetaStorage.GetSeriesMetadata(ctx, table.SeriesMetadata.ID.EQ(sqlite.Int32(*series.SeriesMetadataID)))
 	if err != nil {
 		log.Error("failed to get series metadata", zap.Error(err))
 		return fmt.Errorf("failed to get series metadata: %w", err)
@@ -1052,7 +1052,7 @@ func (m MediaManager) reconcileDiscoveredEpisode(ctx context.Context, snapshot *
 		zap.Bool("series_has_metadata_id", series.SeriesMetadataID != nil))
 
 	// Check if we have season metadata for the discovered file's season
-	allSeasonMetadata, err := m.storage.ListSeasonMetadata(ctx,
+	allSeasonMetadata, err := m.seriesMetaStorage.ListSeasonMetadata(ctx,
 		table.SeasonMetadata.SeriesMetadataID.EQ(sqlite.Int32(*series.SeriesMetadataID)))
 	if err != nil {
 		log.Warn("failed to check existing season metadata", zap.Error(err))
@@ -1089,7 +1089,7 @@ func (m MediaManager) reconcileDiscoveredEpisode(ctx context.Context, snapshot *
 		}
 
 		// Reload season to get updated metadata link
-		season, err = m.storage.GetSeason(ctx, table.Season.ID.EQ(sqlite.Int32(episode.SeasonID)))
+		season, err = m.seriesStorage.GetSeason(ctx, table.Season.ID.EQ(sqlite.Int32(episode.SeasonID)))
 		if err != nil || season == nil {
 			log.Error("failed to reload season after refresh", zap.Error(err))
 			return fmt.Errorf("failed to reload season: %w", err)
@@ -1102,7 +1102,7 @@ func (m MediaManager) reconcileDiscoveredEpisode(ctx context.Context, snapshot *
 		return nil
 	}
 
-	seasonMetadata, err := m.storage.GetSeasonMetadata(ctx,
+	seasonMetadata, err := m.seriesMetaStorage.GetSeasonMetadata(ctx,
 		table.SeasonMetadata.ID.EQ(sqlite.Int32(*season.SeasonMetadataID)))
 	if err != nil || seasonMetadata == nil {
 		log.Error("failed to get season metadata", zap.Error(err))
@@ -1129,7 +1129,7 @@ func (m MediaManager) reconcileDiscoveredEpisode(ctx context.Context, snapshot *
 		log.Debug("using episode number from database", zap.Int("episode_number", episodeNumber))
 	} else if episode.EpisodeFileID != nil {
 		// Get episode number from linked episode file
-		episodeFile, err := m.storage.GetEpisodeFile(ctx, *episode.EpisodeFileID)
+		episodeFile, err := m.seriesStorage.GetEpisodeFile(ctx, *episode.EpisodeFileID)
 		if err != nil {
 			log.Error("failed to get episode file", zap.Error(err))
 			return fmt.Errorf("failed to get episode file: %w", err)
@@ -1208,7 +1208,7 @@ func (m MediaManager) linkSeriesMetadata(ctx context.Context, series *storage.Se
 		return fmt.Errorf("failed to get series metadata: %w", err)
 	}
 
-	err = m.storage.LinkSeriesMetadata(ctx, int64(series.ID), seriesMetadata.ID)
+	err = m.seriesStorage.LinkSeriesMetadata(ctx, int64(series.ID), seriesMetadata.ID)
 	if err != nil {
 		return fmt.Errorf("failed to link series metadata: %w", err)
 	}
@@ -1252,7 +1252,7 @@ func (m MediaManager) matchDiscoveredEpisodeToTMDBMetadataFromDB(ctx context.Con
 	// Find episode metadata that matches the episode number for this specific season
 	// After our migration, episode_metadata.season_id correctly references season entity IDs
 	// Get season metadata ID first
-	season, err := m.storage.GetSeason(ctx, table.Season.ID.EQ(sqlite.Int32(seasonID)))
+	season, err := m.seriesStorage.GetSeason(ctx, table.Season.ID.EQ(sqlite.Int32(seasonID)))
 	if err != nil {
 		return fmt.Errorf("failed to get season: %w", err)
 	}
@@ -1261,7 +1261,7 @@ func (m MediaManager) matchDiscoveredEpisodeToTMDBMetadataFromDB(ctx context.Con
 		return fmt.Errorf("season has no metadata linked")
 	}
 
-	episodeMeta, err := m.storage.GetEpisodeMetadata(ctx,
+	episodeMeta, err := m.seriesMetaStorage.GetEpisodeMetadata(ctx,
 		table.EpisodeMetadata.SeasonMetadataID.EQ(sqlite.Int32(*season.SeasonMetadataID)).
 			AND(table.EpisodeMetadata.Number.EQ(sqlite.Int32(int32(episodeNumber)))))
 
@@ -1276,7 +1276,7 @@ func (m MediaManager) matchDiscoveredEpisodeToTMDBMetadataFromDB(ctx context.Con
 	}
 
 	// Check if another episode already has this metadata linked (due to UNIQUE constraint)
-	existingEpisode, err := m.storage.GetEpisode(ctx, table.Episode.EpisodeMetadataID.EQ(sqlite.Int32(episodeMeta.ID)))
+	existingEpisode, err := m.seriesStorage.GetEpisode(ctx, table.Episode.EpisodeMetadataID.EQ(sqlite.Int32(episodeMeta.ID)))
 	if err != nil && !errors.Is(err, storage.ErrNotFound) {
 		logger.Debug("error checking for existing episode with metadata", zap.Error(err))
 	} else if existingEpisode != nil {
@@ -1285,7 +1285,7 @@ func (m MediaManager) matchDiscoveredEpisodeToTMDBMetadataFromDB(ctx context.Con
 	}
 
 	// Update the episode's episode metadata ID in the database
-	err = m.storage.LinkEpisodeMetadata(ctx, int64(episode.ID), seasonID, episodeMeta.ID)
+	err = m.seriesStorage.LinkEpisodeMetadata(ctx, int64(episode.ID), seasonID, episodeMeta.ID)
 	if err != nil {
 		return fmt.Errorf("failed to link episode metadata: %w", err)
 	}
@@ -1311,7 +1311,7 @@ func (m MediaManager) ReconcileCompletedSeries(ctx context.Context) error {
 		sqlite.String(string(storage.SeriesStateContinuing)),
 	).AND(table.SeriesTransition.MostRecent.EQ(sqlite.Bool(true)))
 
-	series, err := m.storage.ListSeries(ctx, where)
+	series, err := m.seriesStorage.ListSeries(ctx, where)
 	if err != nil {
 		if !errors.Is(err, storage.ErrNotFound) {
 			log.Error("failed to list series for completion check", zap.Error(err))
@@ -1344,7 +1344,7 @@ func (m MediaManager) ReconcileCompletedSeasons(ctx context.Context) error {
 		sqlite.String(string(storage.SeasonStateContinuing)),
 	).AND(table.SeasonTransition.MostRecent.EQ(sqlite.Bool(true)))
 
-	seasons, err := m.storage.ListSeasons(ctx, where)
+	seasons, err := m.seriesStorage.ListSeasons(ctx, where)
 	if err != nil {
 		if !errors.Is(err, storage.ErrNotFound) {
 			log.Error("failed to list seasons for completion check", zap.Error(err))
@@ -1377,7 +1377,7 @@ func (m MediaManager) ReconcileDownloadingSeries(ctx context.Context, snapshot *
 	where := table.EpisodeTransition.ToState.EQ(sqlite.String(string(storage.EpisodeStateDownloading))).
 		AND(table.EpisodeTransition.MostRecent.EQ(sqlite.Bool(true)))
 
-	episodes, err := m.storage.ListEpisodes(ctx, where)
+	episodes, err := m.seriesStorage.ListEpisodes(ctx, where)
 	if err != nil {
 		if !errors.Is(err, storage.ErrNotFound) {
 			log.Error("failed to list downloading episodes", zap.Error(err))
@@ -1395,7 +1395,7 @@ func (m MediaManager) ReconcileDownloadingSeries(ctx context.Context, snapshot *
 
 	// Process each season
 	for seasonID, seasonEpisodeList := range seasonEpisodes {
-		season, err := m.storage.GetSeason(ctx, table.Season.ID.EQ(sqlite.Int32(seasonID)))
+		season, err := m.seriesStorage.GetSeason(ctx, table.Season.ID.EQ(sqlite.Int32(seasonID)))
 		if err != nil {
 			log.Error("failed to get season", zap.Error(err), zap.Int32("season_id", seasonID))
 			continue
@@ -1457,7 +1457,7 @@ func (m MediaManager) reconcileSeasonPackDownload(ctx context.Context, episode *
 		return nil
 	}
 
-	downloadClient, err := m.factory.NewDownloadClient(*dc)
+	downloadClient, err := m.downloadClientService.buildRuntimeDownloadClient(ctx, *dc)
 	if err != nil {
 		log.Warn("failed to create download client", zap.Error(err))
 		return err
@@ -1477,25 +1477,25 @@ func (m MediaManager) reconcileSeasonPackDownload(ctx context.Context, episode *
 		return nil
 	}
 
-	season, err := m.storage.GetSeason(ctx, table.Season.ID.EQ(sqlite.Int32(episode.SeasonID)))
+	season, err := m.seriesStorage.GetSeason(ctx, table.Season.ID.EQ(sqlite.Int32(episode.SeasonID)))
 	if err != nil {
 		log.Error("failed to get season", zap.Error(err))
 		return err
 	}
 
-	seasonMetadata, err := m.storage.GetSeasonMetadata(ctx, table.SeasonMetadata.ID.EQ(sqlite.Int32(*season.SeasonMetadataID)))
+	seasonMetadata, err := m.seriesMetaStorage.GetSeasonMetadata(ctx, table.SeasonMetadata.ID.EQ(sqlite.Int32(*season.SeasonMetadataID)))
 	if err != nil {
 		log.Error("failed to get season metadata", zap.Error(err))
 		return err
 	}
 
-	series, err := m.storage.GetSeries(ctx, table.Series.ID.EQ(sqlite.Int32(season.SeriesID)))
+	series, err := m.seriesStorage.GetSeries(ctx, table.Series.ID.EQ(sqlite.Int32(season.SeriesID)))
 	if err != nil {
 		log.Error("failed to get series", zap.Error(err))
 		return err
 	}
 
-	seriesMetadata, err := m.storage.GetSeriesMetadata(ctx, table.SeriesMetadata.ID.EQ(sqlite.Int32(*series.SeriesMetadataID)))
+	seriesMetadata, err := m.seriesMetaStorage.GetSeriesMetadata(ctx, table.SeriesMetadata.ID.EQ(sqlite.Int32(*series.SeriesMetadataID)))
 	if err != nil {
 		log.Error("failed to get series metadata", zap.Error(err))
 		return err
@@ -1543,7 +1543,7 @@ func (m MediaManager) reconcileDownloadingEpisode(ctx context.Context, episode *
 		return nil
 	}
 
-	downloadClient, err := m.factory.NewDownloadClient(*dc)
+	downloadClient, err := m.downloadClientService.buildRuntimeDownloadClient(ctx, *dc)
 	if err != nil {
 		log.Warn("failed to create download client", zap.Error(err))
 		return err
@@ -1563,31 +1563,31 @@ func (m MediaManager) reconcileDownloadingEpisode(ctx context.Context, episode *
 		return nil
 	}
 
-	episodeMetadata, err := m.storage.GetEpisodeMetadata(ctx, table.EpisodeMetadata.ID.EQ(sqlite.Int32(*episode.EpisodeMetadataID)))
+	episodeMetadata, err := m.seriesMetaStorage.GetEpisodeMetadata(ctx, table.EpisodeMetadata.ID.EQ(sqlite.Int32(*episode.EpisodeMetadataID)))
 	if err != nil {
 		log.Error("failed to get episode metadata", zap.Error(err))
 		return err
 	}
 
-	season, err := m.storage.GetSeason(ctx, table.Season.ID.EQ(sqlite.Int32(episode.SeasonID)))
+	season, err := m.seriesStorage.GetSeason(ctx, table.Season.ID.EQ(sqlite.Int32(episode.SeasonID)))
 	if err != nil {
 		log.Error("failed to get season", zap.Error(err))
 		return err
 	}
 
-	seasonMetadata, err := m.storage.GetSeasonMetadata(ctx, table.SeasonMetadata.ID.EQ(sqlite.Int32(*season.SeasonMetadataID)))
+	seasonMetadata, err := m.seriesMetaStorage.GetSeasonMetadata(ctx, table.SeasonMetadata.ID.EQ(sqlite.Int32(*season.SeasonMetadataID)))
 	if err != nil {
 		log.Error("failed to get season metadata", zap.Error(err))
 		return err
 	}
 
-	series, err := m.storage.GetSeries(ctx, table.Series.ID.EQ(sqlite.Int32(season.SeriesID)))
+	series, err := m.seriesStorage.GetSeries(ctx, table.Series.ID.EQ(sqlite.Int32(season.SeriesID)))
 	if err != nil {
 		log.Error("failed to get series", zap.Error(err))
 		return err
 	}
 
-	seriesMetadata, err := m.storage.GetSeriesMetadata(ctx, table.SeriesMetadata.ID.EQ(sqlite.Int32(*series.SeriesMetadataID)))
+	seriesMetadata, err := m.seriesMetaStorage.GetSeriesMetadata(ctx, table.SeriesMetadata.ID.EQ(sqlite.Int32(*series.SeriesMetadataID)))
 	if err != nil {
 		log.Error("failed to get series metadata", zap.Error(err))
 		return err
@@ -1639,7 +1639,7 @@ func (m MediaManager) addEpisodeFileToLibrary(ctx context.Context, seriesTitle s
 
 	log.Debug("episode in library", zap.String("from", filePath), zap.String("to", ef.RelativePath))
 
-	episodeFileID, err := m.storage.CreateEpisodeFile(ctx, model.EpisodeFile{
+	episodeFileID, err := m.seriesStorage.CreateEpisodeFile(ctx, model.EpisodeFile{
 		Size:             ef.Size,
 		RelativePath:     &ef.RelativePath,
 		OriginalFilePath: &filePath,
@@ -1649,7 +1649,7 @@ func (m MediaManager) addEpisodeFileToLibrary(ctx context.Context, seriesTitle s
 		return err
 	}
 
-	err = m.storage.UpdateEpisodeEpisodeFileID(ctx, int64(episode.ID), episodeFileID)
+	err = m.seriesStorage.UpdateEpisodeEpisodeFileID(ctx, int64(episode.ID), episodeFileID)
 	if err != nil {
 		log.Error("failed to link episode to file", zap.Error(err), zap.Int32("episode_id", episode.ID))
 		return err
@@ -1687,7 +1687,7 @@ func (m MediaManager) matchEpisodeFileToEpisode(ctx context.Context, filePath st
 		}
 
 		// Get the episode metadata to check the episode number
-		episodeMetadata, err := m.storage.GetEpisodeMetadata(ctx,
+		episodeMetadata, err := m.seriesMetaStorage.GetEpisodeMetadata(ctx,
 			table.EpisodeMetadata.ID.EQ(sqlite.Int32(*episode.EpisodeMetadataID)))
 		if err != nil {
 			log.Warn("failed to get episode metadata", zap.Error(err), zap.Int32("episode_id", episode.ID))

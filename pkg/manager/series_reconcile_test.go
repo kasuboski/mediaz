@@ -48,7 +48,7 @@ func TestMediaManager_updateEpisodeState(t *testing.T) {
 		require.NoError(t, err)
 
 		manager := MediaManager{
-			storage: store,
+			seriesStorage: store,
 		}
 
 		episode := storage.Episode{
@@ -59,7 +59,7 @@ func TestMediaManager_updateEpisodeState(t *testing.T) {
 			},
 		}
 
-		episodeID, err := manager.storage.CreateEpisode(ctx, episode, storage.EpisodeStateMissing)
+		episodeID, err := manager.seriesStorage.CreateEpisode(ctx, episode, storage.EpisodeStateMissing)
 		require.NoError(t, err)
 		assert.Equal(t, int64(1), episodeID)
 

@@ -84,7 +84,7 @@ func (m MediaManager) SearchIndexers(ctx context.Context, indexers, categories [
 func (m MediaManager) searchIndexerSource(ctx context.Context, sourceID int64, indexerIDs, categories []int32, opts indexer.SearchOptions) ([]*prowlarr.ReleaseResource, error) {
 	log := logger.FromCtx(ctx)
 
-	sourceConfig, err := m.storage.GetIndexerSource(ctx, sourceID)
+	sourceConfig, err := m.indexerSrcStorage.GetIndexerSource(ctx, sourceID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get source: %w", err)
 	}
@@ -153,7 +153,7 @@ func (m MediaManager) SearchForMovie(ctx context.Context, movieID int64) error {
 	log := logger.FromCtx(ctx).With("movie_id", movieID)
 	log.Debug("starting manual search for movie")
 
-	movie, err := m.storage.GetMovie(ctx, movieID)
+	movie, err := m.movieStorage.GetMovie(ctx, movieID)
 	if err != nil {
 		log.Error("failed to get movie", zap.Error(err))
 		return fmt.Errorf("movie not found: %w", err)
@@ -176,7 +176,7 @@ func (m MediaManager) SearchForMovie(ctx context.Context, movieID int64) error {
 	}
 
 	searchTime := now()
-	err = m.storage.UpdateMovie(ctx, model.Movie{
+	err = m.movieStorage.UpdateMovie(ctx, model.Movie{
 		ID:             movie.ID,
 		Monitored:      movie.Monitored,
 		LastSearchTime: &searchTime,
@@ -193,7 +193,7 @@ func (m MediaManager) SearchForSeries(ctx context.Context, seriesID int64) error
 	log := logger.FromCtx(ctx).With("series_id", seriesID)
 	log.Debug("starting manual search for series")
 
-	series, err := m.storage.GetSeries(ctx, table.Series.ID.EQ(sqlite.Int32(int32(seriesID))))
+	series, err := m.seriesStorage.GetSeries(ctx, table.Series.ID.EQ(sqlite.Int32(int32(seriesID))))
 	if err != nil {
 		log.Error("failed to get series", zap.Error(err))
 		return fmt.Errorf("series not found: %w", err)
@@ -204,7 +204,7 @@ func (m MediaManager) SearchForSeries(ctx context.Context, seriesID int64) error
 		return fmt.Errorf("series is not monitored")
 	}
 
-	seasons, err := m.storage.ListSeasons(ctx, table.Season.SeriesID.EQ(sqlite.Int32(series.ID)))
+	seasons, err := m.seriesStorage.ListSeasons(ctx, table.Season.SeriesID.EQ(sqlite.Int32(series.ID)))
 	if err != nil {
 		log.Error("failed to list seasons", zap.Error(err))
 		return fmt.Errorf("failed to list seasons: %w", err)
@@ -225,7 +225,7 @@ func (m MediaManager) SearchForSeries(ctx context.Context, seriesID int64) error
 	}
 
 	searchTime := now()
-	err = m.storage.UpdateSeries(ctx, model.Series{
+	err = m.seriesStorage.UpdateSeries(ctx, model.Series{
 		ID:             series.ID,
 		Monitored:      series.Monitored,
 		LastSearchTime: &searchTime,
@@ -247,7 +247,7 @@ func (m MediaManager) SearchForSeason(ctx context.Context, seasonID int64) error
 	log := logger.FromCtx(ctx).With("season_id", seasonID)
 	log.Debug("starting manual search for season")
 
-	season, err := m.storage.GetSeason(ctx, table.Season.ID.EQ(sqlite.Int32(int32(seasonID))))
+	season, err := m.seriesStorage.GetSeason(ctx, table.Season.ID.EQ(sqlite.Int32(int32(seasonID))))
 	if err != nil {
 		log.Error("failed to get season", zap.Error(err))
 		return fmt.Errorf("season not found: %w", err)
@@ -263,7 +263,7 @@ func (m MediaManager) SearchForSeason(ctx context.Context, seasonID int64) error
 		return err
 	}
 
-	series, err := m.storage.GetSeries(ctx, table.Series.ID.EQ(sqlite.Int32(season.SeriesID)))
+	series, err := m.seriesStorage.GetSeries(ctx, table.Series.ID.EQ(sqlite.Int32(season.SeriesID)))
 	if err != nil {
 		log.Error("failed to get series for season", zap.Error(err))
 		return fmt.Errorf("failed to get series: %w", err)
@@ -274,7 +274,7 @@ func (m MediaManager) SearchForSeason(ctx context.Context, seasonID int64) error
 		return fmt.Errorf("series has no quality profile")
 	}
 
-	qualityProfile, err := m.storage.GetQualityProfile(ctx, int64(series.QualityProfileID))
+	qualityProfile, err := m.GetQualityProfile(ctx, int64(series.QualityProfileID))
 	if err != nil {
 		log.Error("failed to get quality profile", zap.Error(err))
 		return fmt.Errorf("failed to get quality profile: %w", err)
@@ -285,7 +285,7 @@ func (m MediaManager) SearchForSeason(ctx context.Context, seasonID int64) error
 		return fmt.Errorf("series has no metadata")
 	}
 
-	seriesMetadata, err := m.storage.GetSeriesMetadata(ctx, table.SeriesMetadata.ID.EQ(sqlite.Int32(*series.SeriesMetadataID)))
+	seriesMetadata, err := m.seriesMetaStorage.GetSeriesMetadata(ctx, table.SeriesMetadata.ID.EQ(sqlite.Int32(*series.SeriesMetadataID)))
 	if err != nil {
 		log.Error("failed to get series metadata", zap.Error(err))
 		return fmt.Errorf("failed to get series metadata: %w", err)
@@ -320,7 +320,7 @@ func (m MediaManager) SearchForEpisode(ctx context.Context, episodeID int64) err
 	log := logger.FromCtx(ctx).With("episode_id", episodeID)
 	log.Debug("starting manual search for episode")
 
-	episode, err := m.storage.GetEpisode(ctx, table.Episode.ID.EQ(sqlite.Int32(int32(episodeID))))
+	episode, err := m.seriesStorage.GetEpisode(ctx, table.Episode.ID.EQ(sqlite.Int32(int32(episodeID))))
 	if err != nil {
 		log.Error("failed to get episode", zap.Error(err))
 		return fmt.Errorf("episode not found: %w", err)
@@ -331,7 +331,7 @@ func (m MediaManager) SearchForEpisode(ctx context.Context, episodeID int64) err
 		return fmt.Errorf("episode is not monitored")
 	}
 
-	season, err := m.storage.GetSeason(ctx, table.Season.ID.EQ(sqlite.Int32(episode.SeasonID)))
+	season, err := m.seriesStorage.GetSeason(ctx, table.Season.ID.EQ(sqlite.Int32(episode.SeasonID)))
 	if err != nil {
 		log.Error("failed to get season for episode", zap.Error(err))
 		return fmt.Errorf("season not found: %w", err)
@@ -342,7 +342,7 @@ func (m MediaManager) SearchForEpisode(ctx context.Context, episodeID int64) err
 		return err
 	}
 
-	series, err := m.storage.GetSeries(ctx, table.Series.ID.EQ(sqlite.Int32(season.SeriesID)))
+	series, err := m.seriesStorage.GetSeries(ctx, table.Series.ID.EQ(sqlite.Int32(season.SeriesID)))
 	if err != nil {
 		log.Error("failed to get series for episode", zap.Error(err))
 		return fmt.Errorf("failed to get series: %w", err)
@@ -353,7 +353,7 @@ func (m MediaManager) SearchForEpisode(ctx context.Context, episodeID int64) err
 		return fmt.Errorf("series has no quality profile")
 	}
 
-	qualityProfile, err := m.storage.GetQualityProfile(ctx, int64(series.QualityProfileID))
+	qualityProfile, err := m.GetQualityProfile(ctx, int64(series.QualityProfileID))
 	if err != nil {
 		log.Error("failed to get quality profile", zap.Error(err))
 		return fmt.Errorf("failed to get quality profile: %w", err)
@@ -364,7 +364,7 @@ func (m MediaManager) SearchForEpisode(ctx context.Context, episodeID int64) err
 		return fmt.Errorf("series has no metadata")
 	}
 
-	seriesMetadata, err := m.storage.GetSeriesMetadata(ctx, table.SeriesMetadata.ID.EQ(sqlite.Int32(*series.SeriesMetadataID)))
+	seriesMetadata, err := m.seriesMetaStorage.GetSeriesMetadata(ctx, table.SeriesMetadata.ID.EQ(sqlite.Int32(*series.SeriesMetadataID)))
 	if err != nil {
 		log.Error("failed to get series metadata", zap.Error(err))
 		return fmt.Errorf("failed to get series metadata: %w", err)
