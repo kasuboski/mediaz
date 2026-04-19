@@ -99,7 +99,7 @@ func (s *MovieService) AddMovieToLibrary(ctx context.Context, request AddMovieRe
 
 	movie, err = s.movieStorage.GetMovie(ctx, id)
 	if err != nil {
-		log.Warn("failed to get created movie", zap.Error(err))
+		return nil, fmt.Errorf("GetMovie after create: %w", err)
 	}
 
 	return movie, nil
