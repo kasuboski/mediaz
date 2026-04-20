@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"sync"
 
 	"github.com/go-jet/jet/v2/sqlite"
@@ -250,6 +251,10 @@ func (is IndexerService) GetIndexerSource(ctx context.Context, id int64) (Indexe
 }
 
 func (is IndexerService) UpdateIndexerSource(ctx context.Context, id int64, req UpdateIndexerSourceRequest) (IndexerSourceResponse, error) {
+	if id < math.MinInt32 || id > math.MaxInt32 {
+		return IndexerSourceResponse{}, fmt.Errorf("indexer source id %d out of range", id)
+	}
+
 	existing, err := is.indexerSrcStorage.GetIndexerSource(ctx, id)
 	if err != nil {
 		return IndexerSourceResponse{}, err
