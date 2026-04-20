@@ -108,8 +108,18 @@ func TestMovieService_AddMovieToLibrary(t *testing.T) {
 	movie, err := svc.AddMovieToLibrary(ctx, AddMovieRequest{TMDBID: 1234, QualityProfileID: 1})
 	require.NoError(t, err)
 	require.NotNil(t, movie)
-	assert.Equal(t, int32(1), movie.ID)
-	assert.Equal(t, storage.MovieStateMissing, movie.State)
+
+	expected := &storage.Movie{
+		Movie: model.Movie{
+			ID:               1,
+			Monitored:        1,
+			QualityProfileID: 1,
+			MovieMetadataID:  ptr.To(int32(1)),
+			Path:             ptr.To("Test Movie"),
+		},
+		State: storage.MovieStateMissing,
+	}
+	assert.Equal(t, expected, movie)
 }
 
 func TestMovieService_AddMovieToLibrary_AlreadyExists(t *testing.T) {
