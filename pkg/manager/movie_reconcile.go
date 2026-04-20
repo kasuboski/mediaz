@@ -317,7 +317,7 @@ func (m MediaManager) reconcileMissingMovie(ctx context.Context, movie *storage.
 	}
 
 	indexerIDs := snapshot.GetIndexerIDs()
-	releases, err := m.SearchIndexers(ctx, indexerIDs, MovieCategories, indexer.SearchOptions{
+	releases, err := m.indexerService.SearchIndexers(ctx, indexerIDs, MovieCategories, indexer.SearchOptions{
 		Query: det.Title,
 		Type:  ptr.To(indexer.TypeMovie),
 	})

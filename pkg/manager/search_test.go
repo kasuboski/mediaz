@@ -258,18 +258,17 @@ func TestMediaManager_SearchForSeason(t *testing.T) {
 			},
 		}, nil)
 
-		m := New(nil, indexerFactory, nil, store, downloadFactory, config.Manager{}, config.Config{})
-
-		// Set up the indexer cache with test indexers
-		sourceID := int64(1)
-		sourceIndexers := []indexer.SourceIndexer{
+		mockIndexerSource := indexerMock.NewMockIndexerSource(ctrl)
+		store.EXPECT().GetIndexerSource(gomock.Any(), int64(1)).Return(model.IndexerSource{
+			ID: 1, Name: "test-source", Scheme: "http", Host: "test", Enabled: true,
+		}, nil)
+		indexerFactory.EXPECT().NewIndexerSource(gomock.Any()).Return(mockIndexerSource, nil)
+		mockIndexerSource.EXPECT().ListIndexers(gomock.Any()).Return([]indexer.SourceIndexer{
 			{ID: 1, Name: "test-indexer", Priority: 1},
-		}
-		m.indexerCache.Set(sourceID, indexerCacheEntry{
-			Indexers:   sourceIndexers,
-			SourceName: "test-source",
-			SourceURI:  "http://test",
-		})
+		}, nil)
+
+		m := New(nil, indexerFactory, nil, store, downloadFactory, config.Manager{}, config.Config{})
+		require.NoError(t, m.RefreshIndexerSource(context.Background(), 1))
 
 		err := m.SearchForSeason(context.Background(), 1)
 
@@ -403,18 +402,18 @@ func TestMediaManager_prepareSearchSnapshot(t *testing.T) {
 		}, nil)
 		store.EXPECT().ListIndexers(gomock.Any()).Return(nil, nil)
 
-		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
-
-		// Set up the indexer cache with test indexers
-		sourceID := int64(1)
-		sourceIndexers := []indexer.SourceIndexer{
+		indexerFactory := indexerMock.NewMockFactory(ctrl)
+		mockIndexerSource := indexerMock.NewMockIndexerSource(ctrl)
+		store.EXPECT().GetIndexerSource(gomock.Any(), int64(1)).Return(model.IndexerSource{
+			ID: 1, Name: "test-source", Scheme: "http", Host: "test", Enabled: true,
+		}, nil)
+		indexerFactory.EXPECT().NewIndexerSource(gomock.Any()).Return(mockIndexerSource, nil)
+		mockIndexerSource.EXPECT().ListIndexers(gomock.Any()).Return([]indexer.SourceIndexer{
 			{ID: 1, Name: "test-indexer", Priority: 1},
-		}
-		m.indexerCache.Set(sourceID, indexerCacheEntry{
-			Indexers:   sourceIndexers,
-			SourceName: "test-source",
-			SourceURI:  "http://test",
-		})
+		}, nil)
+
+		m := New(nil, indexerFactory, nil, store, nil, config.Manager{}, config.Config{})
+		require.NoError(t, m.RefreshIndexerSource(context.Background(), 1))
 
 		snapshot, err := m.prepareSearchSnapshot(context.Background())
 

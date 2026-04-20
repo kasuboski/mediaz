@@ -130,15 +130,12 @@ func Test_Manager_reconcileMissingMovie(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	sourceIndexers := []indexer.SourceIndexer{
+	mockIndexerSource.EXPECT().ListIndexers(ctx).Return([]indexer.SourceIndexer{
 		{ID: 1, Name: "test", Priority: 1},
 		{ID: 3, Name: "test2", Priority: 10},
-	}
-	m.indexerCache.Set(sourceID, indexerCacheEntry{
-		Indexers:   sourceIndexers,
-		SourceName: "test-source",
-		SourceURI:  "http://test",
-	})
+	}, nil)
+	err = m.RefreshIndexerSource(ctx, sourceID)
+	require.NoError(t, err)
 
 	req := AddMovieRequest{
 		TMDBID:           1234,
@@ -188,6 +185,7 @@ func Test_Manager_reconcileDiscoveredMovie(t *testing.T) {
 
 		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
 		m.tmdb = tClient
+		m.movieService.tmdb = tClient
 
 		movie := storage.Movie{
 			Movie: model.Movie{
@@ -236,6 +234,7 @@ func Test_Manager_reconcileDiscoveredMovie(t *testing.T) {
 
 		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
 		m.tmdb = tClient
+		m.movieService.tmdb = tClient
 
 		movie := storage.Movie{
 			Movie: model.Movie{
@@ -285,6 +284,7 @@ func Test_Manager_reconcileDiscoveredMovie(t *testing.T) {
 
 		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
 		m.tmdb = tClient
+		m.movieService.tmdb = tClient
 
 		movie := storage.Movie{
 			Movie: model.Movie{
@@ -337,6 +337,7 @@ func Test_Manager_reconcileDiscoveredMovie(t *testing.T) {
 
 		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
 		m.tmdb = tClient
+		m.movieService.tmdb = tClient
 
 		movie := storage.Movie{
 			Movie: model.Movie{
@@ -374,6 +375,7 @@ func Test_Manager_reconcileDiscoveredMovie(t *testing.T) {
 
 		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
 		m.tmdb = tClient
+		m.movieService.tmdb = tClient
 
 		metadataID := int32(120)
 		movie := storage.Movie{

@@ -2,9 +2,7 @@ package manager
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"sync"
 
 	"github.com/go-jet/jet/v2/sqlite"
 	"github.com/kasuboski/mediaz/pkg/indexer"
@@ -14,100 +12,6 @@ import (
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/table"
 	"go.uber.org/zap"
 )
-
-func (m MediaManager) SearchIndexers(ctx context.Context, indexers, categories []int32, opts indexer.SearchOptions) ([]*prowlarr.ReleaseResource, error) {
-	log := logger.FromCtx(ctx)
-
-	sourceIndexers := make(map[int64][]int32)
-
-	keys := m.indexerCache.Keys()
-	for _, sourceID := range keys {
-		cached, ok := m.indexerCache.Get(sourceID)
-		if !ok {
-			continue
-		}
-
-		for _, idx := range cached.Indexers {
-			for _, id := range indexers {
-				if idx.ID == id {
-					sourceIndexers[sourceID] = append(sourceIndexers[sourceID], id)
-				}
-			}
-		}
-	}
-
-	if len(sourceIndexers) == 0 {
-		return nil, fmt.Errorf("no indexer sources found for requested indexers")
-	}
-
-	type result struct {
-		releases []*prowlarr.ReleaseResource
-		err      error
-	}
-
-	resultChan := make(chan result, len(sourceIndexers))
-	var wg sync.WaitGroup
-
-	for sourceID, idxIDs := range sourceIndexers {
-		wg.Add(1)
-		go func(srcID int64, indexerIDs []int32) {
-			defer wg.Done()
-			releases, err := m.searchIndexerSource(ctx, srcID, indexerIDs, categories, opts)
-			resultChan <- result{releases: releases, err: err}
-		}(sourceID, idxIDs)
-	}
-
-	go func() {
-		wg.Wait()
-		close(resultChan)
-	}()
-
-	var allReleases []*prowlarr.ReleaseResource
-	var searchErr error
-
-	for res := range resultChan {
-		if res.err != nil {
-			log.Error("source search failed", zap.Error(res.err))
-			searchErr = errors.Join(searchErr, res.err)
-			continue
-		}
-		allReleases = append(allReleases, res.releases...)
-	}
-
-	if len(allReleases) == 0 && searchErr != nil {
-		return nil, searchErr
-	}
-
-	return allReleases, nil
-}
-
-func (m MediaManager) searchIndexerSource(ctx context.Context, sourceID int64, indexerIDs, categories []int32, opts indexer.SearchOptions) ([]*prowlarr.ReleaseResource, error) {
-	log := logger.FromCtx(ctx)
-
-	sourceConfig, err := m.indexerSrcStorage.GetIndexerSource(ctx, sourceID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get source: %w", err)
-	}
-
-	source, err := m.indexerFactory.NewIndexerSource(sourceConfig)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create source: %w", err)
-	}
-
-	var sourceReleases []*prowlarr.ReleaseResource
-	for _, indexerID := range indexerIDs {
-		releases, err := source.Search(ctx, indexerID, categories, opts)
-		if err != nil {
-			log.Error("indexer search failed",
-				zap.Int32("indexerID", indexerID),
-				zap.Error(err))
-			continue
-		}
-		sourceReleases = append(sourceReleases, releases...)
-	}
-
-	return sourceReleases, nil
-}
 
 func (m MediaManager) prepareSearchSnapshot(ctx context.Context) (*ReconcileSnapshot, error) {
 	log := logger.FromCtx(ctx)
@@ -140,7 +44,7 @@ func (m MediaManager) executeSearch(ctx context.Context, snapshot *ReconcileSnap
 		zap.Int32s("indexer_ids", indexerIDs),
 		zap.Int32s("categories", categories))
 
-	releases, err := m.SearchIndexers(ctx, indexerIDs, categories, opts)
+	releases, err := m.indexerService.SearchIndexers(ctx, indexerIDs, categories, opts)
 	if err != nil {
 		log.Error("failed to search indexers", zap.Error(err))
 		return nil, err
