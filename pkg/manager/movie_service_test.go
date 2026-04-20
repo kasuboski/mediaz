@@ -151,7 +151,17 @@ func TestMovieService_AddMovieToLibrary_AlreadyExists(t *testing.T) {
 	movie, err := svc.AddMovieToLibrary(ctx, AddMovieRequest{TMDBID: 1234, QualityProfileID: 1})
 	require.NoError(t, err)
 	require.NotNil(t, movie)
-	assert.Equal(t, int32(5), movie.ID)
+
+	expected := &storage.Movie{
+		Movie: model.Movie{
+			ID:               5,
+			MovieMetadataID:  ptr.To(int32(1)),
+			Monitored:        1,
+			QualityProfileID: 1,
+		},
+		State: storage.MovieStateDownloaded,
+	}
+	assert.Equal(t, expected, movie)
 }
 
 func TestMovieService_AddMovieToLibrary_QualityProfileError(t *testing.T) {
@@ -219,7 +229,18 @@ func TestMovieService_AddMovieToLibrary_Unreleased(t *testing.T) {
 	movie, err := svc.AddMovieToLibrary(ctx, AddMovieRequest{TMDBID: 1234, QualityProfileID: 1})
 	require.NoError(t, err)
 	require.NotNil(t, movie)
-	assert.Equal(t, storage.MovieStateUnreleased, movie.State)
+
+	expected := &storage.Movie{
+		Movie: model.Movie{
+			ID:               1,
+			Monitored:        1,
+			QualityProfileID: 1,
+			MovieMetadataID:  ptr.To(int32(1)),
+			Path:             ptr.To("Future Movie"),
+		},
+		State: storage.MovieStateUnreleased,
+	}
+	assert.Equal(t, expected, movie)
 }
 
 func TestMovieService_AddMovieToLibrary_CreateError(t *testing.T) {
@@ -267,8 +288,15 @@ func TestMovieService_UpdateMovieMonitored(t *testing.T) {
 
 	result, err := svc.UpdateMovieMonitored(ctx, 1, true)
 	require.NoError(t, err)
-	assert.NotNil(t, result)
-	assert.Equal(t, int32(1), result.ID)
+	require.NotNil(t, result)
+
+	expected := &storage.Movie{
+		Movie: model.Movie{
+			ID:        1,
+			Monitored: 1,
+		},
+	}
+	assert.Equal(t, expected, result)
 }
 
 func TestMovieService_UpdateMovieMonitored_Error(t *testing.T) {
@@ -304,8 +332,15 @@ func TestMovieService_UpdateMovieQualityProfile(t *testing.T) {
 
 	result, err := svc.UpdateMovieQualityProfile(ctx, 1, 3)
 	require.NoError(t, err)
-	assert.NotNil(t, result)
-	assert.Equal(t, int32(3), result.QualityProfileID)
+	require.NotNil(t, result)
+
+	expected := &storage.Movie{
+		Movie: model.Movie{
+			ID:               1,
+			QualityProfileID: 3,
+		},
+	}
+	assert.Equal(t, expected, result)
 }
 
 func TestMovieService_UpdateMovieQualityProfile_Error(t *testing.T) {
@@ -603,22 +638,22 @@ func TestMovieService_GetMovieDetailByTMDBID_NotInLibrary(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, result)
 
-	assert.Equal(t, int32(123), result.TMDBID)
-	assert.Equal(t, ptr.To("Original Test Movie"), result.OriginalTitle)
-	assert.Equal(t, "Test Movie", result.Title)
-	assert.Equal(t, ptr.To("Test movie overview"), result.Overview)
-	assert.Equal(t, "poster.jpg", result.PosterPath)
-	assert.Equal(t, ptr.To(int32(120)), result.Runtime)
-	assert.Equal(t, ptr.To("Action, Drama"), result.Genres)
-	assert.Equal(t, ptr.To("Test Studio"), result.Studio)
-	assert.Equal(t, ptr.To("https://test.com"), result.Website)
-	assert.Equal(t, ptr.To(8.5), result.Popularity)
-	assert.Equal(t, &year, result.Year)
-	assert.Equal(t, ptr.To("2023-01-15"), result.ReleaseDate)
-	assert.Equal(t, "Not In Library", result.LibraryStatus)
-	assert.Nil(t, result.Path)
-	assert.Nil(t, result.QualityProfileID)
-	assert.Nil(t, result.Monitored)
+	expected := &MovieDetailResult{
+		TMDBID:           123,
+		OriginalTitle:    ptr.To("Original Test Movie"),
+		Title:            "Test Movie",
+		Overview:         ptr.To("Test movie overview"),
+		PosterPath:       "poster.jpg",
+		Runtime:          ptr.To(int32(120)),
+		Genres:           ptr.To("Action, Drama"),
+		Studio:           ptr.To("Test Studio"),
+		Website:          ptr.To("https://test.com"),
+		Popularity:       ptr.To(8.5),
+		Year:             &year,
+		ReleaseDate:      ptr.To("2023-01-15"),
+		LibraryStatus:    "Not In Library",
+	}
+	assert.Equal(t, expected, result)
 }
 
 func TestMovieService_GetMovieDetailByTMDBID_InLibrary(t *testing.T) {
@@ -656,13 +691,19 @@ func TestMovieService_GetMovieDetailByTMDBID_InLibrary(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, result)
 
-	assert.Equal(t, int32(123), result.TMDBID)
-	assert.Equal(t, "Test Movie", result.Title)
-	assert.Equal(t, string(storage.MovieStateDownloaded), result.LibraryStatus)
-	assert.Equal(t, &path, result.Path)
-	assert.Equal(t, &qualityProfileID, result.QualityProfileID)
 	monitored := true
-	assert.Equal(t, &monitored, result.Monitored)
+	expected := &MovieDetailResult{
+		TMDBID:           123,
+		Title:            "Test Movie",
+		PosterPath:       "poster.jpg",
+		Runtime:          ptr.To(int32(0)),
+		LibraryStatus:    string(storage.MovieStateDownloaded),
+		ID:               ptr.To(int32(1)),
+		Path:             &path,
+		QualityProfileID: &qualityProfileID,
+		Monitored:        &monitored,
+	}
+	assert.Equal(t, expected, result)
 }
 
 func TestMovieService_GetMovieDetailByTMDBID_MetadataError(t *testing.T) {
@@ -703,9 +744,14 @@ func TestMovieService_GetMovieDetailByTMDBID_NilReleaseDate(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, result)
 
-	assert.Equal(t, int32(123), result.TMDBID)
-	assert.Nil(t, result.ReleaseDate)
-	assert.Equal(t, "Not In Library", result.LibraryStatus)
+	expected := &MovieDetailResult{
+		TMDBID:        123,
+		Title:         "Test Movie",
+		PosterPath:    "poster.jpg",
+		Runtime:       ptr.To(int32(120)),
+		LibraryStatus: "Not In Library",
+	}
+	assert.Equal(t, expected, result)
 }
 
 // parseTestDate is a test helper to parse a date string.
