@@ -551,6 +551,56 @@ func TestMetadataService_RefreshSeriesMetadata(t *testing.T) {
 			Overview:     ptr.To(""),
 		}, *got)
 	})
+
+	t.Run("returns aggregated error when UpdateSeriesMetadataFromTMDB fails for explicit IDs", func(t *testing.T) {
+		ctx := context.Background()
+		ctrl := gomock.NewController(t)
+
+		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
+		tmdbErr := errors.New("tmdb unavailable")
+		tmdbMock.EXPECT().GetSeriesDetails(ctx, 901).Return(nil, tmdbErr)
+		tmdbMock.EXPECT().GetSeriesDetails(ctx, 902).Return(nil, tmdbErr)
+
+		svc := NewMetadataService(tmdbMock, nil, nil)
+		err := svc.RefreshSeriesMetadata(ctx, 901, 902)
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "tmdb unavailable")
+	})
+
+	t.Run("returns aggregated error when UpdateSeriesMetadataFromTMDB fails during list", func(t *testing.T) {
+		ctx := context.Background()
+		ctrl := gomock.NewController(t)
+		store := newStore(t, ctx)
+
+		airDate, _ := time.Parse(tmdb.ReleaseDateFormat, "2021-03-01")
+		_, err := store.CreateSeriesMetadata(ctx, model.SeriesMetadata{
+			TmdbID:       903,
+			Title:        "Failing Show",
+			FirstAirDate: &airDate,
+			Status:       "",
+		})
+		require.NoError(t, err)
+
+		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
+		tmdbErr := errors.New("tmdb error")
+		tmdbMock.EXPECT().GetSeriesDetails(ctx, 903).Return(nil, tmdbErr)
+
+		svc := NewMetadataService(tmdbMock, nil, store)
+		err = svc.RefreshSeriesMetadata(ctx)
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "tmdb error")
+	})
+
+	t.Run("returns context error immediately on cancellation", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+		ctrl := gomock.NewController(t)
+
+		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
+		svc := NewMetadataService(tmdbMock, nil, nil)
+		err := svc.RefreshSeriesMetadata(ctx, 999)
+		require.ErrorIs(t, err, context.Canceled)
+	})
 }
 
 func TestMetadataService_fetchExternalIDs(t *testing.T) {
