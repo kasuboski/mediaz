@@ -39,6 +39,7 @@ type MediaManager struct {
 	downloadClientService *DownloadClientService
 	qualityService        *QualityService
 	jobService            *JobService
+	movieService          *MovieService
 	config                config.Config
 	configs               config.Manager
 }
@@ -57,6 +58,8 @@ func New(tmbdClient tmdb.ITmdb, indexerFactory indexer.Factory, library library.
 		config:                fullConfig,
 		configs:               managerConfigs,
 	}
+
+	m.movieService = NewMovieService(tmbdClient, library, store, m.qualityService, &m)
 
 	executors := map[JobType]JobExecutor{
 		MovieReconcile: func(ctx context.Context, jobID int64) error {
@@ -88,81 +91,14 @@ func now() time.Time {
 	return time.Now()
 }
 
-// SearchMovie querie tmdb for a movie
+// SearchMovie queries TMDB for a movie
 func (m MediaManager) SearchMovie(ctx context.Context, query string) (*SearchMediaResponse, error) {
-	log := logger.FromCtx(ctx)
-	if query == "" {
-		log.Debug("search movie query is empty", zap.String("query", query))
-		return nil, errors.New("query is empty")
-	}
-
-	res, err := m.tmdb.SearchMovie(ctx, &tmdb.SearchMovieParams{Query: query})
-	if err != nil {
-		log.Error("search movie failed request", zap.Error(err))
-		return nil, err
-	}
-	defer res.Body.Close()
-
-	log.Debug("search movie response", zap.Any("status", res.Status))
-	result, err := parseMediaResult(res)
-	if err != nil {
-		log.Debug("error parsing movie query result", zap.Error(err))
-		return nil, err
-	}
-
-	return result, nil
+	return m.movieService.SearchMovie(ctx, query)
 }
 
 // GetMovieDetailByTMDBID retrieves detailed information for a single movie by TMDB ID
 func (m MediaManager) GetMovieDetailByTMDBID(ctx context.Context, tmdbID int) (*MovieDetailResult, error) {
-	log := logger.FromCtx(ctx)
-
-	// Get movie metadata from TMDB (creates if not exists)
-	metadata, err := m.GetMovieMetadata(ctx, tmdbID)
-	if err != nil {
-		log.Error("failed to get movie metadata", zap.Error(err), zap.Int("tmdbID", tmdbID))
-		return nil, err
-	}
-
-	// Create the detailed result from metadata
-	result := &MovieDetailResult{
-		TMDBID:           metadata.TmdbID,
-		ImdbID:           metadata.ImdbID,
-		Title:            metadata.Title,
-		OriginalTitle:    metadata.OriginalTitle,
-		Overview:         metadata.Overview,
-		PosterPath:       metadata.Images,
-		Runtime:          &metadata.Runtime,
-		Genres:           metadata.Genres,
-		Studio:           metadata.Studio,
-		Website:          metadata.Website,
-		CollectionTmdbID: metadata.CollectionTmdbID,
-		CollectionTitle:  metadata.CollectionTitle,
-		Popularity:       metadata.Popularity,
-		Year:             metadata.Year,
-		LibraryStatus:    "Not In Library", // Default status
-	}
-
-	// Format release date as string if available
-	if metadata.ReleaseDate != nil {
-		releaseDateStr := metadata.ReleaseDate.Format("2006-01-02")
-		result.ReleaseDate = &releaseDateStr
-	}
-
-	// Try to get library information (movie record)
-	movie, err := m.movieStorage.GetMovieByMetadataID(ctx, int(metadata.ID))
-	if err == nil && movie != nil {
-		result.ID = &movie.ID
-		result.LibraryStatus = string(movie.State)
-		result.Path = movie.Path
-		result.QualityProfileID = &movie.QualityProfileID
-		monitored := movie.Monitored == 1
-		result.Monitored = &monitored
-	} else if !errors.Is(err, storage.ErrNotFound) {
-		log.Debug("error checking movie library status", zap.Error(err), zap.Int32("metadataID", metadata.ID))
-	}
-
-	return result, nil
+	return m.movieService.GetMovieDetailByTMDBID(ctx, tmdbID)
 }
 
 // GetTVDetailByTMDBID retrieves detailed information for a single TV show by TMDB ID
@@ -630,32 +566,7 @@ func (m MediaManager) ListShowsInLibrary(ctx context.Context) ([]LibraryShow, er
 
 // ListMoviesInLibrary returns library movies enriched with metadata
 func (m MediaManager) ListMoviesInLibrary(ctx context.Context) ([]LibraryMovie, error) {
-	all, err := m.movieStorage.ListMovies(ctx)
-	if err != nil {
-		return nil, err
-	}
-	movies := filterAndMap(all, func(mp *storage.Movie) (LibraryMovie, bool) {
-		// Skip movies without metadata - they haven't been reconciled yet
-		if mp.MovieMetadataID == nil {
-			return LibraryMovie{}, false
-		}
-		lm := LibraryMovie{State: string(mp.State)}
-		if mp.Path != nil {
-			lm.Path = *mp.Path
-		}
-		meta, err := m.GetMovieMetadataByID(ctx, *mp.MovieMetadataID)
-		if err != nil || meta == nil {
-			return LibraryMovie{}, false
-		}
-		lm.TMDBID = meta.TmdbID
-		lm.Title = meta.Title
-		lm.PosterPath = meta.Images
-		if meta.Year != nil {
-			lm.Year = *meta.Year
-		}
-		return lm, true
-	})
-	return movies, nil
+	return m.movieService.ListMoviesInLibrary(ctx)
 }
 
 func (m MediaManager) Run(ctx context.Context) error {
@@ -781,60 +692,8 @@ func (m MediaManager) IndexMovieLibrary(ctx context.Context) error {
 }
 
 // AddMovieToLibrary adds a movie to be managed by mediaz
-// TODO: check status of movie before doing anything else.. do we already have it tracked? is it downloaded or already discovered? error state?
 func (m MediaManager) AddMovieToLibrary(ctx context.Context, request AddMovieRequest) (*storage.Movie, error) {
-	log := logger.FromCtx(ctx)
-
-	profile, err := m.GetQualityProfile(ctx, int64(request.QualityProfileID))
-	if err != nil {
-		log.Debug("failed to get quality profile", zap.Int32("id", request.QualityProfileID), zap.Error(err))
-		return nil, err
-	}
-
-	det, err := m.GetMovieMetadata(ctx, request.TMDBID)
-	if err != nil {
-		log.Debug("failed to get movie metadata", zap.Error(err))
-		return nil, err
-	}
-
-	movie, err := m.movieStorage.GetMovieByMetadataID(ctx, int(det.ID))
-	// if we find the movie we're done
-	if err == nil {
-		return movie, err
-	}
-
-	// anything other than a not found error is an internal error
-	if !errors.Is(err, storage.ErrNotFound) {
-		log.Warn("couldn't find movie by metadata", zap.Int32("meta_id", det.ID), zap.Error(err))
-		return nil, err
-	}
-
-	// need to add the movie if it does not exist
-	movie = &storage.Movie{
-		Movie: model.Movie{
-			MovieMetadataID:  &det.ID,
-			QualityProfileID: profile.ID,
-			Monitored:        1,
-			Path:             &det.Title,
-		},
-	}
-
-	state := initialMovieState(det.ReleaseDate)
-
-	id, err := m.movieStorage.CreateMovie(ctx, *movie, state)
-	if err != nil {
-		log.Warn("failed to create movie", zap.Error(err))
-		return nil, err
-	}
-
-	log.Debug("created movie", zap.Any("movie", movie))
-
-	movie, err = m.movieStorage.GetMovie(ctx, id)
-	if err != nil {
-		log.Warn("failed to get created movie", zap.Error(err))
-	}
-
-	return movie, nil
+	return m.movieService.AddMovieToLibrary(ctx, request)
 }
 
 // AddSeriesToLibrary adds a series to be managed by mediaz
@@ -961,29 +820,7 @@ func (m MediaManager) AddSeriesToLibrary(ctx context.Context, request AddSeriesR
 }
 
 func (m MediaManager) DeleteMovie(ctx context.Context, movieID int64, deleteFiles bool) error {
-	log := logger.FromCtx(ctx)
-
-	movie, err := m.movieStorage.GetMovie(ctx, movieID)
-	if err != nil {
-		return fmt.Errorf("failed to get movie: %w", err)
-	}
-
-	if deleteFiles {
-		if movie.Path == nil {
-			return fmt.Errorf("cannot delete files: movie path is nil")
-		}
-
-		if err := m.library.DeleteMovieDirectory(ctx, *movie.Path); err != nil {
-			return fmt.Errorf("failed to delete movie directory %s: %w", *movie.Path, err)
-		}
-	}
-
-	if err := m.movieStorage.DeleteMovie(ctx, movieID); err != nil {
-		return fmt.Errorf("failed to delete movie: %w", err)
-	}
-
-	log.Info("deleted movie", zap.Int64("id", movieID), zap.Bool("files_deleted", deleteFiles))
-	return nil
+	return m.movieService.DeleteMovie(ctx, movieID, deleteFiles)
 }
 
 func (m MediaManager) DeleteSeries(ctx context.Context, seriesID int64, deleteDirectory bool) error {
@@ -1034,39 +871,11 @@ func (m MediaManager) DeleteSeries(ctx context.Context, seriesID int64, deleteDi
 }
 
 func (m MediaManager) UpdateMovieMonitored(ctx context.Context, movieID int64, monitored bool) (*storage.Movie, error) {
-	monitoredInt := int32(0)
-	if monitored {
-		monitoredInt = 1
-	}
-
-	movieUpdate := model.Movie{Monitored: monitoredInt}
-	err := m.movieStorage.UpdateMovie(ctx, movieUpdate, table.Movie.ID.EQ(sqlite.Int64(movieID)))
-	if err != nil {
-		return nil, err
-	}
-
-	movie, err := m.movieStorage.GetMovie(ctx, movieID)
-	if err != nil {
-		return nil, err
-	}
-
-	logger.FromCtx(ctx).Info("updated monitoring", zap.Int64("movie_id", movieID), zap.Bool("monitored", monitored))
-	return movie, nil
+	return m.movieService.UpdateMovieMonitored(ctx, movieID, monitored)
 }
 
 func (m MediaManager) UpdateMovieQualityProfile(ctx context.Context, movieID int64, qualityProfileID int32) (*storage.Movie, error) {
-	err := m.movieStorage.UpdateMovieQualityProfile(ctx, movieID, qualityProfileID)
-	if err != nil {
-		return nil, err
-	}
-
-	movie, err := m.movieStorage.GetMovie(ctx, movieID)
-	if err != nil {
-		return nil, err
-	}
-
-	logger.FromCtx(ctx).Info("updated quality profile", zap.Int64("movie_id", movieID), zap.Int32("quality_profile_id", qualityProfileID))
-	return movie, nil
+	return m.movieService.UpdateMovieQualityProfile(ctx, movieID, qualityProfileID)
 }
 
 func (m MediaManager) UpdateSeriesMonitored(ctx context.Context, seriesID int64, monitored bool) (*storage.Series, error) {
