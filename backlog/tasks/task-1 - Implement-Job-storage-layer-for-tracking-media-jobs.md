@@ -1,13 +1,14 @@
 ---
 id: task-1
 title: Implement Job storage layer for tracking media jobs
-status: In Progress
+status: Done
 assignee:
   - '@claude'
 created_date: '2025-10-09 18:21'
-updated_date: '2025-10-09 18:23'
+updated_date: '2026-04-20 13:56'
 labels: []
 dependencies: []
+ordinal: 4000
 ---
 
 ## Description
