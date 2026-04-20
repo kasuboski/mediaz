@@ -1349,29 +1349,6 @@ func TestGetTVDetailByTMDBID(t *testing.T) {
 	})
 }
 
-func TestParseTMDBDate(t *testing.T) {
-	t.Run("parses valid date", func(t *testing.T) {
-		result, err := parseTMDBDate("2023-01-15")
-		require.NoError(t, err)
-		require.NotNil(t, result)
-		assert.Equal(t, 2023, result.Year())
-		assert.Equal(t, time.January, result.Month())
-		assert.Equal(t, 15, result.Day())
-	})
-
-	t.Run("handles empty string", func(t *testing.T) {
-		result, err := parseTMDBDate("")
-		require.NoError(t, err)
-		assert.Nil(t, result)
-	})
-
-	t.Run("returns error for invalid date", func(t *testing.T) {
-		result, err := parseTMDBDate("invalid-date")
-		assert.Error(t, err)
-		assert.Nil(t, result)
-	})
-}
-
 func TestMediaManager_AddSeriesToLibrary(t *testing.T) {
 	t.Run("error getting quality profile", func(t *testing.T) {
 		ctrl := gomock.NewController(t)

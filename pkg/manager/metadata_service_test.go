@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"testing"
+	"testing/iotest"
 	"time"
 
 	"github.com/kasuboski/mediaz/pkg/ptr"
@@ -718,5 +719,288 @@ func TestMetadataService_RefreshSeriesMetadataFromTMDB(t *testing.T) {
 		assert.Equal(t, []*model.EpisodeMetadata{
 			{ID: 1, SeasonMetadataID: 1, TmdbID: 200, Title: "Episode One", Number: 1, AirDate: &airDate, Runtime: &epRuntime, Overview: ptr.To("")},
 		}, episodes)
+	})
+}
+
+func TestFromMediaDetails(t *testing.T) {
+	t.Run("maps basic fields", func(t *testing.T) {
+		got := FromMediaDetails(tmdb.MediaDetails{
+			ID:      42,
+			Title:   ptr.To("Test Movie"),
+			Runtime: ptr.To(110),
+		})
+		assert.Equal(t, model.MovieMetadata{TmdbID: 42, Title: "Test Movie", Runtime: 110}, got)
+	})
+
+	t.Run("maps poster path to images", func(t *testing.T) {
+		got := FromMediaDetails(tmdb.MediaDetails{
+			ID:         1,
+			Title:      ptr.To("Movie"),
+			Runtime:    ptr.To(90),
+			PosterPath: ptr.To("/poster.jpg"),
+		})
+		assert.Equal(t, model.MovieMetadata{TmdbID: 1, Title: "Movie", Runtime: 90, Images: "/poster.jpg"}, got)
+	})
+
+	t.Run("maps genres as comma-separated string", func(t *testing.T) {
+		genres := []tmdb.Genre{{Name: "Action"}, {Name: "Drama"}}
+		got := FromMediaDetails(tmdb.MediaDetails{
+			ID:      1,
+			Title:   ptr.To("Movie"),
+			Runtime: ptr.To(100),
+			Genres:  &genres,
+		})
+		assert.Equal(t, model.MovieMetadata{TmdbID: 1, Title: "Movie", Runtime: 100, Genres: ptr.To("Action,Drama")}, got)
+	})
+
+	t.Run("maps first production company to studio", func(t *testing.T) {
+		companies := []tmdb.ProductionCompany{{Name: ptr.To("Studio A")}, {Name: ptr.To("Studio B")}}
+		got := FromMediaDetails(tmdb.MediaDetails{
+			ID:                  1,
+			Title:               ptr.To("Movie"),
+			Runtime:             ptr.To(100),
+			ProductionCompanies: &companies,
+		})
+		assert.Equal(t, model.MovieMetadata{TmdbID: 1, Title: "Movie", Runtime: 100, Studio: ptr.To("Studio A")}, got)
+	})
+
+	t.Run("maps collection info", func(t *testing.T) {
+		coll := any(map[string]any{"id": float64(99), "name": "The Collection"})
+		got := FromMediaDetails(tmdb.MediaDetails{
+			ID:                  1,
+			Title:               ptr.To("Movie"),
+			Runtime:             ptr.To(100),
+			BelongsToCollection: &coll,
+		})
+		assert.Equal(t, model.MovieMetadata{
+			TmdbID:           1,
+			Title:            "Movie",
+			Runtime:          100,
+			CollectionTmdbID: ptr.To(int32(99)),
+			CollectionTitle:  ptr.To("The Collection"),
+		}, got)
+	})
+
+	t.Run("maps release date and year", func(t *testing.T) {
+		releaseDate, _ := time.Parse(tmdb.ReleaseDateFormat, "2021-07-15")
+		year := int32(2021)
+		got := FromMediaDetails(tmdb.MediaDetails{
+			ID:          1,
+			Title:       ptr.To("Movie"),
+			Runtime:     ptr.To(100),
+			ReleaseDate: ptr.To("2021-07-15"),
+		})
+		assert.Equal(t, model.MovieMetadata{TmdbID: 1, Title: "Movie", Runtime: 100, ReleaseDate: &releaseDate, Year: &year}, got)
+	})
+
+	t.Run("ignores invalid release date", func(t *testing.T) {
+		got := FromMediaDetails(tmdb.MediaDetails{
+			ID:          1,
+			Title:       ptr.To("Movie"),
+			Runtime:     ptr.To(100),
+			ReleaseDate: ptr.To("not-a-date"),
+		})
+		assert.Equal(t, model.MovieMetadata{TmdbID: 1, Title: "Movie", Runtime: 100}, got)
+	})
+}
+
+func TestFromSeriesDetails(t *testing.T) {
+	t.Run("maps basic fields", func(t *testing.T) {
+		airDate, _ := time.Parse(tmdb.ReleaseDateFormat, "2020-03-01")
+		got, err := FromSeriesDetails(tmdb.SeriesDetails{
+			ID:               10,
+			Name:             "My Show",
+			FirstAirDate:     "2020-03-01",
+			NumberOfSeasons:  3,
+			NumberOfEpisodes: 30,
+			Status:           "Continuing",
+			Overview:         "A cool show",
+		})
+		require.NoError(t, err)
+		assert.Equal(t, model.SeriesMetadata{
+			TmdbID:       10,
+			Title:        "My Show",
+			SeasonCount:  3,
+			EpisodeCount: 30,
+			Status:       "Continuing",
+			FirstAirDate: &airDate,
+			Overview:     ptr.To("A cool show"),
+		}, got)
+	})
+
+	t.Run("maps poster path when non-empty", func(t *testing.T) {
+		airDate, _ := time.Parse(tmdb.ReleaseDateFormat, "2021-01-01")
+		got, err := FromSeriesDetails(tmdb.SeriesDetails{
+			ID:           1,
+			Name:         "Show",
+			FirstAirDate: "2021-01-01",
+			PosterPath:   "/poster.jpg",
+		})
+		require.NoError(t, err)
+		assert.Equal(t, model.SeriesMetadata{TmdbID: 1, Title: "Show", FirstAirDate: &airDate, Overview: ptr.To(""), PosterPath: ptr.To("/poster.jpg")}, got)
+	})
+
+	t.Run("nil poster and air date when empty", func(t *testing.T) {
+		got, err := FromSeriesDetails(tmdb.SeriesDetails{ID: 1, Name: "Show"})
+		require.NoError(t, err)
+		assert.Equal(t, model.SeriesMetadata{TmdbID: 1, Title: "Show", Overview: ptr.To("")}, got)
+	})
+
+	t.Run("returns error on invalid first air date", func(t *testing.T) {
+		_, err := FromSeriesDetails(tmdb.SeriesDetails{ID: 1, Name: "Show", FirstAirDate: "bad-date"})
+		require.Error(t, err)
+	})
+}
+
+func TestFromSeriesSeasons(t *testing.T) {
+	t.Run("maps basic season fields", func(t *testing.T) {
+		airDate, _ := time.Parse(tmdb.ReleaseDateFormat, "2022-05-10")
+		got := FromSeriesSeasons(tmdb.Season{
+			ID:           55,
+			Name:         "Season 2",
+			SeasonNumber: 2,
+			AirDate:      "2022-05-10",
+			Overview:     "Second season",
+		})
+		assert.Equal(t, model.SeasonMetadata{TmdbID: 55, Title: "Season 2", Number: 2, AirDate: &airDate, Overview: ptr.To("Second season")}, got)
+	})
+
+	t.Run("nil air date when empty", func(t *testing.T) {
+		got := FromSeriesSeasons(tmdb.Season{ID: 1, Name: "Season 1", SeasonNumber: 1})
+		assert.Equal(t, model.SeasonMetadata{TmdbID: 1, Title: "Season 1", Number: 1, Overview: ptr.To("")}, got)
+	})
+
+	t.Run("nil air date on invalid date", func(t *testing.T) {
+		got := FromSeriesSeasons(tmdb.Season{ID: 1, Name: "Season 1", SeasonNumber: 1, AirDate: "not-a-date"})
+		assert.Equal(t, model.SeasonMetadata{TmdbID: 1, Title: "Season 1", Number: 1, Overview: ptr.To("")}, got)
+	})
+}
+
+func TestFromSeriesEpisodes(t *testing.T) {
+	t.Run("maps basic episode fields", func(t *testing.T) {
+		airDate, _ := time.Parse(tmdb.ReleaseDateFormat, "2022-05-17")
+		runtime := int32(45)
+		got := FromSeriesEpisodes(tmdb.Episode{
+			ID:            77,
+			Name:          "The Pilot",
+			EpisodeNumber: 1,
+			AirDate:       "2022-05-17",
+			Runtime:       45,
+			Overview:      "First episode",
+		})
+		assert.Equal(t, model.EpisodeMetadata{TmdbID: 77, Title: "The Pilot", Number: 1, AirDate: &airDate, Runtime: &runtime, Overview: ptr.To("First episode")}, got)
+	})
+
+	t.Run("maps still path when non-empty", func(t *testing.T) {
+		runtime := int32(0)
+		got := FromSeriesEpisodes(tmdb.Episode{ID: 1, Name: "Ep", EpisodeNumber: 1, StillPath: "/still.jpg"})
+		assert.Equal(t, model.EpisodeMetadata{TmdbID: 1, Title: "Ep", Number: 1, Runtime: &runtime, Overview: ptr.To(""), StillPath: ptr.To("/still.jpg")}, got)
+	})
+
+	t.Run("nil still path and air date when empty", func(t *testing.T) {
+		runtime := int32(0)
+		got := FromSeriesEpisodes(tmdb.Episode{ID: 1, Name: "Ep", EpisodeNumber: 1})
+		assert.Equal(t, model.EpisodeMetadata{TmdbID: 1, Title: "Ep", Number: 1, Runtime: &runtime, Overview: ptr.To("")}, got)
+	})
+
+	t.Run("nil air date on invalid date", func(t *testing.T) {
+		runtime := int32(30)
+		got := FromSeriesEpisodes(tmdb.Episode{ID: 1, Name: "Ep", EpisodeNumber: 1, AirDate: "bad", Runtime: 30})
+		assert.Equal(t, model.EpisodeMetadata{TmdbID: 1, Title: "Ep", Number: 1, Runtime: &runtime, Overview: ptr.To("")}, got)
+	})
+}
+
+func TestParseTMDBDate(t *testing.T) {
+	t.Run("returns nil for empty string", func(t *testing.T) {
+		got, err := parseTMDBDate("")
+		require.NoError(t, err)
+		assert.Nil(t, got)
+	})
+
+	t.Run("parses valid date", func(t *testing.T) {
+		expected, _ := time.Parse(tmdb.ReleaseDateFormat, "2023-11-25")
+		got, err := parseTMDBDate("2023-11-25")
+		require.NoError(t, err)
+		assert.Equal(t, &expected, got)
+	})
+
+	t.Run("returns error for invalid date", func(t *testing.T) {
+		_, err := parseTMDBDate("25-11-2023")
+		require.Error(t, err)
+	})
+}
+
+func TestParseExternalIDs(t *testing.T) {
+	t.Run("parses valid JSON", func(t *testing.T) {
+		resp := &http.Response{StatusCode: 200, Body: io.NopCloser(bytes.NewBufferString(`{"imdb_id":"tt1234567","tvdb_id":999}`))}
+		got, err := parseExternalIDs(resp)
+		require.NoError(t, err)
+		assert.Equal(t, &ExternalIDsData{ImdbID: ptr.To("tt1234567"), TvdbID: ptr.To(999)}, got)
+	})
+
+	t.Run("returns error on invalid JSON", func(t *testing.T) {
+		resp := &http.Response{StatusCode: 200, Body: io.NopCloser(bytes.NewBufferString(`not json`))}
+		_, err := parseExternalIDs(resp)
+		require.Error(t, err)
+	})
+
+	t.Run("returns error on body read failure", func(t *testing.T) {
+		resp := &http.Response{StatusCode: 200, Body: io.NopCloser(iotest.ErrReader(errors.New("read error")))}
+		_, err := parseExternalIDs(resp)
+		require.Error(t, err)
+	})
+
+	t.Run("handles missing fields", func(t *testing.T) {
+		resp := &http.Response{StatusCode: 200, Body: io.NopCloser(bytes.NewBufferString(`{"tvdb_id":42}`))}
+		got, err := parseExternalIDs(resp)
+		require.NoError(t, err)
+		assert.Equal(t, &ExternalIDsData{TvdbID: ptr.To(42)}, got)
+	})
+}
+
+func TestParseWatchProviders(t *testing.T) {
+	t.Run("parses US flatrate providers", func(t *testing.T) {
+		body := `{"results":{"US":{"flatrate":[{"provider_id":8,"provider_name":"Netflix","logo_path":"/n.png"}],"link":"https://example.com"}}}`
+		resp := &http.Response{StatusCode: 200, Body: io.NopCloser(bytes.NewBufferString(body))}
+		got, err := parseWatchProviders(resp)
+		require.NoError(t, err)
+		assert.Equal(t, &WatchProvidersData{
+			US: WatchProviderRegionData{
+				Flatrate: []WatchProviderData{{ProviderID: 8, Name: "Netflix", LogoPath: ptr.To("/n.png")}},
+				Link:     ptr.To("https://example.com"),
+			},
+		}, got)
+	})
+
+	t.Run("returns empty result when no US region", func(t *testing.T) {
+		body := `{"results":{"GB":{"flatrate":[{"provider_id":8,"provider_name":"Netflix"}]}}}`
+		resp := &http.Response{StatusCode: 200, Body: io.NopCloser(bytes.NewBufferString(body))}
+		got, err := parseWatchProviders(resp)
+		require.NoError(t, err)
+		assert.Equal(t, &WatchProvidersData{}, got)
+	})
+
+	t.Run("skips providers missing id or name", func(t *testing.T) {
+		body := `{"results":{"US":{"flatrate":[{"logo_path":"/x.png"},{"provider_id":10,"provider_name":"Disney+"}]}}}`
+		resp := &http.Response{StatusCode: 200, Body: io.NopCloser(bytes.NewBufferString(body))}
+		got, err := parseWatchProviders(resp)
+		require.NoError(t, err)
+		assert.Equal(t, &WatchProvidersData{
+			US: WatchProviderRegionData{
+				Flatrate: []WatchProviderData{{ProviderID: 10, Name: "Disney+"}},
+			},
+		}, got)
+	})
+
+	t.Run("returns error on invalid JSON", func(t *testing.T) {
+		resp := &http.Response{StatusCode: 200, Body: io.NopCloser(bytes.NewBufferString(`{bad json}`))}
+		_, err := parseWatchProviders(resp)
+		require.Error(t, err)
+	})
+
+	t.Run("returns error on body read failure", func(t *testing.T) {
+		resp := &http.Response{StatusCode: 200, Body: io.NopCloser(iotest.ErrReader(errors.New("read error")))}
+		_, err := parseWatchProviders(resp)
+		require.Error(t, err)
 	})
 }
