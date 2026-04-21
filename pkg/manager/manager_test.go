@@ -10,16 +10,11 @@ import (
 	"os"
 	"strconv"
 	"testing"
-	"testing/fstest"
 	"time"
 
 	"github.com/gkampitakis/go-snaps/snaps"
 	"github.com/go-jet/jet/v2/sqlite"
 	"github.com/kasuboski/mediaz/config"
-	downloadMock "github.com/kasuboski/mediaz/pkg/download/mocks"
-	mhttpMock "github.com/kasuboski/mediaz/pkg/http/mocks"
-	"github.com/kasuboski/mediaz/pkg/indexer/mocks"
-	mio "github.com/kasuboski/mediaz/pkg/io"
 	"github.com/kasuboski/mediaz/pkg/library"
 	mockLibrary "github.com/kasuboski/mediaz/pkg/library/mocks"
 	"github.com/kasuboski/mediaz/pkg/prowlarr"
@@ -36,285 +31,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
-
-func TestAddMovietoLibrary(t *testing.T) {
-	ctrl := gomock.NewController(t)
-
-	store, err := mediaSqlite.New(context.Background(), ":memory:")
-	require.NoError(t, err)
-
-	schemas, err := storage.ReadSchemaFiles("../storage/sqlite/schema/schema.sql", "../storage/sqlite/schema/defaults.sql")
-	require.NoError(t, err)
-
-	ctx := context.Background()
-	err = store.Init(ctx, schemas...)
-	require.NoError(t, err)
-
-	// create a date in the past
-	releaseDate := time.Now().AddDate(0, 0, -1).Format(tmdb.ReleaseDateFormat)
-
-	downloadClient := model.DownloadClient{
-		Implementation: "transmission",
-		Type:           "torrent",
-		Port:           8080,
-		Host:           "transmission",
-		Scheme:         "http",
-	}
-
-	downloadClientID, err := store.CreateDownloadClient(ctx, downloadClient)
-	require.NoError(t, err)
-
-	downloadClient.ID = int32(downloadClientID)
-
-	movieFS := fstest.MapFS{}
-	tvFS := fstest.MapFS{}
-	lib := library.New(
-		library.FileSystem{
-			FS: movieFS,
-		},
-		library.FileSystem{
-			FS: tvFS,
-		},
-		&mio.MediaFileSystem{},
-		true,
-	)
-
-	tmdbHttpMock := mhttpMock.NewMockHTTPClient(ctrl)
-	tmdbHttpMock.EXPECT().Do(gomock.Any()).Return(mediaDetailsResponse("test movie", 120, releaseDate), nil).Times(1)
-
-	tClient, err := tmdb.New("https://api.themoviedb.org", "1234", tmdb.WithHTTPClient(tmdbHttpMock))
-	require.NoError(t, err)
-
-	indexerFactory := mocks.NewMockFactory(ctrl)
-	mockFactory := downloadMock.NewMockFactory(ctrl)
-
-	m := New(tClient, indexerFactory, lib, store, mockFactory, config.Manager{}, config.Config{})
-	require.NotNil(t, m)
-
-	req := AddMovieRequest{
-		TMDBID:           1234,
-		QualityProfileID: 1,
-	}
-
-	mov, err := m.AddMovieToLibrary(ctx, req)
-	require.NoError(t, err)
-	assert.NotNil(t, mov)
-
-	assert.Equal(t, int32(1), mov.ID)
-	assert.Equal(t, storage.MovieStateMissing, mov.State)
-
-	movie, err := m.movieStorage.GetMovie(ctx, int64(mov.ID))
-	require.Nil(t, err)
-	movie.Added = nil
-	movieMetadataID := int32(1)
-
-	assert.Equal(t, &storage.Movie{
-		Movie: model.Movie{
-			ID:               1,
-			Monitored:        1,
-			QualityProfileID: 1,
-			MovieMetadataID:  &movieMetadataID,
-			Path:             ptr.To("test movie"),
-		},
-		State: storage.MovieStateMissing,
-	}, movie)
-}
-
-func TestListMoviesInLibrary(t *testing.T) {
-	ctx := context.Background()
-
-	t.Run("no movies in library", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
-		store := storageMocks.NewMockStorage(ctrl)
-		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
-
-		store.EXPECT().ListMovies(ctx).Return([]*storage.Movie{}, nil)
-
-		movies, err := m.ListMoviesInLibrary(ctx)
-		require.NoError(t, err)
-		assert.Empty(t, movies)
-	})
-
-	t.Run("movies with metadata", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
-		store := storageMocks.NewMockStorage(ctrl)
-		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
-
-		metadataID := int32(1)
-		path := "movie1"
-		discoveredMovie := &storage.Movie{
-			Movie: model.Movie{
-				MovieMetadataID: &metadataID,
-				Path:            &path,
-			},
-			State: storage.MovieStateDiscovered,
-		}
-
-		downloadedMovie := &storage.Movie{
-			Movie: model.Movie{
-				MovieMetadataID: &metadataID,
-				Path:            &path,
-			},
-			State: storage.MovieStateDownloaded,
-		}
-
-		year := int32(2024)
-		movieMetadata := &model.MovieMetadata{
-			ID:     1,
-			TmdbID: 123,
-			Title:  "Test Movie",
-			Images: "poster.jpg",
-			Year:   &year,
-		}
-
-		store.EXPECT().ListMovies(ctx).Return([]*storage.Movie{discoveredMovie, downloadedMovie}, nil)
-		store.EXPECT().GetMovieMetadata(ctx, gomock.Any()).Return(movieMetadata, nil).Times(2)
-
-		movies, err := m.ListMoviesInLibrary(ctx)
-		require.NoError(t, err)
-		assert.Len(t, movies, 2)
-
-		expectedMovie := LibraryMovie{
-			Path:       path,
-			TMDBID:     movieMetadata.TmdbID,
-			Title:      movieMetadata.Title,
-			PosterPath: movieMetadata.Images,
-			Year:       *movieMetadata.Year,
-		}
-
-		for _, movie := range movies {
-			assert.Equal(t, expectedMovie.Path, movie.Path)
-			assert.Equal(t, expectedMovie.TMDBID, movie.TMDBID)
-			assert.Equal(t, expectedMovie.Title, movie.Title)
-			assert.Equal(t, expectedMovie.PosterPath, movie.PosterPath)
-			assert.Equal(t, expectedMovie.Year, movie.Year)
-		}
-	})
-
-	t.Run("movies without metadata are filtered out", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
-		store := storageMocks.NewMockStorage(ctrl)
-		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
-
-		path := "movie1"
-		discoveredMovie := &storage.Movie{
-			Movie: model.Movie{
-				Path: &path,
-			},
-			State: storage.MovieStateDiscovered,
-		}
-
-		store.EXPECT().ListMovies(ctx).Return([]*storage.Movie{discoveredMovie}, nil)
-
-		movies, err := m.ListMoviesInLibrary(ctx)
-		require.NoError(t, err)
-		assert.Empty(t, movies, "movies without metadata should not be included in library")
-	})
-
-	t.Run("error listing movies", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
-		store := storageMocks.NewMockStorage(ctrl)
-		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
-
-		store.EXPECT().ListMovies(ctx).Return(nil, errors.New("db error"))
-
-		movies, err := m.ListMoviesInLibrary(ctx)
-		assert.Error(t, err)
-		assert.Nil(t, movies)
-	})
-}
-
-func TestListShowsInLibrary(t *testing.T) {
-	ctx := context.Background()
-
-	t.Run("no shows in library", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
-		store := storageMocks.NewMockStorage(ctrl)
-		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
-
-		store.EXPECT().ListSeries(ctx).Return([]*storage.Series{}, nil)
-
-		shows, err := m.ListShowsInLibrary(ctx)
-		require.NoError(t, err)
-		assert.Empty(t, shows)
-	})
-
-	t.Run("shows with metadata", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
-		store := storageMocks.NewMockStorage(ctrl)
-		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
-
-		metadataID := int32(1)
-		path := "Show 1"
-		series := &storage.Series{
-			Series: model.Series{
-				SeriesMetadataID: &metadataID,
-				Path:             &path,
-			},
-			State: storage.SeriesStateDiscovered,
-		}
-
-		seriesMetadata := &model.SeriesMetadata{
-			ID:             1,
-			TmdbID:         321,
-			Title:          "Test Series",
-			Status:         "Continuing",
-			PosterPath:     ptr.To("poster.jpg"),
-			ExternalIds:    nil,
-			WatchProviders: nil,
-		}
-
-		store.EXPECT().ListSeries(ctx).Return([]*storage.Series{series}, nil)
-		store.EXPECT().GetSeriesMetadata(ctx, gomock.Any()).Return(seriesMetadata, nil)
-
-		shows, err := m.ListShowsInLibrary(ctx)
-		require.NoError(t, err)
-		require.Len(t, shows, 1)
-
-		expected := LibraryShow{
-			Path:       path,
-			TMDBID:     seriesMetadata.TmdbID,
-			Title:      seriesMetadata.Title,
-			PosterPath: *seriesMetadata.PosterPath,
-		}
-		assert.Equal(t, expected.Path, shows[0].Path)
-		assert.Equal(t, expected.TMDBID, shows[0].TMDBID)
-		assert.Equal(t, expected.Title, shows[0].Title)
-		assert.Equal(t, expected.PosterPath, shows[0].PosterPath)
-	})
-
-	t.Run("shows without metadata are filtered out", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
-		store := storageMocks.NewMockStorage(ctrl)
-		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
-
-		path := "Show 1"
-		series := &storage.Series{
-			Series: model.Series{
-				Path: &path,
-			},
-			State: storage.SeriesStateDiscovered,
-		}
-
-		store.EXPECT().ListSeries(ctx).Return([]*storage.Series{series}, nil)
-
-		shows, err := m.ListShowsInLibrary(ctx)
-		require.NoError(t, err)
-		assert.Empty(t, shows, "series without metadata should not be included in library")
-	})
-
-	t.Run("error listing series", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
-		store := storageMocks.NewMockStorage(ctrl)
-		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
-
-		store.EXPECT().ListSeries(ctx).Return(nil, errors.New("db error"))
-
-		shows, err := m.ListShowsInLibrary(ctx)
-		assert.Error(t, err)
-		assert.Nil(t, shows)
-	})
-}
 
 func TestIndexMovieLibrary(t *testing.T) {
 	t.Run("error listing finding files in library", func(t *testing.T) {
@@ -530,6 +246,98 @@ func TestIndexMovieLibrary(t *testing.T) {
 	})
 }
 
+func TestListShowsInLibrary(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("no shows in library", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		store := storageMocks.NewMockStorage(ctrl)
+		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
+
+		store.EXPECT().ListSeries(ctx).Return([]*storage.Series{}, nil)
+
+		shows, err := m.ListShowsInLibrary(ctx)
+		require.NoError(t, err)
+		assert.Empty(t, shows)
+	})
+
+	t.Run("shows with metadata", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		store := storageMocks.NewMockStorage(ctrl)
+		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
+
+		metadataID := int32(1)
+		path := "Show 1"
+		series := &storage.Series{
+			Series: model.Series{
+				SeriesMetadataID: &metadataID,
+				Path:             &path,
+			},
+			State: storage.SeriesStateDiscovered,
+		}
+
+		seriesMetadata := &model.SeriesMetadata{
+			ID:             1,
+			TmdbID:         321,
+			Title:          "Test Series",
+			Status:         "Continuing",
+			PosterPath:     ptr.To("poster.jpg"),
+			ExternalIds:    nil,
+			WatchProviders: nil,
+		}
+
+		store.EXPECT().ListSeries(ctx).Return([]*storage.Series{series}, nil)
+		store.EXPECT().GetSeriesMetadata(ctx, gomock.Any()).Return(seriesMetadata, nil)
+
+		shows, err := m.ListShowsInLibrary(ctx)
+		require.NoError(t, err)
+		require.Len(t, shows, 1)
+
+		expected := LibraryShow{
+			Path:       path,
+			TMDBID:     seriesMetadata.TmdbID,
+			Title:      seriesMetadata.Title,
+			PosterPath: *seriesMetadata.PosterPath,
+		}
+		assert.Equal(t, expected.Path, shows[0].Path)
+		assert.Equal(t, expected.TMDBID, shows[0].TMDBID)
+		assert.Equal(t, expected.Title, shows[0].Title)
+		assert.Equal(t, expected.PosterPath, shows[0].PosterPath)
+	})
+
+	t.Run("shows without metadata are filtered out", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		store := storageMocks.NewMockStorage(ctrl)
+		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
+
+		path := "Show 1"
+		series := &storage.Series{
+			Series: model.Series{
+				Path: &path,
+			},
+			State: storage.SeriesStateDiscovered,
+		}
+
+		store.EXPECT().ListSeries(ctx).Return([]*storage.Series{series}, nil)
+
+		shows, err := m.ListShowsInLibrary(ctx)
+		require.NoError(t, err)
+		assert.Empty(t, shows, "series without metadata should not be included in library")
+	})
+
+	t.Run("error listing series", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		store := storageMocks.NewMockStorage(ctrl)
+		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
+
+		store.EXPECT().ListSeries(ctx).Return(nil, errors.New("db error"))
+
+		shows, err := m.ListShowsInLibrary(ctx)
+		assert.Error(t, err)
+		assert.Nil(t, shows)
+	})
+}
+
 func TestMovieRejectRelease(t *testing.T) {
 	t.Run("prefix match only", func(t *testing.T) {
 		ctx := context.Background()
@@ -638,20 +446,6 @@ func getReleasesFromFile(t *testing.T, path string) []*prowlarr.ReleaseResource 
 	return releases
 }
 
-func searchIndexersResponse(t *testing.T, releases []*prowlarr.ReleaseResource) *http.Response {
-	resp := &http.Response{
-		StatusCode: http.StatusOK,
-		Header:     make(map[string][]string),
-	}
-
-	out, err := json.Marshal(releases)
-	assert.Nil(t, err)
-
-	resp.Body = io.NopCloser(bytes.NewBuffer(out))
-
-	return resp
-}
-
 // mediaDetailsResponse returns an http.Response that represents a MediaDetails with the given title and runtime
 func mediaDetailsResponse(title string, runtime int, releaseDate string) *http.Response {
 	details := &tmdb.MediaDetails{
@@ -685,668 +479,6 @@ func newStore(t *testing.T, ctx context.Context) storage.Storage {
 	require.NoError(t, err)
 
 	return store
-}
-
-func TestGetMovieDetailByTMDBID(t *testing.T) {
-	ctx := context.Background()
-
-	t.Run("success - movie not in library", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
-		store := storageMocks.NewMockStorage(ctrl)
-		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
-
-		releaseDate := time.Date(2023, 1, 15, 0, 0, 0, 0, time.UTC)
-		year := int32(2023)
-		metadata := &model.MovieMetadata{
-			ID:               1,
-			TmdbID:           123,
-			Title:            "Test Movie",
-			OriginalTitle:    ptr.To("Original Test Movie"),
-			Overview:         ptr.To("Test movie overview"),
-			Images:           "poster.jpg",
-			Runtime:          120,
-			Genres:           ptr.To("Action, Drama"),
-			Studio:           ptr.To("Test Studio"),
-			Website:          ptr.To("https://test.com"),
-			CollectionTmdbID: ptr.To(int32(456)),
-			CollectionTitle:  ptr.To("Test Collection"),
-			Popularity:       ptr.To(8.5),
-			Year:             &year,
-			ReleaseDate:      &releaseDate,
-		}
-
-		store.EXPECT().GetMovieMetadata(ctx, gomock.Any()).Return(metadata, nil)
-		store.EXPECT().GetMovieByMetadataID(ctx, 1).Return(nil, storage.ErrNotFound)
-
-		result, err := m.GetMovieDetailByTMDBID(ctx, 123)
-		require.NoError(t, err)
-		require.NotNil(t, result)
-
-		assert.Equal(t, int32(123), result.TMDBID)
-		assert.Equal(t, ptr.To("Original Test Movie"), result.OriginalTitle)
-		assert.Equal(t, "Test Movie", result.Title)
-		assert.Equal(t, ptr.To("Test movie overview"), result.Overview)
-		assert.Equal(t, "poster.jpg", result.PosterPath)
-		assert.Equal(t, ptr.To(int32(120)), result.Runtime)
-		assert.Equal(t, ptr.To("Action, Drama"), result.Genres)
-		assert.Equal(t, ptr.To("Test Studio"), result.Studio)
-		assert.Equal(t, ptr.To("https://test.com"), result.Website)
-		assert.Equal(t, ptr.To(int32(456)), result.CollectionTmdbID)
-		assert.Equal(t, ptr.To("Test Collection"), result.CollectionTitle)
-		assert.Equal(t, ptr.To(8.5), result.Popularity)
-		assert.Equal(t, &year, result.Year)
-		assert.Equal(t, ptr.To("2023-01-15"), result.ReleaseDate)
-		assert.Equal(t, "Not In Library", result.LibraryStatus)
-		assert.Nil(t, result.Path)
-		assert.Nil(t, result.QualityProfileID)
-		assert.Nil(t, result.Monitored)
-	})
-
-	t.Run("success - movie in library", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
-		store := storageMocks.NewMockStorage(ctrl)
-		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
-
-		metadata := &model.MovieMetadata{
-			ID:      1,
-			TmdbID:  123,
-			Title:   "Test Movie",
-			Images:  "poster.jpg",
-			Runtime: 120,
-		}
-
-		path := "/movies/test-movie"
-		qualityProfileID := int32(2)
-		movie := &storage.Movie{
-			Movie: model.Movie{
-				ID:               1,
-				MovieMetadataID:  ptr.To(int32(1)),
-				Path:             &path,
-				QualityProfileID: qualityProfileID,
-				Monitored:        1,
-			},
-			State: storage.MovieStateDownloaded,
-		}
-
-		store.EXPECT().GetMovieMetadata(ctx, gomock.Any()).Return(metadata, nil)
-		store.EXPECT().GetMovieByMetadataID(ctx, 1).Return(movie, nil)
-
-		result, err := m.GetMovieDetailByTMDBID(ctx, 123)
-		require.NoError(t, err)
-		require.NotNil(t, result)
-
-		assert.Equal(t, int32(123), result.TMDBID)
-		assert.Equal(t, "Test Movie", result.Title)
-		assert.Equal(t, string(storage.MovieStateDownloaded), result.LibraryStatus)
-		assert.Equal(t, &path, result.Path)
-		assert.Equal(t, &qualityProfileID, result.QualityProfileID)
-		monitored := true
-		assert.Equal(t, &monitored, result.Monitored)
-	})
-
-	t.Run("success - movie with nil release date", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
-		store := storageMocks.NewMockStorage(ctrl)
-		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
-
-		metadata := &model.MovieMetadata{
-			ID:          1,
-			TmdbID:      123,
-			Title:       "Test Movie",
-			Images:      "poster.jpg",
-			Runtime:     120,
-			ReleaseDate: nil,
-		}
-
-		store.EXPECT().GetMovieMetadata(ctx, gomock.Any()).Return(metadata, nil)
-		store.EXPECT().GetMovieByMetadataID(ctx, 1).Return(nil, storage.ErrNotFound)
-
-		result, err := m.GetMovieDetailByTMDBID(ctx, 123)
-		require.NoError(t, err)
-		require.NotNil(t, result)
-
-		assert.Equal(t, int32(123), result.TMDBID)
-		assert.Nil(t, result.ReleaseDate)
-		assert.Equal(t, "Not In Library", result.LibraryStatus)
-	})
-
-	t.Run("success - movie with unmonitored status", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
-		store := storageMocks.NewMockStorage(ctrl)
-		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
-
-		metadata := &model.MovieMetadata{
-			ID:      1,
-			TmdbID:  123,
-			Title:   "Test Movie",
-			Images:  "poster.jpg",
-			Runtime: 120,
-		}
-
-		movie := &storage.Movie{
-			Movie: model.Movie{
-				ID:               1,
-				MovieMetadataID:  ptr.To(int32(1)),
-				QualityProfileID: 1,
-				Monitored:        0, // Unmonitored
-			},
-			State: storage.MovieStateMissing,
-		}
-
-		store.EXPECT().GetMovieMetadata(ctx, gomock.Any()).Return(metadata, nil)
-		store.EXPECT().GetMovieByMetadataID(ctx, 1).Return(movie, nil)
-
-		result, err := m.GetMovieDetailByTMDBID(ctx, 123)
-		require.NoError(t, err)
-		require.NotNil(t, result)
-
-		monitored := false
-		assert.Equal(t, &monitored, result.Monitored)
-		assert.Equal(t, string(storage.MovieStateMissing), result.LibraryStatus)
-	})
-
-	t.Run("error - GetMovieMetadata fails", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
-		store := storageMocks.NewMockStorage(ctrl)
-		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
-
-		expectedErr := errors.New("metadata fetch error")
-		store.EXPECT().GetMovieMetadata(ctx, gomock.Any()).Return(nil, expectedErr)
-
-		result, err := m.GetMovieDetailByTMDBID(ctx, 123)
-		assert.Error(t, err)
-		assert.Equal(t, expectedErr, err)
-		assert.Nil(t, result)
-	})
-
-	t.Run("success - storage error non-NotFound is logged but not returned", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
-		store := storageMocks.NewMockStorage(ctrl)
-		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
-
-		metadata := &model.MovieMetadata{
-			ID:      1,
-			TmdbID:  123,
-			Title:   "Test Movie",
-			Images:  "poster.jpg",
-			Runtime: 120,
-		}
-
-		dbErr := errors.New("database connection error")
-		store.EXPECT().GetMovieMetadata(ctx, gomock.Any()).Return(metadata, nil)
-		store.EXPECT().GetMovieByMetadataID(ctx, 1).Return(nil, dbErr)
-
-		result, err := m.GetMovieDetailByTMDBID(ctx, 123)
-		require.NoError(t, err)
-		require.NotNil(t, result)
-
-		assert.Equal(t, int32(123), result.TMDBID)
-		assert.Equal(t, "Not In Library", result.LibraryStatus)
-		assert.Nil(t, result.Path)
-		assert.Nil(t, result.QualityProfileID)
-		assert.Nil(t, result.Monitored)
-	})
-}
-
-func TestBuildTVDetailResult(t *testing.T) {
-	t.Run("builds complete TV detail result", func(t *testing.T) {
-		m := New(nil, nil, nil, nil, nil, config.Manager{}, config.Config{})
-
-		// Mock series metadata
-		firstAirDate := time.Date(2023, 1, 15, 0, 0, 0, 0, time.UTC)
-		lastAirDate := time.Date(2023, 12, 15, 0, 0, 0, 0, time.UTC)
-		metadata := &model.SeriesMetadata{
-			ID:             1,
-			TmdbID:         123,
-			Title:          "Test Series",
-			Status:         "Continuing",
-			Overview:       ptr.To("Test series overview"),
-			FirstAirDate:   &firstAirDate,
-			LastAirDate:    &lastAirDate,
-			SeasonCount:    2,
-			EpisodeCount:   20,
-			ExternalIds:    nil,
-			WatchProviders: nil,
-		}
-
-		// Mock TMDB details response
-		details := &tmdb.SeriesDetailsResponse{
-			PosterPath:   "poster.jpg",
-			BackdropPath: "backdrop.jpg",
-			Adult:        true,
-			Popularity:   8.5,
-			Networks: []tmdb.Network{
-				{Name: "HBO"},
-				{Name: "Netflix"},
-			},
-			Genres: []tmdb.Genre{
-				{Name: "Drama"},
-				{Name: "Thriller"},
-			},
-		}
-
-		// Mock library series - in library and monitored
-		path := "/tv/test-series"
-		qualityProfileID := int32(2)
-		series := &storage.Series{
-			Series: model.Series{
-				ID:               1,
-				SeriesMetadataID: ptr.To(int32(1)),
-				Path:             &path,
-				QualityProfileID: qualityProfileID,
-				Monitored:        1,
-			},
-			State: storage.SeriesStateDiscovered,
-		}
-
-		result := m.buildTVDetailResult(metadata, details, series, []SeasonResult{})
-
-		assert.Equal(t, int32(123), result.TMDBID)
-		assert.Equal(t, "Test Series", result.Title)
-		assert.Equal(t, "Test series overview", result.Overview)
-		assert.Equal(t, "poster.jpg", result.PosterPath)
-		assert.Equal(t, ptr.To("backdrop.jpg"), result.BackdropPath)
-		assert.Equal(t, ptr.To("2023-01-15"), result.FirstAirDate)
-		assert.Equal(t, ptr.To("2023-12-15"), result.LastAirDate)
-		assert.Equal(t, int32(2), result.SeasonCount)
-		assert.Equal(t, int32(20), result.EpisodeCount)
-		require.Len(t, result.Networks, 2)
-		assert.Equal(t, "HBO", result.Networks[0].Name)
-		assert.Equal(t, "Netflix", result.Networks[1].Name)
-		assert.Equal(t, []string{"Drama", "Thriller"}, result.Genres)
-		assert.Equal(t, ptr.To(true), result.Adult)
-		pop := float64(8.5)
-		assert.Equal(t, &pop, result.Popularity)
-		assert.Equal(t, string(storage.SeriesStateDiscovered), result.LibraryStatus)
-		assert.Equal(t, &path, result.Path)
-		assert.Equal(t, &qualityProfileID, result.QualityProfileID)
-		monitored := true
-		assert.Equal(t, &monitored, result.Monitored)
-	})
-
-	t.Run("builds TV detail result not in library", func(t *testing.T) {
-		m := New(nil, nil, nil, nil, nil, config.Manager{}, config.Config{})
-
-		metadata := &model.SeriesMetadata{
-			ID:             1,
-			TmdbID:         123,
-			Title:          "Test Series",
-			Status:         "Continuing",
-			SeasonCount:    1,
-			EpisodeCount:   10,
-			ExternalIds:    nil,
-			WatchProviders: nil,
-		}
-
-		details := &tmdb.SeriesDetailsResponse{
-			PosterPath:   "poster.jpg",
-			BackdropPath: "backdrop.jpg",
-		}
-
-		// No series in library (nil)
-		result := m.buildTVDetailResult(metadata, details, nil, []SeasonResult{})
-
-		assert.Equal(t, int32(123), result.TMDBID)
-		assert.Equal(t, "Test Series", result.Title)
-		assert.Equal(t, "Not In Library", result.LibraryStatus)
-		assert.Nil(t, result.Path)
-		assert.Nil(t, result.QualityProfileID)
-		assert.Nil(t, result.Monitored)
-	})
-
-	t.Run("builds TV detail result with minimal data", func(t *testing.T) {
-		m := New(nil, nil, nil, nil, nil, config.Manager{}, config.Config{})
-
-		metadata := &model.SeriesMetadata{
-			ID:             1,
-			TmdbID:         123,
-			Title:          "Test Series",
-			Status:         "Continuing",
-			SeasonCount:    1,
-			EpisodeCount:   5,
-			ExternalIds:    nil,
-			WatchProviders: nil,
-		}
-
-		details := &tmdb.SeriesDetailsResponse{
-			PosterPath: "poster.jpg",
-			// No backdrop, networks, genres, etc.
-		}
-
-		result := m.buildTVDetailResult(metadata, details, nil, []SeasonResult{})
-
-		assert.Equal(t, int32(123), result.TMDBID)
-		assert.Equal(t, "Test Series", result.Title)
-		assert.Equal(t, "poster.jpg", result.PosterPath)
-		assert.Nil(t, result.BackdropPath)
-		assert.Nil(t, result.FirstAirDate)
-		assert.Nil(t, result.LastAirDate)
-		assert.Empty(t, result.Networks)
-		assert.Empty(t, result.Genres)
-		assert.Nil(t, result.Adult)
-		assert.Nil(t, result.Popularity)
-		assert.Equal(t, "Not In Library", result.LibraryStatus)
-	})
-
-	t.Run("builds TV detail result with unmonitored series", func(t *testing.T) {
-		m := New(nil, nil, nil, nil, nil, config.Manager{}, config.Config{})
-
-		metadata := &model.SeriesMetadata{
-			ID:             1,
-			TmdbID:         123,
-			Title:          "Test Series",
-			Status:         "Continuing",
-			SeasonCount:    1,
-			EpisodeCount:   5,
-			ExternalIds:    nil,
-			WatchProviders: nil,
-		}
-
-		details := &tmdb.SeriesDetailsResponse{
-			PosterPath: "poster.jpg",
-		}
-
-		// Unmonitored series
-		series := &storage.Series{
-			Series: model.Series{
-				ID:               1,
-				SeriesMetadataID: ptr.To(int32(1)),
-				QualityProfileID: 1,
-				Monitored:        0, // Unmonitored
-			},
-			State: storage.SeriesStateMissing,
-		}
-
-		result := m.buildTVDetailResult(metadata, details, series, []SeasonResult{})
-
-		monitored := false
-		assert.Equal(t, &monitored, result.Monitored)
-		assert.Equal(t, string(storage.SeriesStateMissing), result.LibraryStatus)
-	})
-}
-
-func TestGetTVDetailByTMDBID(t *testing.T) {
-	ctx := context.Background()
-
-	t.Run("success - TV show not in library", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
-		store := storageMocks.NewMockStorage(ctrl)
-		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
-
-		m := New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
-
-		firstAirDate := time.Date(2023, 1, 15, 0, 0, 0, 0, time.UTC)
-		externalIDsJSON := `{"imdb_id":"tt7654321","tvdb_id":54321}`
-		watchProvidersJSON := `{"US":{"flatrate":[{"provider_id":8,"provider_name":"Netflix","logo_path":"/net.png"}]}}`
-		metadata := &model.SeriesMetadata{
-			ID:             1,
-			TmdbID:         123,
-			Title:          "Test Series",
-			Overview:       ptr.To("Test series overview"),
-			FirstAirDate:   &firstAirDate,
-			SeasonCount:    2,
-			EpisodeCount:   20,
-			Status:         "Continuing",
-			ExternalIds:    &externalIDsJSON,
-			WatchProviders: &watchProvidersJSON,
-		}
-
-		// Mock series details response will be returned via HTTP response
-
-		// Mock GetSeriesMetadata call
-		store.EXPECT().GetSeriesMetadata(ctx, gomock.Any()).Return(metadata, nil)
-
-		// Mock TvSeriesDetails call
-		responseBody := `{"poster_path":"poster.jpg","backdrop_path":"backdrop.jpg","networks":[{"name":"HBO"}],"genres":[{"name":"Drama"}]}`
-		resp := &http.Response{
-			StatusCode: 200,
-			Body:       io.NopCloser(bytes.NewBufferString(responseBody)),
-		}
-		tmdbMock.EXPECT().TvSeriesDetails(ctx, int32(123), nil).Return(resp, nil)
-
-		// Mock GetSeries call - not found
-		store.EXPECT().GetSeries(ctx, gomock.Any()).Return(nil, storage.ErrNotFound)
-
-		result, err := m.GetTVDetailByTMDBID(ctx, 123)
-		require.NoError(t, err)
-		require.NotNil(t, result)
-
-		assert.Equal(t, int32(123), result.TMDBID)
-		assert.Equal(t, "Test Series", result.Title)
-		assert.Equal(t, "Test series overview", result.Overview)
-		assert.Equal(t, "poster.jpg", result.PosterPath)
-		assert.Equal(t, ptr.To("backdrop.jpg"), result.BackdropPath)
-		assert.Equal(t, ptr.To("2023-01-15"), result.FirstAirDate)
-		assert.Equal(t, int32(2), result.SeasonCount)
-		assert.Equal(t, int32(20), result.EpisodeCount)
-		require.Len(t, result.Networks, 1)
-		assert.Equal(t, "HBO", result.Networks[0].Name)
-		assert.Equal(t, []string{"Drama"}, result.Genres)
-		assert.Equal(t, "Not In Library", result.LibraryStatus)
-		assert.Nil(t, result.Path)
-		assert.Nil(t, result.QualityProfileID)
-		assert.Nil(t, result.Monitored)
-		// Check external IDs from stored data
-		require.NotNil(t, result.ExternalIDs)
-		assert.Equal(t, ptr.To("tt7654321"), result.ExternalIDs.ImdbID)
-		tvdbID := 54321
-		assert.Equal(t, &tvdbID, result.ExternalIDs.TvdbID)
-		// Check watch providers from stored data
-		require.Len(t, result.WatchProviders, 1)
-		assert.Equal(t, 8, result.WatchProviders[0].ProviderID)
-		assert.Equal(t, "Netflix", result.WatchProviders[0].Name)
-		assert.Equal(t, ptr.To("/net.png"), result.WatchProviders[0].LogoPath)
-	})
-
-	t.Run("success - TV show in library", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
-		store := storageMocks.NewMockStorage(ctrl)
-		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
-
-		m := New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
-
-		emptyExternalIDsJSON := `{"imdb_id":null,"tvdb_id":null}`
-		emptyWatchProvidersJSON := `{"US":{"flatrate":[]}}`
-		metadata := &model.SeriesMetadata{
-			ID:             1,
-			TmdbID:         123,
-			Title:          "Test Series",
-			SeasonCount:    1,
-			EpisodeCount:   10,
-			Status:         "Continuing",
-			ExternalIds:    &emptyExternalIDsJSON,
-			WatchProviders: &emptyWatchProvidersJSON,
-		}
-
-		// Mock series details response will be returned via HTTP response
-
-		path := "/tv/test-series"
-		qualityProfileID := int32(2)
-		series := &storage.Series{
-			Series: model.Series{
-				ID:               1,
-				SeriesMetadataID: ptr.To(int32(1)),
-				Path:             &path,
-				QualityProfileID: qualityProfileID,
-				Monitored:        1,
-			},
-			State: storage.SeriesStateDiscovered,
-		}
-
-		store.EXPECT().GetSeriesMetadata(ctx, gomock.Any()).Return(metadata, nil)
-
-		responseBody := `{"poster_path":"poster.jpg","backdrop_path":"backdrop.jpg"}`
-		resp := &http.Response{
-			StatusCode: 200,
-			Body:       io.NopCloser(bytes.NewBufferString(responseBody)),
-		}
-		tmdbMock.EXPECT().TvSeriesDetails(ctx, int32(123), nil).Return(resp, nil)
-
-		store.EXPECT().GetSeries(ctx, gomock.Any()).Return(series, nil)
-
-		// Mock calls for seasons and episodes (empty list since this test doesn't focus on seasons)
-		store.EXPECT().ListSeasons(ctx, gomock.Any()).Return([]*storage.Season{}, nil)
-
-		result, err := m.GetTVDetailByTMDBID(ctx, 123)
-		require.NoError(t, err)
-		require.NotNil(t, result)
-
-		assert.Equal(t, int32(123), result.TMDBID)
-		assert.Equal(t, "Test Series", result.Title)
-		assert.Equal(t, string(storage.SeriesStateDiscovered), result.LibraryStatus)
-		assert.Equal(t, &path, result.Path)
-		assert.Equal(t, &qualityProfileID, result.QualityProfileID)
-		monitored := true
-		assert.Equal(t, &monitored, result.Monitored)
-	})
-
-	t.Run("error - GetSeriesMetadata fails", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
-		store := storageMocks.NewMockStorage(ctrl)
-		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
-
-		m := New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
-
-		expectedErr := errors.New("metadata fetch error")
-		store.EXPECT().GetSeriesMetadata(ctx, gomock.Any()).Return(nil, expectedErr)
-
-		result, err := m.GetTVDetailByTMDBID(ctx, 123)
-		assert.Error(t, err)
-		assert.Equal(t, expectedErr, err)
-		assert.Nil(t, result)
-	})
-
-	t.Run("error - TMDB API call fails", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
-		store := storageMocks.NewMockStorage(ctrl)
-		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
-
-		m := New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
-
-		metadata := &model.SeriesMetadata{
-			ID:             1,
-			TmdbID:         123,
-			Title:          "Test Series",
-			Status:         "Continuing",
-			ExternalIds:    nil,
-			WatchProviders: nil,
-		}
-
-		store.EXPECT().GetSeriesMetadata(ctx, gomock.Any()).Return(metadata, nil)
-
-		expectedErr := errors.New("TMDB API error")
-		tmdbMock.EXPECT().TvSeriesDetails(ctx, int32(123), nil).Return(nil, expectedErr)
-
-		result, err := m.GetTVDetailByTMDBID(ctx, 123)
-		assert.Error(t, err)
-		assert.Equal(t, expectedErr, err)
-		assert.Nil(t, result)
-	})
-
-	t.Run("success - storage error non-NotFound is logged but not returned", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
-		store := storageMocks.NewMockStorage(ctrl)
-		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
-
-		m := New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
-
-		metadata := &model.SeriesMetadata{
-			ID:             1,
-			TmdbID:         123,
-			Title:          "Test Series",
-			Status:         "Continuing",
-			ExternalIds:    nil,
-			WatchProviders: nil,
-		}
-
-		// Mock series details response will be returned via HTTP response
-
-		store.EXPECT().GetSeriesMetadata(ctx, gomock.Any()).Return(metadata, nil)
-
-		responseBody := `{"poster_path":"poster.jpg"}`
-		resp := &http.Response{
-			StatusCode: 200,
-			Body:       io.NopCloser(bytes.NewBufferString(responseBody)),
-		}
-		tmdbMock.EXPECT().TvSeriesDetails(ctx, int32(123), nil).Return(resp, nil)
-
-		dbErr := errors.New("database connection error")
-		store.EXPECT().GetSeries(ctx, gomock.Any()).Return(nil, dbErr)
-
-		result, err := m.GetTVDetailByTMDBID(ctx, 123)
-		require.NoError(t, err)
-		require.NotNil(t, result)
-
-		assert.Equal(t, int32(123), result.TMDBID)
-		assert.Equal(t, "Not In Library", result.LibraryStatus)
-		assert.Nil(t, result.Path)
-		assert.Nil(t, result.QualityProfileID)
-		assert.Nil(t, result.Monitored)
-	})
-
-	t.Run("error - TMDB returns empty FirstAirDate", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
-		store := storageMocks.NewMockStorage(ctrl)
-		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
-
-		m := New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
-
-		// This should trigger the creation of metadata which calls FromSeriesDetails with empty FirstAirDate
-		store.EXPECT().GetSeriesMetadata(ctx, gomock.Any()).Return(nil, storage.ErrNotFound)
-
-		// Mock GetSeriesDetails to return series with empty FirstAirDate
-		tmdbMock.EXPECT().GetSeriesDetails(ctx, 123).Return(&tmdb.SeriesDetails{
-			ID:               123,
-			Name:             "Test Series",
-			FirstAirDate:     "", // Empty date that causes the parsing error
-			NumberOfSeasons:  1,
-			NumberOfEpisodes: 10,
-			Seasons:          []tmdb.Season{}, // Empty to avoid creating season metadata
-		}, nil)
-
-		// Mock external IDs and watch providers calls during metadata creation
-		extIDsResp := &http.Response{StatusCode: 200, Body: io.NopCloser(bytes.NewBufferString(`{"imdb_id":null,"tvdb_id":null}`))}
-		tmdbMock.EXPECT().TvSeriesExternalIds(ctx, int32(123)).Return(extIDsResp, nil)
-		wpResp := &http.Response{StatusCode: 200, Body: io.NopCloser(bytes.NewBufferString(`{"results":{"US":{"flatrate":[]}}}`))}
-		tmdbMock.EXPECT().TvSeriesWatchProviders(ctx, int32(123)).Return(wpResp, nil)
-
-		// Mock CreateSeriesMetadata call
-		store.EXPECT().CreateSeriesMetadata(ctx, gomock.Any()).Return(int64(1), nil)
-
-		// Mock GetSeriesMetadata call after creation
-		createdMetadata := &model.SeriesMetadata{
-			ID:             1,
-			TmdbID:         123,
-			Title:          "Test Series",
-			Status:         "Continuing",
-			FirstAirDate:   nil, // Should be nil due to empty date
-			SeasonCount:    1,
-			EpisodeCount:   10,
-			ExternalIds:    nil,
-			WatchProviders: nil,
-		}
-		store.EXPECT().GetSeriesMetadata(ctx, gomock.Any()).Return(createdMetadata, nil)
-
-		// Mock TvSeriesDetails call for the main flow
-		responseBody := `{"poster_path":"poster.jpg"}`
-		resp := &http.Response{
-			StatusCode: 200,
-			Body:       io.NopCloser(bytes.NewBufferString(responseBody)),
-		}
-		tmdbMock.EXPECT().TvSeriesDetails(ctx, int32(123), nil).Return(resp, nil)
-
-		// Mock GetSeries call - not found
-		store.EXPECT().GetSeries(ctx, gomock.Any()).Return(nil, storage.ErrNotFound)
-
-		result, err := m.GetTVDetailByTMDBID(ctx, 123)
-		require.NoError(t, err, "Should handle empty FirstAirDate gracefully")
-		require.NotNil(t, result)
-
-		assert.Equal(t, int32(123), result.TMDBID)
-		assert.Equal(t, "Test Series", result.Title)
-		assert.Nil(t, result.FirstAirDate) // Should be nil when date is empty
-		assert.Equal(t, "Not In Library", result.LibraryStatus)
-	})
 }
 
 func TestMediaManager_AddSeriesToLibrary(t *testing.T) {
@@ -1566,58 +698,5 @@ func TestMediaManager_AddSeriesToLibrary(t *testing.T) {
 		assert.Equal(t, int32(1), episodes[0].EpisodeNumber)
 		assert.Equal(t, int32(1), episodes[0].Monitored)
 		assert.Equal(t, storage.EpisodeStateMissing, episodes[0].State)
-	})
-}
-
-func TestUpdateMovieQualityProfile(t *testing.T) {
-	t.Run("successfully updates quality profile", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
-		store, err := mediaSqlite.New(context.Background(), ":memory:")
-		require.NoError(t, err)
-
-		schemas, err := storage.ReadSchemaFiles("../storage/sqlite/schema/schema.sql", "../storage/sqlite/schema/defaults.sql")
-		require.NoError(t, err)
-
-		ctx := context.Background()
-		err = store.Init(ctx, schemas...)
-		require.NoError(t, err)
-
-		releaseDate := time.Now().AddDate(0, 0, -1).Format(tmdb.ReleaseDateFormat)
-		tmdbHttpMock := mhttpMock.NewMockHTTPClient(ctrl)
-		tmdbHttpMock.EXPECT().Do(gomock.Any()).Return(mediaDetailsResponse("test movie", 120, releaseDate), nil).Times(1)
-
-		tClient, err := tmdb.New("https://api.themoviedb.org", "1234", tmdb.WithHTTPClient(tmdbHttpMock))
-		require.NoError(t, err)
-
-		mockFactory := downloadMock.NewMockFactory(ctrl)
-		m := New(tClient, nil, nil, store, mockFactory, config.Manager{}, config.Config{})
-
-		req := AddMovieRequest{
-			TMDBID:           1234,
-			QualityProfileID: 1,
-		}
-		movie, err := m.AddMovieToLibrary(ctx, req)
-		require.NoError(t, err)
-
-		result, err := m.UpdateMovieQualityProfile(ctx, int64(movie.ID), 3)
-		require.NoError(t, err)
-		assert.Equal(t, int32(3), result.QualityProfileID)
-	})
-
-	t.Run("returns error for non-existent movie", func(t *testing.T) {
-		store, err := mediaSqlite.New(context.Background(), ":memory:")
-		require.NoError(t, err)
-
-		schemas, err := storage.ReadSchemaFiles("../storage/sqlite/schema/schema.sql", "../storage/sqlite/schema/defaults.sql")
-		require.NoError(t, err)
-
-		ctx := context.Background()
-		err = store.Init(ctx, schemas...)
-		require.NoError(t, err)
-
-		m := MediaManager{movieStorage: store}
-		_, err = m.UpdateMovieQualityProfile(ctx, 999, 3)
-		require.Error(t, err)
-		assert.ErrorContains(t, err, "rows")
 	})
 }
