@@ -8,13 +8,9 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/go-playground/validator/v10"
 	"github.com/gorilla/mux"
 	"github.com/kasuboski/mediaz/pkg/storage"
 )
-
-// validate is the shared struct validator instance.
-var validate = validator.New(validator.WithRequiredStructEnabled())
 
 // parseURLInt64 extracts an int64 from gorilla/mux URL variables.
 // Returns false after writing an error response if parsing fails.
@@ -42,9 +38,11 @@ func (s Server) decodeJSON(w http.ResponseWriter, r *http.Request, v any) bool {
 		return false
 	}
 
-	if err := validate.Struct(v); err != nil {
-		s.respondError(r, w, http.StatusBadRequest, err)
-		return false
+	if s.validate != nil {
+		if err := s.validate.Struct(v); err != nil {
+			s.respondError(r, w, http.StatusBadRequest, err)
+			return false
+		}
 	}
 
 	return true
