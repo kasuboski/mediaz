@@ -459,6 +459,50 @@ func TestMetadataService_RefreshMovieMetadata(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, model.MovieMetadata{ID: 1, TmdbID: 20, Title: "Movie C Refreshed", Runtime: 112}, *got)
 	})
+
+	t.Run("returns aggregated error when UpdateMovieMetadataFromTMDB fails for explicit IDs", func(t *testing.T) {
+		ctx := context.Background()
+		ctrl := gomock.NewController(t)
+
+		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
+		tmdbErr := errors.New("tmdb unavailable")
+		tmdbMock.EXPECT().GetMovieDetails(ctx, 30).Return(nil, tmdbErr)
+		tmdbMock.EXPECT().GetMovieDetails(ctx, 31).Return(nil, tmdbErr)
+
+		svc := NewMetadataService(tmdbMock, nil, nil)
+		err := svc.RefreshMovieMetadata(ctx, 30, 31)
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "tmdb unavailable")
+	})
+
+	t.Run("returns aggregated error when UpdateMovieMetadataFromTMDB fails during list", func(t *testing.T) {
+		ctx := context.Background()
+		ctrl := gomock.NewController(t)
+		store := newStore(t, ctx)
+
+		_, err := store.CreateMovieMetadata(ctx, model.MovieMetadata{TmdbID: 40, Title: "Failing Movie", Runtime: 90})
+		require.NoError(t, err)
+
+		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
+		tmdbErr := errors.New("tmdb error")
+		tmdbMock.EXPECT().GetMovieDetails(ctx, 40).Return(nil, tmdbErr)
+
+		svc := NewMetadataService(tmdbMock, store, nil)
+		err = svc.RefreshMovieMetadata(ctx)
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "tmdb error")
+	})
+
+	t.Run("returns context error immediately on cancellation", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+		ctrl := gomock.NewController(t)
+
+		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
+		svc := NewMetadataService(tmdbMock, nil, nil)
+		err := svc.RefreshMovieMetadata(ctx, 999)
+		require.ErrorIs(t, err, context.Canceled)
+	})
 }
 
 func TestMetadataService_RefreshSeriesMetadata(t *testing.T) {

@@ -349,6 +349,8 @@ func (ms MetadataService) RefreshSeriesMetadata(ctx context.Context, tmdbIDs ...
 func (ms MetadataService) RefreshMovieMetadata(ctx context.Context, tmdbIDs ...int) error {
 	log := logger.FromCtx(ctx)
 
+	var errs []error
+
 	if len(tmdbIDs) == 0 {
 		allMovies, err := ms.movieMetaStorage.ListMovieMetadata(ctx)
 		if err != nil {
@@ -357,23 +359,31 @@ func (ms MetadataService) RefreshMovieMetadata(ctx context.Context, tmdbIDs ...i
 		}
 
 		for _, movie := range allMovies {
+			if ctx.Err() != nil {
+				return ctx.Err()
+			}
 			_, err := ms.UpdateMovieMetadataFromTMDB(ctx, int(movie.TmdbID))
 			if err != nil {
 				log.Error("failed to refresh movie metadata", zap.Int32("tmdb_id", movie.TmdbID), zap.Error(err))
+				errs = append(errs, err)
 			}
 		}
 
-		return nil
+		return errors.Join(errs...)
 	}
 
 	for _, id := range tmdbIDs {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
 		_, err := ms.UpdateMovieMetadataFromTMDB(ctx, id)
 		if err != nil {
 			log.Error("failed to refresh movie metadata", zap.Int("tmdb_id", id), zap.Error(err))
+			errs = append(errs, err)
 		}
 	}
 
-	return nil
+	return errors.Join(errs...)
 }
 
 func FromMediaDetails(det tmdb.MediaDetails) model.MovieMetadata {
