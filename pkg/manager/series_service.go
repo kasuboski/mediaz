@@ -102,16 +102,25 @@ func (s SeriesService) AddSeriesToLibrary(ctx context.Context, request AddSeries
 
 	log.Debug("created new missing series", zap.Any("series", series))
 
+	// cleanupCreatedSeries removes the series on any child-creation failure.
+	cleanupCreatedSeries := func() {
+		if delErr := s.seriesStorage.DeleteSeries(ctx, seriesID); delErr != nil {
+			log.Error("failed to cleanup created series after error", zap.Int64("series_id", seriesID), zap.Error(delErr))
+		}
+	}
+
 	// Get series to access its metadata ID
 	seriesEntity, err := s.seriesStorage.GetSeries(ctx, table.Series.ID.EQ(sqlite.Int(seriesID)))
 	if err != nil || seriesEntity.SeriesMetadataID == nil {
 		log.Error("failed to get series or series has no metadata")
+		cleanupCreatedSeries()
 		return nil, fmt.Errorf("series has no metadata")
 	}
 
 	where := table.SeasonMetadata.SeriesMetadataID.EQ(sqlite.Int32(*seriesEntity.SeriesMetadataID))
 	seasonMetadata, err := s.seriesMetaStorage.ListSeasonMetadata(ctx, where)
 	if err != nil {
+		cleanupCreatedSeries()
 		return nil, err
 	}
 
@@ -127,6 +136,7 @@ func (s SeriesService) AddSeriesToLibrary(ctx context.Context, request AddSeries
 		seasonID, err := s.seriesStorage.CreateSeason(ctx, season, storage.SeasonStateMissing)
 		if err != nil {
 			log.Error("failed to create season", zap.Error(err))
+			cleanupCreatedSeries()
 			return nil, err
 		}
 
@@ -136,6 +146,7 @@ func (s SeriesService) AddSeriesToLibrary(ctx context.Context, request AddSeries
 		seasonEntity, err := s.seriesStorage.GetSeason(ctx, table.Season.ID.EQ(sqlite.Int64(seasonID)))
 		if err != nil || seasonEntity.SeasonMetadataID == nil {
 			log.Error("failed to get season or season has no metadata linked")
+			cleanupCreatedSeries()
 			return nil, fmt.Errorf("season has no metadata")
 		}
 
@@ -144,6 +155,7 @@ func (s SeriesService) AddSeriesToLibrary(ctx context.Context, request AddSeries
 		episodesMetadata, err := s.seriesMetaStorage.ListEpisodeMetadata(ctx, where)
 		if err != nil {
 			log.Error("failed to list episode metadata", zap.Error(err))
+			cleanupCreatedSeries()
 			return nil, err
 		}
 
@@ -160,6 +172,7 @@ func (s SeriesService) AddSeriesToLibrary(ctx context.Context, request AddSeries
 			_, err := s.seriesStorage.CreateEpisode(ctx, episode, storage.EpisodeStateMissing)
 			if err != nil {
 				log.Error("failed to create episode", zap.Error(err))
+				cleanupCreatedSeries()
 				return nil, err
 			}
 
@@ -189,6 +202,9 @@ func (s SeriesService) DeleteSeries(ctx context.Context, seriesID int64, deleteD
 		log.Warn("failed to get seasons for cleanup", zap.Error(err))
 	}
 
+	// When deleting the directory, collect episode file IDs first, then attempt
+	// filesystem deletion before touching the DB, to avoid DB inconsistency on failure.
+	var episodeFileIDs []int64
 	if deleteDirectory {
 		for _, season := range seasons {
 			episodes, err := s.seriesStorage.ListEpisodes(ctx, table.Episode.SeasonID.EQ(sqlite.Int64(int64(season.ID))))
@@ -200,20 +216,23 @@ func (s SeriesService) DeleteSeries(ctx context.Context, seriesID int64, deleteD
 				if episode.EpisodeFileID == nil {
 					continue
 				}
-				if err := s.seriesStorage.DeleteEpisodeFile(ctx, int64(*episode.EpisodeFileID)); err != nil {
-					log.Warn("failed to delete episode file", zap.Int32("episode_file_id", *episode.EpisodeFileID), zap.Error(err))
-				}
+				episodeFileIDs = append(episodeFileIDs, int64(*episode.EpisodeFileID))
 			}
 		}
-	}
 
-	if deleteDirectory {
 		if series.Path == nil {
 			return fmt.Errorf("cannot delete directory: series path is nil")
 		}
 
 		if err := s.library.DeleteSeriesDirectory(ctx, *series.Path); err != nil {
 			return fmt.Errorf("failed to delete series directory %s: %w", *series.Path, err)
+		}
+
+		// Only delete episode file DB rows after successful directory deletion.
+		for _, fileID := range episodeFileIDs {
+			if err := s.seriesStorage.DeleteEpisodeFile(ctx, fileID); err != nil {
+				log.Warn("failed to delete episode file", zap.Int64("episode_file_id", fileID), zap.Error(err))
+			}
 		}
 	}
 
@@ -354,18 +373,25 @@ func (s SeriesService) ListShowsInLibrary(ctx context.Context) ([]LibraryShow, e
 	if err != nil {
 		return nil, err
 	}
-	shows := filterAndMap(series, func(sp *storage.Series) (LibraryShow, bool) {
+	var shows []LibraryShow
+	for _, sp := range series {
 		// Skip series without metadata - they haven't been reconciled yet
 		if sp.SeriesMetadataID == nil {
-			return LibraryShow{}, false
+			continue
 		}
+
+		meta, err := s.seriesMetaStorage.GetSeriesMetadata(ctx, table.SeriesMetadata.ID.EQ(sqlite.Int(int64(*sp.SeriesMetadataID))))
+		if err != nil {
+			return nil, err
+		}
+		// Skip when metadata is known to be missing (not a storage error)
+		if meta == nil {
+			continue
+		}
+
 		ls := LibraryShow{State: string(sp.State)}
 		if sp.Path != nil {
 			ls.Path = *sp.Path
-		}
-		meta, err := s.seriesMetaStorage.GetSeriesMetadata(ctx, table.SeriesMetadata.ID.EQ(sqlite.Int(int64(*sp.SeriesMetadataID))))
-		if err != nil || meta == nil {
-			return LibraryShow{}, false
 		}
 		ls.TMDBID = meta.TmdbID
 		ls.Title = meta.Title
@@ -375,8 +401,8 @@ func (s SeriesService) ListShowsInLibrary(ctx context.Context) ([]LibraryShow, e
 		if meta.FirstAirDate != nil {
 			ls.Year = int32(meta.FirstAirDate.Year())
 		}
-		return ls, true
-	})
+		shows = append(shows, ls)
+	}
 	return shows, nil
 }
 

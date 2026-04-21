@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	mockLibrary "github.com/kasuboski/mediaz/pkg/library/mocks"
 	"github.com/kasuboski/mediaz/pkg/ptr"
@@ -55,10 +56,16 @@ func TestSeriesService_UpdateSeriesMonitored(t *testing.T) {
 	store.EXPECT().UpdateSeries(ctx, gomock.Any(), gomock.Any()).Return(nil)
 	store.EXPECT().GetSeries(ctx, gomock.Any()).Return(series, nil)
 
+	expected := &storage.Series{
+		Series: model.Series{
+			ID:        1,
+			Monitored: 1,
+		},
+	}
+
 	result, err := svc.UpdateSeriesMonitored(ctx, 1, true)
 	require.NoError(t, err)
-	assert.NotNil(t, result)
-	assert.Equal(t, int32(1), result.ID)
+	assert.Equal(t, expected, result)
 }
 
 func TestSeriesService_UpdateSeriesMonitored_Error(t *testing.T) {
@@ -192,8 +199,8 @@ func TestSeriesService_DeleteSeries_WithEpisodeFiles(t *testing.T) {
 	store.EXPECT().GetSeries(ctx, gomock.Any()).Return(series, nil)
 	store.EXPECT().ListSeasons(ctx, gomock.Any()).Return([]*storage.Season{season}, nil)
 	store.EXPECT().ListEpisodes(ctx, gomock.Any()).Return([]*storage.Episode{episode}, nil)
-	store.EXPECT().DeleteEpisodeFile(ctx, int64(episodeFileID)).Return(nil)
 	lib.EXPECT().DeleteSeriesDirectory(ctx, path).Return(nil)
+	store.EXPECT().DeleteEpisodeFile(ctx, int64(episodeFileID)).Return(nil)
 	store.EXPECT().DeleteSeries(ctx, int64(1)).Return(nil)
 
 	err := svc.DeleteSeries(ctx, 1, true)
@@ -266,9 +273,15 @@ func TestSeriesService_ListShowsInLibrary(t *testing.T) {
 	shows, err := svc.ListShowsInLibrary(ctx)
 	require.NoError(t, err)
 	require.Len(t, shows, 1)
-	assert.Equal(t, "Test Show", shows[0].Title)
-	assert.Equal(t, int32(123), shows[0].TMDBID)
-	assert.Equal(t, string(storage.SeriesStateMissing), shows[0].State)
+	assert.Equal(t, []LibraryShow{
+		{
+			Path:       "Test Show",
+			TMDBID:     123,
+			Title:      "Test Show",
+			PosterPath: "poster.jpg",
+			State:      string(storage.SeriesStateMissing),
+		},
+	}, shows)
 }
 
 func TestSeriesService_ListShowsInLibrary_SkipsNoMetadata(t *testing.T) {
@@ -311,8 +324,14 @@ func TestSeriesService_GetSeriesDetails(t *testing.T) {
 
 	result, err := svc.GetSeriesDetails(ctx, 123)
 	require.NoError(t, err)
-	assert.Equal(t, int32(123), result.TmdbID)
-	assert.Equal(t, "Test Series", result.Title)
+	airDate := time.Date(2023, time.January, 1, 0, 0, 0, 0, time.UTC)
+	assert.Equal(t, model.SeriesMetadata{
+		TmdbID:       123,
+		Title:        "Test Series",
+		SeasonCount:  2,
+		FirstAirDate: &airDate,
+		Overview:     ptr.To(""),
+	}, result)
 }
 
 func TestSeriesService_SearchTV_EmptyQuery(t *testing.T) {
@@ -360,12 +379,14 @@ func TestSeriesService_buildTVDetailResult(t *testing.T) {
 	}
 
 	result := svc.buildTVDetailResult(metadata, &tmdb.SeriesDetailsResponse{}, nil, nil)
-	assert.Equal(t, int32(123), result.TMDBID)
-	assert.Equal(t, "Test Series", result.Title)
-	assert.Equal(t, int32(3), result.SeasonCount)
-	assert.Equal(t, int32(30), result.EpisodeCount)
-	assert.Equal(t, "Not In Library", result.LibraryStatus)
-	assert.Equal(t, "A great show", result.Overview)
+	assert.Equal(t, &TVDetailResult{
+		TMDBID:        123,
+		Title:         "Test Series",
+		Overview:      "A great show",
+		SeasonCount:   3,
+		EpisodeCount:  30,
+		LibraryStatus: "Not In Library",
+	}, result)
 }
 
 func TestSeriesService_buildTVDetailResult_WithSeries(t *testing.T) {
@@ -390,8 +411,16 @@ func TestSeriesService_buildTVDetailResult_WithSeries(t *testing.T) {
 	}
 
 	result := svc.buildTVDetailResult(metadata, &tmdb.SeriesDetailsResponse{}, series, nil)
-	assert.Equal(t, string(series.State), result.LibraryStatus)
-	assert.Equal(t, path, *result.Path)
-	assert.Equal(t, int32(5), *result.QualityProfileID)
-	assert.True(t, *result.Monitored)
+	assert.Equal(t, &TVDetailResult{
+		TMDBID:           123,
+		Title:            "Test Series",
+		LibraryStatus:    string(series.State),
+		SeasonCount:      0,
+		EpisodeCount:     0,
+		ID:               ptr.To(int32(1)),
+		Path:             &path,
+		QualityProfileID: ptr.To(int32(5)),
+		Monitored:        ptr.To(true),
+		MonitorNewSeasons: ptr.To(false),
+	}, result)
 }
