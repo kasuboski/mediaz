@@ -39,7 +39,7 @@ func TestValidation_TriggerJobRequest(t *testing.T) {
 	})
 
 	t.Run("valid type passes validation", func(t *testing.T) {
-		req := manager.TriggerJobRequest{Type: "movie_index"}
+		req := manager.TriggerJobRequest{Type: "MovieIndex"}
 		err := v.validate.Struct(req)
 		assert.NoError(t, err)
 	})

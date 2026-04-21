@@ -24,7 +24,7 @@ type JobService struct {
 
 // TriggerJobRequest represents the request to manually trigger a job
 type TriggerJobRequest struct {
-	Type string `json:"type" validate:"required"`
+	Type string `json:"type" validate:"required,oneof=MovieIndex MovieReconcile SeriesIndex SeriesReconcile IndexerSync"`
 }
 
 // JobResponse represents a single job in API responses

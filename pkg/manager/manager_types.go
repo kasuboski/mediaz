@@ -179,7 +179,7 @@ type AddIndexerRequest struct {
 
 type UpdateIndexerRequest struct {
 	Name     string  `json:"name" validate:"required"`
-	Priority int32   `json:"priority" validate:"required"`
+	Priority int32   `json:"priority" validate:"required,gt=0"`
 	URI      string  `json:"uri" validate:"required"`
 	APIKey   *string `json:"api_key,omitempty"`
 }
@@ -187,7 +187,7 @@ type UpdateIndexerRequest struct {
 // DeleteIndexerRequest identifies an indexer to delete by ID.
 // ID must be provided; callers should confirm existence before deletion to avoid silent no-ops.
 type DeleteIndexerRequest struct {
-	ID *int `json:"id" yaml:"id" validate:"required"`
+	ID *int `json:"id" yaml:"id" validate:"required,gt=0"`
 }
 
 // SeasonResult represents a season with metadata for API responses.
