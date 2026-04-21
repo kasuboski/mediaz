@@ -9,8 +9,8 @@ import (
 	indexerMock "github.com/kasuboski/mediaz/pkg/indexer/mocks"
 	"github.com/kasuboski/mediaz/pkg/prowlarr"
 	storageMocks "github.com/kasuboski/mediaz/pkg/storage/mocks"
-	"github.com/oapi-codegen/nullable"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
+	"github.com/oapi-codegen/nullable"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -450,6 +450,17 @@ func TestIndexerService_UpdateIndexerSource(t *testing.T) {
 			APIKey: nil,
 		})
 		require.NoError(t, err)
+	})
+
+	t.Run("returns error when id is out of int32 range", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		svc, _, _, _ := newTestIndexerService(ctrl)
+
+		_, err := svc.UpdateIndexerSource(ctx, 2147483648, UpdateIndexerSourceRequest{Name: "updated"})
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "out of range")
 	})
 }
 
