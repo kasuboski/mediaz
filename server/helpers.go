@@ -38,11 +38,9 @@ func (s Server) decodeJSON(w http.ResponseWriter, r *http.Request, v any) bool {
 		return false
 	}
 
-	if s.validate != nil {
-		if err := s.validate.Struct(v); err != nil {
-			s.respondError(r, w, http.StatusBadRequest, err)
-			return false
-		}
+	if err := s.validate.Struct(v); err != nil {
+		s.respondError(r, w, http.StatusBadRequest, err)
+		return false
 	}
 
 	return true

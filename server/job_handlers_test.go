@@ -19,7 +19,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
-	"go.uber.org/zap"
 )
 
 func TestServer_ListJobs(t *testing.T) {
@@ -61,10 +60,7 @@ func TestServer_ListJobs(t *testing.T) {
 
 		mgr := manager.New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
 
-		s := Server{
-			baseLogger: zap.NewNop().Sugar(),
-			manager:    mgr,
-		}
+		s := newTestServer(withManager(mgr))
 
 		req, err := http.NewRequest("GET", "/jobs", nil)
 		require.NoError(t, err)
@@ -114,10 +110,7 @@ func TestServer_ListJobs(t *testing.T) {
 
 		mgr := manager.New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
 
-		s := Server{
-			baseLogger: zap.NewNop().Sugar(),
-			manager:    mgr,
-		}
+		s := newTestServer(withManager(mgr))
 
 		req, err := http.NewRequest("GET", "/jobs", nil)
 		require.NoError(t, err)
@@ -149,10 +142,7 @@ func TestServer_ListJobs(t *testing.T) {
 
 		mgr := manager.New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
 
-		s := Server{
-			baseLogger: zap.NewNop().Sugar(),
-			manager:    mgr,
-		}
+		s := newTestServer(withManager(mgr))
 
 		req, err := http.NewRequest("GET", "/jobs", nil)
 		require.NoError(t, err)
@@ -192,10 +182,7 @@ func TestServer_GetJob(t *testing.T) {
 
 		mgr := manager.New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
 
-		s := Server{
-			baseLogger: zap.NewNop().Sugar(),
-			manager:    mgr,
-		}
+		s := newTestServer(withManager(mgr))
 
 		req, err := http.NewRequest("GET", "/jobs/42", nil)
 		require.NoError(t, err)
@@ -223,7 +210,7 @@ func TestServer_GetJob(t *testing.T) {
 	})
 
 	t.Run("invalid job id format", func(t *testing.T) {
-		s := Server{baseLogger: zap.NewNop().Sugar()}
+		s := newTestServer()
 
 		req, err := http.NewRequest("GET", "/jobs/invalid", nil)
 		require.NoError(t, err)
@@ -249,10 +236,7 @@ func TestServer_GetJob(t *testing.T) {
 
 		mgr := manager.New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
 
-		s := Server{
-			baseLogger: zap.NewNop().Sugar(),
-			manager:    mgr,
-		}
+		s := newTestServer(withManager(mgr))
 
 		req, err := http.NewRequest("GET", "/jobs/999", nil)
 		require.NoError(t, err)
@@ -300,10 +284,7 @@ func TestServer_CancelJob(t *testing.T) {
 
 		mgr := manager.New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
 
-		s := Server{
-			baseLogger: zap.NewNop().Sugar(),
-			manager:    mgr,
-		}
+		s := newTestServer(withManager(mgr))
 
 		req, err := http.NewRequest("POST", "/jobs/42/cancel", nil)
 		require.NoError(t, err)
@@ -329,7 +310,7 @@ func TestServer_CancelJob(t *testing.T) {
 	})
 
 	t.Run("invalid job id format", func(t *testing.T) {
-		s := Server{baseLogger: zap.NewNop().Sugar()}
+		s := newTestServer()
 
 		req, err := http.NewRequest("POST", "/jobs/invalid/cancel", nil)
 		require.NoError(t, err)
@@ -355,10 +336,7 @@ func TestServer_CancelJob(t *testing.T) {
 
 		mgr := manager.New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
 
-		s := Server{
-			baseLogger: zap.NewNop().Sugar(),
-			manager:    mgr,
-		}
+		s := newTestServer(withManager(mgr))
 
 		req, err := http.NewRequest("POST", "/jobs/999/cancel", nil)
 		require.NoError(t, err)
@@ -397,10 +375,7 @@ func TestServer_CreateJob(t *testing.T) {
 
 		mgr := manager.New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
 
-		s := Server{
-			baseLogger: zap.NewNop().Sugar(),
-			manager:    mgr,
-		}
+		s := newTestServer(withManager(mgr))
 
 		requestBody := `{"type":"MovieIndex"}`
 		req, err := http.NewRequest("POST", "/jobs", strings.NewReader(requestBody))
@@ -451,10 +426,7 @@ func TestServer_CreateJob(t *testing.T) {
 
 		mgr := manager.New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
 
-		s := Server{
-			baseLogger: zap.NewNop().Sugar(),
-			manager:    mgr,
-		}
+		s := newTestServer(withManager(mgr))
 
 		requestBody := `{"type":"MovieIndex"}`
 		req, err := http.NewRequest("POST", "/jobs", strings.NewReader(requestBody))
@@ -479,7 +451,7 @@ func TestServer_CreateJob(t *testing.T) {
 	})
 
 	t.Run("invalid request body", func(t *testing.T) {
-		s := Server{baseLogger: zap.NewNop().Sugar()}
+		s := newTestServer()
 
 		requestBody := `{"invalid json`
 		req, err := http.NewRequest("POST", "/jobs", strings.NewReader(requestBody))
@@ -505,10 +477,7 @@ func TestServer_CreateJob(t *testing.T) {
 
 		mgr := manager.New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
 
-		s := Server{
-			baseLogger: zap.NewNop().Sugar(),
-			manager:    mgr,
-		}
+		s := newTestServer(withManager(mgr))
 
 		requestBody := `{"type":"MovieIndex"}`
 		req, err := http.NewRequest("POST", "/jobs", strings.NewReader(requestBody))

@@ -7,12 +7,11 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"go.uber.org/zap"
 )
 
 func TestServer_Healthz(t *testing.T) {
 	t.Run("healthz", func(t *testing.T) {
-		s := Server{baseLogger: zap.NewNop().Sugar()}
+		s := newTestServer()
 
 		req, err := http.NewRequest("GET", "/healthz", nil)
 		assert.NoError(t, err)

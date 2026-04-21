@@ -21,7 +21,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
-	"go.uber.org/zap"
 )
 
 func TestServer_GetTVDetailByTMDBID(t *testing.T) {
@@ -125,10 +124,7 @@ func TestServer_GetTVDetailByTMDBID(t *testing.T) {
 		// Create manager with mocked dependencies
 		mgr := manager.New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
 
-		s := Server{
-			baseLogger: zap.NewNop().Sugar(),
-			manager:    mgr,
-		}
+		s := newTestServer(withManager(mgr))
 
 		req, err := http.NewRequest("GET", "/tv/12345", nil)
 		require.NoError(t, err)
@@ -238,10 +234,7 @@ func TestServer_GetTVDetailByTMDBID(t *testing.T) {
 
 		mgr := manager.New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
 
-		s := Server{
-			baseLogger: zap.NewNop().Sugar(),
-			manager:    mgr,
-		}
+		s := newTestServer(withManager(mgr))
 
 		req, err := http.NewRequest("GET", "/tv/12345", nil)
 		require.NoError(t, err)
@@ -267,7 +260,7 @@ func TestServer_GetTVDetailByTMDBID(t *testing.T) {
 	})
 
 	t.Run("invalid tmdb id format", func(t *testing.T) {
-		s := Server{baseLogger: zap.NewNop().Sugar()}
+		s := newTestServer()
 
 		req, err := http.NewRequest("GET", "/tv/invalid", nil)
 		require.NoError(t, err)
@@ -293,10 +286,7 @@ func TestServer_GetTVDetailByTMDBID(t *testing.T) {
 
 		mgr := manager.New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
 
-		s := Server{
-			baseLogger: zap.NewNop().Sugar(),
-			manager:    mgr,
-		}
+		s := newTestServer(withManager(mgr))
 
 		req, err := http.NewRequest("GET", "/tv/12345", nil)
 		require.NoError(t, err)

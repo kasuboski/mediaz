@@ -3,18 +3,12 @@ package server
 import (
 	"testing"
 
-	"github.com/go-playground/validator/v10"
 	"github.com/kasuboski/mediaz/pkg/manager"
 	"github.com/stretchr/testify/assert"
 )
 
-// newTestValidator returns a Server with a validator for testing.
-func newTestValidator() Server {
-	return Server{validate: validator.New(validator.WithRequiredStructEnabled())}
-}
-
 func TestValidation_AddMovieRequest(t *testing.T) {
-	v := newTestValidator()
+	v := newTestServer()
 
 	t.Run("empty request fails validation", func(t *testing.T) {
 		req := manager.AddMovieRequest{}
@@ -36,7 +30,7 @@ func TestValidation_AddMovieRequest(t *testing.T) {
 }
 
 func TestValidation_TriggerJobRequest(t *testing.T) {
-	v := newTestValidator()
+	v := newTestServer()
 
 	t.Run("empty type fails validation", func(t *testing.T) {
 		req := manager.TriggerJobRequest{}
@@ -52,7 +46,7 @@ func TestValidation_TriggerJobRequest(t *testing.T) {
 }
 
 func TestValidation_AddQualityProfileRequest(t *testing.T) {
-	v := newTestValidator()
+	v := newTestServer()
 
 	t.Run("empty request fails validation", func(t *testing.T) {
 		req := manager.AddQualityProfileRequest{}
@@ -74,7 +68,7 @@ func TestValidation_AddQualityProfileRequest(t *testing.T) {
 }
 
 func TestValidation_AddDownloadClientRequest(t *testing.T) {
-	v := newTestValidator()
+	v := newTestServer()
 
 	t.Run("empty request passes validation (no tags on embedded model)", func(t *testing.T) {
 		req := manager.AddDownloadClientRequest{}
