@@ -21,23 +21,23 @@ func NewQualityService(qualityStorage storage.QualityStorage) *QualityService {
 }
 
 type AddQualityDefinitionRequest struct {
-	Name          string  `json:"name"`
-	Type          string  `json:"type"`
+	Name          string  `json:"name" validate:"required"`
+	Type          string  `json:"type" validate:"required,oneof=movie episode"`
 	PreferredSize float64 `json:"preferredSize"`
 	MinSize       float64 `json:"minSize"`
 	MaxSize       float64 `json:"maxSize"`
 }
 
 type UpdateQualityDefinitionRequest struct {
-	Name          string  `json:"name"`
-	Type          string  `json:"type"`
+	Name          string  `json:"name" validate:"required"`
+	Type          string  `json:"type" validate:"required,oneof=movie episode"`
 	PreferredSize float64 `json:"preferredSize"`
 	MinSize       float64 `json:"minSize"`
 	MaxSize       float64 `json:"maxSize"`
 }
 
 type DeleteQualityDefinitionRequest struct {
-	ID *int `json:"id" yaml:"id"`
+	ID *int `json:"id" yaml:"id" validate:"required,gt=0"`
 }
 
 func (qs QualityService) AddQualityDefinition(ctx context.Context, request AddQualityDefinitionRequest) (model.QualityDefinition, error) {
@@ -112,21 +112,21 @@ func (qs QualityService) UpdateQualityDefinition(ctx context.Context, id int64, 
 }
 
 type AddQualityProfileRequest struct {
-	Name            string  `json:"name"`
+	Name            string  `json:"name" validate:"required"`
 	CutoffQualityID *int32  `json:"cutoffQualityId,omitempty"`
 	UpgradeAllowed  bool    `json:"upgradeAllowed"`
-	QualityIDs      []int32 `json:"qualityIds"`
+	QualityIDs      []int32 `json:"qualityIds" validate:"required,min=1,dive,gt=0"`
 }
 
 type UpdateQualityProfileRequest struct {
-	Name            string  `json:"name"`
+	Name            string  `json:"name" validate:"required"`
 	CutoffQualityID *int32  `json:"cutoffQualityId,omitempty"`
 	UpgradeAllowed  bool    `json:"upgradeAllowed"`
-	QualityIDs      []int32 `json:"qualityIds"`
+	QualityIDs      []int32 `json:"qualityIds" validate:"required,min=1,dive,gt=0"`
 }
 
 type DeleteQualityProfileRequest struct {
-	ID *int `json:"id"`
+	ID *int `json:"id" validate:"required,gt=0"`
 }
 
 func (qs QualityService) GetQualityProfile(ctx context.Context, id int64) (storage.QualityProfile, error) {

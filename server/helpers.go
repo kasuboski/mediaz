@@ -24,8 +24,8 @@ func (s Server) parseURLInt64(w http.ResponseWriter, r *http.Request, key string
 	return val, true
 }
 
-// decodeJSON reads the request body and unmarshals into v.
-// Returns false after writing an error response if reading or unmarshaling fails.
+// decodeJSON reads the request body, unmarshals into v, and validates struct tags.
+// Returns false after writing an error response if reading, unmarshaling, or validation fails.
 func (s Server) decodeJSON(w http.ResponseWriter, r *http.Request, v any) bool {
 	b, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -37,6 +37,12 @@ func (s Server) decodeJSON(w http.ResponseWriter, r *http.Request, v any) bool {
 		s.respondError(r, w, http.StatusBadRequest, fmt.Errorf("invalid request body"))
 		return false
 	}
+
+	if err := s.validate.Struct(v); err != nil {
+		s.respondError(r, w, http.StatusBadRequest, err)
+		return false
+	}
+
 	return true
 }
 

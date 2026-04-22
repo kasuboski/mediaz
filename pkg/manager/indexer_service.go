@@ -26,20 +26,20 @@ type indexerCacheEntry struct {
 }
 
 type AddIndexerSourceRequest struct {
-	Name           string  `json:"name"`
-	Implementation string  `json:"implementation"`
-	Scheme         string  `json:"scheme"`
-	Host           string  `json:"host"`
+	Name           string  `json:"name" validate:"required"`
+	Implementation string  `json:"implementation" validate:"required"`
+	Scheme         string  `json:"scheme" validate:"required"`
+	Host           string  `json:"host" validate:"required"`
 	Port           *int32  `json:"port,omitempty"`
 	APIKey         *string `json:"apiKey,omitempty"`
 	Enabled        bool    `json:"enabled"`
 }
 
 type UpdateIndexerSourceRequest struct {
-	Name           string  `json:"name"`
-	Implementation string  `json:"implementation"`
-	Scheme         string  `json:"scheme"`
-	Host           string  `json:"host"`
+	Name           string  `json:"name" validate:"required"`
+	Implementation string  `json:"implementation" validate:"required"`
+	Scheme         string  `json:"scheme" validate:"required"`
+	Host           string  `json:"host" validate:"required"`
 	Port           *int32  `json:"port,omitempty"`
 	APIKey         *string `json:"apiKey,omitempty"`
 	Enabled        bool    `json:"enabled"`

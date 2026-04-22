@@ -150,16 +150,16 @@ type LibraryMovie struct {
 // AddMovieRequest describes inputs to start managing a movie.
 // TMDBID must refer to a valid TMDB movie; QualityProfileID must match an existing quality profile.
 type AddMovieRequest struct {
-	TMDBID           int   `json:"tmdbID"`
-	QualityProfileID int32 `json:"qualityProfileID"`
+	TMDBID           int   `json:"tmdbID" validate:"required,gt=0"`
+	QualityProfileID int32 `json:"qualityProfileID" validate:"required,gt=0"`
 }
 
 // AddSeriesRequest describes inputs to start managing a TV series.
 // TMDBID must refer to a valid TMDB series; QualityProfileID must match an existing quality profile.
 // MonitorNewSeasons indicates whether new seasons should be automatically monitored.
 type AddSeriesRequest struct {
-	TMDBID            int   `json:"tmdbID"`
-	QualityProfileID  int32 `json:"qualityProfileID"`
+	TMDBID            int   `json:"tmdbID" validate:"required,gt=0"`
+	QualityProfileID  int32 `json:"qualityProfileID" validate:"required,gt=0"`
 	MonitorNewSeasons bool  `json:"monitorNewSeasons,omitempty"`
 }
 
@@ -178,16 +178,16 @@ type AddIndexerRequest struct {
 }
 
 type UpdateIndexerRequest struct {
-	Name     string  `json:"name"`
-	Priority int32   `json:"priority"`
-	URI      string  `json:"uri"`
+	Name     string  `json:"name" validate:"required"`
+	Priority int32   `json:"priority" validate:"required,gt=0"`
+	URI      string  `json:"uri" validate:"required"`
 	APIKey   *string `json:"api_key,omitempty"`
 }
 
 // DeleteIndexerRequest identifies an indexer to delete by ID.
 // ID must be provided; callers should confirm existence before deletion to avoid silent no-ops.
 type DeleteIndexerRequest struct {
-	ID *int `json:"id" yaml:"id"`
+	ID *int `json:"id" yaml:"id" validate:"required,gt=0"`
 }
 
 // SeasonResult represents a season with metadata for API responses.

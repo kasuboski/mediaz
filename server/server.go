@@ -9,13 +9,13 @@ import (
 	"os/signal"
 	"time"
 
+	"github.com/go-playground/validator/v10"
+	"github.com/gorilla/handlers"
+	"github.com/gorilla/mux"
 	"github.com/kasuboski/mediaz/config"
 	"github.com/kasuboski/mediaz/pkg/logger"
 	"github.com/kasuboski/mediaz/pkg/manager"
 	"go.uber.org/zap"
-
-	"github.com/gorilla/handlers"
-	"github.com/gorilla/mux"
 )
 
 // GenericResponse is the standard JSON envelope for all API responses.
@@ -35,6 +35,7 @@ type Server struct {
 	manager    manager.MediaManager
 	config     config.Server
 	fileServer http.Handler
+	validate   *validator.Validate
 }
 
 // New creates a new media server
@@ -43,6 +44,7 @@ func New(logger *zap.SugaredLogger, manager manager.MediaManager, config config.
 		baseLogger: logger,
 		manager:    manager,
 		config:     config,
+		validate:   validator.New(validator.WithRequiredStructEnabled()),
 	}
 }
 

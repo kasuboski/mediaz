@@ -5,7 +5,7 @@ RUN npm ci
 COPY frontend/ ./
 RUN npm run build
 
-FROM --platform=$BUILDPLATFORM golang:1.24-alpine AS go-cross-compiler
+FROM --platform=$BUILDPLATFORM golang:1.25-alpine AS go-cross-compiler
 
 ARG TARGETARCH
 ENV GOOS=linux

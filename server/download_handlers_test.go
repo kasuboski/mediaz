@@ -19,7 +19,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
-	"go.uber.org/zap"
 )
 
 func TestServer_UpdateDownloadClient(t *testing.T) {
@@ -45,10 +44,7 @@ func TestServer_UpdateDownloadClient(t *testing.T) {
 
 		mgr := manager.New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
 
-		s := Server{
-			baseLogger: zap.NewNop().Sugar(),
-			manager:    mgr,
-		}
+		s := newTestServer(withManager(mgr))
 
 		requestBody := `{"type":"usenet","implementation":"sabnzbd","scheme":"https","host":"sabnzbd.example.com","port":443}`
 		req, err := http.NewRequest("PUT", "/download/clients/1", strings.NewReader(requestBody))
@@ -79,7 +75,7 @@ func TestServer_UpdateDownloadClient(t *testing.T) {
 	})
 
 	t.Run("invalid id format", func(t *testing.T) {
-		s := Server{baseLogger: zap.NewNop().Sugar()}
+		s := newTestServer()
 
 		requestBody := `{"type":"usenet","implementation":"sabnzbd"}`
 		req, err := http.NewRequest("PUT", "/download/clients/invalid", strings.NewReader(requestBody))
@@ -96,7 +92,7 @@ func TestServer_UpdateDownloadClient(t *testing.T) {
 	})
 
 	t.Run("invalid request body - malformed json", func(t *testing.T) {
-		s := Server{baseLogger: zap.NewNop().Sugar()}
+		s := newTestServer()
 
 		requestBody := `{"invalid json`
 		req, err := http.NewRequest("PUT", "/download/clients/1", strings.NewReader(requestBody))
@@ -123,10 +119,7 @@ func TestServer_UpdateDownloadClient(t *testing.T) {
 
 		mgr := manager.New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
 
-		s := Server{
-			baseLogger: zap.NewNop().Sugar(),
-			manager:    mgr,
-		}
+		s := newTestServer(withManager(mgr))
 
 		requestBody := `{"type":"usenet","implementation":"sabnzbd"}`
 		req, err := http.NewRequest("PUT", "/download/clients/1", strings.NewReader(requestBody))
@@ -169,10 +162,7 @@ func TestServer_TestDownloadClient(t *testing.T) {
 
 		mgr := manager.New(tmdbMock, nil, nil, store, factory, config.Manager{}, config.Config{})
 
-		s := Server{
-			baseLogger: zap.NewNop().Sugar(),
-			manager:    mgr,
-		}
+		s := newTestServer(withManager(mgr))
 
 		requestBody := `{"type":"torrent","implementation":"transmission","scheme":"http","host":"localhost","port":9091}`
 		req, err := http.NewRequest("POST", "/download/clients/test", strings.NewReader(requestBody))
@@ -196,7 +186,7 @@ func TestServer_TestDownloadClient(t *testing.T) {
 	})
 
 	t.Run("invalid request body - malformed json", func(t *testing.T) {
-		s := Server{baseLogger: zap.NewNop().Sugar()}
+		s := newTestServer()
 
 		requestBody := `{"invalid json`
 		req, err := http.NewRequest("POST", "/download/clients/test", strings.NewReader(requestBody))
@@ -233,10 +223,7 @@ func TestServer_TestDownloadClient(t *testing.T) {
 
 		mgr := manager.New(tmdbMock, nil, nil, store, factory, config.Manager{}, config.Config{})
 
-		s := Server{
-			baseLogger: zap.NewNop().Sugar(),
-			manager:    mgr,
-		}
+		s := newTestServer(withManager(mgr))
 
 		requestBody := `{"type":"torrent","implementation":"transmission","scheme":"http","host":"invalid-host","port":9091}`
 		req, err := http.NewRequest("POST", "/download/clients/test", strings.NewReader(requestBody))

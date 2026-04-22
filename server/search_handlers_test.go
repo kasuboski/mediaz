@@ -14,12 +14,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
-	"go.uber.org/zap"
 )
 
 func TestServer_SearchForMovie(t *testing.T) {
 	t.Run("invalid id", func(t *testing.T) {
-		s := Server{baseLogger: zap.NewNop().Sugar()}
+		s := newTestServer()
 
 		req, err := http.NewRequest("POST", "/library/movies/invalid/search", nil)
 		require.NoError(t, err)
@@ -41,10 +40,7 @@ func TestServer_SearchForMovie(t *testing.T) {
 		store.EXPECT().GetMovie(gomock.Any(), int64(1)).Return(nil, storage.ErrNotFound)
 
 		mgr := manager.New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
-		s := Server{
-			baseLogger: zap.NewNop().Sugar(),
-			manager:    mgr,
-		}
+		s := newTestServer(withManager(mgr))
 
 		req, err := http.NewRequest("POST", "/library/movies/1/search", nil)
 		require.NoError(t, err)
@@ -68,10 +64,7 @@ func TestServer_SearchForMovie(t *testing.T) {
 		}, nil)
 
 		mgr := manager.New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
-		s := Server{
-			baseLogger: zap.NewNop().Sugar(),
-			manager:    mgr,
-		}
+		s := newTestServer(withManager(mgr))
 
 		req, err := http.NewRequest("POST", "/library/movies/1/search", nil)
 		require.NoError(t, err)
@@ -88,7 +81,7 @@ func TestServer_SearchForMovie(t *testing.T) {
 
 func TestServer_SearchForSeries(t *testing.T) {
 	t.Run("invalid id", func(t *testing.T) {
-		s := Server{baseLogger: zap.NewNop().Sugar()}
+		s := newTestServer()
 
 		req, err := http.NewRequest("POST", "/library/tv/invalid/search", nil)
 		require.NoError(t, err)
@@ -110,10 +103,7 @@ func TestServer_SearchForSeries(t *testing.T) {
 		store.EXPECT().GetSeries(gomock.Any(), gomock.Any()).Return(nil, storage.ErrNotFound)
 
 		mgr := manager.New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
-		s := Server{
-			baseLogger: zap.NewNop().Sugar(),
-			manager:    mgr,
-		}
+		s := newTestServer(withManager(mgr))
 
 		req, err := http.NewRequest("POST", "/library/tv/1/search", nil)
 		require.NoError(t, err)
@@ -137,10 +127,7 @@ func TestServer_SearchForSeries(t *testing.T) {
 		}, nil)
 
 		mgr := manager.New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
-		s := Server{
-			baseLogger: zap.NewNop().Sugar(),
-			manager:    mgr,
-		}
+		s := newTestServer(withManager(mgr))
 
 		req, err := http.NewRequest("POST", "/library/tv/1/search", nil)
 		require.NoError(t, err)
@@ -157,7 +144,7 @@ func TestServer_SearchForSeries(t *testing.T) {
 
 func TestServer_SearchForSeason(t *testing.T) {
 	t.Run("invalid id", func(t *testing.T) {
-		s := Server{baseLogger: zap.NewNop().Sugar()}
+		s := newTestServer()
 
 		req, err := http.NewRequest("POST", "/season/invalid/search", nil)
 		require.NoError(t, err)
@@ -179,10 +166,7 @@ func TestServer_SearchForSeason(t *testing.T) {
 		store.EXPECT().GetSeason(gomock.Any(), gomock.Any()).Return(nil, storage.ErrNotFound)
 
 		mgr := manager.New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
-		s := Server{
-			baseLogger: zap.NewNop().Sugar(),
-			manager:    mgr,
-		}
+		s := newTestServer(withManager(mgr))
 
 		req, err := http.NewRequest("POST", "/season/1/search", nil)
 		require.NoError(t, err)
@@ -206,10 +190,7 @@ func TestServer_SearchForSeason(t *testing.T) {
 		}, nil)
 
 		mgr := manager.New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
-		s := Server{
-			baseLogger: zap.NewNop().Sugar(),
-			manager:    mgr,
-		}
+		s := newTestServer(withManager(mgr))
 
 		req, err := http.NewRequest("POST", "/season/1/search", nil)
 		require.NoError(t, err)
@@ -226,7 +207,7 @@ func TestServer_SearchForSeason(t *testing.T) {
 
 func TestServer_SearchForEpisode(t *testing.T) {
 	t.Run("invalid id", func(t *testing.T) {
-		s := Server{baseLogger: zap.NewNop().Sugar()}
+		s := newTestServer()
 
 		req, err := http.NewRequest("POST", "/episode/invalid/search", nil)
 		require.NoError(t, err)
@@ -248,10 +229,7 @@ func TestServer_SearchForEpisode(t *testing.T) {
 		store.EXPECT().GetEpisode(gomock.Any(), gomock.Any()).Return(nil, storage.ErrNotFound)
 
 		mgr := manager.New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
-		s := Server{
-			baseLogger: zap.NewNop().Sugar(),
-			manager:    mgr,
-		}
+		s := newTestServer(withManager(mgr))
 
 		req, err := http.NewRequest("POST", "/episode/1/search", nil)
 		require.NoError(t, err)
@@ -275,10 +253,7 @@ func TestServer_SearchForEpisode(t *testing.T) {
 		}, nil)
 
 		mgr := manager.New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
-		s := Server{
-			baseLogger: zap.NewNop().Sugar(),
-			manager:    mgr,
-		}
+		s := newTestServer(withManager(mgr))
 
 		req, err := http.NewRequest("POST", "/episode/1/search", nil)
 		require.NoError(t, err)
