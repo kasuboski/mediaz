@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/go-jet/jet/v2/qrm"
-	"github.com/go-jet/jet/v2/sqlite"
 	"github.com/kasuboski/mediaz/config"
 	"github.com/kasuboski/mediaz/pkg/download"
 	"github.com/kasuboski/mediaz/pkg/indexer"
@@ -21,7 +20,6 @@ import (
 	"github.com/kasuboski/mediaz/pkg/prowlarr"
 	"github.com/kasuboski/mediaz/pkg/storage"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/table"
 	"github.com/kasuboski/mediaz/pkg/tmdb"
 	"github.com/oapi-codegen/nullable"
 	"go.uber.org/zap"
@@ -35,6 +33,7 @@ type MediaManager struct {
 	movieMetaStorage      storage.MovieMetadataStorage
 	seriesStorage         storage.SeriesStorage
 	seriesMetaStorage     storage.SeriesMetadataStorage
+	metadataService       MetadataService
 	downloadClientService *DownloadClientService
 	qualityService        *QualityService
 	jobService            *JobService
@@ -53,6 +52,7 @@ func New(tmbdClient tmdb.ITmdb, indexerFactory indexer.Factory, library library.
 		movieMetaStorage:      store,
 		seriesStorage:         store,
 		seriesMetaStorage:     store,
+		metadataService:       NewMetadataService(tmbdClient, store, store),
 		downloadClientService: NewDownloadClientService(store, factory),
 		qualityService:        NewQualityService(store),
 		config:                fullConfig,
@@ -497,8 +497,7 @@ func filterAndMap[T any, R any](items []*T, fn func(*T) (R, bool)) []R {
 
 // GetMovieMetadataByID retrieves movie metadata by its primary key
 func (m MediaManager) GetMovieMetadataByID(ctx context.Context, metadataID int32) (*model.MovieMetadata, error) {
-	// fetch metadata record
-	return m.movieMetaStorage.GetMovieMetadata(ctx, table.MovieMetadata.ID.EQ(sqlite.Int(int64(metadataID))))
+	return m.metadataService.GetMovieMetadataByID(ctx, metadataID)
 }
 
 // ListSeasonsForSeries retrieves all seasons for a TV series by TMDB ID
@@ -597,4 +596,46 @@ func (m MediaManager) ListDownloadClients(ctx context.Context) ([]*model.Downloa
 
 func (m MediaManager) DeleteDownloadClient(ctx context.Context, id int64) error {
 	return m.downloadClientService.DeleteDownloadClient(ctx, id)
+}
+
+func (m MediaManager) GetMovieMetadata(ctx context.Context, tmdbID int) (*model.MovieMetadata, error) {
+	return m.metadataService.GetMovieMetadata(ctx, tmdbID)
+}
+
+func (m MediaManager) UpdateMovieMetadataFromTMDB(ctx context.Context, tmdbID int) (*model.MovieMetadata, error) {
+	return m.metadataService.UpdateMovieMetadataFromTMDB(ctx, tmdbID)
+}
+
+// GetSeriesMetadata gets all metadata around a series. If it does not exist, it will be created including seasons and episodes.
+func (m MediaManager) GetSeriesMetadata(ctx context.Context, tmdbID int) (*model.SeriesMetadata, error) {
+	return m.metadataService.GetSeriesMetadata(ctx, tmdbID)
+}
+
+// RefreshSeriesMetadataFromTMDB refreshes series metadata with proper entity linking.
+func (m MediaManager) RefreshSeriesMetadataFromTMDB(ctx context.Context, tmdbID int) (*model.SeriesMetadata, error) {
+	return m.metadataService.RefreshSeriesMetadataFromTMDB(ctx, tmdbID)
+}
+
+func (m MediaManager) UpdateSeriesMetadataFromTMDB(ctx context.Context, tmdbID int) (*model.SeriesMetadata, error) {
+	return m.metadataService.UpdateSeriesMetadataFromTMDB(ctx, tmdbID)
+}
+
+func (m MediaManager) RefreshSeriesMetadata(ctx context.Context, tmdbIDs ...int) error {
+	return m.metadataService.RefreshSeriesMetadata(ctx, tmdbIDs...)
+}
+
+func (m MediaManager) RefreshMovieMetadata(ctx context.Context, tmdbIDs ...int) error {
+	return m.metadataService.RefreshMovieMetadata(ctx, tmdbIDs...)
+}
+
+func (m MediaManager) loadSeriesMetadata(ctx context.Context, tmdbID int) (*model.SeriesMetadata, error) {
+	return m.metadataService.loadSeriesMetadata(ctx, tmdbID)
+}
+
+func (m MediaManager) fetchExternalIDs(ctx context.Context, tmdbID int) (*string, error) {
+	return m.metadataService.fetchExternalIDs(ctx, tmdbID)
+}
+
+func (m MediaManager) fetchWatchProviders(ctx context.Context, tmdbID int) (*string, error) {
+	return m.metadataService.fetchWatchProviders(ctx, tmdbID)
 }

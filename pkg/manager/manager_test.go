@@ -446,20 +446,6 @@ func getReleasesFromFile(t *testing.T, path string) []*prowlarr.ReleaseResource 
 	return releases
 }
 
-func searchIndexersResponse(t *testing.T, releases []*prowlarr.ReleaseResource) *http.Response {
-	resp := &http.Response{
-		StatusCode: http.StatusOK,
-		Header:     make(map[string][]string),
-	}
-
-	out, err := json.Marshal(releases)
-	assert.Nil(t, err)
-
-	resp.Body = io.NopCloser(bytes.NewBuffer(out))
-
-	return resp
-}
-
 // mediaDetailsResponse returns an http.Response that represents a MediaDetails with the given title and runtime
 func mediaDetailsResponse(title string, runtime int, releaseDate string) *http.Response {
 	details := &tmdb.MediaDetails{
@@ -493,29 +479,6 @@ func newStore(t *testing.T, ctx context.Context) storage.Storage {
 	require.NoError(t, err)
 
 	return store
-}
-
-func TestParseTMDBDate(t *testing.T) {
-	t.Run("parses valid date", func(t *testing.T) {
-		result, err := parseTMDBDate("2023-01-15")
-		require.NoError(t, err)
-		require.NotNil(t, result)
-		assert.Equal(t, 2023, result.Year())
-		assert.Equal(t, time.January, result.Month())
-		assert.Equal(t, 15, result.Day())
-	})
-
-	t.Run("handles empty string", func(t *testing.T) {
-		result, err := parseTMDBDate("")
-		require.NoError(t, err)
-		assert.Nil(t, result)
-	})
-
-	t.Run("returns error for invalid date", func(t *testing.T) {
-		result, err := parseTMDBDate("invalid-date")
-		assert.Error(t, err)
-		assert.Nil(t, result)
-	})
 }
 
 func TestMediaManager_AddSeriesToLibrary(t *testing.T) {
