@@ -13,9 +13,20 @@ import (
 	"go.uber.org/zap"
 )
 
+// SQLite wraps a *sql.DB and an embedded *sqlcdb.Queries that is bound to the
+// base DB (not any transaction). Callers that open their own transaction via
+// db.BeginTx must NOT call methods on the embedded Queries inside that
+// transaction — those calls would run on the base DB and silently bypass the
+// tx. Use txQueries(tx) to get a transaction-scoped *sqlcdb.Queries instead.
 type SQLite struct {
 	db *sql.DB
 	*sqlcdb.Queries
+}
+
+// txQueries returns a *sqlcdb.Queries scoped to tx so that sqlc-generated
+// calls participate in the same transaction as jet ORM statements.
+func (s *SQLite) txQueries(tx *sql.Tx) *sqlcdb.Queries {
+	return s.Queries.WithTx(tx)
 }
 
 const (
