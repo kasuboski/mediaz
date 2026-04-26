@@ -2,26 +2,15 @@ package storage
 
 import (
 	"context"
+
+	"github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 )
 
-// StatisticsStorage interface for optimized statistics queries
 type StatisticsStorage interface {
-	GetMovieStatsByState(ctx context.Context) ([]MovieStatsByState, error)
-	GetTVStatsByState(ctx context.Context) ([]TVStatsByState, error)
+	sqlcdb.Querier
 	GetLibraryStats(ctx context.Context) (*LibraryStats, error)
 }
 
-type MovieStatsByState struct {
-	State string `json:"state"`
-	Count int    `json:"count"`
-}
-
-type TVStatsByState struct {
-	State string `json:"state"`
-	Count int    `json:"count"`
-}
-
-// Statistics types
 type MovieStats struct {
 	Total   int                `json:"total"`
 	ByState map[MovieState]int `json:"byState"`

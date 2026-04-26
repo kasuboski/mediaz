@@ -16,6 +16,7 @@ import (
 
 	sqlite "github.com/go-jet/jet/v2/sqlite"
 	storage "github.com/kasuboski/mediaz/pkg/storage"
+	sqlcdb "github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 	model "github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
 	gomock "go.uber.org/mock/gomock"
 )
@@ -860,10 +861,10 @@ func (mr *MockStorageMockRecorder) GetMovieMetadata(ctx, where any) *gomock.Call
 }
 
 // GetMovieStatsByState mocks base method.
-func (m *MockStorage) GetMovieStatsByState(ctx context.Context) ([]storage.MovieStatsByState, error) {
+func (m *MockStorage) GetMovieStatsByState(ctx context.Context) ([]sqlcdb.GetMovieStatsByStateRow, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetMovieStatsByState", ctx)
-	ret0, _ := ret[0].([]storage.MovieStatsByState)
+	ret0, _ := ret[0].([]sqlcdb.GetMovieStatsByStateRow)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -980,10 +981,10 @@ func (mr *MockStorageMockRecorder) GetSeriesMetadata(ctx, where any) *gomock.Cal
 }
 
 // GetTVStatsByState mocks base method.
-func (m *MockStorage) GetTVStatsByState(ctx context.Context) ([]storage.TVStatsByState, error) {
+func (m *MockStorage) GetTVStatsByState(ctx context.Context) ([]sqlcdb.GetTVStatsByStateRow, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetTVStatsByState", ctx)
-	ret0, _ := ret[0].([]storage.TVStatsByState)
+	ret0, _ := ret[0].([]sqlcdb.GetTVStatsByStateRow)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
