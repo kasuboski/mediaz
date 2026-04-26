@@ -8,12 +8,14 @@ import (
 	"github.com/go-jet/jet/v2/sqlite"
 	"github.com/kasuboski/mediaz/pkg/logger"
 	"github.com/kasuboski/mediaz/pkg/storage"
+	"github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 	_ "github.com/mattn/go-sqlite3"
 	"go.uber.org/zap"
 )
 
 type SQLite struct {
 	db *sql.DB
+	*sqlcdb.Queries
 }
 
 const (
@@ -29,7 +31,8 @@ func New(ctx context.Context, filePath string) (storage.Storage, error) {
 	}
 
 	s := &SQLite{
-		db: db,
+		db:      db,
+		Queries: sqlcdb.New(db),
 	}
 
 	if err := s.RunMigrations(ctx); err != nil {

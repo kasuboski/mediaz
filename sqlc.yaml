@@ -1,0 +1,10 @@
+version: "2"
+sql:
+  - engine: "sqlite"
+    queries: "pkg/storage/sqlite/queries/"
+    schema: "pkg/storage/sqlite/schema/schema.sql"
+    gen:
+      go:
+        package: "sqlcdb"
+        out: "pkg/storage/sqlcdb"
+        emit_interface: true
