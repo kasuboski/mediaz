@@ -1,0 +1,4 @@
+coverage:
+  ignore:
+    - "pkg/storage/sqlcdb/**"
+    - "pkg/storage/sqlite/schema/gen/**"
