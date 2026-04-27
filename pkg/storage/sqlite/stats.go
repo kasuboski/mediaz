@@ -7,12 +7,7 @@ import (
 )
 
 func (s *SQLite) GetLibraryStats(ctx context.Context) (*storage.LibraryStats, error) {
-	movieRows, err := s.Queries.GetMovieStatsByState(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	tvRows, err := s.Queries.GetTVStatsByState(ctx)
+	rows, err := s.Queries.GetLibraryStatsByState(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -20,17 +15,19 @@ func (s *SQLite) GetLibraryStats(ctx context.Context) (*storage.LibraryStats, er
 	movieStats := storage.MovieStats{
 		ByState: make(map[storage.MovieState]int),
 	}
-	for _, r := range movieRows {
-		movieStats.ByState[storage.MovieState(r.State)] = int(r.Count)
-		movieStats.Total += int(r.Count)
-	}
-
 	tvStats := storage.TVStats{
 		ByState: make(map[storage.SeriesState]int),
 	}
-	for _, r := range tvRows {
-		tvStats.ByState[storage.SeriesState(r.State)] = int(r.Count)
-		tvStats.Total += int(r.Count)
+
+	for _, r := range rows {
+		switch r.MediaType {
+		case "movie":
+			movieStats.ByState[storage.MovieState(r.State)] += int(r.Count)
+			movieStats.Total += int(r.Count)
+		case "series":
+			tvStats.ByState[storage.SeriesState(r.State)] += int(r.Count)
+			tvStats.Total += int(r.Count)
+		}
 	}
 
 	return &storage.LibraryStats{

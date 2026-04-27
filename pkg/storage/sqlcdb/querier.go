@@ -9,8 +9,7 @@ import (
 )
 
 type Querier interface {
-	GetMovieStatsByState(ctx context.Context) ([]GetMovieStatsByStateRow, error)
-	GetTVStatsByState(ctx context.Context) ([]GetTVStatsByStateRow, error)
+	GetLibraryStatsByState(ctx context.Context) ([]GetLibraryStatsByStateRow, error)
 }
 
 var _ Querier = (*Queries)(nil)

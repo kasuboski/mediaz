@@ -9,67 +9,39 @@ import (
 	"context"
 )
 
-const getMovieStatsByState = `-- name: GetMovieStatsByState :many
-SELECT movie_transition.to_state AS state,
+const getLibraryStatsByState = `-- name: GetLibraryStatsByState :many
+SELECT 'movie' AS media_type,
+       movie_transition.to_state AS state,
        COUNT(movie.id) AS count
 FROM movie
 INNER JOIN movie_transition ON (movie.id = movie_transition.movie_id AND movie_transition.most_recent = 1)
 GROUP BY movie_transition.to_state
-ORDER BY movie_transition.to_state
-`
-
-type GetMovieStatsByStateRow struct {
-	State string
-	Count int64
-}
-
-func (q *Queries) GetMovieStatsByState(ctx context.Context) ([]GetMovieStatsByStateRow, error) {
-	rows, err := q.db.QueryContext(ctx, getMovieStatsByState)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []GetMovieStatsByStateRow
-	for rows.Next() {
-		var i GetMovieStatsByStateRow
-		if err := rows.Scan(&i.State, &i.Count); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const getTVStatsByState = `-- name: GetTVStatsByState :many
-SELECT series_transition.to_state AS state,
+UNION ALL
+SELECT 'series' AS media_type,
+       series_transition.to_state AS state,
        COUNT(series.id) AS count
 FROM series
 INNER JOIN series_transition ON (series.id = series_transition.series_id AND series_transition.most_recent = 1)
 GROUP BY series_transition.to_state
-ORDER BY series_transition.to_state
+ORDER BY media_type, state
 `
 
-type GetTVStatsByStateRow struct {
-	State string
-	Count int64
+type GetLibraryStatsByStateRow struct {
+	MediaType string
+	State     string
+	Count     int64
 }
 
-func (q *Queries) GetTVStatsByState(ctx context.Context) ([]GetTVStatsByStateRow, error) {
-	rows, err := q.db.QueryContext(ctx, getTVStatsByState)
+func (q *Queries) GetLibraryStatsByState(ctx context.Context) ([]GetLibraryStatsByStateRow, error) {
+	rows, err := q.db.QueryContext(ctx, getLibraryStatsByState)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []GetTVStatsByStateRow
+	var items []GetLibraryStatsByStateRow
 	for rows.Next() {
-		var i GetTVStatsByStateRow
-		if err := rows.Scan(&i.State, &i.Count); err != nil {
+		var i GetLibraryStatsByStateRow
+		if err := rows.Scan(&i.MediaType, &i.State, &i.Count); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
