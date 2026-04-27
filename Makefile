@@ -1,4 +1,5 @@
 generate: tmdb.schema.json prowlarr.schema.json
+	sqlc generate
 	go generate ./...
 
 tmdb.schema.json:
