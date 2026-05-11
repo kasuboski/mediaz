@@ -8,7 +8,6 @@ import (
 	"io"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/go-jet/jet/v2/qrm"
 	"github.com/kasuboski/mediaz/config"
@@ -87,11 +86,6 @@ func New(tmbdClient tmdb.ITmdb, indexerFactory indexer.Factory, library library.
 
 // ErrValidation is returned when request validation fails.
 var ErrValidation = errors.New("validation error")
-
-func now() time.Time {
-	return time.Now()
-}
-
 // SearchMovie queries TMDB for a movie
 func (m MediaManager) SearchMovie(ctx context.Context, query string) (*SearchMediaResponse, error) {
 	return m.movieService.SearchMovie(ctx, query)
@@ -453,32 +447,6 @@ func nullableDefault[T any](n nullable.Nullable[T]) T {
 	}
 
 	return def
-}
-
-// initialMovieState returns Missing or Unreleased based on the release date.
-func initialMovieState(releaseDate *time.Time) storage.MovieState {
-	if !isReleased(now(), releaseDate) {
-		return storage.MovieStateUnreleased
-	}
-	return storage.MovieStateMissing
-}
-
-// initialSeriesState returns Missing or Unreleased based on the first air date.
-func initialSeriesState(firstAirDate *time.Time) storage.SeriesState {
-	if !isReleased(now(), firstAirDate) {
-		return storage.SeriesStateUnreleased
-	}
-	return storage.SeriesStateMissing
-}
-
-func isReleased(now time.Time, releaseDate *time.Time) bool {
-	if releaseDate == nil {
-		return false
-	}
-	if releaseDate.IsZero() {
-		return false
-	}
-	return now.After(*releaseDate)
 }
 
 // filterAndMap applies fn to each non-nil element of items, collecting results where fn returns ok=true.

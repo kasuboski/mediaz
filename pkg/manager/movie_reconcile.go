@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 	"slices"
-	"sync"
-	"time"
 
 	"github.com/go-jet/jet/v2/sqlite"
 	"github.com/kasuboski/mediaz/pkg/download"
@@ -24,70 +22,6 @@ var (
 	MovieCategories = []int32{2000}
 	TVCategories    = []int32{5000}
 )
-
-// ReconcileSnapshot is a thread safe snapshot of the current reconcile loop state
-type ReconcileSnapshot struct {
-	time              time.Time
-	downloadProtocols map[string]struct{}
-	downloadClients   []*model.DownloadClient
-	indexers          []model.Indexer
-	indexerIDs        []int32
-	mu                sync.Mutex
-}
-
-func (r *ReconcileSnapshot) GetDownloadClient(id int32) *model.DownloadClient {
-	dcs := r.GetDownloadClients()
-
-	for _, dc := range dcs {
-		if dc.ID == id {
-			return dc
-		}
-	}
-
-	return nil
-}
-
-func newReconcileSnapshot(indexers []model.Indexer, downloadClients []*model.DownloadClient) *ReconcileSnapshot {
-	ids := make([]int32, 0)
-	for i := range indexers {
-		ids = append(ids, indexers[i].ID)
-	}
-
-	protocols := availableProtocols(downloadClients)
-
-	return &ReconcileSnapshot{
-		downloadClients:   downloadClients,
-		downloadProtocols: protocols,
-		indexerIDs:        ids,
-		indexers:          indexers,
-		mu:                sync.Mutex{},
-		time:              now(),
-	}
-}
-
-func (r *ReconcileSnapshot) GetDownloadClients() []*model.DownloadClient {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	return r.downloadClients
-}
-
-func (r *ReconcileSnapshot) GetProtocols() map[string]struct{} {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	return r.downloadProtocols
-}
-
-func (r *ReconcileSnapshot) GetIndexerIDs() []int32 {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	return r.indexerIDs
-}
-
-func (r *ReconcileSnapshot) GetIndexers() []model.Indexer {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	return r.indexers
-}
 
 func (m MediaManager) ReconcileMovies(ctx context.Context) error {
 	log := logger.FromCtx(ctx)
@@ -518,27 +452,6 @@ func (m MediaManager) reconcileDiscoveredMovie(ctx context.Context, movie *stora
 	movie.MovieMetadataID = &metadata.ID
 
 	log.Info("updated movie with metadata", zap.Int32("metadata_id", metadata.ID))
-	return nil
-}
-
-func findMatchingMovieResult(results []*SearchMediaResult, year *int32) *SearchMediaResult {
-	if len(results) == 0 {
-		return nil
-	}
-
-	if year == nil {
-		return results[0]
-	}
-
-	for _, r := range results {
-		if r.ReleaseDate != nil && len(*r.ReleaseDate) >= 4 {
-			resultYear := (*r.ReleaseDate)[:4]
-			if resultYear == fmt.Sprintf("%d", *year) {
-				return r
-			}
-		}
-	}
-
 	return nil
 }
 
