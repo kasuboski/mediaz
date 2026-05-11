@@ -15,6 +15,10 @@ import (
 	"go.uber.org/zap"
 )
 
+// ErrMovieAlreadyExists is returned when adding a movie that already exists
+// in a terminal or in-progress state (downloaded or downloading).
+var ErrMovieAlreadyExists = errors.New("movie already exists in library")
+
 // MovieMetadataProvider provides movie metadata operations needed by MovieService.
 // This decouples MovieService from the full MediaManager, allowing the metadata
 // subsystem to be extracted independently later.
@@ -49,7 +53,9 @@ func NewMovieService(tmdbClient tmdb.ITmdb, lib library.Library, movieStorage st
 // ---------------------------------------------------------------------------
 
 // AddMovieToLibrary adds a movie to be managed by mediaz.
-// TODO: check status of movie before doing anything else.. do we already have it tracked? is it downloaded or already discovered? error state?
+// If the movie already exists and is in a downloaded or downloading state it returns
+// the movie alongside ErrMovieAlreadyExists. Movies in discovered, missing, unreleased,
+// or new states are returned without error — they still need reconciliation.
 func (s *MovieService) AddMovieToLibrary(ctx context.Context, request AddMovieRequest) (*storage.Movie, error) {
 	log := logger.FromCtx(ctx)
 
@@ -66,9 +72,23 @@ func (s *MovieService) AddMovieToLibrary(ctx context.Context, request AddMovieRe
 	}
 
 	movie, err := s.movieStorage.GetMovieByMetadataID(ctx, int(det.ID))
-	// if we find the movie we're done
 	if err == nil {
-		return movie, err
+		// Movie already exists — check its state before deciding what to return.
+		switch movie.State {
+		case storage.MovieStateDownloaded, storage.MovieStateDownloading:
+			log.Debug("movie already exists in library",
+				zap.Int32("movie_id", movie.ID),
+				zap.String("state", string(movie.State)),
+			)
+			return movie, ErrMovieAlreadyExists
+		default:
+			// discovered, missing, unreleased, new — still needs processing
+			log.Debug("movie exists but still needs reconciliation",
+				zap.Int32("movie_id", movie.ID),
+				zap.String("state", string(movie.State)),
+			)
+			return movie, nil
+		}
 	}
 
 	// anything other than a not found error is an internal error
