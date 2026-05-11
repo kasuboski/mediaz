@@ -26,7 +26,7 @@ func Test_findMatchingMovieResult(t *testing.T) {
 				{ID: ptr.To(1), Title: ptr.To("Brothers"), ReleaseDate: &release2024},
 				{ID: ptr.To(2), Title: ptr.To("Brothers"), ReleaseDate: &release2009},
 			},
-			expected: &SearchMediaResult{ID: ptr.To(1), Title: ptr.To("Brothers")},
+			expected: &SearchMediaResult{ID: ptr.To(1), Title: ptr.To("Brothers"), ReleaseDate: &release2024},
 		},
 		{
 			name: "year matches first result",
@@ -35,7 +35,7 @@ func Test_findMatchingMovieResult(t *testing.T) {
 				{ID: ptr.To(1), Title: ptr.To("Brothers"), ReleaseDate: &release2024},
 				{ID: ptr.To(2), Title: ptr.To("Brothers"), ReleaseDate: &release2009},
 			},
-			expected: &SearchMediaResult{ID: ptr.To(1), Title: ptr.To("Brothers")},
+			expected: &SearchMediaResult{ID: ptr.To(1), Title: ptr.To("Brothers"), ReleaseDate: &release2024},
 		},
 		{
 			name: "year matches second result",
@@ -44,7 +44,7 @@ func Test_findMatchingMovieResult(t *testing.T) {
 				{ID: ptr.To(1), Title: ptr.To("Brothers"), ReleaseDate: &release2024},
 				{ID: ptr.To(2), Title: ptr.To("Brothers"), ReleaseDate: &release2009},
 			},
-			expected: &SearchMediaResult{ID: ptr.To(2), Title: ptr.To("Brothers")},
+			expected: &SearchMediaResult{ID: ptr.To(2), Title: ptr.To("Brothers"), ReleaseDate: &release2009},
 		},
 		{
 			name: "year not found in results",
@@ -62,7 +62,7 @@ func Test_findMatchingMovieResult(t *testing.T) {
 				{ID: ptr.To(1), Title: ptr.To("Brothers"), ReleaseDate: nil},
 				{ID: ptr.To(2), Title: ptr.To("Brothers"), ReleaseDate: &release2024},
 			},
-			expected: &SearchMediaResult{ID: ptr.To(2), Title: ptr.To("Brothers")},
+			expected: &SearchMediaResult{ID: ptr.To(2), Title: ptr.To("Brothers"), ReleaseDate: &release2024},
 		},
 		{
 			name: "all results have nil release dates",
@@ -91,7 +91,7 @@ func Test_findMatchingMovieResult(t *testing.T) {
 			results: []*SearchMediaResult{
 				{ID: ptr.To(1), Title: ptr.To("Brothers"), ReleaseDate: &release2001},
 			},
-			expected: &SearchMediaResult{ID: ptr.To(1), Title: ptr.To("Brothers")},
+			expected: &SearchMediaResult{ID: ptr.To(1), Title: ptr.To("Brothers"), ReleaseDate: &release2001},
 		},
 	}
 
@@ -100,10 +100,10 @@ func Test_findMatchingMovieResult(t *testing.T) {
 			result := findMatchingMovieResult(tt.results, tt.year)
 			if tt.expected == nil {
 				assert.Nil(t, result)
-			} else {
-				require.NotNil(t, result)
-				assert.Equal(t, *tt.expected.ID, *result.ID)
+				return
 			}
+			require.NotNil(t, result)
+			assert.Equal(t, tt.expected, result)
 		})
 	}
 }

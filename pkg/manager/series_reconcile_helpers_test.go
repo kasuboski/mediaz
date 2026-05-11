@@ -337,7 +337,7 @@ func Test_findMatchingSeriesResult(t *testing.T) {
 				{ID: ptr.To(1), Name: ptr.To("Battlestar Galactica"), FirstAirDate: &air2004},
 				{ID: ptr.To(2), Name: ptr.To("Battlestar Galactica"), FirstAirDate: &air2024},
 			},
-			expected: &SearchMediaResult{ID: ptr.To(1), Name: ptr.To("Battlestar Galactica")},
+			expected: &SearchMediaResult{ID: ptr.To(1), Name: ptr.To("Battlestar Galactica"), FirstAirDate: &air2004},
 		},
 		{
 			name: "year matches first result",
@@ -346,7 +346,7 @@ func Test_findMatchingSeriesResult(t *testing.T) {
 				{ID: ptr.To(1), Name: ptr.To("Battlestar Galactica"), FirstAirDate: &air2004},
 				{ID: ptr.To(2), Name: ptr.To("Battlestar Galactica"), FirstAirDate: &air2024},
 			},
-			expected: &SearchMediaResult{ID: ptr.To(1), Name: ptr.To("Battlestar Galactica")},
+			expected: &SearchMediaResult{ID: ptr.To(1), Name: ptr.To("Battlestar Galactica"), FirstAirDate: &air2004},
 		},
 		{
 			name: "year matches second result",
@@ -355,7 +355,7 @@ func Test_findMatchingSeriesResult(t *testing.T) {
 				{ID: ptr.To(1), Name: ptr.To("Battlestar Galactica"), FirstAirDate: &air2004},
 				{ID: ptr.To(2), Name: ptr.To("Battlestar Galactica"), FirstAirDate: &air2024},
 			},
-			expected: &SearchMediaResult{ID: ptr.To(2), Name: ptr.To("Battlestar Galactica")},
+			expected: &SearchMediaResult{ID: ptr.To(2), Name: ptr.To("Battlestar Galactica"), FirstAirDate: &air2024},
 		},
 		{
 			name: "year not found in results",
@@ -373,7 +373,7 @@ func Test_findMatchingSeriesResult(t *testing.T) {
 				{ID: ptr.To(1), Name: ptr.To("Show"), FirstAirDate: nil},
 				{ID: ptr.To(2), Name: ptr.To("Show"), FirstAirDate: &air2024},
 			},
-			expected: &SearchMediaResult{ID: ptr.To(2), Name: ptr.To("Show")},
+			expected: &SearchMediaResult{ID: ptr.To(2), Name: ptr.To("Show"), FirstAirDate: &air2024},
 		},
 		{
 			name: "all results have nil air dates",
@@ -403,10 +403,10 @@ func Test_findMatchingSeriesResult(t *testing.T) {
 			result := findMatchingSeriesResult(tt.results, tt.year)
 			if tt.expected == nil {
 				assert.Nil(t, result)
-			} else {
-				require.NotNil(t, result)
-				assert.Equal(t, *tt.expected.ID, *result.ID)
+				return
 			}
+			require.NotNil(t, result)
+			assert.Equal(t, tt.expected, result)
 		})
 	}
 }
