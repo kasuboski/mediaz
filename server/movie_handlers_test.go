@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -194,5 +195,267 @@ func TestServer_GetMovieDetailByTMDBID(t *testing.T) {
 		responseBody := rr.Body.String()
 		assert.Contains(t, responseBody, "error")
 		assert.Contains(t, responseBody, "null") // response should be null when there's an error
+	})
+}
+
+func TestServer_AddMovieToLibrary(t *testing.T) {
+	t.Run("success - new movie", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		store := storeMocks.NewMockStorage(ctrl)
+		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
+
+		releaseDate := time.Now().AddDate(0, 0, -1)
+		metadata := &model.MovieMetadata{
+			ID:          1,
+			TmdbID:      1234,
+			Title:       "Test Movie",
+			ReleaseDate: &releaseDate,
+		}
+
+		store.EXPECT().GetQualityProfile(gomock.Any(), int64(1)).Return(storage.QualityProfile{ID: 1}, nil)
+		store.EXPECT().GetMovieMetadata(gomock.Any(), gomock.Any()).Return(metadata, nil)
+		store.EXPECT().GetMovieByMetadataID(gomock.Any(), 1).Return(nil, storage.ErrNotFound)
+		store.EXPECT().CreateMovie(gomock.Any(), gomock.Any(), storage.MovieStateMissing).Return(int64(1), nil)
+		store.EXPECT().GetMovie(gomock.Any(), int64(1)).Return(&storage.Movie{
+			Movie: model.Movie{
+				ID:               1,
+				Monitored:        1,
+				QualityProfileID: 1,
+				MovieMetadataID:  ptr.To(int32(1)),
+				Path:             ptr.To("Test Movie"),
+			},
+			State: storage.MovieStateMissing,
+		}, nil)
+
+		mgr := manager.New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
+		s := newTestServer(withManager(mgr))
+
+		body := `{"tmdbId": 1234, "qualityProfileId": 1}`
+		req, err := http.NewRequest("POST", "/library/movies", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+
+		rr := httptest.NewRecorder()
+		router := mux.NewRouter()
+		router.HandleFunc("/library/movies", s.AddMovieToLibrary()).Methods("POST")
+		router.ServeHTTP(rr, req)
+
+		assert.Equal(t, http.StatusOK, rr.Code)
+
+		var response GenericResponse
+		err = json.Unmarshal(rr.Body.Bytes(), &response)
+		require.NoError(t, err)
+
+		movieData, ok := response.Response.(map[string]any)
+		require.True(t, ok, "Response should contain movie data")
+		assert.Equal(t, float64(1), movieData["ID"])
+		assert.Equal(t, "missing", movieData["state"])
+		assert.Equal(t, float64(1), movieData["Monitored"])
+		assert.Equal(t, float64(1), movieData["QualityProfileID"])
+	})
+
+	t.Run("conflict - movie already downloaded", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		store := storeMocks.NewMockStorage(ctrl)
+		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
+
+		metadata := &model.MovieMetadata{
+			ID:     1,
+			TmdbID: 1234,
+			Title:  "Existing Movie",
+		}
+
+		store.EXPECT().GetQualityProfile(gomock.Any(), int64(1)).Return(storage.QualityProfile{ID: 1}, nil)
+		store.EXPECT().GetMovieMetadata(gomock.Any(), gomock.Any()).Return(metadata, nil)
+		store.EXPECT().GetMovieByMetadataID(gomock.Any(), 1).Return(&storage.Movie{
+			Movie: model.Movie{
+				ID:               5,
+				MovieMetadataID:  ptr.To(int32(1)),
+				Monitored:        1,
+				QualityProfileID: 1,
+			},
+			State: storage.MovieStateDownloaded,
+		}, nil)
+
+		mgr := manager.New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
+		s := newTestServer(withManager(mgr))
+
+		body := `{"tmdbId": 1234, "qualityProfileId": 1}`
+		req, err := http.NewRequest("POST", "/library/movies", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+
+		rr := httptest.NewRecorder()
+		router := mux.NewRouter()
+		router.HandleFunc("/library/movies", s.AddMovieToLibrary()).Methods("POST")
+		router.ServeHTTP(rr, req)
+
+		assert.Equal(t, http.StatusConflict, rr.Code)
+
+		var response GenericResponse
+		err = json.Unmarshal(rr.Body.Bytes(), &response)
+		require.NoError(t, err)
+
+		movieData, ok := response.Response.(map[string]any)
+		require.True(t, ok, "Response should contain the existing movie")
+		assert.Equal(t, float64(5), movieData["ID"])
+		assert.Equal(t, "downloaded", movieData["state"])
+		assert.Equal(t, float64(1), movieData["Monitored"])
+		assert.Equal(t, float64(1), movieData["QualityProfileID"])
+	})
+
+	t.Run("conflict - movie downloading", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		store := storeMocks.NewMockStorage(ctrl)
+		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
+
+		metadata := &model.MovieMetadata{
+			ID:     1,
+			TmdbID: 1234,
+			Title:  "Downloading Movie",
+		}
+
+		store.EXPECT().GetQualityProfile(gomock.Any(), int64(1)).Return(storage.QualityProfile{ID: 1}, nil)
+		store.EXPECT().GetMovieMetadata(gomock.Any(), gomock.Any()).Return(metadata, nil)
+		store.EXPECT().GetMovieByMetadataID(gomock.Any(), 1).Return(&storage.Movie{
+			Movie: model.Movie{
+				ID:               6,
+				MovieMetadataID:  ptr.To(int32(1)),
+				Monitored:        1,
+				QualityProfileID: 1,
+			},
+			State: storage.MovieStateDownloading,
+		}, nil)
+
+		mgr := manager.New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
+		s := newTestServer(withManager(mgr))
+
+		body := `{"tmdbId": 1234, "qualityProfileId": 1}`
+		req, err := http.NewRequest("POST", "/library/movies", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+
+		rr := httptest.NewRecorder()
+		router := mux.NewRouter()
+		router.HandleFunc("/library/movies", s.AddMovieToLibrary()).Methods("POST")
+		router.ServeHTTP(rr, req)
+
+		assert.Equal(t, http.StatusConflict, rr.Code)
+
+		var response GenericResponse
+		err = json.Unmarshal(rr.Body.Bytes(), &response)
+		require.NoError(t, err)
+
+		movieData, ok := response.Response.(map[string]any)
+		require.True(t, ok)
+		assert.Equal(t, float64(6), movieData["ID"])
+		assert.Equal(t, "downloading", movieData["state"])
+		assert.Equal(t, float64(1), movieData["Monitored"])
+		assert.Equal(t, float64(1), movieData["QualityProfileID"])
+	})
+
+	t.Run("ok - movie exists in discovered state", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		store := storeMocks.NewMockStorage(ctrl)
+		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
+
+		metadata := &model.MovieMetadata{
+			ID:     1,
+			TmdbID: 1234,
+			Title:  "Discovered Movie",
+		}
+
+		store.EXPECT().GetQualityProfile(gomock.Any(), int64(1)).Return(storage.QualityProfile{ID: 1}, nil)
+		store.EXPECT().GetMovieMetadata(gomock.Any(), gomock.Any()).Return(metadata, nil)
+		store.EXPECT().GetMovieByMetadataID(gomock.Any(), 1).Return(&storage.Movie{
+			Movie: model.Movie{
+				ID:               7,
+				MovieMetadataID:  ptr.To(int32(1)),
+				Monitored:        1,
+				QualityProfileID: 1,
+			},
+			State: storage.MovieStateDiscovered,
+		}, nil)
+
+		mgr := manager.New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
+		s := newTestServer(withManager(mgr))
+
+		body := `{"tmdbId": 1234, "qualityProfileId": 1}`
+		req, err := http.NewRequest("POST", "/library/movies", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+
+		rr := httptest.NewRecorder()
+		router := mux.NewRouter()
+		router.HandleFunc("/library/movies", s.AddMovieToLibrary()).Methods("POST")
+		router.ServeHTTP(rr, req)
+
+		// Discovered movies still need reconciliation, so 200 is correct
+		assert.Equal(t, http.StatusOK, rr.Code)
+
+		var response GenericResponse
+		err = json.Unmarshal(rr.Body.Bytes(), &response)
+		require.NoError(t, err)
+
+		movieData, ok := response.Response.(map[string]any)
+		require.True(t, ok)
+		assert.Equal(t, float64(7), movieData["ID"])
+		assert.Equal(t, "discovered", movieData["state"])
+		assert.Equal(t, float64(1), movieData["Monitored"])
+		assert.Equal(t, float64(1), movieData["QualityProfileID"])
+	})
+
+	t.Run("bad request - invalid body", func(t *testing.T) {
+		s := newTestServer()
+
+		req, err := http.NewRequest("POST", "/library/movies", strings.NewReader("not json"))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+
+		rr := httptest.NewRecorder()
+		router := mux.NewRouter()
+		router.HandleFunc("/library/movies", s.AddMovieToLibrary()).Methods("POST")
+		router.ServeHTTP(rr, req)
+
+		assert.Equal(t, http.StatusBadRequest, rr.Code)
+	})
+
+	t.Run("internal error - quality profile not found", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		store := storeMocks.NewMockStorage(ctrl)
+		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
+
+		store.EXPECT().GetQualityProfile(gomock.Any(), int64(99)).Return(storage.QualityProfile{}, errors.New("not found"))
+
+		mgr := manager.New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
+		s := newTestServer(withManager(mgr))
+
+		body := `{"tmdbId": 1234, "qualityProfileId": 99}`
+		req, err := http.NewRequest("POST", "/library/movies", strings.NewReader(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+
+		rr := httptest.NewRecorder()
+		router := mux.NewRouter()
+		router.HandleFunc("/library/movies", s.AddMovieToLibrary()).Methods("POST")
+		router.ServeHTTP(rr, req)
+
+		assert.Equal(t, http.StatusInternalServerError, rr.Code)
+
+		var response GenericResponse
+		err = json.Unmarshal(rr.Body.Bytes(), &response)
+		require.NoError(t, err)
+		assert.Nil(t, response.Response)
+		assert.NotEmpty(t, response.Error)
 	})
 }

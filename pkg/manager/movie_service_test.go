@@ -122,7 +122,7 @@ func TestMovieService_AddMovieToLibrary(t *testing.T) {
 	assert.Equal(t, expected, movie)
 }
 
-func TestMovieService_AddMovieToLibrary_AlreadyExists(t *testing.T) {
+func TestMovieService_AddMovieToLibrary_AlreadyExists_Downloaded(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -149,7 +149,8 @@ func TestMovieService_AddMovieToLibrary_AlreadyExists(t *testing.T) {
 	}, nil)
 
 	movie, err := svc.AddMovieToLibrary(ctx, AddMovieRequest{TMDBID: 1234, QualityProfileID: 1})
-	require.NoError(t, err)
+	require.Error(t, err)
+	assert.True(t, errors.Is(err, ErrMovieAlreadyExists))
 	require.NotNil(t, movie)
 
 	expected := &storage.Movie{
@@ -160,6 +161,175 @@ func TestMovieService_AddMovieToLibrary_AlreadyExists(t *testing.T) {
 			QualityProfileID: 1,
 		},
 		State: storage.MovieStateDownloaded,
+	}
+	assert.Equal(t, expected, movie)
+}
+
+func TestMovieService_AddMovieToLibrary_AlreadyExists_Downloading(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	ctx := context.Background()
+	svc, store, _, _ := newTestMovieService(ctrl)
+
+	metadata := &model.MovieMetadata{
+		ID:     1,
+		TmdbID: 1234,
+		Title:  "Downloading Movie",
+	}
+
+	svc.metadataProvider = &mockMovieMetadataProvider{metadata: metadata}
+
+	store.EXPECT().GetQualityProfile(ctx, int64(1)).Return(storage.QualityProfile{ID: 1}, nil)
+	store.EXPECT().GetMovieByMetadataID(ctx, 1).Return(&storage.Movie{
+		Movie: model.Movie{
+			ID:               6,
+			MovieMetadataID:  ptr.To(int32(1)),
+			Monitored:        1,
+			QualityProfileID: 1,
+		},
+		State: storage.MovieStateDownloading,
+	}, nil)
+
+	movie, err := svc.AddMovieToLibrary(ctx, AddMovieRequest{TMDBID: 1234, QualityProfileID: 1})
+	require.Error(t, err)
+	assert.True(t, errors.Is(err, ErrMovieAlreadyExists))
+	require.NotNil(t, movie)
+
+	expected := &storage.Movie{
+		Movie: model.Movie{
+			ID:               6,
+			MovieMetadataID:  ptr.To(int32(1)),
+			Monitored:        1,
+			QualityProfileID: 1,
+		},
+		State: storage.MovieStateDownloading,
+	}
+	assert.Equal(t, expected, movie)
+}
+
+func TestMovieService_AddMovieToLibrary_AlreadyExists_Discovered(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	ctx := context.Background()
+	svc, store, _, _ := newTestMovieService(ctrl)
+
+	metadata := &model.MovieMetadata{
+		ID:     1,
+		TmdbID: 1234,
+		Title:  "Discovered Movie",
+	}
+
+	svc.metadataProvider = &mockMovieMetadataProvider{metadata: metadata}
+
+	store.EXPECT().GetQualityProfile(ctx, int64(1)).Return(storage.QualityProfile{ID: 1}, nil)
+	store.EXPECT().GetMovieByMetadataID(ctx, 1).Return(&storage.Movie{
+		Movie: model.Movie{
+			ID:               7,
+			MovieMetadataID:  ptr.To(int32(1)),
+			Monitored:        1,
+			QualityProfileID: 1,
+		},
+		State: storage.MovieStateDiscovered,
+	}, nil)
+
+	movie, err := svc.AddMovieToLibrary(ctx, AddMovieRequest{TMDBID: 1234, QualityProfileID: 1})
+	require.NoError(t, err)
+	require.NotNil(t, movie)
+
+	expected := &storage.Movie{
+		Movie: model.Movie{
+			ID:               7,
+			MovieMetadataID:  ptr.To(int32(1)),
+			Monitored:        1,
+			QualityProfileID: 1,
+		},
+		State: storage.MovieStateDiscovered,
+	}
+	assert.Equal(t, expected, movie)
+}
+
+func TestMovieService_AddMovieToLibrary_AlreadyExists_Missing(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	ctx := context.Background()
+	svc, store, _, _ := newTestMovieService(ctrl)
+
+	metadata := &model.MovieMetadata{
+		ID:     1,
+		TmdbID: 1234,
+		Title:  "Missing Movie",
+	}
+
+	svc.metadataProvider = &mockMovieMetadataProvider{metadata: metadata}
+
+	store.EXPECT().GetQualityProfile(ctx, int64(1)).Return(storage.QualityProfile{ID: 1}, nil)
+	store.EXPECT().GetMovieByMetadataID(ctx, 1).Return(&storage.Movie{
+		Movie: model.Movie{
+			ID:               8,
+			MovieMetadataID:  ptr.To(int32(1)),
+			Monitored:        1,
+			QualityProfileID: 1,
+		},
+		State: storage.MovieStateMissing,
+	}, nil)
+
+	movie, err := svc.AddMovieToLibrary(ctx, AddMovieRequest{TMDBID: 1234, QualityProfileID: 1})
+	require.NoError(t, err)
+	require.NotNil(t, movie)
+
+	expected := &storage.Movie{
+		Movie: model.Movie{
+			ID:               8,
+			MovieMetadataID:  ptr.To(int32(1)),
+			Monitored:        1,
+			QualityProfileID: 1,
+		},
+		State: storage.MovieStateMissing,
+	}
+	assert.Equal(t, expected, movie)
+}
+
+func TestMovieService_AddMovieToLibrary_AlreadyExists_Unreleased(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	ctx := context.Background()
+	svc, store, _, _ := newTestMovieService(ctrl)
+
+	metadata := &model.MovieMetadata{
+		ID:     1,
+		TmdbID: 1234,
+		Title:  "Unreleased Movie",
+	}
+
+	svc.metadataProvider = &mockMovieMetadataProvider{metadata: metadata}
+
+	store.EXPECT().GetQualityProfile(ctx, int64(1)).Return(storage.QualityProfile{ID: 1}, nil)
+	store.EXPECT().GetMovieByMetadataID(ctx, 1).Return(&storage.Movie{
+		Movie: model.Movie{
+			ID:               9,
+			MovieMetadataID:  ptr.To(int32(1)),
+			Monitored:        1,
+			QualityProfileID: 1,
+		},
+		State: storage.MovieStateUnreleased,
+	}, nil)
+
+	movie, err := svc.AddMovieToLibrary(ctx, AddMovieRequest{TMDBID: 1234, QualityProfileID: 1})
+	require.NoError(t, err)
+	require.NotNil(t, movie)
+
+	expected := &storage.Movie{
+		Movie: model.Movie{
+			ID:               9,
+			MovieMetadataID:  ptr.To(int32(1)),
+			Monitored:        1,
+			QualityProfileID: 1,
+		},
+		State: storage.MovieStateUnreleased,
 	}
 	assert.Equal(t, expected, movie)
 }

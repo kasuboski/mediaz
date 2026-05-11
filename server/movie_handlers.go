@@ -10,6 +10,12 @@ import (
 	"go.uber.org/zap"
 )
 
+// isMovieAlreadyExists returns true if the error indicates the movie already
+// exists in the library.
+func isMovieAlreadyExists(err error) bool {
+	return errors.Is(err, manager.ErrMovieAlreadyExists)
+}
+
 // ListMovies lists movies on disk
 func (s Server) ListMovies() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -53,6 +59,12 @@ func (s Server) AddMovieToLibrary() http.HandlerFunc {
 
 		release, err := s.manager.AddMovieToLibrary(r.Context(), req)
 		if err != nil {
+			if isMovieAlreadyExists(err) {
+				log := logger.FromCtx(r.Context())
+				log.Debug("movie already exists in library", zap.Int("tmdbID", req.TMDBID))
+				s.respond(r, w, http.StatusConflict, release)
+				return
+			}
 			s.respondError(r, w, http.StatusInternalServerError, err)
 			return
 		}
