@@ -100,7 +100,7 @@ type MovieTransition model.MovieTransition
 func (m Movie) Machine() *machine.StateMachine[MovieState] {
 	return machine.New(m.State,
 		machine.From(MovieStateNew).To(MovieStateUnreleased, MovieStateMissing, MovieStateDiscovered),
-		machine.From(MovieStateMissing).To(MovieStateDiscovered, MovieStateDownloading),
+		machine.From(MovieStateMissing).To(MovieStateDiscovered, MovieStateDownloading, MovieStateDownloaded),
 		machine.From(MovieStateUnreleased).To(MovieStateDiscovered, MovieStateMissing),
 		machine.From(MovieStateDownloading).To(MovieStateDownloaded),
 	)

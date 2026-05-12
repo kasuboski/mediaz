@@ -233,9 +233,8 @@ func (m MediaManager) reconcileMissingMovie(ctx context.Context, movie *storage.
 	}
 
 	if movie.MovieFileID != nil {
-		// TODO: should this update state? If we have a movie ID we don't need to download the actual file most likely
-		log.Debug("movie file id already exists for movie, skipping reconcile")
-		return nil
+		log.Debug("movie file already exists, transitioning to downloaded")
+		return m.updateMovieState(ctx, movie, storage.MovieStateDownloaded, nil)
 	}
 
 	det, err := m.movieMetaStorage.GetMovieMetadata(ctx, table.MovieMetadata.ID.EQ(sqlite.Int32(*movie.MovieMetadataID)))

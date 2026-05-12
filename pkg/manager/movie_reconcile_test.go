@@ -892,3 +892,64 @@ func Test_Manager_reconcileDownloadingMovie(t *testing.T) {
 	})
 }
 
+func Test_Manager_reconcileMissingMovie_MovieFileIDAlreadySet(t *testing.T) {
+	ctx := context.Background()
+	store := newStore(t, ctx)
+
+	m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
+	require.NotNil(t, m)
+
+	// Create movie metadata so we can link the movie
+	metaID, err := store.CreateMovieMetadata(ctx, model.MovieMetadata{
+		Title:  "test-movie",
+		TmdbID: 1234,
+	})
+	require.NoError(t, err)
+
+	// Create a movie in Missing state with metadata linked
+	movieID, err := m.movieStorage.CreateMovie(ctx, storage.Movie{
+		Movie: model.Movie{
+			Monitored:        1,
+			QualityProfileID: 1,
+			Path:             ptr.To("test-movie"),
+			MovieMetadataID:  ptr.To(int32(metaID)),
+		},
+	}, storage.MovieStateMissing)
+	require.NoError(t, err)
+
+	// Create a movie file and link it to the movie
+	fileID, err := store.CreateMovieFile(ctx, model.MovieFile{
+		RelativePath:     ptr.To("test-movie/test-movie.mkv"),
+		Size:             2048,
+		OriginalFilePath: ptr.To("/downloads/test-movie.mkv"),
+	})
+	require.NoError(t, err)
+
+	err = store.UpdateMovieMovieFileID(ctx, movieID, fileID)
+	require.NoError(t, err)
+
+	// Get the movie with the file ID set
+	movie, err := store.GetMovie(ctx, movieID)
+	require.NoError(t, err)
+	require.NotNil(t, movie.MovieFileID, "MovieFileID should be set")
+	assert.Equal(t, storage.MovieStateMissing, movie.State, "movie should start in missing state")
+
+	// Reconcile the missing movie
+	snapshot := newReconcileSnapshot(nil, nil)
+	err = m.reconcileMissingMovie(ctx, movie, snapshot)
+	require.NoError(t, err)
+
+	// Verify the movie is now in Downloaded state with all fields preserved
+	mov, err := store.GetMovie(ctx, movieID)
+	require.NoError(t, err)
+	assert.Equal(t, storage.MovieStateDownloaded, mov.State)
+	assert.Equal(t, int32(1), mov.Monitored)
+	assert.Equal(t, int32(1), mov.QualityProfileID)
+	assert.NotNil(t, mov.MovieFileID)
+	assert.Equal(t, int32(fileID), *mov.MovieFileID)
+	assert.NotNil(t, mov.MovieMetadataID)
+	assert.Equal(t, int32(metaID), *mov.MovieMetadataID)
+	assert.NotNil(t, mov.Path)
+	assert.Equal(t, "test-movie", *mov.Path)
+}
+
