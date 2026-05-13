@@ -1659,3 +1659,63 @@ func TestMediaManager_matchEpisodeFileToEpisode(t *testing.T) {
 	})
 }
 
+func Test_Manager_ReconcileSeries(t *testing.T) {
+	t.Run("returns nil when all sub-reconcilers succeed", func(t *testing.T) {
+		ctx := context.Background()
+		store := newStore(t, ctx)
+
+		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
+		require.NotNil(t, m)
+
+		err := m.ReconcileSeries(ctx)
+		assert.NoError(t, err)
+	})
+
+	t.Run("returns error when ListDownloadClients fails", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		ctx := context.Background()
+
+		store := storageMocks.NewMockStorage(ctrl)
+		store.EXPECT().ListDownloadClients(ctx).Return(nil, errors.New("download client error"))
+
+		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
+		require.NotNil(t, m)
+
+		err := m.ReconcileSeries(ctx)
+		assert.Error(t, err)
+		assert.Equal(t, "download client error", err.Error())
+	})
+
+	t.Run("aggregates errors from multiple sub-reconcilers", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		ctx := context.Background()
+
+		store := storageMocks.NewMockStorage(ctrl)
+
+		// ListDownloadClients succeeds
+		store.EXPECT().ListDownloadClients(ctx).Return(nil, nil)
+
+		// ReconcileMissingSeries: listIndexersInternal → ListIndexers fails
+		store.EXPECT().ListIndexers(gomock.Any()).Return(nil, errors.New("indexer error")).AnyTimes()
+
+		// ReconcileDownloadingSeries: ListEpisodes fails
+		store.EXPECT().ListEpisodes(gomock.Any(), gomock.Any()).Return(nil, errors.New("episodes error")).AnyTimes()
+
+		// ReconcileContinuingSeries: ListSeries succeeds with empty
+		store.EXPECT().ListSeries(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
+
+		// ReconcileCompletedSeasons: ListSeasons succeeds with empty
+		store.EXPECT().ListSeasons(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
+
+		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
+		require.NotNil(t, m)
+
+		err := m.ReconcileSeries(ctx)
+		assert.Error(t, err)
+		// errors.Join wraps multiple errors; both messages should be present
+		errStr := err.Error()
+		assert.Contains(t, errStr, "indexer error")
+		assert.Contains(t, errStr, "episodes error")
+	})
+}
+

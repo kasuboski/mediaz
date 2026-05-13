@@ -2,6 +2,7 @@ package manager
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 
@@ -33,27 +34,33 @@ func (m MediaManager) ReconcileMovies(ctx context.Context) error {
 
 	snapshot := newReconcileSnapshot(make([]model.Indexer, 0), dcs)
 
+	var allErrors error
+
 	err = m.ReconcileMissingMovies(ctx, snapshot)
 	if err != nil {
 		log.Error("failed to reconcile missing movies", zap.Error(err))
+		allErrors = errors.Join(allErrors, err)
 	}
 
 	err = m.ReconcileUnreleasedMovies(ctx, snapshot)
 	if err != nil {
 		log.Error("failed to reconcile unreleased movies", zap.Error(err))
+		allErrors = errors.Join(allErrors, err)
 	}
 
 	err = m.ReconcileDownloadingMovies(ctx, snapshot)
 	if err != nil {
 		log.Error("failed to reconcile downloading movies", zap.Error(err))
+		allErrors = errors.Join(allErrors, err)
 	}
 
 	err = m.ReconcileDiscoveredMovies(ctx, snapshot)
 	if err != nil {
 		log.Error("failed to reconcile discovered movies", zap.Error(err))
+		allErrors = errors.Join(allErrors, err)
 	}
 
-	return nil
+	return allErrors
 }
 
 func (m MediaManager) ReconcileMissingMovies(ctx context.Context, snapshot *ReconcileSnapshot) error {
