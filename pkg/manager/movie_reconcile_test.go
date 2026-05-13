@@ -953,3 +953,62 @@ func Test_Manager_reconcileMissingMovie_MovieFileIDAlreadySet(t *testing.T) {
 	assert.Equal(t, "test-movie", *mov.Path)
 }
 
+func Test_Manager_ReconcileMovies(t *testing.T) {
+	t.Run("returns nil when all sub-reconcilers succeed", func(t *testing.T) {
+		ctx := context.Background()
+		store := newStore(t, ctx)
+
+		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
+		require.NotNil(t, m)
+
+		err := m.ReconcileMovies(ctx)
+		assert.NoError(t, err)
+	})
+
+	t.Run("returns error when ListDownloadClients fails", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		ctx := context.Background()
+
+		store := storageMocks.NewMockStorage(ctrl)
+		store.EXPECT().ListDownloadClients(ctx).Return(nil, errors.New("download client error"))
+
+		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
+		require.NotNil(t, m)
+
+		err := m.ReconcileMovies(ctx)
+		assert.Error(t, err)
+		assert.Equal(t, "download client error", err.Error())
+	})
+
+	t.Run("aggregates errors from multiple sub-reconcilers", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		ctx := context.Background()
+
+		store := storageMocks.NewMockStorage(ctrl)
+
+		// ListDownloadClients succeeds
+		store.EXPECT().ListDownloadClients(ctx).Return(nil, nil)
+
+		// ReconcileMissingMovies: listIndexersInternal calls ListIndexers → fails
+		store.EXPECT().ListIndexers(gomock.Any()).Return(nil, errors.New("indexer error")).AnyTimes()
+
+		// ReconcileUnreleasedMovies: ListMoviesByState for unreleased
+		store.EXPECT().ListMoviesByState(gomock.Any(), storage.MovieStateUnreleased).Return(nil, errors.New("unreleased error")).AnyTimes()
+
+		// ReconcileDownloadingMovies: ListMoviesByState for downloading → succeeds with empty
+		store.EXPECT().ListMoviesByState(gomock.Any(), storage.MovieStateDownloading).Return(nil, nil).AnyTimes()
+
+		// ReconcileDiscoveredMovies: ListMoviesByState for discovered → succeeds with empty
+		store.EXPECT().ListMoviesByState(gomock.Any(), storage.MovieStateDiscovered).Return(nil, nil).AnyTimes()
+
+		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
+		require.NotNil(t, m)
+
+		err := m.ReconcileMovies(ctx)
+		assert.Error(t, err)
+		// errors.Join wraps multiple errors; both messages should be present
+		assert.Contains(t, err.Error(), "indexer error")
+		assert.Contains(t, err.Error(), "unreleased error")
+	})
+}
+

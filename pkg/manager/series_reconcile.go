@@ -30,37 +30,45 @@ func (m MediaManager) ReconcileSeries(ctx context.Context) error {
 
 	snapshot := newReconcileSnapshot(make([]model.Indexer, 0), dcs)
 
+	var allErrors error
+
 	err = m.ReconcileMissingSeries(ctx, snapshot)
 	if err != nil {
 		log.Error("failed to reconcile missing series", zap.Error(err))
+		allErrors = errors.Join(allErrors, err)
 	}
 
 	err = m.ReconcileDownloadingSeries(ctx, snapshot)
 	if err != nil {
 		log.Error("failed to reconcile downloading series", zap.Error(err))
+		allErrors = errors.Join(allErrors, err)
 	}
 
 	err = m.ReconcileContinuingSeries(ctx, snapshot)
 	if err != nil {
 		log.Error("failed to reconcile continuing series", zap.Error(err))
+		allErrors = errors.Join(allErrors, err)
 	}
 
 	err = m.ReconcileCompletedSeasons(ctx)
 	if err != nil {
 		log.Error("failed to reconcile completed seasons", zap.Error(err))
+		allErrors = errors.Join(allErrors, err)
 	}
 
 	err = m.ReconcileCompletedSeries(ctx)
 	if err != nil {
 		log.Error("failed to reconcile completed series", zap.Error(err))
+		allErrors = errors.Join(allErrors, err)
 	}
 
 	err = m.ReconcileDiscoveredEpisodes(ctx, snapshot)
 	if err != nil {
 		log.Error("failed to reconcile discovered episodes", zap.Error(err))
+		allErrors = errors.Join(allErrors, err)
 	}
 
-	return nil
+	return allErrors
 }
 
 func (m MediaManager) ReconcileMissingSeries(ctx context.Context, snapshot *ReconcileSnapshot) error {
