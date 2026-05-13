@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/kasuboski/mediaz/pkg/indexer"
 	indexerMock "github.com/kasuboski/mediaz/pkg/indexer/mocks"
@@ -721,18 +722,100 @@ func TestIndexerService_SearchIndexers(t *testing.T) {
 		svc, _, srcStorage, factory := newTestIndexerService(ctrl)
 
 		src := indexerMock.NewMockIndexerSource(ctrl)
+		// RefreshIndexerSource call
 		srcStorage.EXPECT().GetIndexerSource(ctx, int64(1)).Return(model.IndexerSource{
 			ID: 1, Name: "prowlarr", Scheme: "http", Host: "prowlarr-host", Enabled: true,
-		}, nil).Times(2)
-		factory.EXPECT().NewIndexerSource(gomock.Any()).Return(src, nil).Times(2)
+		}, nil)
+		factory.EXPECT().NewIndexerSource(gomock.Any()).Return(src, nil)
 		src.EXPECT().ListIndexers(ctx).Return([]indexer.SourceIndexer{{ID: 1, Name: "indexer-1"}}, nil)
 		require.NoError(t, svc.RefreshIndexerSource(ctx, 1))
 
 		want := []*prowlarr.ReleaseResource{{Title: nullable.NewNullableWithValue("Test Movie")}}
-		src.EXPECT().Search(ctx, int32(1), gomock.Any(), gomock.Any()).Return(want, nil)
+		// searchIndexerSource call (goroutine uses timeout-wrapped context)
+		srcStorage.EXPECT().GetIndexerSource(gomock.Any(), int64(1)).Return(model.IndexerSource{
+			ID: 1, Enabled: true,
+		}, nil)
+		factory.EXPECT().NewIndexerSource(gomock.Any()).Return(src, nil)
+		src.EXPECT().Search(gomock.Any(), int32(1), gomock.Any(), gomock.Any()).Return(want, nil)
 
 		got, err := svc.SearchIndexers(ctx, []int32{1}, nil, indexer.SearchOptions{Query: "test movie"})
 		require.NoError(t, err)
 		assert.Equal(t, want, got)
+	})
+
+	t.Run("returns partial results when one indexer in a source fails", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		svc, _, srcStorage, factory := newTestIndexerService(ctrl)
+
+		src := indexerMock.NewMockIndexerSource(ctrl)
+		srcStorage.EXPECT().GetIndexerSource(ctx, int64(1)).Return(model.IndexerSource{
+			ID: 1, Name: "prowlarr", Scheme: "http", Host: "host1", Enabled: true,
+		}, nil)
+		factory.EXPECT().NewIndexerSource(gomock.Any()).Return(src, nil)
+		src.EXPECT().ListIndexers(ctx).Return([]indexer.SourceIndexer{
+			{ID: 10, Name: "idx-10"},
+			{ID: 20, Name: "idx-20"},
+		}, nil)
+		require.NoError(t, svc.RefreshIndexerSource(ctx, 1))
+
+		releases := []*prowlarr.ReleaseResource{{Title: nullable.NewNullableWithValue("Movie A")}}
+		srcStorage.EXPECT().GetIndexerSource(gomock.Any(), int64(1)).Return(model.IndexerSource{
+			ID: 1, Enabled: true,
+		}, nil)
+		factory.EXPECT().NewIndexerSource(gomock.Any()).Return(src, nil)
+		// indexer 10 succeeds
+		src.EXPECT().Search(gomock.Any(), int32(10), gomock.Any(), gomock.Any()).Return(releases, nil)
+		// indexer 20 fails — searchIndexerSource logs and continues
+		src.EXPECT().Search(gomock.Any(), int32(20), gomock.Any(), gomock.Any()).Return(nil, errors.New("source unavailable"))
+
+		got, err := svc.SearchIndexers(ctx, []int32{10, 20}, nil, indexer.SearchOptions{})
+		require.NoError(t, err)
+		assert.Equal(t, releases, got)
+	})
+
+	t.Run("does not hang when source goroutine is slow", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		svc, _, srcStorage, factory := newTestIndexerService(ctrl)
+
+		src := indexerMock.NewMockIndexerSource(ctrl)
+		srcStorage.EXPECT().GetIndexerSource(ctx, int64(1)).Return(model.IndexerSource{
+			ID: 1, Name: "prowlarr", Scheme: "http", Host: "prowlarr-host", Enabled: true,
+		}, nil)
+		factory.EXPECT().NewIndexerSource(gomock.Any()).Return(src, nil)
+		src.EXPECT().ListIndexers(ctx).Return([]indexer.SourceIndexer{{ID: 1, Name: "indexer-1"}}, nil)
+		require.NoError(t, svc.RefreshIndexerSource(ctx, 1))
+
+		// Simulate a source that blocks until its per-source context times out
+		srcStorage.EXPECT().GetIndexerSource(gomock.Any(), int64(1)).Return(model.IndexerSource{
+			ID: 1, Enabled: true,
+		}, nil)
+		factory.EXPECT().NewIndexerSource(gomock.Any()).Return(src, nil)
+		src.EXPECT().Search(gomock.Any(), int32(1), gomock.Any(), gomock.Any()).DoAndReturn(
+			func(ctx context.Context, _ int32, _ []int32, _ indexer.SearchOptions) ([]*prowlarr.ReleaseResource, error) {
+				<-ctx.Done()
+				return nil, ctx.Err()
+			},
+		)
+
+		// SearchIndexers must complete within sourceSearchTimeout, not hang indefinitely
+		done := make(chan struct{})
+		go func() {
+			svc.SearchIndexers(ctx, []int32{1}, nil, indexer.SearchOptions{})
+			close(done)
+		}()
+
+		select {
+		case <-done:
+			// Completed — the per-source timeout prevented a hang
+		case <-time.After(35 * time.Second):
+			t.Fatal("SearchIndexers hung — source goroutine was not cancelled by per-source timeout")
+		}
 	})
 }

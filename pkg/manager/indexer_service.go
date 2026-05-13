@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 	"sync"
+	"time"
 
 	"github.com/go-jet/jet/v2/sqlite"
 	"github.com/kasuboski/mediaz/pkg/cache"
@@ -386,6 +387,12 @@ func (is IndexerService) RefreshAllIndexerSources(ctx context.Context) error {
 	return allErrors
 }
 
+// sourceSearchTimeout is the per-source timeout for indexer search operations.
+// If any single source goroutine exceeds this duration it is cancelled and
+// its timeout error is aggregated with any other source errors, preventing a
+// slow or unresponsive source from hanging the entire SearchIndexers call.
+const sourceSearchTimeout = 30 * time.Second
+
 func (is IndexerService) SearchIndexers(ctx context.Context, indexers, categories []int32, opts indexer.SearchOptions) ([]*prowlarr.ReleaseResource, error) {
 	log := logger.FromCtx(ctx)
 
@@ -423,7 +430,9 @@ func (is IndexerService) SearchIndexers(ctx context.Context, indexers, categorie
 		wg.Add(1)
 		go func(srcID int64, indexerIDs []int32) {
 			defer wg.Done()
-			releases, err := is.searchIndexerSource(ctx, srcID, indexerIDs, categories, opts)
+			ctxWithTimeout, cancel := context.WithTimeout(ctx, sourceSearchTimeout)
+			defer cancel()
+			releases, err := is.searchIndexerSource(ctxWithTimeout, srcID, indexerIDs, categories, opts)
 			resultChan <- result{releases: releases, err: err}
 		}(sourceID, idxIDs)
 	}
