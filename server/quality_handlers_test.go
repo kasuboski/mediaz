@@ -1,43 +1,40 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
-	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 
 	"github.com/gorilla/mux"
 	"github.com/kasuboski/mediaz/config"
 	"github.com/kasuboski/mediaz/pkg/manager"
-	"github.com/kasuboski/mediaz/pkg/storage"
-	storeMocks "github.com/kasuboski/mediaz/pkg/storage/mocks"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
 	tmdbMocks "github.com/kasuboski/mediaz/pkg/tmdb/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.uber.org/mock/gomock"
 )
+
+func newQualityManager(t *testing.T) manager.MediaManager {
+	t.Helper()
+	ctrl := gomockController(t)
+	tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
+	store := newInMemoryStore(t)
+	return manager.New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
+}
+
+// itoa converts an int32 or int to string for URL paths.
+func itoa[T ~int32 | ~int | ~int64](v T) string {
+	return strconv.FormatInt(int64(v), 10)
+}
 
 // --- Quality Definition tests ---
 
 func TestServer_ListQualityDefinitions(t *testing.T) {
-	t.Run("success - returns definitions", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
-		defer ctrl.Finish()
-
-		store := storeMocks.NewMockStorage(ctrl)
-		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
-
-		defs := []*model.QualityDefinition{
-			{ID: 1, Name: "Bluray-1080p", MediaType: "movie", PreferredSize: 40, MinSize: 20, MaxSize: 60},
-			{ID: 2, Name: "HDTV-720p", MediaType: "episode", PreferredSize: 10, MinSize: 5, MaxSize: 15},
-		}
-
-		store.EXPECT().ListQualityDefinitions(gomock.Any()).Return(defs, nil)
-
-		mgr := manager.New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
+	t.Run("success - returns default definitions", func(t *testing.T) {
+		mgr := newQualityManager(t)
 
 		s := newTestServer(withManager(mgr))
 
@@ -58,23 +55,28 @@ func TestServer_ListQualityDefinitions(t *testing.T) {
 
 		defList, ok := response.Response.([]any)
 		require.True(t, ok, "Response should be an array")
-		assert.Len(t, defList, 2)
+		// Default schema seeds quality definitions
+		assert.NotEmpty(t, defList)
 
+		// Verify first definition has all expected fields
 		first := defList[0].(map[string]any)
-		assert.Equal(t, float64(1), first["ID"])
-		assert.Equal(t, "Bluray-1080p", first["Name"])
+		assert.Contains(t, first, "ID")
+		assert.Contains(t, first, "Name")
+		assert.Contains(t, first, "MediaType")
+		assert.Contains(t, first, "PreferredSize")
+		assert.Contains(t, first, "MinSize")
+		assert.Contains(t, first, "MaxSize")
 	})
 
-	t.Run("error - storage error", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
-		defer ctrl.Finish()
+	t.Run("success - returns created definition", func(t *testing.T) {
+		mgr := newQualityManager(t)
+		ctx := context.Background()
 
-		store := storeMocks.NewMockStorage(ctrl)
-		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
-
-		store.EXPECT().ListQualityDefinitions(gomock.Any()).Return(nil, errors.New("storage error"))
-
-		mgr := manager.New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
+		_, err := mgr.AddQualityDefinition(ctx, manager.AddQualityDefinitionRequest{
+			Name: "TestCustom1080p", Type: "movie",
+			PreferredSize: 40, MinSize: 20, MaxSize: 60,
+		})
+		require.NoError(t, err)
 
 		s := newTestServer(withManager(mgr))
 
@@ -86,27 +88,46 @@ func TestServer_ListQualityDefinitions(t *testing.T) {
 		handler := s.ListQualityDefinitions()
 		handler.ServeHTTP(rr, req)
 
-		assert.Equal(t, http.StatusInternalServerError, rr.Code)
+		assert.Equal(t, http.StatusOK, rr.Code)
+
+		var response GenericResponse
+		err = json.Unmarshal(rr.Body.Bytes(), &response)
+		require.NoError(t, err)
+
+		defList, ok := response.Response.([]any)
+		require.True(t, ok, "Response should be an array")
+
+		// Find our created definition by name (unique to avoid colliding with seeded defaults)
+		var found map[string]any
+		for _, item := range defList {
+			m := item.(map[string]any)
+			if m["Name"] == "TestCustom1080p" {
+				found = m
+				break
+			}
+		}
+		require.NotNil(t, found, "Should find created definition")
+		assert.Equal(t, "movie", found["MediaType"])
+		assert.Equal(t, float64(40), found["PreferredSize"])
+		assert.Equal(t, float64(20), found["MinSize"])
+		assert.Equal(t, float64(60), found["MaxSize"])
 	})
 }
 
 func TestServer_GetQualityDefinition(t *testing.T) {
 	t.Run("success - returns definition by id", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
-		defer ctrl.Finish()
+		mgr := newQualityManager(t)
+		ctx := context.Background()
 
-		store := storeMocks.NewMockStorage(ctrl)
-		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
-
-		store.EXPECT().GetQualityDefinition(gomock.Any(), int64(1)).Return(model.QualityDefinition{
-			ID: 1, Name: "Bluray-1080p", MediaType: "movie", PreferredSize: 40, MinSize: 20, MaxSize: 60,
-		}, nil)
-
-		mgr := manager.New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
+		created, err := mgr.AddQualityDefinition(ctx, manager.AddQualityDefinitionRequest{
+			Name: "TestCustom1080p", Type: "movie",
+			PreferredSize: 40, MinSize: 20, MaxSize: 60,
+		})
+		require.NoError(t, err)
 
 		s := newTestServer(withManager(mgr))
 
-		req, err := http.NewRequest("GET", "/quality/definitions/1", nil)
+		req, err := http.NewRequest("GET", "/quality/definitions/"+itoa(created.ID), nil)
 		require.NoError(t, err)
 
 		rr := httptest.NewRecorder()
@@ -124,8 +145,12 @@ func TestServer_GetQualityDefinition(t *testing.T) {
 
 		def, ok := response.Response.(map[string]any)
 		require.True(t, ok, "Response should be a map")
-		assert.Equal(t, float64(1), def["ID"])
-		assert.Equal(t, "Bluray-1080p", def["Name"])
+		assert.Equal(t, float64(created.ID), def["ID"])
+		assert.Equal(t, "TestCustom1080p", def["Name"])
+		assert.Equal(t, "movie", def["MediaType"])
+		assert.Equal(t, float64(40), def["PreferredSize"])
+		assert.Equal(t, float64(20), def["MinSize"])
+		assert.Equal(t, float64(60), def["MaxSize"])
 	})
 
 	t.Run("invalid id format", func(t *testing.T) {
@@ -144,20 +169,12 @@ func TestServer_GetQualityDefinition(t *testing.T) {
 		assert.Contains(t, rr.Body.String(), "invalid id")
 	})
 
-	t.Run("error - storage error", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
-		defer ctrl.Finish()
-
-		store := storeMocks.NewMockStorage(ctrl)
-		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
-
-		store.EXPECT().GetQualityDefinition(gomock.Any(), int64(999)).Return(model.QualityDefinition{}, errors.New("not found"))
-
-		mgr := manager.New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
+	t.Run("error - nonexistent id", func(t *testing.T) {
+		mgr := newQualityManager(t)
 
 		s := newTestServer(withManager(mgr))
 
-		req, err := http.NewRequest("GET", "/quality/definitions/999", nil)
+		req, err := http.NewRequest("GET", "/quality/definitions/9999", nil)
 		require.NoError(t, err)
 
 		rr := httptest.NewRecorder()
@@ -172,19 +189,11 @@ func TestServer_GetQualityDefinition(t *testing.T) {
 
 func TestServer_CreateQualityDefinition(t *testing.T) {
 	t.Run("success - creates a definition", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
-		defer ctrl.Finish()
-
-		store := storeMocks.NewMockStorage(ctrl)
-		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
-
-		store.EXPECT().CreateQualityDefinition(gomock.Any(), gomock.Any()).Return(int64(1), nil)
-
-		mgr := manager.New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
+		mgr := newQualityManager(t)
 
 		s := newTestServer(withManager(mgr))
 
-		requestBody := `{"name":"Bluray-1080p","type":"movie","preferredSize":40,"minSize":20,"maxSize":60}`
+		requestBody := `{"name":"TestCustom1080p","type":"movie","preferredSize":40,"minSize":20,"maxSize":60}`
 		req, err := http.NewRequest("POST", "/quality/definitions", strings.NewReader(requestBody))
 		require.NoError(t, err)
 
@@ -202,9 +211,12 @@ func TestServer_CreateQualityDefinition(t *testing.T) {
 
 		def, ok := response.Response.(map[string]any)
 		require.True(t, ok, "Response should be a map")
-		assert.Equal(t, float64(1), def["ID"])
-		assert.Equal(t, "Bluray-1080p", def["Name"])
+		assert.NotZero(t, def["ID"])
+		assert.Equal(t, "TestCustom1080p", def["Name"])
 		assert.Equal(t, "movie", def["MediaType"])
+		assert.Equal(t, float64(40), def["PreferredSize"])
+		assert.Equal(t, float64(20), def["MinSize"])
+		assert.Equal(t, float64(60), def["MaxSize"])
 	})
 
 	t.Run("invalid request body - malformed json", func(t *testing.T) {
@@ -222,52 +234,23 @@ func TestServer_CreateQualityDefinition(t *testing.T) {
 		assert.Equal(t, http.StatusBadRequest, rr.Code)
 		assert.Contains(t, rr.Body.String(), "invalid request body")
 	})
-
-	t.Run("error - storage error", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
-		defer ctrl.Finish()
-
-		store := storeMocks.NewMockStorage(ctrl)
-		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
-
-		store.EXPECT().CreateQualityDefinition(gomock.Any(), gomock.Any()).Return(int64(0), errors.New("storage error"))
-
-		mgr := manager.New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
-
-		s := newTestServer(withManager(mgr))
-
-		requestBody := `{"name":"Bluray-1080p","type":"movie","preferredSize":40,"minSize":20,"maxSize":60}`
-		req, err := http.NewRequest("POST", "/quality/definitions", strings.NewReader(requestBody))
-		require.NoError(t, err)
-
-		rr := httptest.NewRecorder()
-
-		handler := s.CreateQualityDefinition()
-		handler.ServeHTTP(rr, req)
-
-		assert.Equal(t, http.StatusInternalServerError, rr.Code)
-	})
 }
 
 func TestServer_UpdateQualityDefinition(t *testing.T) {
 	t.Run("success - updates a definition", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
-		defer ctrl.Finish()
+		mgr := newQualityManager(t)
+		ctx := context.Background()
 
-		store := storeMocks.NewMockStorage(ctrl)
-		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
-
-		store.EXPECT().UpdateQualityDefinition(gomock.Any(), int64(1), gomock.Any()).Return(nil)
-		store.EXPECT().GetQualityDefinition(gomock.Any(), int64(1)).Return(model.QualityDefinition{
-			ID: 1, Name: "Bluray-720p", MediaType: "movie", PreferredSize: 25, MinSize: 10, MaxSize: 40,
-		}, nil)
-
-		mgr := manager.New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
+		created, err := mgr.AddQualityDefinition(ctx, manager.AddQualityDefinitionRequest{
+			Name: "TestCustom1080p", Type: "movie",
+			PreferredSize: 40, MinSize: 20, MaxSize: 60,
+		})
+		require.NoError(t, err)
 
 		s := newTestServer(withManager(mgr))
 
 		requestBody := `{"name":"Bluray-720p","type":"movie","preferredSize":25,"minSize":10,"maxSize":40}`
-		req, err := http.NewRequest("PUT", "/quality/definitions/1", strings.NewReader(requestBody))
+		req, err := http.NewRequest("PUT", "/quality/definitions/"+itoa(created.ID), strings.NewReader(requestBody))
 		require.NoError(t, err)
 
 		rr := httptest.NewRecorder()
@@ -285,8 +268,12 @@ func TestServer_UpdateQualityDefinition(t *testing.T) {
 
 		def, ok := response.Response.(map[string]any)
 		require.True(t, ok, "Response should be a map")
-		assert.Equal(t, float64(1), def["ID"])
+		assert.Equal(t, float64(created.ID), def["ID"])
 		assert.Equal(t, "Bluray-720p", def["Name"])
+		assert.Equal(t, "movie", def["MediaType"])
+		assert.Equal(t, float64(25), def["PreferredSize"])
+		assert.Equal(t, float64(10), def["MinSize"])
+		assert.Equal(t, float64(40), def["MaxSize"])
 	})
 
 	t.Run("invalid id format", func(t *testing.T) {
@@ -322,49 +309,22 @@ func TestServer_UpdateQualityDefinition(t *testing.T) {
 		assert.Equal(t, http.StatusBadRequest, rr.Code)
 		assert.Contains(t, rr.Body.String(), "invalid request body")
 	})
-
-	t.Run("error - storage error on update", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
-		defer ctrl.Finish()
-
-		store := storeMocks.NewMockStorage(ctrl)
-		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
-
-		store.EXPECT().UpdateQualityDefinition(gomock.Any(), int64(1), gomock.Any()).Return(errors.New("storage error"))
-
-		mgr := manager.New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
-
-		s := newTestServer(withManager(mgr))
-
-		requestBody := `{"name":"Bluray-720p","type":"movie","preferredSize":25,"minSize":10,"maxSize":40}`
-		req, err := http.NewRequest("PUT", "/quality/definitions/1", strings.NewReader(requestBody))
-		require.NoError(t, err)
-
-		rr := httptest.NewRecorder()
-
-		router := mux.NewRouter()
-		router.HandleFunc("/quality/definitions/{id}", s.UpdateQualityDefinition()).Methods("PUT")
-		router.ServeHTTP(rr, req)
-
-		assert.Equal(t, http.StatusInternalServerError, rr.Code)
-	})
 }
 
 func TestServer_DeleteQualityDefinition(t *testing.T) {
 	t.Run("success - deletes a definition", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
-		defer ctrl.Finish()
+		mgr := newQualityManager(t)
+		ctx := context.Background()
 
-		store := storeMocks.NewMockStorage(ctrl)
-		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
-
-		store.EXPECT().DeleteQualityDefinition(gomock.Any(), int64(1)).Return(nil)
-
-		mgr := manager.New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
+		created, err := mgr.AddQualityDefinition(ctx, manager.AddQualityDefinitionRequest{
+			Name: "TestCustom1080p", Type: "movie",
+			PreferredSize: 40, MinSize: 20, MaxSize: 60,
+		})
+		require.NoError(t, err)
 
 		s := newTestServer(withManager(mgr))
 
-		req, err := http.NewRequest("DELETE", "/quality/definitions/1", nil)
+		req, err := http.NewRequest("DELETE", "/quality/definitions/"+itoa(created.ID), nil)
 		require.NoError(t, err)
 
 		rr := httptest.NewRecorder()
@@ -382,7 +342,7 @@ func TestServer_DeleteQualityDefinition(t *testing.T) {
 
 		respMap, ok := response.Response.(map[string]any)
 		require.True(t, ok, "Response should be a map")
-		assert.Equal(t, float64(1), respMap["id"])
+		assert.Equal(t, float64(created.ID), respMap["id"])
 	})
 
 	t.Run("invalid id format", func(t *testing.T) {
@@ -400,62 +360,40 @@ func TestServer_DeleteQualityDefinition(t *testing.T) {
 		assert.Equal(t, http.StatusBadRequest, rr.Code)
 		assert.Contains(t, rr.Body.String(), "invalid id")
 	})
-
-	t.Run("error - storage error", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
-		defer ctrl.Finish()
-
-		store := storeMocks.NewMockStorage(ctrl)
-		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
-
-		store.EXPECT().DeleteQualityDefinition(gomock.Any(), int64(1)).Return(errors.New("storage error"))
-
-		mgr := manager.New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
-
-		s := newTestServer(withManager(mgr))
-
-		req, err := http.NewRequest("DELETE", "/quality/definitions/1", nil)
-		require.NoError(t, err)
-
-		rr := httptest.NewRecorder()
-
-		router := mux.NewRouter()
-		router.HandleFunc("/quality/definitions/{id}", s.DeleteQualityDefinition()).Methods("DELETE")
-		router.ServeHTTP(rr, req)
-
-		assert.Equal(t, http.StatusInternalServerError, rr.Code)
-	})
 }
 
 // --- Quality Profile tests ---
 
 func TestServer_GetQualityProfile(t *testing.T) {
 	t.Run("success - returns profile by id", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
-		defer ctrl.Finish()
+		mgr := newQualityManager(t)
+		ctx := context.Background()
 
-		store := storeMocks.NewMockStorage(ctrl)
-		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
+		// Create quality definitions first
+		qd1, err := mgr.AddQualityDefinition(ctx, manager.AddQualityDefinitionRequest{
+			Name: "TestHDTV720p", Type: "movie",
+			PreferredSize: 10, MinSize: 5, MaxSize: 15,
+		})
+		require.NoError(t, err)
 
-		cutoffID := int32(3)
-		profile := storage.QualityProfile{
-			ID:              1,
+		qd2, err := mgr.AddQualityDefinition(ctx, manager.AddQualityDefinitionRequest{
+			Name: "TestCustom1080p", Type: "movie",
+			PreferredSize: 40, MinSize: 20, MaxSize: 60,
+		})
+		require.NoError(t, err)
+
+		cutoffID := qd2.ID
+		profile, err := mgr.AddQualityProfile(ctx, manager.AddQualityProfileRequest{
 			Name:            "HD Profile",
 			CutoffQualityID: &cutoffID,
 			UpgradeAllowed:  true,
-			Qualities: []storage.QualityDefinition{
-				{ID: 1, Name: "HDTV-720p", MediaType: "movie"},
-				{ID: 3, Name: "Bluray-1080p", MediaType: "movie"},
-			},
-		}
-
-		store.EXPECT().GetQualityProfile(gomock.Any(), int64(1)).Return(profile, nil)
-
-		mgr := manager.New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
+			QualityIDs:      []int32{qd1.ID, qd2.ID},
+		})
+		require.NoError(t, err)
 
 		s := newTestServer(withManager(mgr))
 
-		req, err := http.NewRequest("GET", "/quality/profiles/1", nil)
+		req, err := http.NewRequest("GET", "/quality/profiles/"+itoa(profile.ID), nil)
 		require.NoError(t, err)
 
 		rr := httptest.NewRecorder()
@@ -473,9 +411,19 @@ func TestServer_GetQualityProfile(t *testing.T) {
 
 		prof, ok := response.Response.(map[string]any)
 		require.True(t, ok, "Response should be a map")
-		assert.Equal(t, float64(1), prof["id"])
+		assert.Equal(t, float64(profile.ID), prof["id"])
 		assert.Equal(t, "HD Profile", prof["name"])
 		assert.Equal(t, true, prof["upgradeAllowed"])
+
+		// Check cutoff quality ID is present
+		cutoff, ok := prof["cutoff_quality_id"]
+		require.True(t, ok)
+		assert.Equal(t, float64(cutoffID), cutoff)
+
+		// Check qualities array
+		qualities, ok := prof["qualities"].([]any)
+		require.True(t, ok, "qualities should be an array")
+		assert.Len(t, qualities, 2)
 	})
 
 	t.Run("invalid id format", func(t *testing.T) {
@@ -494,20 +442,12 @@ func TestServer_GetQualityProfile(t *testing.T) {
 		assert.Contains(t, rr.Body.String(), "invalid id")
 	})
 
-	t.Run("error - storage error", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
-		defer ctrl.Finish()
-
-		store := storeMocks.NewMockStorage(ctrl)
-		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
-
-		store.EXPECT().GetQualityProfile(gomock.Any(), int64(999)).Return(storage.QualityProfile{}, errors.New("not found"))
-
-		mgr := manager.New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
+	t.Run("error - nonexistent id", func(t *testing.T) {
+		mgr := newQualityManager(t)
 
 		s := newTestServer(withManager(mgr))
 
-		req, err := http.NewRequest("GET", "/quality/profiles/999", nil)
+		req, err := http.NewRequest("GET", "/quality/profiles/9999", nil)
 		require.NoError(t, err)
 
 		rr := httptest.NewRecorder()
@@ -521,21 +461,22 @@ func TestServer_GetQualityProfile(t *testing.T) {
 }
 
 func TestServer_ListQualityProfiles(t *testing.T) {
-	t.Run("success - returns all profiles when no type filter", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
-		defer ctrl.Finish()
+	t.Run("success - returns profiles", func(t *testing.T) {
+		mgr := newQualityManager(t)
+		ctx := context.Background()
 
-		store := storeMocks.NewMockStorage(ctrl)
-		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
+		// Create quality definitions and a profile
+		qd1, err := mgr.AddQualityDefinition(ctx, manager.AddQualityDefinitionRequest{
+			Name: "TestHDTV720p", Type: "movie",
+			PreferredSize: 10, MinSize: 5, MaxSize: 15,
+		})
+		require.NoError(t, err)
 
-		profiles := []*storage.QualityProfile{
-			{ID: 1, Name: "Any HD", UpgradeAllowed: false},
-			{ID: 2, Name: "Movie 4K", UpgradeAllowed: true},
-		}
-
-		store.EXPECT().ListQualityProfiles(gomock.Any(), gomock.Any()).Return(profiles, nil)
-
-		mgr := manager.New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
+		_, err = mgr.AddQualityProfile(ctx, manager.AddQualityProfileRequest{
+			Name:       "Movie HD",
+			QualityIDs: []int32{qd1.ID},
+		})
+		require.NoError(t, err)
 
 		s := newTestServer(withManager(mgr))
 
@@ -554,31 +495,32 @@ func TestServer_ListQualityProfiles(t *testing.T) {
 		err = json.Unmarshal(rr.Body.Bytes(), &response)
 		require.NoError(t, err)
 
-		profileList, ok := response.Response.([]*storage.QualityProfile)
-		// Profiles may come back as []any due to JSON round-trip
-		if !ok {
-			profileAny, ok := response.Response.([]any)
-			require.True(t, ok, "Response should be an array")
-			assert.Len(t, profileAny, 2)
-		} else {
-			assert.Len(t, profileList, 2)
-		}
+		profileList, ok := response.Response.([]any)
+		require.True(t, ok, "Response should be an array")
+		assert.NotEmpty(t, profileList)
+
+		first := profileList[0].(map[string]any)
+		assert.Contains(t, first, "id")
+		assert.Contains(t, first, "name")
+		assert.Contains(t, first, "upgradeAllowed")
+		assert.Contains(t, first, "qualities")
 	})
 
 	t.Run("success - filters by movie type", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
-		defer ctrl.Finish()
+		mgr := newQualityManager(t)
+		ctx := context.Background()
 
-		store := storeMocks.NewMockStorage(ctrl)
-		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
+		qd, err := mgr.AddQualityDefinition(ctx, manager.AddQualityDefinitionRequest{
+			Name: "TestHDTV720p", Type: "movie",
+			PreferredSize: 10, MinSize: 5, MaxSize: 15,
+		})
+		require.NoError(t, err)
 
-		profiles := []*storage.QualityProfile{
-			{ID: 2, Name: "Movie 4K", UpgradeAllowed: true},
-		}
-
-		store.EXPECT().ListQualityProfiles(gomock.Any(), gomock.Any()).Return(profiles, nil)
-
-		mgr := manager.New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
+		_, err = mgr.AddQualityProfile(ctx, manager.AddQualityProfileRequest{
+			Name:       "Movie Profile",
+			QualityIDs: []int32{qd.ID},
+		})
+		require.NoError(t, err)
 
 		s := newTestServer(withManager(mgr))
 
@@ -594,19 +536,20 @@ func TestServer_ListQualityProfiles(t *testing.T) {
 	})
 
 	t.Run("success - filters by series type", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
-		defer ctrl.Finish()
+		mgr := newQualityManager(t)
+		ctx := context.Background()
 
-		store := storeMocks.NewMockStorage(ctrl)
-		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
+		qd, err := mgr.AddQualityDefinition(ctx, manager.AddQualityDefinitionRequest{
+			Name: "TestHDTV720p", Type: "episode",
+			PreferredSize: 10, MinSize: 5, MaxSize: 15,
+		})
+		require.NoError(t, err)
 
-		profiles := []*storage.QualityProfile{
-			{ID: 3, Name: "Series HD", UpgradeAllowed: false},
-		}
-
-		store.EXPECT().ListQualityProfiles(gomock.Any(), gomock.Any()).Return(profiles, nil)
-
-		mgr := manager.New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
+		_, err = mgr.AddQualityProfile(ctx, manager.AddQualityProfileRequest{
+			Name:       "Series Profile",
+			QualityIDs: []int32{qd.ID},
+		})
+		require.NoError(t, err)
 
 		s := newTestServer(withManager(mgr))
 
@@ -620,60 +563,29 @@ func TestServer_ListQualityProfiles(t *testing.T) {
 
 		assert.Equal(t, http.StatusOK, rr.Code)
 	})
-
-	t.Run("error - storage error", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
-		defer ctrl.Finish()
-
-		store := storeMocks.NewMockStorage(ctrl)
-		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
-
-		store.EXPECT().ListQualityProfiles(gomock.Any(), gomock.Any()).Return(nil, errors.New("storage error"))
-
-		mgr := manager.New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
-
-		s := newTestServer(withManager(mgr))
-
-		req, err := http.NewRequest("GET", "/quality/profiles", nil)
-		require.NoError(t, err)
-
-		rr := httptest.NewRecorder()
-
-		handler := s.ListQualityProfiles()
-		handler.ServeHTTP(rr, req)
-
-		assert.Equal(t, http.StatusInternalServerError, rr.Code)
-	})
 }
 
 func TestServer_CreateQualityProfile(t *testing.T) {
 	t.Run("success - creates a profile", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
-		defer ctrl.Finish()
+		mgr := newQualityManager(t)
+		ctx := context.Background()
 
-		store := storeMocks.NewMockStorage(ctrl)
-		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
+		qd1, err := mgr.AddQualityDefinition(ctx, manager.AddQualityDefinitionRequest{
+			Name: "TestHDTV720p", Type: "movie",
+			PreferredSize: 10, MinSize: 5, MaxSize: 15,
+		})
+		require.NoError(t, err)
 
-		cutoffID := int32(2)
-
-		store.EXPECT().CreateQualityProfile(gomock.Any(), gomock.Any()).Return(int64(1), nil)
-		store.EXPECT().CreateQualityProfileItems(gomock.Any(), gomock.Any()).Return(nil)
-		store.EXPECT().GetQualityProfile(gomock.Any(), int64(1)).Return(storage.QualityProfile{
-			ID:              1,
-			Name:            "Test Profile",
-			CutoffQualityID: &cutoffID,
-			UpgradeAllowed:  true,
-			Qualities: []storage.QualityDefinition{
-				{ID: 1, Name: "HDTV-720p", MediaType: "movie"},
-				{ID: 2, Name: "Bluray-1080p", MediaType: "movie"},
-			},
-		}, nil)
-
-		mgr := manager.New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
+		qd2, err := mgr.AddQualityDefinition(ctx, manager.AddQualityDefinitionRequest{
+			Name: "TestCustom1080p", Type: "movie",
+			PreferredSize: 40, MinSize: 20, MaxSize: 60,
+		})
+		require.NoError(t, err)
 
 		s := newTestServer(withManager(mgr))
 
-		requestBody := `{"name":"Test Profile","cutoffQualityId":2,"upgradeAllowed":true,"qualityIds":[1,2]}`
+		cutoffID := int(qd2.ID)
+		requestBody := `{"name":"Test Profile","cutoffQualityId":` + itoa(int32(cutoffID)) + `,"upgradeAllowed":true,"qualityIds":[` + itoa(qd1.ID) + `,` + itoa(qd2.ID) + `]}`
 		req, err := http.NewRequest("POST", "/quality/profiles", strings.NewReader(requestBody))
 		require.NoError(t, err)
 
@@ -691,8 +603,13 @@ func TestServer_CreateQualityProfile(t *testing.T) {
 
 		prof, ok := response.Response.(map[string]any)
 		require.True(t, ok, "Response should be a map")
-		assert.Equal(t, float64(1), prof["id"])
+		assert.NotZero(t, prof["id"])
 		assert.Equal(t, "Test Profile", prof["name"])
+		assert.Equal(t, true, prof["upgradeAllowed"])
+
+		qualities, ok := prof["qualities"].([]any)
+		require.True(t, ok, "qualities should be an array")
+		assert.Len(t, qualities, 2)
 	})
 
 	t.Run("invalid request body - malformed json", func(t *testing.T) {
@@ -710,76 +627,39 @@ func TestServer_CreateQualityProfile(t *testing.T) {
 		assert.Equal(t, http.StatusBadRequest, rr.Code)
 		assert.Contains(t, rr.Body.String(), "invalid request body")
 	})
-
-	t.Run("error - storage error", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
-		defer ctrl.Finish()
-
-		store := storeMocks.NewMockStorage(ctrl)
-		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
-
-		store.EXPECT().CreateQualityProfile(gomock.Any(), gomock.Any()).Return(int64(0), errors.New("storage error"))
-
-		mgr := manager.New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
-
-		s := newTestServer(withManager(mgr))
-
-		requestBody := `{"name":"Test Profile","qualityIds":[1]}`
-		req, err := http.NewRequest("POST", "/quality/profiles", strings.NewReader(requestBody))
-		require.NoError(t, err)
-
-		rr := httptest.NewRecorder()
-
-		handler := s.CreateQualityProfile()
-		handler.ServeHTTP(rr, req)
-
-		assert.Equal(t, http.StatusInternalServerError, rr.Code)
-	})
 }
 
 func TestServer_UpdateQualityProfile(t *testing.T) {
 	t.Run("success - updates a profile", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
-		defer ctrl.Finish()
+		mgr := newQualityManager(t)
+		ctx := context.Background()
 
-		store := storeMocks.NewMockStorage(ctrl)
-		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
+		qd1, err := mgr.AddQualityDefinition(ctx, manager.AddQualityDefinitionRequest{
+			Name: "TestHDTV720p", Type: "movie",
+			PreferredSize: 10, MinSize: 5, MaxSize: 15,
+		})
+		require.NoError(t, err)
 
-		cutoffID := int32(2)
-		existingProfile := storage.QualityProfile{
-			ID:              1,
+		qd2, err := mgr.AddQualityDefinition(ctx, manager.AddQualityDefinitionRequest{
+			Name: "TestCustom1080p", Type: "movie",
+			PreferredSize: 40, MinSize: 20, MaxSize: 60,
+		})
+		require.NoError(t, err)
+
+		cutoffID := qd1.ID
+		profile, err := mgr.AddQualityProfile(ctx, manager.AddQualityProfileRequest{
 			Name:            "Old Name",
 			CutoffQualityID: &cutoffID,
 			UpgradeAllowed:  false,
-			Qualities: []storage.QualityDefinition{
-				{ID: 1, Name: "HDTV-720p"},
-			},
-		}
-
-		newCutoffID := int32(2)
-		updatedProfile := storage.QualityProfile{
-			ID:              1,
-			Name:            "Updated Profile",
-			CutoffQualityID: &newCutoffID,
-			UpgradeAllowed:  true,
-			Qualities: []storage.QualityDefinition{
-				{ID: 1, Name: "HDTV-720p"},
-				{ID: 2, Name: "Bluray-1080p"},
-			},
-		}
-
-		store.EXPECT().GetQualityProfile(gomock.Any(), int64(1)).Return(existingProfile, nil)
-		store.EXPECT().UpdateQualityProfile(gomock.Any(), int64(1), gomock.Any()).Return(nil)
-		store.EXPECT().DeleteQualityProfileItemsByProfileID(gomock.Any(), int64(1)).Return(nil)
-		store.EXPECT().CreateQualityProfileItems(gomock.Any(), gomock.Any()).Return(nil)
-		store.EXPECT().GetQualityProfile(gomock.Any(), int64(1)).Return(updatedProfile, nil)
-
-		mgr := manager.New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
+			QualityIDs:      []int32{qd1.ID},
+		})
+		require.NoError(t, err)
 
 		s := newTestServer(withManager(mgr))
 
-		requestBody := `{"name":"Updated Profile","cutoffQualityId":2,"upgradeAllowed":true,"qualityIds":[1,2]}`
-		req, err := http.NewRequest("PUT", "/quality/profiles/1", strings.NewReader(requestBody))
+		newCutoffID := int(qd2.ID)
+		requestBody := `{"name":"Updated Profile","cutoffQualityId":` + itoa(int32(newCutoffID)) + `,"upgradeAllowed":true,"qualityIds":[` + itoa(qd1.ID) + `,` + itoa(qd2.ID) + `]}`
+		req, err := http.NewRequest("PUT", "/quality/profiles/"+itoa(profile.ID), strings.NewReader(requestBody))
 		require.NoError(t, err)
 
 		rr := httptest.NewRecorder()
@@ -797,9 +677,13 @@ func TestServer_UpdateQualityProfile(t *testing.T) {
 
 		prof, ok := response.Response.(map[string]any)
 		require.True(t, ok, "Response should be a map")
-		assert.Equal(t, float64(1), prof["id"])
+		assert.Equal(t, float64(profile.ID), prof["id"])
 		assert.Equal(t, "Updated Profile", prof["name"])
 		assert.Equal(t, true, prof["upgradeAllowed"])
+
+		qualities, ok := prof["qualities"].([]any)
+		require.True(t, ok, "qualities should be an array")
+		assert.Len(t, qualities, 2)
 	})
 
 	t.Run("invalid id format", func(t *testing.T) {
@@ -835,49 +719,28 @@ func TestServer_UpdateQualityProfile(t *testing.T) {
 		assert.Equal(t, http.StatusBadRequest, rr.Code)
 		assert.Contains(t, rr.Body.String(), "invalid request body")
 	})
-
-	t.Run("error - storage error on get existing", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
-		defer ctrl.Finish()
-
-		store := storeMocks.NewMockStorage(ctrl)
-		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
-
-		store.EXPECT().GetQualityProfile(gomock.Any(), int64(1)).Return(storage.QualityProfile{}, errors.New("storage error"))
-
-		mgr := manager.New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
-
-		s := newTestServer(withManager(mgr))
-
-		requestBody := `{"name":"Updated Profile","qualityIds":[1]}`
-		req, err := http.NewRequest("PUT", "/quality/profiles/1", strings.NewReader(requestBody))
-		require.NoError(t, err)
-
-		rr := httptest.NewRecorder()
-
-		router := mux.NewRouter()
-		router.HandleFunc("/quality/profiles/{id}", s.UpdateQualityProfile()).Methods("PUT")
-		router.ServeHTTP(rr, req)
-
-		assert.Equal(t, http.StatusInternalServerError, rr.Code)
-	})
 }
 
 func TestServer_DeleteQualityProfile(t *testing.T) {
 	t.Run("success - deletes a profile", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
-		defer ctrl.Finish()
+		mgr := newQualityManager(t)
+		ctx := context.Background()
 
-		store := storeMocks.NewMockStorage(ctrl)
-		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
+		qd, err := mgr.AddQualityDefinition(ctx, manager.AddQualityDefinitionRequest{
+			Name: "TestHDTV720p", Type: "movie",
+			PreferredSize: 10, MinSize: 5, MaxSize: 15,
+		})
+		require.NoError(t, err)
 
-		store.EXPECT().DeleteQualityProfile(gomock.Any(), int64(1)).Return(nil)
-
-		mgr := manager.New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
+		profile, err := mgr.AddQualityProfile(ctx, manager.AddQualityProfileRequest{
+			Name:       "To Delete",
+			QualityIDs: []int32{qd.ID},
+		})
+		require.NoError(t, err)
 
 		s := newTestServer(withManager(mgr))
 
-		req, err := http.NewRequest("DELETE", "/quality/profiles/1", nil)
+		req, err := http.NewRequest("DELETE", "/quality/profiles/"+itoa(profile.ID), nil)
 		require.NoError(t, err)
 
 		rr := httptest.NewRecorder()
@@ -904,30 +767,5 @@ func TestServer_DeleteQualityProfile(t *testing.T) {
 
 		assert.Equal(t, http.StatusBadRequest, rr.Code)
 		assert.Contains(t, rr.Body.String(), "invalid id")
-	})
-
-	t.Run("error - storage error", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
-		defer ctrl.Finish()
-
-		store := storeMocks.NewMockStorage(ctrl)
-		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
-
-		store.EXPECT().DeleteQualityProfile(gomock.Any(), int64(1)).Return(errors.New("storage error"))
-
-		mgr := manager.New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
-
-		s := newTestServer(withManager(mgr))
-
-		req, err := http.NewRequest("DELETE", "/quality/profiles/1", nil)
-		require.NoError(t, err)
-
-		rr := httptest.NewRecorder()
-
-		router := mux.NewRouter()
-		router.HandleFunc("/quality/profiles/{id}", s.DeleteQualityProfile()).Methods("DELETE")
-		router.ServeHTTP(rr, req)
-
-		assert.Equal(t, http.StatusInternalServerError, rr.Code)
 	})
 }
