@@ -244,6 +244,32 @@ func TestIndexMovieLibrary(t *testing.T) {
 		require.NoError(t, err)
 		assert.Len(t, movieFiles, 1)
 	})
+
+	t.Run("skips discovered files with absolute relative path", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		ctx := context.Background()
+
+		store := newStore(t, ctx)
+		mockLibrary := mockLibrary.NewMockLibrary(ctrl)
+
+		discoveredFiles := []library.MovieFile{
+			{RelativePath: "/absolute/path/Movie 1/movie1.mp4", AbsolutePath: "/absolute/path/Movie 1/movie1.mp4", Size: 1024},
+			{RelativePath: "Movie 2/movie2.mkv", AbsolutePath: "/movies/Movie 2/movie2.mkv", Size: 2048},
+		}
+
+		mockLibrary.EXPECT().FindMovies(ctx).Times(1).Return(discoveredFiles, nil)
+
+		m := New(nil, nil, mockLibrary, store, nil, config.Manager{}, config.Config{})
+		require.NotNil(t, m)
+
+		err := m.IndexMovieLibrary(ctx)
+		assert.NoError(t, err)
+
+		movieFiles, err := store.ListMovieFiles(ctx)
+		require.NoError(t, err)
+		assert.Len(t, movieFiles, 1)
+		assert.Equal(t, "Movie 2/movie2.mkv", *movieFiles[0].RelativePath)
+	})
 }
 
 func TestListShowsInLibrary(t *testing.T) {

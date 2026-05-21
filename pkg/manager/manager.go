@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"path/filepath"
 	"strings"
 
 	"github.com/go-jet/jet/v2/qrm"
@@ -86,6 +87,7 @@ func New(tmbdClient tmdb.ITmdb, indexerFactory indexer.Factory, library library.
 
 // ErrValidation is returned when request validation fails.
 var ErrValidation = errors.New("validation error")
+
 // SearchMovie queries TMDB for a movie
 func (m MediaManager) SearchMovie(ctx context.Context, query string) (*SearchMediaResponse, error) {
 	return m.movieService.SearchMovie(ctx, query)
@@ -304,9 +306,15 @@ func (m MediaManager) IndexMovieLibrary(ctx context.Context) error {
 			continue
 		}
 
+		if filepath.IsAbs(discoveredFile.RelativePath) {
+			log.Warn("discovered file has absolute path, skipping",
+				zap.String("path", discoveredFile.RelativePath))
+			continue
+		}
+
 		mf := model.MovieFile{
-			OriginalFilePath: &discoveredFile.RelativePath, // this should always be relative if we discovered it in the library.. surely
-			RelativePath:     &discoveredFile.RelativePath, // TODO: make sure it's actually relative
+			OriginalFilePath: &discoveredFile.RelativePath,
+			RelativePath:     &discoveredFile.RelativePath,
 			Size:             discoveredFile.Size,
 		}
 
