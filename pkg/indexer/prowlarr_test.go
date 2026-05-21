@@ -102,6 +102,7 @@ func TestNewProwlarrSource(t *testing.T) {
 		require.NoError(t, err)
 		assert.NotNil(t, src)
 		assert.Equal(t, "my-key", src.client.GetAPIKey())
+		assert.Equal(t, "http://localhost", src.client.GetAPIURL())
 	})
 
 	t.Run("creates source with custom port", func(t *testing.T) {
