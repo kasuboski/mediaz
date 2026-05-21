@@ -775,6 +775,52 @@ func TestIndexerService_SearchIndexers(t *testing.T) {
 		assert.Equal(t, releases, got)
 	})
 
+	t.Run("returns partial results and error when one source fails", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		svc, _, srcStorage, factory := newTestIndexerService(ctrl)
+
+		// Source 1 with indexer 10
+		src1 := indexerMock.NewMockIndexerSource(ctrl)
+		srcStorage.EXPECT().GetIndexerSource(ctx, int64(1)).Return(model.IndexerSource{
+			ID: 1, Name: "prowlarr-1", Scheme: "http", Host: "host1", Enabled: true,
+		}, nil)
+		factory.EXPECT().NewIndexerSource(gomock.Any()).Return(src1, nil)
+		src1.EXPECT().ListIndexers(ctx).Return([]indexer.SourceIndexer{
+			{ID: 10, Name: "idx-10"},
+		}, nil)
+		require.NoError(t, svc.RefreshIndexerSource(ctx, 1))
+
+		// Source 2 with indexer 20
+		src2 := indexerMock.NewMockIndexerSource(ctrl)
+		srcStorage.EXPECT().GetIndexerSource(ctx, int64(2)).Return(model.IndexerSource{
+			ID: 2, Name: "prowlarr-2", Scheme: "http", Host: "host2", Enabled: true,
+		}, nil)
+		factory.EXPECT().NewIndexerSource(gomock.Any()).Return(src2, nil)
+		src2.EXPECT().ListIndexers(ctx).Return([]indexer.SourceIndexer{
+			{ID: 20, Name: "idx-20"},
+		}, nil)
+		require.NoError(t, svc.RefreshIndexerSource(ctx, 2))
+
+		releases := []*prowlarr.ReleaseResource{{Title: nullable.NewNullableWithValue("Movie A")}}
+
+		// Source 1 succeeds
+		srcStorage.EXPECT().GetIndexerSource(gomock.Any(), int64(1)).Return(model.IndexerSource{
+			ID: 1, Enabled: true,
+		}, nil)
+		factory.EXPECT().NewIndexerSource(gomock.Any()).Return(src1, nil)
+		src1.EXPECT().Search(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(releases, nil)
+
+		// Source 2 fails at source level (GetIndexerSource returns error)
+		srcStorage.EXPECT().GetIndexerSource(gomock.Any(), int64(2)).Return(model.IndexerSource{}, errors.New("source unavailable"))
+
+		got, err := svc.SearchIndexers(ctx, []int32{10, 20}, nil, indexer.SearchOptions{})
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "source unavailable")
+		assert.Equal(t, releases, got)
+	})
+
 	t.Run("does not hang when source goroutine is slow", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
