@@ -141,6 +141,8 @@ The project uses `gomock` library to avoid external dependencies during testing.
 
 **External Components**: Components that interact with the outside world have generated mocks with `gomock`. These mocks are in a `mocks` folder next to the component.
 
+**Struct Assertions**: Tests should assert on the full returned struct, not just individual fields.
+
 **Mock Setup Example**:
 ```go
 ctrl := gomock.NewController(t)
