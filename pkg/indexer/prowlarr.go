@@ -133,4 +133,3 @@ func (p *ProwlarrIndexerSource) Search(ctx context.Context, indexerID int32, cat
 
 	return releases, nil
 }
-
