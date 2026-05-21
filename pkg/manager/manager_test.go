@@ -267,8 +267,16 @@ func TestIndexMovieLibrary(t *testing.T) {
 
 		movieFiles, err := store.ListMovieFiles(ctx)
 		require.NoError(t, err)
-		assert.Len(t, movieFiles, 1)
-		assert.Equal(t, "Movie 2/movie2.mkv", *movieFiles[0].RelativePath)
+		require.Len(t, movieFiles, 1)
+
+		expected := model.MovieFile{
+			ID:               movieFiles[0].ID,
+			DateAdded:        movieFiles[0].DateAdded,
+			RelativePath:     ptr.To("Movie 2/movie2.mkv"),
+			OriginalFilePath: ptr.To("Movie 2/movie2.mkv"),
+			Size:             2048,
+		}
+		assert.Equal(t, expected, *movieFiles[0])
 	})
 }
 
