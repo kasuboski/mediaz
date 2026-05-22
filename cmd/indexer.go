@@ -134,7 +134,10 @@ var searchIndexerCmd = &cobra.Command{
 			Query: query,
 		})
 		if err != nil {
-			log.Fatalw("failed to search indexers", "error", err)
+			if len(releases) == 0 {
+				log.Fatalw("failed to search indexers", "error", err)
+			}
+			log.Warnw("some indexer sources failed", "error", err)
 		}
 
 		for _, r := range releases {

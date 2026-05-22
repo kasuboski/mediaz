@@ -367,8 +367,10 @@ func (m MediaManager) reconcileMissingSeries(ctx context.Context, series *storag
 		Type:  ptr.To(indexer.TypeTV),
 	})
 	if err != nil {
-		log.Debug("failed to search indexer", zap.Int32s("indexers", snapshot.GetIndexerIDs()), zap.Error(err))
-		return err
+		log.Warn("some indexer sources failed during series search", zap.Int32s("indexers", snapshot.GetIndexerIDs()), zap.Error(err))
+		if len(releases) == 0 {
+			return err
+		}
 	}
 
 	slices.SortFunc(releases, sortReleaseFunc())
@@ -729,8 +731,6 @@ func (m MediaManager) updateSeasonState(ctx context.Context, id int64, state sto
 	return nil
 }
 
-
-
 // updateSeriesState updates the series state and handles cascading updates
 func (m MediaManager) updateSeriesState(ctx context.Context, id int64, state storage.SeriesState, metadata *storage.TransitionStateMetadata) error {
 	log := logger.FromCtx(ctx).With("series id", id, "to state", state)
@@ -784,8 +784,6 @@ func (m MediaManager) evaluateAndUpdateSeasonState(ctx context.Context, seasonID
 
 	return m.updateSeasonState(ctx, int64(seasonID), newSeasonState, nil)
 }
-
-
 
 // evaluateAndUpdateSeriesState evaluates all seasons in a series and updates the series state accordingly
 func (m MediaManager) evaluateAndUpdateSeriesState(ctx context.Context, seriesID int32) error {
