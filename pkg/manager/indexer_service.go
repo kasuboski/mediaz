@@ -458,7 +458,7 @@ func (is IndexerService) SearchIndexers(ctx context.Context, indexers, categorie
 		return nil, searchErr
 	}
 
-	return allReleases, nil
+	return allReleases, searchErr
 }
 
 func (is IndexerService) searchIndexerSource(ctx context.Context, sourceID int64, indexerIDs, categories []int32, opts indexer.SearchOptions) ([]*prowlarr.ReleaseResource, error) {

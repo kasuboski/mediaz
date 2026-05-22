@@ -46,8 +46,10 @@ func (m MediaManager) executeSearch(ctx context.Context, snapshot *ReconcileSnap
 
 	releases, err := m.indexerService.SearchIndexers(ctx, indexerIDs, categories, opts)
 	if err != nil {
-		log.Error("failed to search indexers", zap.Error(err))
-		return nil, err
+		log.Warn("some indexer sources failed during search", zap.Error(err))
+		if len(releases) == 0 {
+			return nil, err
+		}
 	}
 
 	return releases, nil

@@ -262,8 +262,10 @@ func (m MediaManager) reconcileMissingMovie(ctx context.Context, movie *storage.
 		Type:  ptr.To(indexer.TypeMovie),
 	})
 	if err != nil {
-		log.Debug("failed to search indexer", zap.Int32s("indexers", indexerIDs), zap.Error(err))
-		return err
+		log.Warn("some indexer sources failed during movie search", zap.Int32s("indexers", indexerIDs), zap.Error(err))
+		if len(releases) == 0 {
+			return err
+		}
 	}
 
 	availableProtocols := snapshot.GetProtocols()
