@@ -14,8 +14,16 @@ import (
 	"go.uber.org/zap"
 )
 
+// ProwlarrClient defines the subset of the Prowlarr API used by ProwlarrIndexerSource.
+type ProwlarrClient interface {
+	GetAPIV1Indexer(ctx context.Context, reqEditors ...prowlarr.RequestEditorFn) (*http.Response, error)
+	GetAPIV1Search(ctx context.Context, params *prowlarr.GetAPIV1SearchParams, reqEditors ...prowlarr.RequestEditorFn) (*http.Response, error)
+	GetAPIKey() string
+	GetAPIURL() string
+}
+
 type ProwlarrIndexerSource struct {
-	client prowlarr.IProwlarr
+	client ProwlarrClient
 	config model.IndexerSource
 }
 
@@ -39,6 +47,18 @@ func NewProwlarrSource(config model.IndexerSource) (*ProwlarrIndexerSource, erro
 		config: config,
 	}, nil
 }
+
+// NewProwlarrIndexerSourceWithClient creates a ProwlarrIndexerSource with a
+// pre-configured client, useful for testing.
+func NewProwlarrIndexerSourceWithClient(client ProwlarrClient, config model.IndexerSource) *ProwlarrIndexerSource {
+	return &ProwlarrIndexerSource{
+		client: client,
+		config: config,
+	}
+}
+
+func (p *ProwlarrIndexerSource) GetAPIKey() string { return p.client.GetAPIKey() }
+func (p *ProwlarrIndexerSource) GetAPIURL() string { return p.client.GetAPIURL() }
 
 func (p *ProwlarrIndexerSource) ListIndexers(ctx context.Context) ([]SourceIndexer, error) {
 	resp, err := p.client.GetAPIV1Indexer(ctx)
@@ -133,4 +153,3 @@ func (p *ProwlarrIndexerSource) Search(ctx context.Context, indexerID int32, cat
 
 	return releases, nil
 }
-
