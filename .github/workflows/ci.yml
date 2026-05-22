@@ -21,6 +21,7 @@ jobs:
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           persist-credentials: false
+          fetch-depth: 0
 
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@e50d5f73bfe71c2dd0aa4218de8f4afa59f8f81d # v16
@@ -76,20 +77,41 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     permissions:
+      contents: read
       checks: write
     steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
       - name: Download coverage artifact
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
 
-      - name: Compute coverage
+      - name: Compute total coverage
         run: |
           TOTAL=$(grep -v 'mode:' coverage.txt | awk '{stmts=$(NF-1); cov=$NF; t+=stmts; c+=cov} END {if(t>0) printf "%.1f", c/t*100; else print "0"}')
-          echo "COVERAGE=$TOTAL" >> "$GITHUB_ENV"
+          echo "TOTAL_COVERAGE=$TOTAL" >> "$GITHUB_ENV"
+
+      - name: Compute patch coverage
+        if: github.event_name == 'pull_request'
+        run: |
+          PATCH=$(python3 scripts/patch-coverage.py coverage.txt main | grep 'PATCH_COVERAGE=' | cut -d= -f2)
+          echo "PATCH_COVERAGE=$PATCH" >> "$GITHUB_ENV"
 
       - name: Post coverage check
         uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
         with:
           script: |
+            const total = process.env.TOTAL_COVERAGE || 'N/A';
+            const patch = process.env.PATCH_COVERAGE || '';
+            let title = `Coverage: ${total}%`;
+            let summary = `Total coverage: **${total}%**`;
+            if (patch) {
+              title = `Coverage: ${total}% | Patch: ${patch}%`;
+              summary += `\nPatch coverage: **${patch}%**`;
+            }
             github.rest.checks.create({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -97,8 +119,5 @@ jobs:
               head_sha: context.sha,
               status: 'completed',
               conclusion: 'success',
-              output: {
-                title: `Coverage: ${process.env.COVERAGE}%`,
-                summary: `Total coverage: **${process.env.COVERAGE}%**`
-              }
+              output: { title, summary }
             })
