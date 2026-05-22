@@ -105,6 +105,9 @@ jobs:
 
       - name: Post coverage check
         uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
+        env:
+          TOTAL_COVERAGE: ${{ env.TOTAL_COVERAGE }}
+          PATCH_COVERAGE: ${{ env.PATCH_COVERAGE }}
         with:
           script: |
             const total = process.env.TOTAL_COVERAGE || 'N/A';
@@ -115,7 +118,7 @@ jobs:
               title = `Coverage: ${total}% | Patch: ${patch}%`;
               summary += `\nPatch coverage: **${patch}%**`;
             }
-            github.rest.checks.create({
+            await github.rest.checks.create({
               owner: context.repo.owner,
               repo: context.repo.repo,
               name: 'Coverage',
