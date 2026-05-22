@@ -88,16 +88,19 @@ jobs:
 
       - name: Download coverage artifact
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: coverage
+          path: coverage-data
 
       - name: Compute total coverage
         run: |
-          TOTAL=$(grep -v 'mode:' coverage.txt | awk '{stmts=$(NF-1); cov=$NF; t+=stmts; c+=cov} END {if(t>0) printf "%.1f", c/t*100; else print "0"}')
+          TOTAL=$(grep -v 'mode:' coverage-data/coverage.txt | awk '{stmts=$(NF-1); cov=$NF; t+=stmts; c+=cov} END {if(t>0) printf "%.1f", c/t*100; else print "0"}')
           echo "TOTAL_COVERAGE=$TOTAL" >> "$GITHUB_ENV"
 
       - name: Compute patch coverage
         if: github.event_name == 'pull_request'
         run: |
-          PATCH=$(python3 scripts/patch-coverage.py coverage.txt main | grep 'PATCH_COVERAGE=' | cut -d= -f2)
+          PATCH=$(python3 scripts/patch-coverage.py coverage-data/coverage.txt main | grep 'PATCH_COVERAGE=' | cut -d= -f2)
           echo "PATCH_COVERAGE=$PATCH" >> "$GITHUB_ENV"
 
       - name: Post coverage check
