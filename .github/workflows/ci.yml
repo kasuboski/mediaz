@@ -1,5 +1,14 @@
 name: Go
-on: [push]
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
@@ -9,28 +18,36 @@ jobs:
       packages: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
 
       - name: Install Nix
-        uses: DeterminateSystems/nix-installer-action@v16
+        uses: DeterminateSystems/nix-installer-action@e50d5f73bfe71c2dd0aa4218de8f4afa59f8f81d # v16
 
       - name: Run unit tests
         run: nix develop --command go test -v -coverprofile=coverage.txt ./...
-      
-      - name: Upload results to Codecov
-        uses: codecov/codecov-action@v4
+
+      - name: Filter generated code from coverage
+        run: |
+          grep -v '/mocks/' coverage.txt | grep -v '/gen/' > filtered.txt
+          mv filtered.txt coverage.txt
+
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          token: ${{ secrets.CODECOV_TOKEN }}
+          name: coverage
+          path: coverage.txt
 
       - name: Build binary
         run: nix develop --command go build .
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
 
       - name: Log in to GitHub Container Registry
         if: github.ref == 'refs/heads/main'
-        uses: docker/login-action@v3
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -38,14 +55,14 @@ jobs:
 
       - name: Extract metadata
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5
         with:
           images: ghcr.io/${{ github.repository }}
           tags: |
             type=sha,format=long
 
       - name: Build and push Docker image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@ca052bb54ab0790a636c9b5f226502c73d547a25 # v5
         with:
           context: .
           push: ${{ github.ref == 'refs/heads/main' }}
@@ -54,3 +71,34 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           platforms: linux/amd64,linux/arm64
+
+  coverage-report:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      checks: write
+    steps:
+      - name: Download coverage artifact
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+
+      - name: Compute coverage
+        run: |
+          TOTAL=$(grep -v 'mode:' coverage.txt | awk '{stmts=$(NF-1); cov=$NF; t+=stmts; c+=cov} END {if(t>0) printf "%.1f", c/t*100; else print "0"}')
+          echo "COVERAGE=$TOTAL" >> "$GITHUB_ENV"
+
+      - name: Post coverage check
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
+        with:
+          script: |
+            github.rest.checks.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              name: 'Coverage',
+              head_sha: context.sha,
+              status: 'completed',
+              conclusion: 'success',
+              output: {
+                title: `Coverage: ${process.env.COVERAGE}%`,
+                summary: `Total coverage: **${process.env.COVERAGE}%**`
+              }
+            })
