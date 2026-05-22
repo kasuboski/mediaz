@@ -114,14 +114,23 @@ jobs:
               core.info(`Check created: ${result.data.html_url}`);
             } catch (err) {
               core.warning(`Failed to create check run: ${err.message}`);
+              let postedFallback = false;
               if (context.eventName === 'pull_request') {
-                await github.rest.issues.createComment({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  issue_number: context.issue.number,
-                  body: `## ${title}\n${summary}`
-                });
-                core.info('Posted coverage as PR comment instead');
+                try {
+                  await github.rest.issues.createComment({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: context.issue.number,
+                    body: `## ${title}\n${summary}`
+                  });
+                  postedFallback = true;
+                  core.info('Posted coverage as PR comment instead');
+                } catch (commentErr) {
+                  core.warning(`Failed to post PR comment fallback: ${commentErr.message}`);
+                }
+              }
+              if (!postedFallback) {
+                core.setFailed('Failed to publish coverage result (check run and fallback unavailable).');
               }
             }
 
