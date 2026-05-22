@@ -8,12 +8,25 @@ import (
 	"github.com/go-jet/jet/v2/sqlite"
 	"github.com/kasuboski/mediaz/pkg/logger"
 	"github.com/kasuboski/mediaz/pkg/storage"
+	"github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 	_ "github.com/mattn/go-sqlite3"
 	"go.uber.org/zap"
 )
 
+// SQLite wraps a *sql.DB and an embedded *sqlcdb.Queries that is bound to the
+// base DB (not any transaction). Callers that open their own transaction via
+// db.BeginTx must NOT call methods on the embedded Queries inside that
+// transaction — those calls would run on the base DB and silently bypass the
+// tx. Use txQueries(tx) to get a transaction-scoped *sqlcdb.Queries instead.
 type SQLite struct {
 	db *sql.DB
+	*sqlcdb.Queries
+}
+
+// txQueries returns a *sqlcdb.Queries scoped to tx so that sqlc-generated
+// calls participate in the same transaction as jet ORM statements.
+func (s *SQLite) txQueries(tx *sql.Tx) *sqlcdb.Queries {
+	return s.Queries.WithTx(tx)
 }
 
 const (
@@ -29,7 +42,8 @@ func New(ctx context.Context, filePath string) (storage.Storage, error) {
 	}
 
 	s := &SQLite{
-		db: db,
+		db:      db,
+		Queries: sqlcdb.New(db),
 	}
 
 	if err := s.RunMigrations(ctx); err != nil {
