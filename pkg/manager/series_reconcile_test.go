@@ -1718,4 +1718,3 @@ func Test_Manager_ReconcileSeries(t *testing.T) {
 		assert.Contains(t, errStr, "episodes error")
 	})
 }
-

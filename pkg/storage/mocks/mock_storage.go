@@ -431,6 +431,20 @@ func (mr *MockStorageMockRecorder) DeleteIndexerSource(ctx, id any) *gomock.Call
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteIndexerSource", reflect.TypeOf((*MockStorage)(nil).DeleteIndexerSource), ctx, id)
 }
 
+// DeleteIndexerSourceCascade mocks base method.
+func (m *MockStorage) DeleteIndexerSourceCascade(ctx context.Context, id int64) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteIndexerSourceCascade", ctx, id)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteIndexerSourceCascade indicates an expected call of DeleteIndexerSourceCascade.
+func (mr *MockStorageMockRecorder) DeleteIndexerSourceCascade(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteIndexerSourceCascade", reflect.TypeOf((*MockStorage)(nil).DeleteIndexerSourceCascade), ctx, id)
+}
+
 // DeleteJob mocks base method.
 func (m *MockStorage) DeleteJob(ctx context.Context, id int64) error {
 	m.ctrl.T.Helper()
@@ -1876,6 +1890,20 @@ func (m *MockIndexerSourceStorage) DeleteIndexerSource(ctx context.Context, id i
 func (mr *MockIndexerSourceStorageMockRecorder) DeleteIndexerSource(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteIndexerSource", reflect.TypeOf((*MockIndexerSourceStorage)(nil).DeleteIndexerSource), ctx, id)
+}
+
+// DeleteIndexerSourceCascade mocks base method.
+func (m *MockIndexerSourceStorage) DeleteIndexerSourceCascade(ctx context.Context, id int64) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteIndexerSourceCascade", ctx, id)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteIndexerSourceCascade indicates an expected call of DeleteIndexerSourceCascade.
+func (mr *MockIndexerSourceStorageMockRecorder) DeleteIndexerSourceCascade(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteIndexerSourceCascade", reflect.TypeOf((*MockIndexerSourceStorage)(nil).DeleteIndexerSourceCascade), ctx, id)
 }
 
 // GetIndexerSource mocks base method.

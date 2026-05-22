@@ -1011,4 +1011,3 @@ func Test_Manager_ReconcileMovies(t *testing.T) {
 		assert.Contains(t, err.Error(), "unreleased error")
 	})
 }
-
