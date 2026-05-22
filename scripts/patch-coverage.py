@@ -99,9 +99,9 @@ def parse_coverprofile(path: str, module_prefix: str) -> dict[str, list[tuple[in
 
 def line_covered(line: int, blocks: list[tuple[int, int, int, int]]) -> bool:
     """Check if a line falls within any covered block."""
-    for start, end, num_stmts, covered in blocks:
-        if start <= line <= end:
-            return covered > 0
+    for start, end, _num_stmts, covered in blocks:
+        if start <= line <= end and covered > 0:
+            return True
     return False
 
 
