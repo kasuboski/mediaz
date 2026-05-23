@@ -472,7 +472,7 @@ func TestIndexerService_DeleteIndexerSource(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
-		svc, idxStorage, srcStorage, factory := newTestIndexerService(ctrl)
+		svc, _, srcStorage, factory := newTestIndexerService(ctrl)
 
 		src := indexerMock.NewMockIndexerSource(ctrl)
 		srcStorage.EXPECT().GetIndexerSource(ctx, int64(1)).Return(model.IndexerSource{
@@ -482,12 +482,7 @@ func TestIndexerService_DeleteIndexerSource(t *testing.T) {
 		src.EXPECT().ListIndexers(ctx).Return(nil, nil)
 		require.NoError(t, svc.RefreshIndexerSource(ctx, 1))
 
-		idxStorage.EXPECT().ListIndexers(ctx, gomock.Any()).Return([]*model.Indexer{
-			{ID: 10}, {ID: 11},
-		}, nil)
-		idxStorage.EXPECT().DeleteIndexer(ctx, int64(10)).Return(nil)
-		idxStorage.EXPECT().DeleteIndexer(ctx, int64(11)).Return(nil)
-		srcStorage.EXPECT().DeleteIndexerSource(ctx, int64(1)).Return(nil)
+		srcStorage.EXPECT().DeleteIndexerSourceCascade(ctx, int64(1)).Return(nil)
 
 		err := svc.DeleteIndexerSource(ctx, 1)
 		require.NoError(t, err)
@@ -496,13 +491,38 @@ func TestIndexerService_DeleteIndexerSource(t *testing.T) {
 		assert.False(t, ok)
 	})
 
-	t.Run("returns error if listing child indexers fails", func(t *testing.T) {
+	t.Run("does not clear cache when storage fails", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
-		svc, idxStorage, _, _ := newTestIndexerService(ctrl)
+		svc, _, srcStorage, factory := newTestIndexerService(ctrl)
 
-		idxStorage.EXPECT().ListIndexers(ctx, gomock.Any()).Return(nil, errors.New("db error"))
+		// Populate cache so we can assert it survives a failed delete.
+		src := indexerMock.NewMockIndexerSource(ctrl)
+		srcStorage.EXPECT().GetIndexerSource(ctx, int64(1)).Return(model.IndexerSource{
+			ID: 1, Name: "prowlarr", Scheme: "http", Host: "prowlarr-host", Enabled: true,
+		}, nil)
+		factory.EXPECT().NewIndexerSource(gomock.Any()).Return(src, nil)
+		src.EXPECT().ListIndexers(ctx).Return(nil, nil)
+		require.NoError(t, svc.RefreshIndexerSource(ctx, 1))
+
+		srcStorage.EXPECT().DeleteIndexerSourceCascade(ctx, int64(1)).Return(errors.New("tx failed"))
+
+		err := svc.DeleteIndexerSource(ctx, 1)
+		require.Error(t, err)
+
+		// Cache must still contain the entry — no partial state.
+		_, ok := svc.indexerCache.Get(int64(1))
+		assert.True(t, ok)
+	})
+
+	t.Run("returns error when cascade delete fails", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		svc, _, srcStorage, _ := newTestIndexerService(ctrl)
+
+		srcStorage.EXPECT().DeleteIndexerSourceCascade(ctx, int64(1)).Return(errors.New("db error"))
 
 		err := svc.DeleteIndexerSource(ctx, 1)
 		require.Error(t, err)

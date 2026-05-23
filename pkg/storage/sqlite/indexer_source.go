@@ -4,8 +4,10 @@ import (
 	"context"
 
 	"github.com/go-jet/jet/v2/sqlite"
+	"github.com/kasuboski/mediaz/pkg/logger"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/table"
+	"go.uber.org/zap"
 )
 
 // CreateIndexerSource stores a new indexer source in the database
@@ -80,4 +82,41 @@ func (s *SQLite) DeleteIndexerSource(ctx context.Context, id int64) error {
 	stmt := table.IndexerSource.DELETE().WHERE(table.IndexerSource.ID.EQ(sqlite.Int64(id)))
 	_, err := s.handleDelete(ctx, stmt)
 	return err
+}
+
+// DeleteIndexerSourceCascade deletes an indexer source and all associated
+// child indexers atomically in a single database transaction.
+func (s *SQLite) DeleteIndexerSourceCascade(ctx context.Context, id int64) error {
+	log := logger.FromCtx(ctx)
+
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		log.Errorw("failed to begin transaction", "id", id, "error", err)
+		return err
+	}
+
+	// Delete all child indexers belonging to this source.
+	deleteIndexers := table.Indexer.DELETE().WHERE(table.Indexer.IndexerSourceID.EQ(sqlite.Int64(id)))
+	_, err = deleteIndexers.ExecContext(ctx, tx)
+	if err != nil {
+		log.Errorw("failed to delete child indexers", "id", id, zap.String("query", deleteIndexers.DebugSql()), "error", err)
+		if rbErr := tx.Rollback(); rbErr != nil {
+			log.Errorw("failed to rollback", "id", id, "error", rbErr)
+		}
+		return err
+	}
+
+	// Delete the source row itself.
+	deleteSource := table.IndexerSource.DELETE().WHERE(table.IndexerSource.ID.EQ(sqlite.Int64(id)))
+	_, err = deleteSource.ExecContext(ctx, tx)
+	if err != nil {
+		log.Errorw("failed to delete indexer source", "id", id, zap.String("query", deleteSource.DebugSql()), "error", err)
+		if rbErr := tx.Rollback(); rbErr != nil {
+			log.Errorw("failed to rollback", "id", id, "error", rbErr)
+		}
+		return err
+	}
+
+	log.Debugw("deleted indexer source and child indexers", "id", id)
+	return tx.Commit()
 }

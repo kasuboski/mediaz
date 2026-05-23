@@ -809,19 +809,19 @@ func TestMovieService_GetMovieDetailByTMDBID_NotInLibrary(t *testing.T) {
 	require.NotNil(t, result)
 
 	expected := &MovieDetailResult{
-		TMDBID:           123,
-		OriginalTitle:    ptr.To("Original Test Movie"),
-		Title:            "Test Movie",
-		Overview:         ptr.To("Test movie overview"),
-		PosterPath:       "poster.jpg",
-		Runtime:          ptr.To(int32(120)),
-		Genres:           ptr.To("Action, Drama"),
-		Studio:           ptr.To("Test Studio"),
-		Website:          ptr.To("https://test.com"),
-		Popularity:       ptr.To(8.5),
-		Year:             &year,
-		ReleaseDate:      ptr.To("2023-01-15"),
-		LibraryStatus:    "Not In Library",
+		TMDBID:        123,
+		OriginalTitle: ptr.To("Original Test Movie"),
+		Title:         "Test Movie",
+		Overview:      ptr.To("Test movie overview"),
+		PosterPath:    "poster.jpg",
+		Runtime:       ptr.To(int32(120)),
+		Genres:        ptr.To("Action, Drama"),
+		Studio:        ptr.To("Test Studio"),
+		Website:       ptr.To("https://test.com"),
+		Popularity:    ptr.To(8.5),
+		Year:          &year,
+		ReleaseDate:   ptr.To("2023-01-15"),
+		LibraryStatus: "Not In Library",
 	}
 	assert.Equal(t, expected, result)
 }

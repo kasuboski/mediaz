@@ -294,21 +294,12 @@ func (is IndexerService) UpdateIndexerSource(ctx context.Context, id int64, req 
 }
 
 func (is IndexerService) DeleteIndexerSource(ctx context.Context, id int64) error {
-	where := table.Indexer.IndexerSourceID.EQ(sqlite.Int64(id))
-	indexers, err := is.indexerStorage.ListIndexers(ctx, where)
-	if err != nil {
+	if err := is.indexerSrcStorage.DeleteIndexerSourceCascade(ctx, id); err != nil {
 		return err
 	}
 
-	for _, idx := range indexers {
-		if err := is.indexerStorage.DeleteIndexer(ctx, int64(idx.ID)); err != nil {
-			return err
-		}
-	}
-
 	is.indexerCache.Delete(id)
-
-	return is.indexerSrcStorage.DeleteIndexerSource(ctx, id)
+	return nil
 }
 
 func (is IndexerService) TestIndexerSource(ctx context.Context, req AddIndexerSourceRequest) error {

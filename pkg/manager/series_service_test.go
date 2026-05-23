@@ -412,15 +412,15 @@ func TestSeriesService_buildTVDetailResult_WithSeries(t *testing.T) {
 
 	result := svc.buildTVDetailResult(metadata, &tmdb.SeriesDetailsResponse{}, series, nil)
 	assert.Equal(t, &TVDetailResult{
-		TMDBID:           123,
-		Title:            "Test Series",
-		LibraryStatus:    string(series.State),
-		SeasonCount:      0,
-		EpisodeCount:     0,
-		ID:               ptr.To(int32(1)),
-		Path:             &path,
-		QualityProfileID: ptr.To(int32(5)),
-		Monitored:        ptr.To(true),
+		TMDBID:            123,
+		Title:             "Test Series",
+		LibraryStatus:     string(series.State),
+		SeasonCount:       0,
+		EpisodeCount:      0,
+		ID:                ptr.To(int32(1)),
+		Path:              &path,
+		QualityProfileID:  ptr.To(int32(5)),
+		Monitored:         ptr.To(true),
 		MonitorNewSeasons: ptr.To(false),
 	}, result)
 }

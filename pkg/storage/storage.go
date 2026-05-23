@@ -48,6 +48,10 @@ type IndexerSourceStorage interface {
 	ListIndexerSources(ctx context.Context, where ...sqlite.BoolExpression) ([]*model.IndexerSource, error)
 	UpdateIndexerSource(ctx context.Context, id int64, source model.IndexerSource) error
 	DeleteIndexerSource(ctx context.Context, id int64) error
+	// DeleteIndexerSourceCascade deletes an indexer source and all its child
+	// indexers in a single transaction. If any operation fails the transaction
+	// is rolled back and no rows are removed.
+	DeleteIndexerSourceCascade(ctx context.Context, id int64) error
 }
 
 type QualityStorage interface {
