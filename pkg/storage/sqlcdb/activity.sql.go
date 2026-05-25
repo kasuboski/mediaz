@@ -633,7 +633,7 @@ func (q *Queries) GetJobTransitionItemsNoLimit(ctx context.Context, arg GetJobTr
 
 const getJobTransitionsByDate = `-- name: GetJobTransitionsByDate :many
 SELECT
-    CAST(STRFTIME('%Y-%m-%d', jt.created_at) AS TEXT) AS date,
+    CAST(STRFTIME('%Y-%m-%d', jt.created_at) AS TEXT) AS date,  -- noqa: RF04
     COUNT(DISTINCT CASE WHEN jt.to_state = 'done' THEN j.id END) AS done,
     COUNT(DISTINCT CASE WHEN jt.to_state = 'error' THEN j.id END) AS error
 FROM job AS j
@@ -820,7 +820,7 @@ func (q *Queries) GetMovieTransitionItemsNoLimit(ctx context.Context, arg GetMov
 
 const getMovieTransitionsByDate = `-- name: GetMovieTransitionsByDate :many
 SELECT
-    CAST(STRFTIME('%Y-%m-%d', mt.created_at) AS TEXT) AS date,
+    CAST(STRFTIME('%Y-%m-%d', mt.created_at) AS TEXT) AS date,  -- noqa: RF04
     COUNT(DISTINCT CASE WHEN mt.to_state = 'downloaded' THEN m.id END)
         AS downloaded,
     COUNT(DISTINCT CASE WHEN mt.to_state = 'downloading' THEN m.id END)
@@ -1011,7 +1011,7 @@ func (q *Queries) GetSeasonTransitionItemsNoLimit(ctx context.Context, arg GetSe
 
 const getSeriesTransitionsByDate = `-- name: GetSeriesTransitionsByDate :many
 SELECT
-    CAST(STRFTIME('%Y-%m-%d', st.created_at) AS TEXT) AS date,
+    CAST(STRFTIME('%Y-%m-%d', st.created_at) AS TEXT) AS date,  -- noqa: RF04
     COUNT(DISTINCT CASE WHEN st.to_state = 'completed' THEN ser.id END)
         AS completed,
     COUNT(DISTINCT CASE WHEN st.to_state = 'downloading' THEN ser.id END)
@@ -1215,7 +1215,7 @@ FROM job AS j
 INNER JOIN job_transition AS jt ON j.id = jt.job_id AND jt.most_recent = 1
 WHERE
     jt.to_state = 'error'
-    AND jt.updated_at >= ?1
+    AND jt.updated_at >= ?1  -- noqa: RF02
 ORDER BY jt.updated_at DESC
 `
 
