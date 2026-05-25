@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/kasuboski/mediaz/pkg/storage"
@@ -213,18 +214,27 @@ func (s *SQLite) GetTransitionsByDate(ctx context.Context, startDate, endDate ti
 	for _, entry := range timelineMap {
 		timeline = append(timeline, entry)
 	}
+	sort.Slice(timeline, func(i, j int) bool {
+		return timeline[i].Date < timeline[j].Date
+	})
 
 	// --- Transition items ---
 
-	var transitions []*storage.TransitionItem
-
-	if limit > 0 {
-		transitions, err = s.fetchTransitionItemsLimited(ctx, sd, ed, offset, limit)
-	} else {
-		transitions, err = s.fetchTransitionItemsUnlimited(ctx, sd, ed)
-	}
+	transitions, err := s.fetchAndSortTransitionItems(ctx, sd, ed)
 	if err != nil {
 		return nil, err
+	}
+
+	// Apply global pagination across all entity types.
+	if limit > 0 {
+		end := offset + limit
+		if end > len(transitions) {
+			end = len(transitions)
+		}
+		if offset > len(transitions) {
+			offset = len(transitions)
+		}
+		transitions = transitions[offset:end]
 	}
 
 	totalCount, countErr := s.CountTransitionsByDate(ctx, startDate, endDate)
@@ -239,53 +249,9 @@ func (s *SQLite) GetTransitionsByDate(ctx context.Context, startDate, endDate ti
 	}, nil
 }
 
-func (s *SQLite) fetchTransitionItemsLimited(ctx context.Context, sd, ed string, offset, limit int) ([]*storage.TransitionItem, error) {
-	var transitions []*storage.TransitionItem
-
-	movieItems, err := s.GetMovieTransitionItems(ctx, sqlcdb.GetMovieTransitionItemsParams{
-		Datetime: sd, Datetime_2: ed, Limit: int64(limit), Offset: int64(offset),
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to get movie transition items: %w", err)
-	}
-	for _, r := range movieItems {
-		transitions = append(transitions, convertTransitionItemRow(r.ID, r.EntityType, r.EntityID, r.EntityTitle, r.ToState, r.FromState, r.CreatedAt))
-	}
-
-	seasonItems, err := s.GetSeasonTransitionItems(ctx, sqlcdb.GetSeasonTransitionItemsParams{
-		Datetime: sd, Datetime_2: ed, Limit: int64(limit), Offset: int64(offset),
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to get season transition items: %w", err)
-	}
-	for _, r := range seasonItems {
-		transitions = append(transitions, convertTransitionItemRow(r.ID, r.EntityType, r.EntityID, r.EntityTitle, r.ToState, r.FromState, r.CreatedAt))
-	}
-
-	episodeItems, err := s.GetEpisodeTransitionItems(ctx, sqlcdb.GetEpisodeTransitionItemsParams{
-		Datetime: sd, Datetime_2: ed, Limit: int64(limit), Offset: int64(offset),
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to get episode transition items: %w", err)
-	}
-	for _, r := range episodeItems {
-		transitions = append(transitions, convertTransitionItemRow(r.ID, r.EntityType, r.EntityID, r.EntityTitle, r.ToState, r.FromState, r.CreatedAt))
-	}
-
-	jobItems, err := s.GetJobTransitionItems(ctx, sqlcdb.GetJobTransitionItemsParams{
-		Datetime: sd, Datetime_2: ed, Limit: int64(limit), Offset: int64(offset),
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to get job transition items: %w", err)
-	}
-	for _, r := range jobItems {
-		transitions = append(transitions, convertTransitionItemRow(r.ID, r.EntityType, r.EntityID, r.EntityTitle, r.ToState, r.FromState, r.CreatedAt))
-	}
-
-	return transitions, nil
-}
-
-func (s *SQLite) fetchTransitionItemsUnlimited(ctx context.Context, sd, ed string) ([]*storage.TransitionItem, error) {
+// fetchAndSortTransitionItems retrieves transition items for all entity types
+// and returns them sorted by CreatedAt descending.
+func (s *SQLite) fetchAndSortTransitionItems(ctx context.Context, sd, ed string) ([]*storage.TransitionItem, error) {
 	var transitions []*storage.TransitionItem
 
 	movieItems, err := s.GetMovieTransitionItemsNoLimit(ctx, sqlcdb.GetMovieTransitionItemsNoLimitParams{
@@ -327,6 +293,10 @@ func (s *SQLite) fetchTransitionItemsUnlimited(ctx context.Context, sd, ed strin
 	for _, r := range jobItems {
 		transitions = append(transitions, convertTransitionItemRow(r.ID, r.EntityType, r.EntityID, r.EntityTitle, r.ToState, r.FromState, r.CreatedAt))
 	}
+
+	sort.Slice(transitions, func(i, j int) bool {
+		return transitions[i].CreatedAt.After(transitions[j].CreatedAt)
+	})
 
 	return transitions, nil
 }
