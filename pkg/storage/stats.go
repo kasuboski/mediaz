@@ -2,12 +2,9 @@ package storage
 
 import (
 	"context"
-
-	"github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 )
 
 type StatisticsStorage interface {
-	sqlcdb.Querier
 	GetLibraryStats(ctx context.Context) (*LibraryStats, error)
 }
 
