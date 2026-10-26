@@ -1,5 +1,72 @@
 # Fresh sqlc migration — verification evidence
 
+## Final review followup — 2026-10-26
+
+**Verified followup implementation: `ed8e5e481d9058f24d7827308c41d7303e8248e7`**, based on `a04454eb1aec47a9166199da662b4d98b899584e`. The evidence update is a separate documentation-only commit. This section supersedes the initial-delivery counts and fingerprints below for the current source. Exact pushed-head CI is recorded on PR #183; old green CI is not substituted for new-head checks.
+
+### Changes and already-satisfied requirements
+
+- Activity storage already returns generated rows directly; manager owns genuine aggregation/output and the HTTP seam. SQL already selects transition `created_at`, and the mapper already uses it rather than Unix(sequence). The new **`TestActivityTimestampFollowupSequenceOneUTC`** proves real SQLite → generated scan → real manager → raw HTTP for nonempty movie/season-backed series results: sequence **1**, fixed **`2020-02-03T04:05:06Z`**, distinct entity/parent timestamps, exact native rows/full manager output and literal UTC `Z`, with non-UTC process-local time. No activity golden was regenerated to conceal a timestamp error.
+- Removed remaining internal int32 narrowing in release filters, search options, TV result helpers and library season arguments. `HistoryEntry.SortKey` is now explicitly **int64**, with direct assignments in all five history mappings. Regression values exceed MaxInt32; history JSON remains a numeric token. Genuine external SDK conversions remain at SDK boundaries; unchanged TMDB casts are not claimed to reject out-of-range external IDs.
+- Independent review caught a new resolution/episode-regex false positive (`1920x1080` in a season pack). Fixed shared detection/parsing: explicit S/E markers take precedence, recognized video dimensions are skipped for bare NxM notation, and ordinal width is not capped. Permanent tests retain large S/E and NxM ordinals and accepted resolution-bearing packs. Explicit S1920E1080 disambiguates dimension-shaped ordinals.
+- Fixed a real AddSeries native-identity defect exposed by failure-coverage work: persist **`SeasonNumber: sm.Number`**. Real SQLite regression reproduces the prior uniqueness failure, then verifies seasons 0/2/2147483648 and episodes 0/3/2147483649, complete generated rows, parent-scoped identity and repeated-add stability. Episode-number persistence was already correct.
+- Job latest-per-parent and `(job_id, sort_key)` unique indexes and direct generated-query rejection/history tests were already present; no redundant baseline/index change. Pending-type uniqueness and actual SQLite column-name constraint mapping are preserved.
+- The wire harness now registers **all eight** stored/incoming secrets at construction, before **any** response capture. Independent negative controls detect an incoming secret leaked in an earlier list response. Real routed HTTP tests use database primary key **4294967297**, assert complete responses/persisted mutations and unchanged low-ID sentinels for movies, series, clients, definitions and profiles; truncation negative controls fail as intended.
+- Seed transaction comments now explicitly limit concurrency to seed attempts **after migration**. Raw SELECT EXISTS is bootstrap mechanics, not partial-default repair. No claim of simultaneous first-ever migration safety is made.
+- Independent non-UTC validation exposed an existing released-series test fixture that formatted a local date two hours ago as a UTC TMDB date. Made the fixture unambiguously released using the **previous UTC calendar day**, without changing production date logic or weakening assertions. Independent complete manager normal/race runs now pass under `Pacific/Auckland`.
+
+### Behavioral coverage mapping, not count-based equivalence
+
+Compared removed/rewritten tests at `29f62f9` with generated-native tests at the initial delivery. Large movie/series deletions mostly replaced legacy setup and models, but one season rejection-state assertion was genuinely lost and has been restored. The table names observable protections; it does not claim exhaustive branch equivalence.
+
+| Earlier behavior | Retained or strengthened regression evidence |
+| --- | --- |
+| Missing movie release selection/download identity | `Test_Manager_reconcileMissingMovie`: exact selected release/Add and complete persisted native row. New `TestMovieFailureFollowup_MissingPreservesRowAndHistory`: empty/rejected releases, source/search/Add failures, no inappropriate download, complete unchanged row/history. Individual indexer Search errors are currently logged/skipped; source-construction errors propagate. |
+| Discovered metadata link and unreleased date decisions | Existing five-case `Test_Manager_reconcileDiscoveredMovie` retains lookup/link seam checks. New `TestMovieFailureFollowup_DiscoveredMetadataPersistence` verifies actual stored link and injected link-write failure; `TestMovieFailureFollowup_PastReleaseTransitionsToMissing` verifies real transition/history and repeated reconciliation. |
+| Downloading guards, external failures, completion and top-level error aggregation | `Test_Manager_reconcileDownloadingMovie` retains skip/client/factory/status/library/metadata/incomplete/success cases, with persisted row/file assertions. `Test_Manager_ReconcileMovies` retains client-list failure and aggregated errors. New `TestMovieFailureFollowup_CompletedMultiFileFailures` covers later library/file-write/final-state failures and exact partial persistence. |
+| Series update/delete/list/detail/add and enrichment | `TestSeriesService_*`, `TestMediaManager_AddSeriesToLibrary`, manager/server detail tests retain strict error/mapping and existing/released/unreleased-add behavior. New `TestSeriesFailureFollowup_AddSeriesChildCleanup` injects second-child failures after prior children exist, verifies complete preservation of unrelated rows and removal of target entities/history; directory failure verifies no database deletion. New ordinal test verifies genuine multi-season success. |
+| TV reconcile/index state/count/download matrices | `series_reconcile_helpers_test.go`, `series_reconcile_test.go`, `series_index_test.go`, `series_native_test.go` retain runtime/state/count, season/episode/missing/continuing/discovered, filename, download and persisted-index scenarios. New `TestSeriesFailureFollowup_IndexListEpisodeFilesErrors` injects errors at both actual lookup sites; the former misleading positive subtest is renamed, not credited as error coverage. Obsolete nil-pointer input cases do not apply to value rows. |
+| Rejected transitions and transaction atomicity | Restored `TestSQLite_UpdateSeasonState` compares the entire native row and full history/latest markers after rejection. Four `*SeasonTransitionFailureRollbackRecovery` / `*EpisodeTransitionFailureRollbackRecovery` tests inject real transition-insert aborts during create/update, compare complete state/history, exclude partial base rows and verify recovery. Existing movie/job/series rollback and relational tests remain. |
+| Other retained behavior | Native CRUD/metadata/file/default/filter tests; profile associations; metadata cache/fallback/upstream/storage/cancellation/refresh; scheduler execution/cancellation/dedup/pruning; download/indexer service errors and keys; HTTP invalid-input/conflict/notfound/upstream-error tests remain. Wire goldens add successful serialization checks, not substitutes for negative-path tests. Legacy upgrade/schema-parity tests intentionally yield to fresh-baseline/refusal policy. |
+
+**Limits:** tests do not promise complete branch coverage, cleanup-delete failure recovery or successful manual-search orchestration. Multi-file library actions, file-row commits and final state writes are separate boundaries: later failure leaves earlier successful effects. New tests document this behavior using strict external-library mocks and real DB rows; they do not assert filesystem compensation or retry/idempotent repair. No new such guarantee is claimed.
+
+### Frozen-source integrated verification
+
+Application/test edits froze before the integrated run. **2026-10-26 20:01:06–20:01:34 UTC:** all commands exited 0 using Nix **Go1.26.10 / sqlc1.31.1**, in this order:
+
+```sh
+# Two rounds; compare sorted SHA-256 manifests over all generated paths below.
+sqlc generate
+go generate ./pkg/storage ./pkg/download ./pkg/indexer ./pkg/library
+# Repeat both commands and compare manifests.
+go fmt ./...
+go mod tidy
+go vet ./...
+go build ./...
+go test -count=1 -json ./...
+go test -race -count=1 ./...
+TZ=Pacific/Auckland go test -count=1 ./pkg/storage/sqlite ./pkg/manager ./server \
+  -run 'Activity|Transition|Wire|Large|Int64|Secret'
+go build -o /tmp/mediaz-followup/mediaz .
+```
+
+- **401 top-level + 842 subtests = 1,243 passing events**, zero failing/skipped tests, **15 tested packages**; 15 additional packages have no tests. Full race suite passes with no reports. `go.mod`/`go.sum` unchanged; `git diff --check` passes.
+- **61 wire fixtures**, unchanged in this followup, pass in normal/race suites. The accepted timestamp correction remains documented below and in the wire README; fixed raw timestamp assertions prevent normalization from hiding it.
+- **25 generated Go files** repeat identically: the prior 24 storage/download/indexer generated hashes below remain unchanged, plus library mock `34be13053a2fdba8681131472c741ce8b891d06c981dba4b7687a0d2748dcc94`. Sorted manifest SHA-256 in both rounds: `d46315584c8366603c6ba5331fb8474d50c9a999cebd9ad62acdce81cdab14c3`. Manifest command: `fd -e go . pkg/storage/sqlcdb pkg/storage/mocks pkg/download/mocks pkg/indexer/mocks pkg/library/mocks | sort | xargs sha256sum`.
+- Source fingerprint (same portable `.go`/`.sql`/module/sqlc-config algorithm below) before tests, after race and after final rebuilt smoke: **`14c1ed3b1596a74a18ff5a4d3b0875747a9c58c9993cc1b4d2bf2ccfc77461f1`**. This includes new tests/generated inputs. No implementation inputs changed between those gates and publication.
+- Rebuilt binary SHA-256: **`d10e590c98423a474588602d805aa9df6f733a5c2d44e4cc5fc9212fe2ee77f6`**. Post-gate live smoke completed **20:01:58 UTC**: **51 HTTP checks, zero failures**, all five scheduler types done, correct job history/latest rows, unchanged temporary media sentinel, server stopped. Uses the portable fresh-DB/local-stub scenario below, with new binary and freshly installed/built isolated frontend; no real DB/media/services touched.
+- Frontend repeated from an isolated fresh copy: `npm ci`, production build and configured lint pass. `npm test` still exits 1 (no script); typecheck exits 2 with **14 diagnostics byte-identical to the isolated `29f62f9` baseline**; install still reports **26 vulnerabilities (2 low, 7 moderate, 17 high)**. No frontend source changes, typecheck/test/audit success or full-source lint claim.
+- Independent final reviews: **zero remaining material blockers** from independent int64/HTTP and post-freeze integration/coverage reviews. The latter independently reran full manager normal/race under Auckland after the UTC fixture correction and inspected explicit int64 history mappings. Negative controls independently establish early-secret and large-path-ID tests catch their intended regressions.
+
+Supplemental followup artifacts: `/tmp/mediaz-followup/{gates.log,test.json,counts.json,race.log,targeted.log,generated-A.sha256,generated-B.sha256,binary.sha256,live-smoke.md,frontend-*.log,frontend-baseline.diff}`; temporary live DB/config `/tmp/mediaz-live-kfWbwM/`. Artifacts are supplemental; commands, counts, hashes, scenario mappings and caveats are recorded here durably. The baseline reset requirement and out-of-scope simultaneous first migration/arbitrary seed repair remain unchanged. GitHub human approval remains required; no merge or force-push performed.
+
+---
+
+## Historical initial delivery evidence (8ad1e1a / a04454e)
+
+The following records the earlier immutable delivery, not test counts or source identity of the followup above.
+
 ## Verified code identity and disposition
 
 **Verified implementation commit: `8ad1e1a20d4c2eab4f0eca10d0333e1b5318deeb`**
@@ -179,7 +246,7 @@ The accepted targeted deltas, documented in `server/testdata/wire/README.md`, ar
 5. Active `stateSince` uses actual transition `created_at`, not `time.Unix(sort_key, 0)`; duration follows the real instant. A raw recency assertion prevents timestamp normalization from concealing this bug.
 6. Subsequent transitions retain the actual `from_state`; initial transitions still omit it. Same-time timeline ties use entity type ascending, then transition ID descending. Entities, counts, field names/nesting, and chronological direction are retained.
 
-These are bounded intentional corrections, **not** blanket golden regeneration. Independent final review found no unexplained remaining golden mismatch or material scenario-coverage loss.
+These are bounded intentional corrections, **not** blanket golden regeneration. Initial independent review found no unexplained remaining golden mismatch. The later followup coverage audit above identified and restored a lost season state/history assertion, added meaningful failure-boundary coverage, and qualified the limits of any scenario-equivalence claim.
 
 ## Independent reviewer findings resolved
 
