@@ -8,15 +8,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-jet/jet/v2/sqlite"
 	"github.com/kasuboski/mediaz/pkg/cache"
 	"github.com/kasuboski/mediaz/pkg/indexer"
 	"github.com/kasuboski/mediaz/pkg/logger"
 	"github.com/kasuboski/mediaz/pkg/prowlarr"
 	"github.com/kasuboski/mediaz/pkg/ptr"
 	"github.com/kasuboski/mediaz/pkg/storage"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/table"
+	"github.com/kasuboski/mediaz/pkg/storage/model"
 	"go.uber.org/zap"
 )
 
@@ -362,7 +360,7 @@ func (is IndexerService) RefreshIndexerSource(ctx context.Context, id int64) err
 func (is IndexerService) RefreshAllIndexerSources(ctx context.Context) error {
 	log := logger.FromCtx(ctx)
 
-	sources, err := is.indexerSrcStorage.ListIndexerSources(ctx, table.IndexerSource.Enabled.EQ(sqlite.Bool(true)))
+	sources, err := is.indexerSrcStorage.ListEnabledIndexerSources(ctx)
 	if err != nil {
 		return err
 	}

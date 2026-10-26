@@ -2,62 +2,82 @@ package sqlite
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 
-	"github.com/go-jet/jet/v2/sqlite"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/table"
+	"github.com/kasuboski/mediaz/pkg/storage"
+	"github.com/kasuboski/mediaz/pkg/storage/model"
+	"github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 )
+
+// CreateDownloadClient stores a new download client
+func (s *SQLite) CreateDownloadClient(ctx context.Context, client model.DownloadClient) (int64, error) {
+	return s.Queries.CreateDownloadClient(ctx, sqlcdb.CreateDownloadClientParams{
+		Type:           client.Type,
+		Implementation: client.Implementation,
+		Scheme:         client.Scheme,
+		Host:           client.Host,
+		Port:           int64(client.Port),
+		ApiKey:         cfgNullString(client.APIKey),
+	})
+}
 
 // GetDownloadClient gets a stored download client given an id
 func (s *SQLite) GetDownloadClient(ctx context.Context, id int64) (model.DownloadClient, error) {
-	stmt := table.DownloadClient.SELECT(table.DownloadClient.AllColumns).FROM(table.DownloadClient).WHERE(table.DownloadClient.ID.EQ(sqlite.Int64(id)))
-	var result model.DownloadClient
-	err := stmt.QueryContext(ctx, s.db, &result)
-	return result, err
+	r, err := s.Queries.GetDownloadClient(ctx, id)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return model.DownloadClient{}, storage.ErrNotFound
+		}
+		return model.DownloadClient{}, err
+	}
+
+	return downloadClientFromRow(r), nil
 }
 
-// ListDownloadClients lists all stored download clients
+// ListDownloadClients lists all stored download clients ordered by id
 func (s *SQLite) ListDownloadClients(ctx context.Context) ([]*model.DownloadClient, error) {
-	items := make([]*model.DownloadClient, 0)
-	stmt := table.DownloadClient.SELECT(table.DownloadClient.AllColumns).FROM(table.DownloadClient).ORDER_BY(table.DownloadClient.ID.ASC())
-	err := stmt.QueryContext(ctx, s.db, &items)
-	return items, err
+	rows, err := s.Queries.ListDownloadClients(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	clients := make([]*model.DownloadClient, 0, len(rows))
+	for _, r := range rows {
+		client := downloadClientFromRow(r)
+		clients = append(clients, &client)
+	}
+
+	return clients, nil
 }
 
 // UpdateDownloadClient updates an existing download client
 func (s *SQLite) UpdateDownloadClient(ctx context.Context, id int64, client model.DownloadClient) error {
-	stmt := table.DownloadClient.UPDATE(
-		table.DownloadClient.Type,
-		table.DownloadClient.Implementation,
-		table.DownloadClient.Scheme,
-		table.DownloadClient.Host,
-		table.DownloadClient.Port,
-		table.DownloadClient.APIKey,
-	).MODEL(client).WHERE(table.DownloadClient.ID.EQ(sqlite.Int64(id)))
-
-	_, err := stmt.ExecContext(ctx, s.db)
-	return err
+	return s.Queries.UpdateDownloadClient(ctx, sqlcdb.UpdateDownloadClientParams{
+		Type:           client.Type,
+		Implementation: client.Implementation,
+		Scheme:         client.Scheme,
+		Host:           client.Host,
+		Port:           int64(client.Port),
+		ApiKey:         cfgNullString(client.APIKey),
+		ID:             id,
+	})
 }
 
 // DeleteDownloadClient deletes a download client given an id
 func (s *SQLite) DeleteDownloadClient(ctx context.Context, id int64) error {
-	stmt := table.DownloadClient.DELETE().WHERE(table.DownloadClient.ID.EQ(sqlite.Int64(id)))
-	_, err := s.handleDelete(ctx, stmt)
-	return err
+	return s.Queries.DeleteDownloadClient(ctx, id)
 }
 
-// CreateDownloadClient stores a new download client
-func (s *SQLite) CreateDownloadClient(ctx context.Context, profile model.DownloadClient) (int64, error) {
-	stmt := table.DownloadClient.INSERT(table.DownloadClient.AllColumns.Except(table.DownloadClient.ID)).MODEL(profile).RETURNING(table.DownloadClient.ID)
-	result, err := s.handleInsert(ctx, stmt)
-	if err != nil {
-		return 0, err
+// downloadClientFromRow converts a sqlc row into the domain model.
+func downloadClientFromRow(r sqlcdb.DownloadClient) model.DownloadClient {
+	return model.DownloadClient{
+		ID:             int32(r.ID),
+		Type:           r.Type,
+		Implementation: r.Implementation,
+		Scheme:         r.Scheme,
+		Host:           r.Host,
+		Port:           int32(r.Port),
+		APIKey:         cfgStringPtr(r.ApiKey),
 	}
-
-	inserted, err := result.LastInsertId()
-	if err != nil {
-		return 0, err
-	}
-
-	return inserted, nil
 }

@@ -2,62 +2,91 @@ package sqlite
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 
-	"github.com/go-jet/jet/v2/sqlite"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/table"
+	"github.com/kasuboski/mediaz/pkg/storage"
+	"github.com/kasuboski/mediaz/pkg/storage/model"
+	"github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 )
 
+// CreateQualityProfileItem stores a quality profile item
 func (s *SQLite) CreateQualityProfileItem(ctx context.Context, item model.QualityProfileItem) (int64, error) {
-	stmt := table.QualityProfileItem.INSERT(table.QualityProfileItem.AllColumns.Except(table.QualityProfileItem.ID)).RETURNING(table.QualityProfileItem.ID).MODEL(item)
-	result, err := s.handleInsert(ctx, stmt)
-	if err != nil {
-		return 0, err
-	}
-
-	inserted, err := result.LastInsertId()
-	if err != nil {
-		return 0, err
-	}
-
-	return inserted, nil
+	return s.Queries.CreateQualityProfileItem(ctx, sqlcdb.CreateQualityProfileItemParams{
+		ProfileID: int64(item.ProfileID),
+		QualityID: int64(item.QualityID),
+	})
 }
 
+// CreateQualityProfileItems stores multiple quality profile items atomically
 func (s *SQLite) CreateQualityProfileItems(ctx context.Context, items []model.QualityProfileItem) error {
 	if len(items) == 0 {
 		return nil
 	}
-	stmt := table.QualityProfileItem.INSERT(table.QualityProfileItem.AllColumns.Except(table.QualityProfileItem.ID)).MODELS(items)
-	_, err := stmt.ExecContext(ctx, s.db)
-	return err
+
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+
+	q := s.txQueries(tx)
+	for _, item := range items {
+		if _, err := q.CreateQualityProfileItem(ctx, sqlcdb.CreateQualityProfileItemParams{
+			ProfileID: int64(item.ProfileID),
+			QualityID: int64(item.QualityID),
+		}); err != nil {
+			_ = tx.Rollback()
+			return err
+		}
+	}
+
+	return tx.Commit()
 }
 
 // GetQualityProfileItem gets a quality item that belongs to a profile
 func (s *SQLite) GetQualityProfileItem(ctx context.Context, id int64) (model.QualityProfileItem, error) {
-	stmt := table.QualityProfileItem.SELECT(table.QualityProfileItem.AllColumns).FROM(table.QualityProfileItem).WHERE(table.QualityProfileItem.ID.EQ(sqlite.Int64(id)))
-	var result model.QualityProfileItem
-	err := stmt.QueryContext(ctx, s.db, &result)
-	return result, err
+	r, err := s.Queries.GetQualityProfileItem(ctx, id)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return model.QualityProfileItem{}, storage.ErrNotFound
+		}
+		return model.QualityProfileItem{}, err
+	}
+
+	itemID := int32(r.ID)
+	return model.QualityProfileItem{
+		ID:        &itemID,
+		ProfileID: int32(r.ProfileID),
+		QualityID: int32(r.QualityID),
+	}, nil
 }
 
-// ListQualityProfileItems lists all items in a quality profile
+// ListQualityProfileItems lists all items in a quality profile ordered by id
 func (s *SQLite) ListQualityProfileItems(ctx context.Context) ([]*model.QualityProfileItem, error) {
-	items := make([]*model.QualityProfileItem, 0)
-	stmt := table.QualityProfileItem.SELECT(table.QualityProfileItem.AllColumns).FROM(table.QualityProfileItem).ORDER_BY(table.QualityProfileItem.ID.ASC())
-	err := stmt.QueryContext(ctx, s.db, &items)
-	return items, err
+	rows, err := s.Queries.ListQualityProfileItems(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	items := make([]*model.QualityProfileItem, 0, len(rows))
+	for _, r := range rows {
+		itemID := int32(r.ID)
+		items = append(items, &model.QualityProfileItem{
+			ID:        &itemID,
+			ProfileID: int32(r.ProfileID),
+			QualityID: int32(r.QualityID),
+		})
+	}
+
+	return items, nil
 }
 
 // DeleteQualityProfileItem deletes a quality profile item
 func (s *SQLite) DeleteQualityProfileItem(ctx context.Context, id int64) error {
-	stmt := table.QualityProfileItem.DELETE().WHERE(table.QualityProfileItem.ID.EQ(sqlite.Int64(id))).RETURNING(table.QualityProfileItem.AllColumns)
-	_, err := s.handleDelete(ctx, stmt)
-	return err
+	return s.Queries.DeleteQualityProfileItem(ctx, id)
 }
 
 // DeleteQualityProfileItemsByProfileID deletes all items for a given profile
 func (s *SQLite) DeleteQualityProfileItemsByProfileID(ctx context.Context, profileID int64) error {
-	stmt := table.QualityProfileItem.DELETE().WHERE(table.QualityProfileItem.ProfileID.EQ(sqlite.Int64(profileID)))
-	_, err := s.handleDelete(ctx, stmt)
-	return err
+	return s.Queries.DeleteQualityProfileItemsByProfileID(ctx, profileID)
 }

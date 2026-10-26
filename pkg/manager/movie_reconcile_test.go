@@ -10,7 +10,6 @@ import (
 	"testing/fstest"
 	"time"
 
-	"github.com/go-jet/jet/v2/sqlite"
 	"github.com/kasuboski/mediaz/config"
 	"github.com/kasuboski/mediaz/pkg/download"
 	downloadMock "github.com/kasuboski/mediaz/pkg/download/mocks"
@@ -24,9 +23,8 @@ import (
 	"github.com/kasuboski/mediaz/pkg/ptr"
 	"github.com/kasuboski/mediaz/pkg/storage"
 	storageMocks "github.com/kasuboski/mediaz/pkg/storage/mocks"
+	"github.com/kasuboski/mediaz/pkg/storage/model"
 	mediaSqlite "github.com/kasuboski/mediaz/pkg/storage/sqlite"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/table"
 	"github.com/kasuboski/mediaz/pkg/tmdb"
 	"github.com/oapi-codegen/nullable"
 	"github.com/stretchr/testify/assert"
@@ -196,7 +194,7 @@ func Test_Manager_reconcileDiscoveredMovie(t *testing.T) {
 
 		ctx := context.Background()
 
-		store.EXPECT().GetMovieMetadata(ctx, table.MovieMetadata.TmdbID.EQ(sqlite.Int(1234))).Return(&model.MovieMetadata{ID: 120}, nil)
+		store.EXPECT().GetMovieMetadataByTmdbID(ctx, int64(1234)).Return(&model.MovieMetadata{ID: 120}, nil)
 		store.EXPECT().GetMovieByMetadataID(ctx, 120).Return(nil, storage.ErrNotFound)
 		store.EXPECT().LinkMovieMetadata(ctx, int64(1), int32(120)).Return(nil)
 
@@ -295,7 +293,7 @@ func Test_Manager_reconcileDiscoveredMovie(t *testing.T) {
 
 		ctx := context.Background()
 
-		store.EXPECT().GetMovieMetadata(ctx, table.MovieMetadata.TmdbID.EQ(sqlite.Int(1234))).Return(&model.MovieMetadata{ID: 120}, nil)
+		store.EXPECT().GetMovieMetadataByTmdbID(ctx, int64(1234)).Return(&model.MovieMetadata{ID: 120}, nil)
 		store.EXPECT().GetMovieByMetadataID(ctx, 120).Return(nil, storage.ErrNotFound)
 		store.EXPECT().LinkMovieMetadata(ctx, int64(1), int32(120)).Return(nil)
 
@@ -348,7 +346,7 @@ func Test_Manager_reconcileDiscoveredMovie(t *testing.T) {
 
 		ctx := context.Background()
 
-		store.EXPECT().GetMovieMetadata(ctx, table.MovieMetadata.TmdbID.EQ(sqlite.Int(1234))).Return(&model.MovieMetadata{ID: 120}, nil)
+		store.EXPECT().GetMovieMetadataByTmdbID(ctx, int64(1234)).Return(&model.MovieMetadata{ID: 120}, nil)
 		// Metadata is already linked to movie ID 1
 		existingMovie := &storage.Movie{Movie: model.Movie{ID: 1}}
 		store.EXPECT().GetMovieByMetadataID(ctx, 120).Return(existingMovie, nil)

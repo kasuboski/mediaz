@@ -4,7 +4,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
+	"github.com/kasuboski/mediaz/pkg/storage/model"
 )
 
 // ReconcileSnapshot is a thread safe snapshot of the current reconcile loop state.

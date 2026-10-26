@@ -5,12 +5,10 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/go-jet/jet/v2/sqlite"
 	"github.com/kasuboski/mediaz/pkg/library"
 	"github.com/kasuboski/mediaz/pkg/logger"
 	"github.com/kasuboski/mediaz/pkg/storage"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/table"
+	"github.com/kasuboski/mediaz/pkg/storage/model"
 	"github.com/kasuboski/mediaz/pkg/tmdb"
 	"go.uber.org/zap"
 )
@@ -160,7 +158,7 @@ func (s *MovieService) UpdateMovieMonitored(ctx context.Context, movieID int64, 
 	}
 
 	movieUpdate := model.Movie{Monitored: monitoredInt}
-	err := s.movieStorage.UpdateMovie(ctx, movieUpdate, table.Movie.ID.EQ(sqlite.Int64(movieID)))
+	err := s.movieStorage.UpdateMovieByID(ctx, movieID, movieUpdate)
 	if err != nil {
 		return nil, err
 	}

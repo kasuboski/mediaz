@@ -2,54 +2,49 @@ package sqlite
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"time"
 
-	"github.com/go-jet/jet/v2/qrm"
-	"github.com/go-jet/jet/v2/sqlite"
 	"github.com/kasuboski/mediaz/pkg/storage"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/table"
+	"github.com/kasuboski/mediaz/pkg/storage/model"
+	"github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 )
 
 // CreateSeriesMetadata creates the given series metadata
 func (s *SQLite) CreateSeriesMetadata(ctx context.Context, seriesMeta model.SeriesMetadata) (int64, error) {
 	// don't insert a zeroed ID
-	insertColumns := table.SeriesMetadata.MutableColumns
+	var id sql.NullInt64
 	if seriesMeta.ID != 0 {
-		insertColumns = table.SeriesMetadata.AllColumns
+		id = sql.NullInt64{Int64: int64(seriesMeta.ID), Valid: true}
 	}
 
-	stmt := table.SeriesMetadata.
-		INSERT(insertColumns).
-		MODEL(seriesMeta).
-		ON_CONFLICT(table.SeriesMetadata.TmdbID).
-		DO_UPDATE(sqlite.SET(
-			table.SeriesMetadata.Title.SET(sqlite.String(seriesMeta.Title)),
-			table.SeriesMetadata.LastInfoSync.SET(sqlite.CURRENT_TIMESTAMP()),
-			table.SeriesMetadata.SeasonCount.SET(sqlite.Int32(seriesMeta.SeasonCount)),
-			table.SeriesMetadata.EpisodeCount.SET(sqlite.Int32(seriesMeta.EpisodeCount)),
-			table.SeriesMetadata.Status.SET(sqlite.String(seriesMeta.Status)),
-		))
-
-	_, err := s.handleInsert(ctx, stmt)
+	err := s.Queries.UpsertSeriesMetadata(ctx, sqlcdb.UpsertSeriesMetadataParams{
+		ID:             id,
+		TmdbID:         int64(seriesMeta.TmdbID),
+		Title:          seriesMeta.Title,
+		Overview:       metaStrPtr(seriesMeta.Overview),
+		LastInfoSync:   metaTimePtr(seriesMeta.LastInfoSync),
+		FirstAirDate:   metaTimePtr(seriesMeta.FirstAirDate),
+		LastAirDate:    metaTimePtr(seriesMeta.LastAirDate),
+		SeasonCount:    int64(seriesMeta.SeasonCount),
+		EpisodeCount:   int64(seriesMeta.EpisodeCount),
+		Status:         seriesMeta.Status,
+		PosterPath:     metaStrPtr(seriesMeta.PosterPath),
+		ExternalIds:    metaStrPtr(seriesMeta.ExternalIds),
+		WatchProviders: metaStrPtr(seriesMeta.WatchProviders),
+	})
 	if err != nil {
 		return 0, err
 	}
 
-	var existing model.SeriesMetadata
-	getStmt := table.SeriesMetadata.
-		SELECT(table.SeriesMetadata.ID).
-		FROM(table.SeriesMetadata).
-		WHERE(table.SeriesMetadata.TmdbID.EQ(sqlite.Int32(seriesMeta.TmdbID)))
-
-	err = getStmt.QueryContext(ctx, s.db, &existing)
+	metadataID, err := s.Queries.GetSeriesMetadataIDByTmdbID(ctx, int64(seriesMeta.TmdbID))
 	if err != nil {
 		return 0, fmt.Errorf("failed to get series metadata ID after upsert: %w", err)
 	}
 
-	return int64(existing.ID), nil
+	return metadataID, nil
 }
 
 // UpdateSeriesMetadata updates an existing series metadata record
@@ -57,16 +52,20 @@ func (s *SQLite) UpdateSeriesMetadata(ctx context.Context, metadata model.Series
 	now := time.Now()
 	metadata.LastInfoSync = &now
 
-	stmt := table.SeriesMetadata.
-		UPDATE(table.SeriesMetadata.AllColumns.
-			Except(
-				table.SeriesMetadata.ID,
-				table.SeriesMetadata.TmdbID,
-			)).
-		MODEL(metadata).
-		WHERE(table.SeriesMetadata.ID.EQ(sqlite.Int32(metadata.ID)))
-
-	_, err := s.handleStatement(ctx, stmt)
+	err := s.Queries.UpdateSeriesMetadata(ctx, sqlcdb.UpdateSeriesMetadataParams{
+		Title:          metadata.Title,
+		Overview:       metaStrPtr(metadata.Overview),
+		LastInfoSync:   metaTimePtr(metadata.LastInfoSync),
+		FirstAirDate:   metaTimePtr(metadata.FirstAirDate),
+		LastAirDate:    metaTimePtr(metadata.LastAirDate),
+		SeasonCount:    int64(metadata.SeasonCount),
+		EpisodeCount:   int64(metadata.EpisodeCount),
+		Status:         metadata.Status,
+		PosterPath:     metaStrPtr(metadata.PosterPath),
+		ExternalIds:    metaStrPtr(metadata.ExternalIds),
+		WatchProviders: metaStrPtr(metadata.WatchProviders),
+		ID:             int64(metadata.ID),
+	})
 	if err != nil {
 		return fmt.Errorf("failed to update series metadata: %w", err)
 	}
@@ -76,11 +75,7 @@ func (s *SQLite) UpdateSeriesMetadata(ctx context.Context, metadata model.Series
 
 // DeleteSeriesMetadata deletes a Series metadata by id
 func (s *SQLite) DeleteSeriesMetadata(ctx context.Context, id int64) error {
-	stmt := table.SeriesMetadata.
-		DELETE().
-		WHERE(table.SeriesMetadata.ID.EQ(sqlite.Int64(id)))
-
-	_, err := s.handleDelete(ctx, stmt)
+	err := s.Queries.DeleteSeriesMetadata(ctx, id)
 	if err != nil {
 		return fmt.Errorf("failed to delete Series metadata: %w", err)
 	}
@@ -89,47 +84,65 @@ func (s *SQLite) DeleteSeriesMetadata(ctx context.Context, id int64) error {
 }
 
 // ListSeriesMetadata lists all Series metadata
-func (s *SQLite) ListSeriesMetadata(ctx context.Context, where ...sqlite.BoolExpression) ([]*model.SeriesMetadata, error) {
-	stmt := table.SeriesMetadata.
-		SELECT(table.SeriesMetadata.AllColumns).
-		FROM(table.SeriesMetadata)
-
-	for _, w := range where {
-		stmt = stmt.WHERE(w)
-	}
-
-	var SeriesMetadata []*model.SeriesMetadata
-	err := stmt.QueryContext(ctx, s.db, &SeriesMetadata)
+func (s *SQLite) ListSeriesMetadata(ctx context.Context) ([]*model.SeriesMetadata, error) {
+	rows, err := s.Queries.ListSeriesMetadata(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list Series metadata: %w", err)
 	}
 
-	return SeriesMetadata, nil
+	seriesMetadata := make([]*model.SeriesMetadata, 0, len(rows))
+	for _, row := range rows {
+		seriesMetadata = append(seriesMetadata, seriesMetadataFromRow(row))
+	}
+
+	return seriesMetadata, nil
 }
 
-// GetSeriesMetadata get a Series metadata for the given where
-func (s *SQLite) GetSeriesMetadata(ctx context.Context, where sqlite.BoolExpression) (*model.SeriesMetadata, error) {
-	stmt := table.SeriesMetadata.
-		SELECT(table.SeriesMetadata.AllColumns).
-		FROM(table.SeriesMetadata).
-		WHERE(where)
-
-	var seriesMetadata model.SeriesMetadata
-	err := stmt.QueryContext(ctx, s.db, &seriesMetadata)
+// ListSeriesMetadataByStatus lists all Series metadata with the given status
+func (s *SQLite) ListSeriesMetadataByStatus(ctx context.Context, status string) ([]*model.SeriesMetadata, error) {
+	rows, err := s.Queries.ListSeriesMetadataByStatus(ctx, status)
 	if err != nil {
-		if errors.Is(err, qrm.ErrNoRows) {
+		return nil, fmt.Errorf("failed to list Series metadata: %w", err)
+	}
+
+	seriesMetadata := make([]*model.SeriesMetadata, 0, len(rows))
+	for _, row := range rows {
+		seriesMetadata = append(seriesMetadata, seriesMetadataFromRow(row))
+	}
+
+	return seriesMetadata, nil
+}
+
+// GetSeriesMetadataByID get a Series metadata by id
+func (s *SQLite) GetSeriesMetadataByID(ctx context.Context, id int64) (*model.SeriesMetadata, error) {
+	row, err := s.Queries.GetSeriesMetadataByID(ctx, id)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
 			return nil, storage.ErrNotFound
 		}
 		return nil, fmt.Errorf("failed to get Series metadata: %w", err)
 	}
 
-	return &seriesMetadata, nil
+	return seriesMetadataFromRow(row), nil
+}
+
+// GetSeriesMetadataByTmdbID get a Series metadata by tmdb id
+func (s *SQLite) GetSeriesMetadataByTmdbID(ctx context.Context, tmdbID int64) (*model.SeriesMetadata, error) {
+	row, err := s.Queries.GetSeriesMetadataByTmdbID(ctx, tmdbID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, storage.ErrNotFound
+		}
+		return nil, fmt.Errorf("failed to get Series metadata: %w", err)
+	}
+
+	return seriesMetadataFromRow(row), nil
 }
 
 // UpdateSeriesState updates the transition state of a series
 // Metadata is optional and can be nil
 func (s *SQLite) UpdateSeriesState(ctx context.Context, id int64, state storage.SeriesState, metadata *storage.TransitionStateMetadata) error {
-	series, err := s.GetSeries(ctx, table.Series.ID.EQ(sqlite.Int64(id)))
+	series, err := s.GetSeriesByID(ctx, id)
 	if err != nil {
 		return err
 	}
@@ -144,39 +157,23 @@ func (s *SQLite) UpdateSeriesState(ctx context.Context, id int64, state storage.
 		return err
 	}
 
-	previousTransitionStmt := table.SeriesTransition.
-		UPDATE().
-		SET(
-			table.SeriesTransition.MostRecent.SET(sqlite.Bool(false))).
-		WHERE(
-			table.SeriesTransition.SeriesID.EQ(sqlite.Int(id)).
-				AND(table.SeriesTransition.MostRecent.EQ(sqlite.Bool(true)))).
-		RETURNING(table.SeriesTransition.AllColumns)
+	// Note: SeriesTransition doesn't currently support DownloadClientID and DownloadID
+	// These can be added to the schema if needed in the future
+	_ = metadata
 
-	var previousTransition storage.SeriesTransition
-	err = previousTransitionStmt.QueryContext(ctx, tx, &previousTransition)
+	previousSortKey, err := s.txQueries(tx).DemoteSeriesTransition(ctx, id)
 	if err != nil {
 		tx.Rollback()
 		return err
 	}
 
-	transition := storage.SeriesTransition{
-		SeriesID:   int32(id),
+	err = s.txQueries(tx).InsertSeriesTransition(ctx, sqlcdb.InsertSeriesTransitionParams{
+		SeriesID:   id,
 		ToState:    string(state),
+		FromState:  sql.NullString{},
 		MostRecent: true,
-		SortKey:    previousTransition.SortKey + 1,
-	}
-
-	// Note: SeriesTransition doesn't currently support DownloadClientID and DownloadID
-	// These can be added to the schema if needed in the future
-
-	newTransitionStmt := table.SeriesTransition.
-		INSERT(table.SeriesTransition.AllColumns.
-			Except(table.SeriesTransition.ID, table.SeriesTransition.CreatedAt, table.SeriesTransition.UpdatedAt)).
-		MODEL(transition).
-		RETURNING(table.SeriesTransition.AllColumns)
-
-	_, err = newTransitionStmt.ExecContext(ctx, tx)
+		SortKey:    previousSortKey + 1,
+	})
 	if err != nil {
 		tx.Rollback()
 		return err
@@ -185,19 +182,94 @@ func (s *SQLite) UpdateSeriesState(ctx context.Context, id int64, state storage.
 	return tx.Commit()
 }
 
-// UpdateSeries updates fields on a series
-func (s *SQLite) UpdateSeries(ctx context.Context, series model.Series, where ...sqlite.BoolExpression) error {
-	stmt := table.Series.UPDATE(table.Series.Monitored).MODEL(series)
-	for _, w := range where {
-		stmt = stmt.WHERE(w)
-	}
-	_, err := stmt.ExecContext(ctx, s.db)
-	return err
+// UpdateSeriesByID updates fields on a series. Like the legacy statement it
+// only ever writes the monitored column.
+func (s *SQLite) UpdateSeriesByID(ctx context.Context, id int64, series model.Series) error {
+	return s.Queries.UpdateSeriesByID(ctx, sqlcdb.UpdateSeriesByIDParams{
+		Monitored: int64(series.Monitored),
+		ID:        id,
+	})
 }
 
 // LinkSeriesMetadata links a series with its metadata
 func (s *SQLite) LinkSeriesMetadata(ctx context.Context, seriesID int64, metadataID int32) error {
-	stmt := table.Series.UPDATE(table.Series.SeriesMetadataID).SET(metadataID).WHERE(table.Series.ID.EQ(sqlite.Int64(seriesID)))
-	_, err := stmt.Exec(s.db)
-	return err
+	return s.Queries.LinkSeriesMetadata(ctx, sqlcdb.LinkSeriesMetadataParams{
+		SeriesMetadataID: sql.NullInt64{Int64: int64(metadataID), Valid: true},
+		ID:               seriesID,
+	})
+}
+
+// seriesMetadataFromRow converts a sqlc series_metadata row into the domain
+// model, which preserves the legacy Jet shapes (int32 IDs, pointer nullables).
+func seriesMetadataFromRow(row sqlcdb.SeriesMetadatum) *model.SeriesMetadata {
+	return &model.SeriesMetadata{
+		ID:             int32(row.ID),
+		TmdbID:         int32(row.TmdbID),
+		Title:          row.Title,
+		Overview:       metaNullStr(row.Overview),
+		LastInfoSync:   metaNullTime(row.LastInfoSync),
+		FirstAirDate:   metaNullTime(row.FirstAirDate),
+		LastAirDate:    metaNullTime(row.LastAirDate),
+		SeasonCount:    int32(row.SeasonCount),
+		EpisodeCount:   int32(row.EpisodeCount),
+		Status:         row.Status,
+		PosterPath:     metaNullStr(row.PosterPath),
+		ExternalIds:    metaNullStr(row.ExternalIds),
+		WatchProviders: metaNullStr(row.WatchProviders),
+	}
+}
+
+// The meta* helpers convert between sqlc's sql.Null* column shapes and the
+// domain models' legacy pointer shapes. They are specific to the metadata/file
+// implementation group; see MIGRATION_COORDINATION.md on helper naming.
+
+// metaNullStr converts a nullable string column to the domain pointer shape.
+func metaNullStr(v sql.NullString) *string {
+	if !v.Valid {
+		return nil
+	}
+	s := v.String
+	return &s
+}
+
+// metaStrPtr converts a domain string pointer to a nullable string column.
+func metaStrPtr(s *string) sql.NullString {
+	if s == nil {
+		return sql.NullString{}
+	}
+	return sql.NullString{String: *s, Valid: true}
+}
+
+// metaNullTime converts a nullable time column to the domain pointer shape.
+func metaNullTime(v sql.NullTime) *time.Time {
+	if !v.Valid {
+		return nil
+	}
+	t := v.Time
+	return &t
+}
+
+// metaTimePtr converts a domain time pointer to a nullable time column.
+func metaTimePtr(t *time.Time) sql.NullTime {
+	if t == nil {
+		return sql.NullTime{}
+	}
+	return sql.NullTime{Time: *t, Valid: true}
+}
+
+// metaNullInt32 converts a nullable integer column to the domain int32 pointer.
+func metaNullInt32(v sql.NullInt64) *int32 {
+	if !v.Valid {
+		return nil
+	}
+	n := int32(v.Int64)
+	return &n
+}
+
+// metaInt32Ptr converts a domain int32 pointer to a nullable integer column.
+func metaInt32Ptr(n *int32) sql.NullInt64 {
+	if n == nil {
+		return sql.NullInt64{}
+	}
+	return sql.NullInt64{Int64: int64(*n), Valid: true}
 }

@@ -10,7 +10,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/go-jet/jet/v2/qrm"
 	"github.com/kasuboski/mediaz/config"
 	"github.com/kasuboski/mediaz/pkg/download"
 	"github.com/kasuboski/mediaz/pkg/indexer"
@@ -19,7 +18,7 @@ import (
 	"github.com/kasuboski/mediaz/pkg/pagination"
 	"github.com/kasuboski/mediaz/pkg/prowlarr"
 	"github.com/kasuboski/mediaz/pkg/storage"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
+	"github.com/kasuboski/mediaz/pkg/storage/model"
 	"github.com/kasuboski/mediaz/pkg/tmdb"
 	"github.com/oapi-codegen/nullable"
 	"go.uber.org/zap"
@@ -342,7 +341,7 @@ func (m MediaManager) IndexMovieLibrary(ctx context.Context) error {
 			log.Debug("movie file associated with movie already", zap.Any("movie id", foundMovie.ID))
 			continue
 		}
-		if !errors.Is(err, qrm.ErrNoRows) {
+		if !errors.Is(err, storage.ErrNotFound) {
 			log.Debug("error fetching movie", zap.Error(err))
 			continue
 		}

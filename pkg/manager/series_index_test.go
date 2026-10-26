@@ -9,7 +9,8 @@ import (
 	"github.com/kasuboski/mediaz/pkg/library"
 	mockLibrary "github.com/kasuboski/mediaz/pkg/library/mocks"
 	"github.com/kasuboski/mediaz/pkg/ptr"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
+	"github.com/kasuboski/mediaz/pkg/storage"
+	"github.com/kasuboski/mediaz/pkg/storage/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -83,7 +84,7 @@ func TestIndexSeriesLibrary(t *testing.T) {
 		err := m.IndexSeriesLibrary(ctx)
 		assert.NoError(t, err)
 
-		series, err := store.ListSeries(ctx)
+		series, err := store.ListSeries(ctx, storage.SeriesFilter{})
 		require.NoError(t, err)
 		assert.Len(t, series, 2)
 
@@ -130,7 +131,7 @@ func TestIndexSeriesLibrary(t *testing.T) {
 		require.NoError(t, err)
 		assert.Len(t, episodeFiles, 1)
 
-		series, err := store.ListSeries(ctx)
+		series, err := store.ListSeries(ctx, storage.SeriesFilter{})
 		require.NoError(t, err)
 		require.Len(t, series, 1)
 
@@ -167,7 +168,7 @@ func TestIndexSeriesLibrary(t *testing.T) {
 		require.NoError(t, err)
 		assert.Len(t, episodeFiles, 1)
 
-		series, err := store.ListSeries(ctx)
+		series, err := store.ListSeries(ctx, storage.SeriesFilter{})
 		require.NoError(t, err)
 		require.Len(t, series, 1)
 
@@ -187,7 +188,7 @@ func TestIndexSeriesLibrary(t *testing.T) {
 		require.NoError(t, err)
 		assert.Len(t, episodeFiles, 2)
 
-		series, err = store.ListSeries(ctx)
+		series, err = store.ListSeries(ctx, storage.SeriesFilter{})
 		require.NoError(t, err)
 		require.Len(t, series, 1)
 	})

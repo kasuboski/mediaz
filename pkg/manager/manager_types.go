@@ -1,7 +1,7 @@
 package manager
 
 import (
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
+	"github.com/kasuboski/mediaz/pkg/storage/model"
 )
 
 // LibraryShow summarizes a tracked TV series in the local library for list views.

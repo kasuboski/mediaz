@@ -15,7 +15,7 @@ import (
 	"github.com/kasuboski/mediaz/pkg/ptr"
 	"github.com/kasuboski/mediaz/pkg/storage"
 	storeMocks "github.com/kasuboski/mediaz/pkg/storage/mocks"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
+	"github.com/kasuboski/mediaz/pkg/storage/model"
 	tmdbMocks "github.com/kasuboski/mediaz/pkg/tmdb/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -52,7 +52,7 @@ func TestServer_GetMovieDetailByTMDBID(t *testing.T) {
 			CollectionTitle:  ptr.To("Test Collection"),
 		}
 
-		store.EXPECT().GetMovieMetadata(gomock.Any(), gomock.Any()).Return(expectedMetadata, nil)
+		store.EXPECT().GetMovieMetadataByTmdbID(gomock.Any(), gomock.Any()).Return(expectedMetadata, nil)
 
 		// Setup expectations for GetMovieByMetadataID call
 		expectedMovie := &storage.Movie{
@@ -120,7 +120,7 @@ func TestServer_GetMovieDetailByTMDBID(t *testing.T) {
 			Runtime: 120,
 		}
 
-		store.EXPECT().GetMovieMetadata(gomock.Any(), gomock.Any()).Return(expectedMetadata, nil)
+		store.EXPECT().GetMovieMetadataByTmdbID(gomock.Any(), gomock.Any()).Return(expectedMetadata, nil)
 		store.EXPECT().GetMovieByMetadataID(gomock.Any(), 1).Return(nil, storage.ErrNotFound)
 
 		mgr := manager.New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
@@ -173,7 +173,7 @@ func TestServer_GetMovieDetailByTMDBID(t *testing.T) {
 		store := storeMocks.NewMockStorage(ctrl)
 		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
 
-		store.EXPECT().GetMovieMetadata(gomock.Any(), gomock.Any()).Return(nil, errors.New("metadata not found"))
+		store.EXPECT().GetMovieMetadataByTmdbID(gomock.Any(), gomock.Any()).Return(nil, errors.New("metadata not found"))
 
 		mgr := manager.New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
 
@@ -215,7 +215,7 @@ func TestServer_AddMovieToLibrary(t *testing.T) {
 		}
 
 		store.EXPECT().GetQualityProfile(gomock.Any(), int64(1)).Return(storage.QualityProfile{ID: 1}, nil)
-		store.EXPECT().GetMovieMetadata(gomock.Any(), gomock.Any()).Return(metadata, nil)
+		store.EXPECT().GetMovieMetadataByTmdbID(gomock.Any(), gomock.Any()).Return(metadata, nil)
 		store.EXPECT().GetMovieByMetadataID(gomock.Any(), 1).Return(nil, storage.ErrNotFound)
 		store.EXPECT().CreateMovie(gomock.Any(), gomock.Any(), storage.MovieStateMissing).Return(int64(1), nil)
 		store.EXPECT().GetMovie(gomock.Any(), int64(1)).Return(&storage.Movie{
@@ -270,7 +270,7 @@ func TestServer_AddMovieToLibrary(t *testing.T) {
 		}
 
 		store.EXPECT().GetQualityProfile(gomock.Any(), int64(1)).Return(storage.QualityProfile{ID: 1}, nil)
-		store.EXPECT().GetMovieMetadata(gomock.Any(), gomock.Any()).Return(metadata, nil)
+		store.EXPECT().GetMovieMetadataByTmdbID(gomock.Any(), gomock.Any()).Return(metadata, nil)
 		store.EXPECT().GetMovieByMetadataID(gomock.Any(), 1).Return(&storage.Movie{
 			Movie: model.Movie{
 				ID:               5,
@@ -322,7 +322,7 @@ func TestServer_AddMovieToLibrary(t *testing.T) {
 		}
 
 		store.EXPECT().GetQualityProfile(gomock.Any(), int64(1)).Return(storage.QualityProfile{ID: 1}, nil)
-		store.EXPECT().GetMovieMetadata(gomock.Any(), gomock.Any()).Return(metadata, nil)
+		store.EXPECT().GetMovieMetadataByTmdbID(gomock.Any(), gomock.Any()).Return(metadata, nil)
 		store.EXPECT().GetMovieByMetadataID(gomock.Any(), 1).Return(&storage.Movie{
 			Movie: model.Movie{
 				ID:               6,
@@ -374,7 +374,7 @@ func TestServer_AddMovieToLibrary(t *testing.T) {
 		}
 
 		store.EXPECT().GetQualityProfile(gomock.Any(), int64(1)).Return(storage.QualityProfile{ID: 1}, nil)
-		store.EXPECT().GetMovieMetadata(gomock.Any(), gomock.Any()).Return(metadata, nil)
+		store.EXPECT().GetMovieMetadataByTmdbID(gomock.Any(), gomock.Any()).Return(metadata, nil)
 		store.EXPECT().GetMovieByMetadataID(gomock.Any(), 1).Return(&storage.Movie{
 			Movie: model.Movie{
 				ID:               7,

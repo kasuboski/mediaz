@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/kasuboski/mediaz/pkg/storage"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
+	"github.com/kasuboski/mediaz/pkg/storage/model"
 )
 
 // initialSeriesState returns Missing or Unreleased based on the first air date.

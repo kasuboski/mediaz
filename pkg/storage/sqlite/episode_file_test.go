@@ -5,97 +5,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-jet/jet/v2/sqlite"
 	"github.com/kasuboski/mediaz/pkg/ptr"
 	"github.com/kasuboski/mediaz/pkg/storage"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/table"
+	"github.com/kasuboski/mediaz/pkg/storage/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-func TestEpisodeStorage(t *testing.T) {
-	ctx := context.Background()
-	store := initSqlite(t, ctx)
-	assert.NotNil(t, store)
-
-	series := storage.Series{
-		Series: model.Series{
-			Monitored:        1,
-			QualityProfileID: 1,
-			Added:            ptr.To(time.Now()),
-		},
-	}
-
-	seriesID, err := store.CreateSeries(ctx, series, storage.SeriesStateMissing)
-	require.Nil(t, err)
-
-	season := storage.Season{
-		Season: model.Season{
-			SeriesID: int32(seriesID),
-		},
-	}
-
-	seasonID, err := store.CreateSeason(ctx, season, storage.SeasonStateMissing)
-	require.Nil(t, err)
-
-	// Test creating an episode
-	episode := storage.Episode{
-		Episode: model.Episode{
-			SeasonID:      int32(seasonID),
-			EpisodeNumber: 1,
-			Monitored:     1,
-		},
-	}
-
-	id, err := store.CreateEpisode(ctx, episode, storage.EpisodeStateMissing)
-	assert.Nil(t, err)
-	assert.Greater(t, id, int64(0))
-
-	// Test getting the episode
-	retrieved, err := store.GetEpisode(ctx, table.Episode.ID.EQ(sqlite.Int64(id)))
-	assert.Nil(t, err)
-	assert.NotNil(t, retrieved)
-	assert.Equal(t, episode.SeasonID, retrieved.SeasonID)
-	assert.Equal(t, episode.EpisodeNumber, retrieved.EpisodeNumber)
-	assert.Equal(t, episode.Monitored, retrieved.Monitored)
-	assert.Equal(t, storage.EpisodeStateMissing, retrieved.State)
-
-	// Test listing episodes
-	episodes, err := store.ListEpisodes(ctx, table.Episode.SeasonID.EQ(sqlite.Int64(seasonID)))
-	assert.Nil(t, err)
-	assert.Len(t, episodes, 1)
-	assert.Equal(t, episode.EpisodeNumber, episodes[0].EpisodeNumber)
-
-	// Test listing episodes by state
-	where := table.EpisodeTransition.ToState.EQ(sqlite.String(string(storage.EpisodeStateMissing))).AND(table.Episode.SeasonID.EQ(sqlite.Int64(seasonID)))
-	stateEpisodes, err := store.ListEpisodes(ctx, where)
-	assert.Nil(t, err)
-	assert.Len(t, stateEpisodes, 1)
-	assert.Equal(t, storage.EpisodeStateMissing, stateEpisodes[0].State)
-
-	// Test updating episode file ID
-	err = store.UpdateEpisodeEpisodeFileID(ctx, id, 123)
-	assert.Nil(t, err)
-
-	// Test getting episode by file ID
-	byFile, err := store.GetEpisodeByEpisodeFileID(ctx, 123)
-	assert.Nil(t, err)
-	assert.Equal(t, id, int64(byFile.ID))
-
-	// Test deleting the episode
-	err = store.DeleteEpisode(ctx, id)
-	assert.Nil(t, err)
-
-	// Verify deletion
-	episodes, err = store.ListEpisodes(ctx, table.Episode.SeasonID.EQ(sqlite.Int64(seasonID)))
-	assert.Nil(t, err)
-	assert.Empty(t, episodes)
-
-	// Test getting non-existent episode
-	_, err = store.GetEpisode(ctx, table.Episode.ID.EQ(sqlite.Int64(id)))
-	assert.ErrorIs(t, err, storage.ErrNotFound)
-}
 
 func TestEpisodeFileStorage(t *testing.T) {
 	ctx := context.Background()
@@ -174,7 +89,7 @@ func TestGetEpisodeFile(t *testing.T) {
 		require.NotNil(t, store)
 
 		_, err := store.GetEpisodeFile(ctx, 99999)
-		assert.Error(t, err)
+		assert.ErrorIs(t, err, storage.ErrNotFound)
 	})
 }
 
@@ -267,4 +182,99 @@ func TestUpdateEpisodeFile(t *testing.T) {
 		err := store.UpdateEpisodeFile(ctx, 99999, nonExistentFile)
 		assert.NoError(t, err)
 	})
+}
+
+func TestCreateEpisodeFileWithExplicitID(t *testing.T) {
+	ctx := context.Background()
+	store := initSqlite(t, ctx)
+	require.NotNil(t, store)
+
+	added := time.Now().UTC().Add(-time.Hour).Truncate(time.Second)
+	file := model.EpisodeFile{
+		ID:               501,
+		Quality:          "UHD",
+		Size:             4096,
+		Added:            added,
+		RelativePath:     ptr.To("series/explicit.mp4"),
+		OriginalFilePath: ptr.To("/tv/series/explicit.mp4"),
+	}
+
+	id, err := store.CreateEpisodeFile(ctx, file)
+	require.NoError(t, err)
+	assert.Equal(t, int64(501), id)
+
+	retrieved, err := store.GetEpisodeFile(ctx, 501)
+	require.NoError(t, err)
+	assert.Equal(t, "UHD", retrieved.Quality)
+	assert.Equal(t, int64(4096), retrieved.Size)
+	assert.WithinDuration(t, added, retrieved.Added, time.Second)
+	assert.Equal(t, file.RelativePath, retrieved.RelativePath)
+	assert.Equal(t, file.OriginalFilePath, retrieved.OriginalFilePath)
+}
+
+func TestCreateEpisodeFileConflictKeepsExisting(t *testing.T) {
+	ctx := context.Background()
+	store := initSqlite(t, ctx)
+	require.NotNil(t, store)
+
+	// The legacy upsert assigned every mutable column to its own current
+	// value on conflict, so a conflicting insert never overwrites the stored
+	// row and returns the existing id. This behavior is preserved.
+	original := model.EpisodeFile{
+		ID:               502,
+		Quality:          "HD",
+		Size:             1024,
+		Added:            time.Now().UTC().Add(-2 * time.Hour).Truncate(time.Second),
+		RelativePath:     ptr.To("series/original.mp4"),
+		OriginalFilePath: ptr.To("/tv/original.mp4"),
+	}
+
+	id, err := store.CreateEpisodeFile(ctx, original)
+	require.NoError(t, err)
+	require.Equal(t, int64(502), id)
+
+	conflicting := model.EpisodeFile{
+		ID:               502,
+		Quality:          "UHD",
+		Size:             999999,
+		Added:            time.Now().UTC(),
+		RelativePath:     ptr.To("series/conflict.mp4"),
+		OriginalFilePath: ptr.To("/tv/conflict.mp4"),
+	}
+
+	upsertID, err := store.CreateEpisodeFile(ctx, conflicting)
+	require.NoError(t, err)
+	assert.Equal(t, int64(502), upsertID)
+
+	retrieved, err := store.GetEpisodeFile(ctx, 502)
+	require.NoError(t, err)
+	assert.Equal(t, original.Quality, retrieved.Quality, "quality must be preserved on conflict")
+	assert.Equal(t, original.Size, retrieved.Size, "size must be preserved on conflict")
+	assert.WithinDuration(t, original.Added, retrieved.Added, time.Second, "added must be preserved on conflict")
+	require.NotNil(t, retrieved.RelativePath)
+	assert.Equal(t, "series/original.mp4", *retrieved.RelativePath, "relative path must be preserved on conflict")
+	require.NotNil(t, retrieved.OriginalFilePath)
+	assert.Equal(t, "/tv/original.mp4", *retrieved.OriginalFilePath, "original file path must be preserved on conflict")
+}
+
+func TestCreateEpisodeFileDefaultAddedTime(t *testing.T) {
+	ctx := context.Background()
+	store := initSqlite(t, ctx)
+	require.NotNil(t, store)
+
+	// A zero-value id omits the added column so the CURRENT_TIMESTAMP column
+	// default applies, like the legacy insert branch.
+	file := model.EpisodeFile{
+		Quality: "HD",
+		Size:    512,
+	}
+
+	id, err := store.CreateEpisodeFile(ctx, file)
+	require.NoError(t, err)
+	require.Greater(t, id, int64(0))
+
+	retrieved, err := store.GetEpisodeFile(ctx, int32(id))
+	require.NoError(t, err)
+	assert.False(t, retrieved.Added.IsZero(), "added should fall back to the column default")
+	assert.WithinDuration(t, time.Now().UTC(), retrieved.Added, time.Minute)
 }

@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/kasuboski/mediaz/pkg/storage"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -100,7 +99,7 @@ func TestMigration_000002_PreservesModifiedProfile(t *testing.T) {
 	require.NoError(t, err)
 
 	cutoffID := int32(2)
-	err = tempStore.UpdateQualityProfile(ctx, 1, model.QualityProfile{
+	err = tempStore.UpdateQualityProfile(ctx, 1, storage.QualityProfile{
 		Name:            "Custom SD",
 		CutoffQualityID: &cutoffID,
 		UpgradeAllowed:  true,
@@ -141,7 +140,7 @@ func TestMigration_000002_PreservesMultipleModifications(t *testing.T) {
 	require.NoError(t, err)
 
 	cutoffID4 := int32(4)
-	err = tempStore.UpdateQualityProfile(ctx, 2, model.QualityProfile{
+	err = tempStore.UpdateQualityProfile(ctx, 2, storage.QualityProfile{
 		Name:            "High Definition",
 		CutoffQualityID: &cutoffID4,
 		UpgradeAllowed:  true,
@@ -149,7 +148,7 @@ func TestMigration_000002_PreservesMultipleModifications(t *testing.T) {
 	require.NoError(t, err)
 
 	cutoffID13 := int32(13)
-	err = tempStore.UpdateQualityProfile(ctx, 3, model.QualityProfile{
+	err = tempStore.UpdateQualityProfile(ctx, 3, storage.QualityProfile{
 		Name:            "Ultra High Definition",
 		CutoffQualityID: &cutoffID13,
 		UpgradeAllowed:  false,

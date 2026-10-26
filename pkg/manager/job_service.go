@@ -5,12 +5,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/go-jet/jet/v2/sqlite"
 	"github.com/kasuboski/mediaz/config"
 	"github.com/kasuboski/mediaz/pkg/logger"
 	"github.com/kasuboski/mediaz/pkg/pagination"
 	"github.com/kasuboski/mediaz/pkg/storage"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/table"
 	"go.uber.org/zap"
 )
 
@@ -119,37 +117,33 @@ func (js *JobService) GetJob(ctx context.Context, id int64) (JobResponse, error)
 }
 
 func (js *JobService) ListJobs(ctx context.Context, jobType *string, state *string, params pagination.Params) (JobListResponse, error) {
-	var conditions []sqlite.BoolExpression
+	filter := storage.JobFilter{}
 
 	if jobType != nil {
 		if !isValidJobType(*jobType) {
 			return JobListResponse{}, fmt.Errorf("invalid job type: %s", *jobType)
 		}
-		conditions = append(conditions, table.Job.Type.EQ(sqlite.String(*jobType)))
+		filter.Type = jobType
 	}
 
 	if state != nil {
 		switch storage.JobState(*state) {
 		case storage.JobStatePending, storage.JobStateRunning, storage.JobStateDone,
 			storage.JobStateError, storage.JobStateCancelled:
-			conditions = append(conditions, table.JobTransition.ToState.EQ(sqlite.String(*state)))
+			filter.State = state
 		default:
 			return JobListResponse{}, fmt.Errorf("invalid job state: %s", *state)
 		}
 	}
 
-	conditions = append(conditions, table.JobTransition.MostRecent.EQ(sqlite.Bool(true)))
-
-	where := sqlite.AND(conditions...)
-
-	totalCount, err := js.jobStorage.CountJobs(ctx, where)
+	totalCount, err := js.jobStorage.CountJobs(ctx, filter)
 	if err != nil {
 		return JobListResponse{}, err
 	}
 
 	offset, limit := params.CalculateOffsetLimit()
 
-	jobs, err := js.jobStorage.ListJobs(ctx, offset, limit, where)
+	jobs, err := js.jobStorage.ListJobs(ctx, offset, limit, filter)
 	if err != nil {
 		return JobListResponse{}, err
 	}

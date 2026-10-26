@@ -2,48 +2,89 @@ package sqlite
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"time"
 
-	"github.com/go-jet/jet/v2/qrm"
-	"github.com/go-jet/jet/v2/sqlite"
 	"github.com/kasuboski/mediaz/pkg/storage"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/table"
+	"github.com/kasuboski/mediaz/pkg/storage/model"
+	"github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 )
+
+// jobJoinRow mirrors the shared job+job_transition select shape used by the
+// job lookup queries so one conversion covers them all.
+type jobJoinRow struct {
+	ID        int64
+	Type      string
+	CreatedAt sql.NullTime
+	ToState   string
+	UpdatedAt sql.NullTime
+	Error     sql.NullString
+}
+
+func jobStrPtr(v sql.NullString) *string {
+	if !v.Valid {
+		return nil
+	}
+	s := v.String
+	return &s
+}
+
+func jobTimePtr(v sql.NullTime) *time.Time {
+	if !v.Valid {
+		return nil
+	}
+	t := v.Time
+	return &t
+}
+
+func jobFromJoinRow(r jobJoinRow) storage.Job {
+	return storage.Job{
+		Job: model.Job{
+			ID:        int32(r.ID),
+			Type:      r.Type,
+			CreatedAt: jobTimePtr(r.CreatedAt),
+		},
+		State:     storage.JobState(r.ToState),
+		UpdatedAt: jobTimePtr(r.UpdatedAt),
+		Error:     jobStrPtr(r.Error),
+	}
+}
+
+// jobFilterArgs maps the typed filter onto the nullable query filters. A nil
+// filter field means "no constraint".
+func jobFilterArgs(filter storage.JobFilter) (*string, *string) {
+	return filter.Type, filter.State
+}
+
+func jobTransitionParams(t storage.JobTransition) sqlcdb.CreateJobTransitionParams {
+	return sqlcdb.CreateJobTransitionParams{
+		JobID:      int64(t.JobID),
+		Type:       t.Type,
+		ToState:    t.ToState,
+		FromState:  movieNullStr(t.FromState),
+		MostRecent: t.MostRecent,
+		SortKey:    int64(t.SortKey),
+		Error:      movieNullStr(t.Error),
+	}
+}
 
 // getJobByTypeAndState retrieves a job by type and state
 func (s *SQLite) getJobByTypeAndState(ctx context.Context, jobType string, state storage.JobState) (*storage.Job, error) {
-	stmt := table.Job.
-		SELECT(
-			table.Job.AllColumns,
-			table.JobTransition.ToState,
-			table.JobTransition.UpdatedAt,
-			table.JobTransition.Error,
-		).
-		FROM(
-			table.Job.INNER_JOIN(
-				table.JobTransition,
-				table.Job.ID.EQ(table.JobTransition.JobID),
-			),
-		).
-		WHERE(
-			table.JobTransition.Type.EQ(sqlite.String(jobType)).
-				AND(table.JobTransition.ToState.EQ(sqlite.String(string(state)))).
-				AND(table.JobTransition.MostRecent.EQ(sqlite.Bool(true))),
-		)
-
-	job := new(storage.Job)
-	err := stmt.QueryContext(ctx, s.db, job)
+	row, err := s.Queries.GetJobByTypeAndState(ctx, sqlcdb.GetJobByTypeAndStateParams{
+		Type:    jobType,
+		ToState: string(state),
+	})
 	if err != nil {
-		if errors.Is(err, qrm.ErrNoRows) {
+		if errors.Is(err, sql.ErrNoRows) {
 			return nil, storage.ErrNotFound
 		}
 		return nil, fmt.Errorf("failed to get job by type and state: %w", err)
 	}
 
-	return job, nil
+	job := jobFromJoinRow(jobJoinRow(row))
+	return &job, nil
 }
 
 // CreateJob stores a job and creates an initial state
@@ -71,23 +112,9 @@ func (s *SQLite) CreateJob(ctx context.Context, job storage.Job, initialState st
 	if err != nil {
 		return 0, err
 	}
+	q := s.txQueries(tx)
 
-	jobModel := model.Job{
-		Type: job.Type,
-	}
-
-	stmt := table.Job.
-		INSERT(table.Job.AllColumns.Except(table.Job.ID, table.Job.CreatedAt)).
-		MODEL(jobModel).
-		RETURNING(table.Job.ID)
-
-	result, err := stmt.ExecContext(ctx, tx)
-	if err != nil {
-		tx.Rollback()
-		return 0, err
-	}
-
-	inserted, err := result.LastInsertId()
+	inserted, err := q.CreateJob(ctx, job.Type)
 	if err != nil {
 		tx.Rollback()
 		return 0, err
@@ -101,19 +128,12 @@ func (s *SQLite) CreateJob(ctx context.Context, job storage.Job, initialState st
 		SortKey:    1,
 	}
 
-	transitionStmt := table.JobTransition.
-		INSERT(table.JobTransition.AllColumns.
-			Except(table.JobTransition.ID, table.JobTransition.CreatedAt, table.JobTransition.UpdatedAt)).
-		MODEL(transition)
-
-	_, err = transitionStmt.ExecContext(ctx, tx)
-	if err != nil {
+	if err := q.CreateJobTransition(ctx, jobTransitionParams(transition)); err != nil {
 		tx.Rollback()
 		return 0, err
 	}
 
-	err = tx.Commit()
-	if err != nil {
+	if err := tx.Commit(); err != nil {
 		tx.Rollback()
 		return 0, err
 	}
@@ -123,92 +143,52 @@ func (s *SQLite) CreateJob(ctx context.Context, job storage.Job, initialState st
 
 // GetJob retrieves a job by ID with its current state
 func (s *SQLite) GetJob(ctx context.Context, id int64) (*storage.Job, error) {
-	stmt := table.Job.
-		SELECT(
-			table.Job.AllColumns,
-			table.JobTransition.ToState,
-			table.JobTransition.UpdatedAt,
-			table.JobTransition.Error,
-		).
-		FROM(
-			table.Job.INNER_JOIN(
-				table.JobTransition,
-				table.Job.ID.EQ(table.JobTransition.JobID),
-			),
-		).
-		WHERE(
-			table.Job.ID.EQ(sqlite.Int(id)).
-				AND(table.JobTransition.MostRecent.EQ(sqlite.Bool(true))),
-		)
-
-	job := new(storage.Job)
-	err := stmt.QueryContext(ctx, s.db, job)
+	row, err := s.Queries.GetJobByID(ctx, id)
 	if err != nil {
-		if errors.Is(err, qrm.ErrNoRows) {
+		if errors.Is(err, sql.ErrNoRows) {
 			return nil, storage.ErrNotFound
 		}
 		return nil, fmt.Errorf("failed to get job: %w", err)
 	}
 
-	return job, nil
+	job := jobFromJoinRow(jobJoinRow(row))
+	return &job, nil
 }
 
-// CountJobs returns the total count of jobs matching the where conditions
-func (s *SQLite) CountJobs(ctx context.Context, where ...sqlite.BoolExpression) (int, error) {
-	stmt := table.Job.
-		SELECT(sqlite.COUNT(table.Job.ID).AS("count")).
-		FROM(
-			table.Job.INNER_JOIN(
-				table.JobTransition,
-				table.Job.ID.EQ(table.JobTransition.JobID),
-			),
-		)
-
-	for _, w := range where {
-		stmt = stmt.WHERE(w)
-	}
-
-	var result struct {
-		Count int64
-	}
-	err := stmt.QueryContext(ctx, s.db, &result)
+// CountJobs returns the total count of jobs matching the filter. Queries are
+// always constrained to the most recent transition of each job.
+func (s *SQLite) CountJobs(ctx context.Context, filter storage.JobFilter) (int, error) {
+	jobType, state := jobFilterArgs(filter)
+	count, err := s.Queries.CountJobs(ctx, sqlcdb.CountJobsParams{
+		JobType: jobType,
+		State:   state,
+	})
 	if err != nil {
 		return 0, fmt.Errorf("failed to count jobs: %w", err)
 	}
 
-	return int(result.Count), nil
+	return int(count), nil
 }
 
-// ListJobs lists all jobs with optional pagination and where expressions
-// If limit is 0, returns all jobs without pagination
-func (s *SQLite) ListJobs(ctx context.Context, offset, limit int, where ...sqlite.BoolExpression) ([]*storage.Job, error) {
-	stmt := table.Job.
-		SELECT(
-			table.Job.AllColumns,
-			table.JobTransition.ToState,
-			table.JobTransition.UpdatedAt,
-			table.JobTransition.Error,
-		).
-		FROM(
-			table.Job.INNER_JOIN(
-				table.JobTransition,
-				table.Job.ID.EQ(table.JobTransition.JobID),
-			),
-		).
-		ORDER_BY(table.Job.CreatedAt.DESC())
-
-	for _, w := range where {
-		stmt = stmt.WHERE(w)
-	}
-
-	if limit > 0 {
-		stmt = stmt.LIMIT(int64(limit)).OFFSET(int64(offset))
-	}
-
-	jobs := make([]*storage.Job, 0)
-	err := stmt.QueryContext(ctx, s.db, &jobs)
+// ListJobs lists all jobs with optional pagination and filtering. If limit is
+// 0, returns all jobs without pagination. Queries are always constrained to
+// the most recent transition of each job.
+func (s *SQLite) ListJobs(ctx context.Context, offset, limit int, filter storage.JobFilter) ([]*storage.Job, error) {
+	jobType, state := jobFilterArgs(filter)
+	rows, err := s.Queries.ListJobs(ctx, sqlcdb.ListJobsParams{
+		JobType: jobType,
+		State:   state,
+		Lim:     limit,
+		Offs:    int64(offset),
+	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to list jobs: %w", err)
+	}
+
+	jobs := make([]*storage.Job, 0, len(rows))
+	for _, r := range rows {
+		job := jobFromJoinRow(jobJoinRow(r))
+		jobs = append(jobs, &job)
 	}
 
 	return jobs, nil
@@ -230,43 +210,29 @@ func (s *SQLite) UpdateJobState(ctx context.Context, id int64, state storage.Job
 	if err != nil {
 		return err
 	}
+	q := s.txQueries(tx)
 
-	previousStmt := table.JobTransition.
-		UPDATE().
-		SET(
-			table.JobTransition.MostRecent.SET(sqlite.Bool(false)),
-			table.JobTransition.UpdatedAt.SET(sqlite.TimestampExp(sqlite.String(time.Now().Format(timestampFormat)))),
-		).
-		WHERE(
-			table.JobTransition.JobID.EQ(sqlite.Int32(int32(id))).
-				AND(table.JobTransition.MostRecent.EQ(sqlite.Bool(true))),
-		).
-		RETURNING(table.JobTransition.AllColumns)
-
-	var previousTransition storage.JobTransition
-	err = previousStmt.QueryContext(ctx, tx, &previousTransition)
+	previous, err := q.DeactivateJobTransition(ctx, sqlcdb.DeactivateJobTransitionParams{
+		UpdatedAt: time.Now().Format(timestampFormat),
+		JobID:     id,
+	})
 	if err != nil {
 		tx.Rollback()
 		return fmt.Errorf("failed to update previous job transition: %w", err)
 	}
 
+	fromState := previous.ToState
 	transition := storage.JobTransition{
 		JobID:      int32(id),
 		Type:       job.Type,
-		FromState:  &previousTransition.ToState,
+		FromState:  &fromState,
 		ToState:    string(state),
 		MostRecent: true,
-		SortKey:    previousTransition.SortKey + 1,
+		SortKey:    int32(previous.SortKey) + 1,
 		Error:      errorMsg,
 	}
 
-	insertStmt := table.JobTransition.
-		INSERT(table.JobTransition.AllColumns.
-			Except(table.JobTransition.ID, table.JobTransition.CreatedAt, table.JobTransition.UpdatedAt)).
-		MODEL(transition)
-
-	_, err = insertStmt.ExecContext(ctx, tx)
-	if err != nil {
+	if err := q.CreateJobTransition(ctx, jobTransitionParams(transition)); err != nil {
 		tx.Rollback()
 		return fmt.Errorf("failed to insert new job transition: %w", err)
 	}
@@ -276,11 +242,7 @@ func (s *SQLite) UpdateJobState(ctx context.Context, id int64, state storage.Job
 
 // DeleteJob removes a job by ID
 func (s *SQLite) DeleteJob(ctx context.Context, id int64) error {
-	stmt := table.Job.
-		DELETE().
-		WHERE(table.Job.ID.EQ(sqlite.Int64(id)))
-
-	_, err := s.handleDelete(ctx, stmt)
+	err := s.Queries.DeleteJob(ctx, id)
 	if err != nil {
 		return fmt.Errorf("failed to delete job: %w", err)
 	}
@@ -288,21 +250,12 @@ func (s *SQLite) DeleteJob(ctx context.Context, id int64) error {
 	return nil
 }
 
-// DeleteJobs removes multiple jobs matching the where clause
-func (s *SQLite) DeleteJobs(ctx context.Context, where ...sqlite.BoolExpression) (int64, error) {
-	stmt := table.Job.DELETE()
-	for _, w := range where {
-		stmt = stmt.WHERE(w)
-	}
-
-	result, err := s.handleDelete(ctx, stmt)
+// DeleteJobsByIDs removes multiple jobs by their ids in a single statement and
+// returns the number of jobs removed.
+func (s *SQLite) DeleteJobsByIDs(ctx context.Context, ids []int64) (int64, error) {
+	count, err := s.Queries.DeleteJobsByIDs(ctx, ids)
 	if err != nil {
 		return 0, fmt.Errorf("failed to delete jobs: %w", err)
-	}
-
-	count, err := result.RowsAffected()
-	if err != nil {
-		return 0, fmt.Errorf("failed to get rows affected: %w", err)
 	}
 
 	return count, nil

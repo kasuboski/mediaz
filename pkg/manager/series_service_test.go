@@ -10,7 +10,7 @@ import (
 	"github.com/kasuboski/mediaz/pkg/ptr"
 	"github.com/kasuboski/mediaz/pkg/storage"
 	storageMocks "github.com/kasuboski/mediaz/pkg/storage/mocks"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
+	"github.com/kasuboski/mediaz/pkg/storage/model"
 	"github.com/kasuboski/mediaz/pkg/tmdb"
 	tmdbMocks "github.com/kasuboski/mediaz/pkg/tmdb/mocks"
 	"github.com/stretchr/testify/assert"
@@ -53,8 +53,8 @@ func TestSeriesService_UpdateSeriesMonitored(t *testing.T) {
 		},
 	}
 
-	store.EXPECT().UpdateSeries(ctx, gomock.Any(), gomock.Any()).Return(nil)
-	store.EXPECT().GetSeries(ctx, gomock.Any()).Return(series, nil)
+	store.EXPECT().UpdateSeriesByID(ctx, gomock.Any(), gomock.Any()).Return(nil)
+	store.EXPECT().GetSeriesByID(ctx, gomock.Any()).Return(series, nil)
 
 	expected := &storage.Series{
 		Series: model.Series{
@@ -75,7 +75,7 @@ func TestSeriesService_UpdateSeriesMonitored_Error(t *testing.T) {
 	ctx := context.Background()
 	svc, store, _, _ := newTestSeriesService(ctrl)
 
-	store.EXPECT().UpdateSeries(ctx, gomock.Any(), gomock.Any()).Return(errors.New("db error"))
+	store.EXPECT().UpdateSeriesByID(ctx, gomock.Any(), gomock.Any()).Return(errors.New("db error"))
 
 	result, err := svc.UpdateSeriesMonitored(ctx, 1, true)
 	require.Error(t, err)
@@ -97,7 +97,7 @@ func TestSeriesService_DeleteSeries(t *testing.T) {
 		},
 	}
 
-	store.EXPECT().GetSeries(ctx, gomock.Any()).Return(series, nil)
+	store.EXPECT().GetSeriesByID(ctx, gomock.Any()).Return(series, nil)
 	store.EXPECT().ListSeasons(ctx, gomock.Any()).Return([]*storage.Season{}, nil)
 	store.EXPECT().DeleteSeries(ctx, int64(1)).Return(nil)
 
@@ -120,7 +120,7 @@ func TestSeriesService_DeleteSeries_WithDirectory(t *testing.T) {
 		},
 	}
 
-	store.EXPECT().GetSeries(ctx, gomock.Any()).Return(series, nil)
+	store.EXPECT().GetSeriesByID(ctx, gomock.Any()).Return(series, nil)
 	store.EXPECT().ListSeasons(ctx, gomock.Any()).Return([]*storage.Season{}, nil)
 	lib.EXPECT().DeleteSeriesDirectory(ctx, path).Return(nil)
 	store.EXPECT().DeleteSeries(ctx, int64(1)).Return(nil)
@@ -136,7 +136,7 @@ func TestSeriesService_DeleteSeries_NotFound(t *testing.T) {
 	ctx := context.Background()
 	svc, store, _, _ := newTestSeriesService(ctrl)
 
-	store.EXPECT().GetSeries(ctx, gomock.Any()).Return(nil, storage.ErrNotFound)
+	store.EXPECT().GetSeriesByID(ctx, gomock.Any()).Return(nil, storage.ErrNotFound)
 
 	err := svc.DeleteSeries(ctx, 1, false)
 	require.Error(t, err)
@@ -157,7 +157,7 @@ func TestSeriesService_DeleteSeries_NilPath(t *testing.T) {
 		},
 	}
 
-	store.EXPECT().GetSeries(ctx, gomock.Any()).Return(series, nil)
+	store.EXPECT().GetSeriesByID(ctx, gomock.Any()).Return(series, nil)
 	store.EXPECT().ListSeasons(ctx, gomock.Any()).Return([]*storage.Season{}, nil)
 
 	err := svc.DeleteSeries(ctx, 1, true)
@@ -196,7 +196,7 @@ func TestSeriesService_DeleteSeries_WithEpisodeFiles(t *testing.T) {
 		},
 	}
 
-	store.EXPECT().GetSeries(ctx, gomock.Any()).Return(series, nil)
+	store.EXPECT().GetSeriesByID(ctx, gomock.Any()).Return(series, nil)
 	store.EXPECT().ListSeasons(ctx, gomock.Any()).Return([]*storage.Season{season}, nil)
 	store.EXPECT().ListEpisodes(ctx, gomock.Any()).Return([]*storage.Episode{episode}, nil)
 	lib.EXPECT().DeleteSeriesDirectory(ctx, path).Return(nil)
@@ -231,7 +231,7 @@ func TestSeriesService_DeleteSeries_WithEpisodeFiles_NoDeleteDirectory(t *testin
 
 	// When deleteDirectory is false, episode files should NOT be deleted.
 	// ListSeasons is still called but episodes loop is skipped entirely.
-	store.EXPECT().GetSeries(ctx, gomock.Any()).Return(series, nil)
+	store.EXPECT().GetSeriesByID(ctx, gomock.Any()).Return(series, nil)
 	store.EXPECT().ListSeasons(ctx, gomock.Any()).Return([]*storage.Season{season}, nil)
 	// No ListEpisodes, DeleteEpisodeFile, or DeleteSeriesDirectory calls expected
 	store.EXPECT().DeleteSeries(ctx, int64(1)).Return(nil)
@@ -267,8 +267,8 @@ func TestSeriesService_ListShowsInLibrary(t *testing.T) {
 		PosterPath: &posterPath,
 	}
 
-	store.EXPECT().ListSeries(ctx).Return(series, nil)
-	store.EXPECT().GetSeriesMetadata(ctx, gomock.Any()).Return(metadata, nil)
+	store.EXPECT().ListSeries(ctx, gomock.Any()).Return(series, nil)
+	store.EXPECT().GetSeriesMetadataByID(ctx, gomock.Any()).Return(metadata, nil)
 
 	shows, err := svc.ListShowsInLibrary(ctx)
 	require.NoError(t, err)
@@ -301,7 +301,7 @@ func TestSeriesService_ListShowsInLibrary_SkipsNoMetadata(t *testing.T) {
 		},
 	}
 
-	store.EXPECT().ListSeries(ctx).Return(series, nil)
+	store.EXPECT().ListSeries(ctx, gomock.Any()).Return(series, nil)
 
 	shows, err := svc.ListShowsInLibrary(ctx)
 	require.NoError(t, err)

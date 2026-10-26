@@ -14,7 +14,7 @@ import (
 	"github.com/kasuboski/mediaz/pkg/ptr"
 	"github.com/kasuboski/mediaz/pkg/storage"
 	storageMocks "github.com/kasuboski/mediaz/pkg/storage/mocks"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
+	"github.com/kasuboski/mediaz/pkg/storage/model"
 	tmdbMocks "github.com/kasuboski/mediaz/pkg/tmdb/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -453,7 +453,7 @@ func TestMovieService_UpdateMovieMonitored(t *testing.T) {
 		},
 	}
 
-	store.EXPECT().UpdateMovie(ctx, gomock.Any(), gomock.Any()).Return(nil)
+	store.EXPECT().UpdateMovieByID(ctx, gomock.Any(), gomock.Any()).Return(nil)
 	store.EXPECT().GetMovie(ctx, int64(1)).Return(movie, nil)
 
 	result, err := svc.UpdateMovieMonitored(ctx, 1, true)
@@ -476,7 +476,7 @@ func TestMovieService_UpdateMovieMonitored_Error(t *testing.T) {
 	ctx := context.Background()
 	svc, store, _, _ := newTestMovieService(ctrl)
 
-	store.EXPECT().UpdateMovie(ctx, gomock.Any(), gomock.Any()).Return(errors.New("db error"))
+	store.EXPECT().UpdateMovieByID(ctx, gomock.Any(), gomock.Any()).Return(errors.New("db error"))
 
 	result, err := svc.UpdateMovieMonitored(ctx, 1, true)
 	require.Error(t, err)

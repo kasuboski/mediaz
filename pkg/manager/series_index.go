@@ -6,12 +6,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/go-jet/jet/v2/sqlite"
 	"github.com/kasuboski/mediaz/pkg/library"
 	"github.com/kasuboski/mediaz/pkg/logger"
 	"github.com/kasuboski/mediaz/pkg/storage"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/table"
+	"github.com/kasuboski/mediaz/pkg/storage/model"
 	"go.uber.org/zap"
 )
 
@@ -112,7 +110,7 @@ func (m MediaManager) IndexSeriesLibrary(ctx context.Context) error {
 func (m MediaManager) ensureSeries(ctx context.Context, seriesName string) (int64, error) {
 	log := logger.FromCtx(ctx)
 
-	series, err := m.seriesStorage.GetSeries(ctx, table.Series.Path.EQ(sqlite.String(seriesName)))
+	series, err := m.seriesStorage.GetSeriesByPath(ctx, seriesName)
 	if errors.Is(err, storage.ErrNotFound) || series == nil {
 		log.Debug("episode file does not have associated series, creating new series")
 		seriesModel := storage.Series{Series: model.Series{Path: &seriesName, Monitored: 0}}
@@ -141,9 +139,7 @@ func (m MediaManager) getOrCreateSeason(ctx context.Context, seriesID int64, sea
 	)
 
 	// First try to find existing season by series_id + season_number (our unique constraint)
-	season, err := m.seriesStorage.GetSeason(ctx,
-		table.Season.SeriesID.EQ(sqlite.Int64(seriesID)).
-			AND(table.Season.SeasonNumber.EQ(sqlite.Int32(seasonNumber))))
+	season, err := m.seriesStorage.GetSeasonBySeriesIDAndNumber(ctx, seriesID, seasonNumber)
 
 	if err != nil && !errors.Is(err, storage.ErrNotFound) {
 		return 0, err

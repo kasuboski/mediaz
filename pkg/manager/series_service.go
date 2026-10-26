@@ -7,13 +7,11 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/go-jet/jet/v2/sqlite"
 	"github.com/kasuboski/mediaz/pkg/library"
 	"github.com/kasuboski/mediaz/pkg/logger"
 	"github.com/kasuboski/mediaz/pkg/ptr"
 	"github.com/kasuboski/mediaz/pkg/storage"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/table"
+	"github.com/kasuboski/mediaz/pkg/storage/model"
 	"github.com/kasuboski/mediaz/pkg/tmdb"
 	"go.uber.org/zap"
 )
@@ -68,7 +66,7 @@ func (s SeriesService) AddSeriesToLibrary(ctx context.Context, request AddSeries
 		return nil, err
 	}
 
-	series, err := s.seriesStorage.GetSeries(ctx, table.Series.SeriesMetadataID.EQ(sqlite.Int32(seriesMetadata.ID)))
+	series, err := s.seriesStorage.GetSeriesByMetadataID(ctx, seriesMetadata.ID)
 	// if we find the series we dont need to add it
 	if err == nil {
 		return series, err
@@ -110,15 +108,14 @@ func (s SeriesService) AddSeriesToLibrary(ctx context.Context, request AddSeries
 	}
 
 	// Get series to access its metadata ID
-	seriesEntity, err := s.seriesStorage.GetSeries(ctx, table.Series.ID.EQ(sqlite.Int(seriesID)))
+	seriesEntity, err := s.seriesStorage.GetSeriesByID(ctx, seriesID)
 	if err != nil || seriesEntity.SeriesMetadataID == nil {
 		log.Error("failed to get series or series has no metadata")
 		cleanupCreatedSeries()
 		return nil, fmt.Errorf("series has no metadata")
 	}
 
-	where := table.SeasonMetadata.SeriesMetadataID.EQ(sqlite.Int32(*seriesEntity.SeriesMetadataID))
-	seasonMetadata, err := s.seriesMetaStorage.ListSeasonMetadata(ctx, where)
+	seasonMetadata, err := s.seriesMetaStorage.ListSeasonMetadataBySeriesMetadataID(ctx, *seriesEntity.SeriesMetadataID)
 	if err != nil {
 		cleanupCreatedSeries()
 		return nil, err
@@ -143,16 +140,14 @@ func (s SeriesService) AddSeriesToLibrary(ctx context.Context, request AddSeries
 		log.Debug("created new missing season", zap.Any("season", season))
 
 		// Get the season to access its metadata ID for proper episode metadata querying
-		seasonEntity, err := s.seriesStorage.GetSeason(ctx, table.Season.ID.EQ(sqlite.Int64(seasonID)))
+		seasonEntity, err := s.seriesStorage.GetSeasonByID(ctx, seasonID)
 		if err != nil || seasonEntity.SeasonMetadataID == nil {
 			log.Error("failed to get season or season has no metadata linked")
 			cleanupCreatedSeries()
 			return nil, fmt.Errorf("season has no metadata")
 		}
 
-		where := table.EpisodeMetadata.SeasonMetadataID.EQ(sqlite.Int32(*seasonEntity.SeasonMetadataID))
-
-		episodesMetadata, err := s.seriesMetaStorage.ListEpisodeMetadata(ctx, where)
+		episodesMetadata, err := s.seriesMetaStorage.ListEpisodeMetadataBySeasonMetadataID(ctx, *seasonEntity.SeasonMetadataID)
 		if err != nil {
 			log.Error("failed to list episode metadata", zap.Error(err))
 			cleanupCreatedSeries()
@@ -180,7 +175,7 @@ func (s SeriesService) AddSeriesToLibrary(ctx context.Context, request AddSeries
 		}
 	}
 
-	series, err = s.seriesStorage.GetSeries(ctx, table.Series.ID.EQ(sqlite.Int64(seriesID)))
+	series, err = s.seriesStorage.GetSeriesByID(ctx, seriesID)
 	if err != nil {
 		log.Warn("failed to get created series", zap.Error(err))
 	}
@@ -192,12 +187,12 @@ func (s SeriesService) AddSeriesToLibrary(ctx context.Context, request AddSeries
 func (s SeriesService) DeleteSeries(ctx context.Context, seriesID int64, deleteDirectory bool) error {
 	log := logger.FromCtx(ctx)
 
-	series, err := s.seriesStorage.GetSeries(ctx, table.Series.ID.EQ(sqlite.Int64(seriesID)))
+	series, err := s.seriesStorage.GetSeriesByID(ctx, seriesID)
 	if err != nil {
 		return fmt.Errorf("failed to get series: %w", err)
 	}
 
-	seasons, err := s.seriesStorage.ListSeasons(ctx, table.Season.SeriesID.EQ(sqlite.Int64(seriesID)))
+	seasons, err := s.seriesStorage.ListSeasons(ctx, storage.SeasonFilter{SeriesID: &seriesID})
 	if err != nil {
 		log.Warn("failed to get seasons for cleanup", zap.Error(err))
 	}
@@ -207,7 +202,8 @@ func (s SeriesService) DeleteSeries(ctx context.Context, seriesID int64, deleteD
 	var episodeFileIDs []int64
 	if deleteDirectory {
 		for _, season := range seasons {
-			episodes, err := s.seriesStorage.ListEpisodes(ctx, table.Episode.SeasonID.EQ(sqlite.Int64(int64(season.ID))))
+			seasonIDInt := int64(season.ID)
+			episodes, err := s.seriesStorage.ListEpisodes(ctx, storage.EpisodeFilter{SeasonID: &seasonIDInt})
 			if err != nil {
 				log.Warn("failed to get episodes for cleanup", zap.Int32("season_id", season.ID), zap.Error(err))
 				continue
@@ -252,12 +248,12 @@ func (s SeriesService) UpdateSeriesMonitored(ctx context.Context, seriesID int64
 	}
 
 	seriesUpdate := model.Series{Monitored: monitoredInt}
-	err := s.seriesStorage.UpdateSeries(ctx, seriesUpdate, table.Series.ID.EQ(sqlite.Int64(seriesID)))
+	err := s.seriesStorage.UpdateSeriesByID(ctx, seriesID, seriesUpdate)
 	if err != nil {
 		return nil, err
 	}
 
-	series, err := s.seriesStorage.GetSeries(ctx, table.Series.ID.EQ(sqlite.Int64(seriesID)))
+	series, err := s.seriesStorage.GetSeriesByID(ctx, seriesID)
 	if err != nil {
 		return nil, err
 	}
@@ -282,7 +278,7 @@ func (s SeriesService) GetTVDetailByTMDBID(ctx context.Context, tmdbID int) (*TV
 	}
 
 	// Get library information
-	series, err := s.seriesStorage.GetSeries(ctx, table.Series.SeriesMetadataID.EQ(sqlite.Int32(metadata.ID)))
+	series, err := s.seriesStorage.GetSeriesByMetadataID(ctx, metadata.ID)
 	if err != nil && !errors.Is(err, storage.ErrNotFound) {
 		log.Debug("error checking series library status", zap.Error(err), zap.Int32("metadataID", metadata.ID))
 	}
@@ -369,7 +365,7 @@ func (s SeriesService) SearchTV(ctx context.Context, query string) (*SearchMedia
 
 // ListShowsInLibrary returns all tracked series enriched with metadata.
 func (s SeriesService) ListShowsInLibrary(ctx context.Context) ([]LibraryShow, error) {
-	series, err := s.seriesStorage.ListSeries(ctx)
+	series, err := s.seriesStorage.ListSeries(ctx, storage.SeriesFilter{})
 	if err != nil {
 		return nil, err
 	}
@@ -380,7 +376,7 @@ func (s SeriesService) ListShowsInLibrary(ctx context.Context) ([]LibraryShow, e
 			continue
 		}
 
-		meta, err := s.seriesMetaStorage.GetSeriesMetadata(ctx, table.SeriesMetadata.ID.EQ(sqlite.Int(int64(*sp.SeriesMetadataID))))
+		meta, err := s.seriesMetaStorage.GetSeriesMetadataByID(ctx, int64(*sp.SeriesMetadataID))
 		if err != nil {
 			return nil, err
 		}
@@ -418,16 +414,15 @@ func (s SeriesService) ListSeasonsForSeries(ctx context.Context, tmdbID int) ([]
 	}
 
 	// Find the series record that uses this metadata
-	series, err := s.seriesStorage.GetSeries(ctx,
-		table.Series.SeriesMetadataID.EQ(sqlite.Int32(metadata.ID)))
+	series, err := s.seriesStorage.GetSeriesByMetadataID(ctx, metadata.ID)
 	if err != nil {
 		log.Error("failed to get series", zap.Error(err), zap.Int32("metadataID", metadata.ID))
 		return nil, err
 	}
 
 	// Query seasons with metadata join
-	seasons, err := s.seriesStorage.ListSeasons(ctx,
-		table.Season.SeriesID.EQ(sqlite.Int32(series.ID)))
+	seriesID := int64(series.ID)
+	seasons, err := s.seriesStorage.ListSeasons(ctx, storage.SeasonFilter{SeriesID: &seriesID})
 	if err != nil {
 		log.Error("failed to list seasons", zap.Error(err), zap.Int32("seriesID", series.ID))
 		return nil, err
@@ -442,16 +437,15 @@ func (s SeriesService) ListSeasonsForSeries(ctx context.Context, tmdbID int) ([]
 			continue
 		}
 
-		seasonMeta, err := s.seriesMetaStorage.GetSeasonMetadata(ctx,
-			table.SeasonMetadata.ID.EQ(sqlite.Int32(*season.SeasonMetadataID)))
+		seasonMeta, err := s.seriesMetaStorage.GetSeasonMetadataByID(ctx, int64(*season.SeasonMetadataID))
 		if err != nil {
 			log.Error("failed to get season metadata", zap.Error(err), zap.Int32("seasonMetadataID", *season.SeasonMetadataID))
 			continue
 		}
 
 		// Count episodes for this season
-		episodes, err := s.seriesStorage.ListEpisodes(ctx,
-			table.Episode.SeasonID.EQ(sqlite.Int32(season.ID)))
+		seasonIDInt := int64(season.ID)
+		episodes, err := s.seriesStorage.ListEpisodes(ctx, storage.EpisodeFilter{SeasonID: &seasonIDInt})
 		if err != nil {
 			log.Debug("failed to count episodes for season", zap.Error(err), zap.Int32("seasonID", season.ID))
 		}
@@ -492,16 +486,15 @@ func (s SeriesService) ListEpisodesForSeason(ctx context.Context, tmdbID int, se
 	}
 
 	// Find the series record that uses this metadata
-	series, err := s.seriesStorage.GetSeries(ctx,
-		table.Series.SeriesMetadataID.EQ(sqlite.Int32(seriesMetadata.ID)))
+	series, err := s.seriesStorage.GetSeriesByMetadataID(ctx, seriesMetadata.ID)
 	if err != nil {
 		log.Error("failed to get series", zap.Error(err), zap.Int32("metadataID", seriesMetadata.ID))
 		return nil, err
 	}
 
 	// Find all seasons for this series
-	seasons, err := s.seriesStorage.ListSeasons(ctx,
-		table.Season.SeriesID.EQ(sqlite.Int32(series.ID)))
+	seriesID := int64(series.ID)
+	seasons, err := s.seriesStorage.ListSeasons(ctx, storage.SeasonFilter{SeriesID: &seriesID})
 	if err != nil {
 		log.Error("failed to list seasons", zap.Error(err), zap.Int32("seriesID", series.ID))
 		return nil, err
@@ -514,8 +507,7 @@ func (s SeriesService) ListEpisodesForSeason(ctx context.Context, tmdbID int, se
 	for _, season := range seasons {
 		// Check if season has metadata with the right number
 		if season.SeasonMetadataID != nil {
-			meta, err := s.seriesMetaStorage.GetSeasonMetadata(ctx,
-				table.SeasonMetadata.ID.EQ(sqlite.Int32(*season.SeasonMetadataID)))
+			meta, err := s.seriesMetaStorage.GetSeasonMetadataByID(ctx, int64(*season.SeasonMetadataID))
 			if err == nil && meta.Number == int32(seasonNumber) {
 				candidateSeasons = append(candidateSeasons, season)
 				candidateMetas = append(candidateMetas, meta)
@@ -548,8 +540,8 @@ func (s SeriesService) ListEpisodesForSeason(ctx context.Context, tmdbID int, se
 	} else {
 		// Multiple candidates - check which one has episodes
 		for i, season := range candidateSeasons {
-			episodes, err := s.seriesStorage.ListEpisodes(ctx,
-				table.Episode.SeasonID.EQ(sqlite.Int32(season.ID)))
+			seasonIDInt := int64(season.ID)
+			episodes, err := s.seriesStorage.ListEpisodes(ctx, storage.EpisodeFilter{SeasonID: &seasonIDInt})
 			if err == nil && len(episodes) > 0 {
 				targetSeason = season
 				seasonMeta = candidateMetas[i]
@@ -565,8 +557,8 @@ func (s SeriesService) ListEpisodesForSeason(ctx context.Context, tmdbID int, se
 	}
 
 	// Query episodes for this season
-	episodes, err := s.seriesStorage.ListEpisodes(ctx,
-		table.Episode.SeasonID.EQ(sqlite.Int32(targetSeason.ID)))
+	targetSeasonID := int64(targetSeason.ID)
+	episodes, err := s.seriesStorage.ListEpisodes(ctx, storage.EpisodeFilter{SeasonID: &targetSeasonID})
 	if err != nil {
 		log.Error("failed to list episodes", zap.Error(err), zap.Int32("seasonID", targetSeason.ID))
 		return nil, err
@@ -754,8 +746,8 @@ func (s SeriesService) getSeasonsWithEpisodes(ctx context.Context, seriesID int3
 	log := logger.FromCtx(ctx)
 
 	// Query seasons for this series
-	seasons, err := s.seriesStorage.ListSeasons(ctx,
-		table.Season.SeriesID.EQ(sqlite.Int32(seriesID)))
+	seriesIDInt := int64(seriesID)
+	seasons, err := s.seriesStorage.ListSeasons(ctx, storage.SeasonFilter{SeriesID: &seriesIDInt})
 	if err != nil {
 		log.Error("failed to list seasons", zap.Error(err), zap.Int32("seriesID", seriesID))
 		return nil, err
@@ -770,8 +762,7 @@ func (s SeriesService) getSeasonsWithEpisodes(ctx context.Context, seriesID int3
 			continue
 		}
 
-		seasonMeta, err := s.seriesMetaStorage.GetSeasonMetadata(ctx,
-			table.SeasonMetadata.ID.EQ(sqlite.Int32(*season.SeasonMetadataID)))
+		seasonMeta, err := s.seriesMetaStorage.GetSeasonMetadataByID(ctx, int64(*season.SeasonMetadataID))
 		if err != nil {
 			log.Error("failed to get season metadata", zap.Error(err), zap.Int32("seasonMetadataID", *season.SeasonMetadataID))
 			continue
@@ -813,17 +804,17 @@ func (s SeriesService) getSeasonsWithEpisodes(ctx context.Context, seriesID int3
 // preloadEpisodeMetadata fetches all episode metadata for the given IDs in a single query,
 // returning a map keyed by metadata ID.
 func (s SeriesService) preloadEpisodeMetadata(ctx context.Context, episodes []*storage.Episode) map[int32]*model.EpisodeMetadata {
-	ids := make([]sqlite.Expression, 0, len(episodes))
+	ids := make([]int64, 0, len(episodes))
 	for _, ep := range episodes {
 		if ep.EpisodeMetadataID != nil {
-			ids = append(ids, sqlite.Int32(*ep.EpisodeMetadataID))
+			ids = append(ids, int64(*ep.EpisodeMetadataID))
 		}
 	}
 	if len(ids) == 0 {
 		return nil
 	}
 
-	metas, err := s.seriesMetaStorage.ListEpisodeMetadata(ctx, table.EpisodeMetadata.ID.IN(ids...))
+	metas, err := s.seriesMetaStorage.ListEpisodeMetadataByIDs(ctx, ids)
 	if err != nil {
 		log := logger.FromCtx(ctx)
 		log.Error("failed to batch fetch episode metadata", zap.Error(err))
@@ -842,8 +833,8 @@ func (s SeriesService) getEpisodesForSeason(ctx context.Context, seasonID int32,
 	log := logger.FromCtx(ctx)
 
 	// Query episodes for this season
-	episodes, err := s.seriesStorage.ListEpisodes(ctx,
-		table.Episode.SeasonID.EQ(sqlite.Int32(seasonID)))
+	seasonIDInt := int64(seasonID)
+	episodes, err := s.seriesStorage.ListEpisodes(ctx, storage.EpisodeFilter{SeasonID: &seasonIDInt})
 	if err != nil {
 		log.Error("failed to list episodes", zap.Error(err), zap.Int32("seasonID", seasonID))
 		return nil, err

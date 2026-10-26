@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/gkampitakis/go-snaps/snaps"
-	"github.com/go-jet/jet/v2/sqlite"
 	"github.com/kasuboski/mediaz/config"
 	"github.com/kasuboski/mediaz/pkg/library"
 	mockLibrary "github.com/kasuboski/mediaz/pkg/library/mocks"
@@ -21,9 +20,8 @@ import (
 	"github.com/kasuboski/mediaz/pkg/ptr"
 	"github.com/kasuboski/mediaz/pkg/storage"
 	storageMocks "github.com/kasuboski/mediaz/pkg/storage/mocks"
+	"github.com/kasuboski/mediaz/pkg/storage/model"
 	mediaSqlite "github.com/kasuboski/mediaz/pkg/storage/sqlite"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/table"
 	"github.com/kasuboski/mediaz/pkg/tmdb"
 	tmdbMocks "github.com/kasuboski/mediaz/pkg/tmdb/mocks"
 	"github.com/oapi-codegen/nullable"
@@ -288,7 +286,7 @@ func TestListShowsInLibrary(t *testing.T) {
 		store := storageMocks.NewMockStorage(ctrl)
 		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
 
-		store.EXPECT().ListSeries(ctx).Return([]*storage.Series{}, nil)
+		store.EXPECT().ListSeries(ctx, gomock.Any()).Return([]*storage.Series{}, nil)
 
 		shows, err := m.ListShowsInLibrary(ctx)
 		require.NoError(t, err)
@@ -320,8 +318,8 @@ func TestListShowsInLibrary(t *testing.T) {
 			WatchProviders: nil,
 		}
 
-		store.EXPECT().ListSeries(ctx).Return([]*storage.Series{series}, nil)
-		store.EXPECT().GetSeriesMetadata(ctx, gomock.Any()).Return(seriesMetadata, nil)
+		store.EXPECT().ListSeries(ctx, gomock.Any()).Return([]*storage.Series{series}, nil)
+		store.EXPECT().GetSeriesMetadataByID(ctx, gomock.Any()).Return(seriesMetadata, nil)
 
 		shows, err := m.ListShowsInLibrary(ctx)
 		require.NoError(t, err)
@@ -352,7 +350,7 @@ func TestListShowsInLibrary(t *testing.T) {
 			State: storage.SeriesStateDiscovered,
 		}
 
-		store.EXPECT().ListSeries(ctx).Return([]*storage.Series{series}, nil)
+		store.EXPECT().ListSeries(ctx, gomock.Any()).Return([]*storage.Series{series}, nil)
 
 		shows, err := m.ListShowsInLibrary(ctx)
 		require.NoError(t, err)
@@ -364,7 +362,7 @@ func TestListShowsInLibrary(t *testing.T) {
 		store := storageMocks.NewMockStorage(ctrl)
 		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
 
-		store.EXPECT().ListSeries(ctx).Return(nil, errors.New("db error"))
+		store.EXPECT().ListSeries(ctx, gomock.Any()).Return(nil, errors.New("db error"))
 
 		shows, err := m.ListShowsInLibrary(ctx)
 		assert.Error(t, err)
@@ -719,14 +717,14 @@ func TestMediaManager_AddSeriesToLibrary(t *testing.T) {
 		assert.Equal(t, int32(1), series.QualityProfileID)
 		assert.Equal(t, storage.SeriesStateMissing, series.State)
 
-		seasons, err := m.seriesStorage.ListSeasons(ctx, table.Season.SeriesID.EQ(sqlite.Int32(series.ID)))
+		seasons, err := m.seriesStorage.ListSeasons(ctx, storage.SeasonFilter{SeriesID: ptr.To(int64(series.ID))})
 		assert.Nil(t, err)
 		require.Len(t, seasons, 1)
 		assert.Equal(t, int32(series.ID), seasons[0].SeriesID)
 		assert.Equal(t, seasons[0].State, storage.SeasonStateMissing)
 		assert.Equal(t, int32(1), seasons[0].Monitored)
 
-		episodes, err := m.seriesStorage.ListEpisodes(ctx, table.Episode.SeasonID.EQ(sqlite.Int32(seasons[0].ID)))
+		episodes, err := m.seriesStorage.ListEpisodes(ctx, storage.EpisodeFilter{SeasonID: ptr.To(int64(seasons[0].ID))})
 		assert.Nil(t, err)
 		require.Len(t, episodes, 1)
 		assert.Equal(t, int32(1), episodes[0].EpisodeNumber)

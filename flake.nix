@@ -42,8 +42,9 @@
             # nix formatter
             nixpkgs-fmt
 
-            # https://github.com/go-jet/jet
-            go-jet
+            # https://github.com/sqlc-dev/sqlc (pinned by flake.lock; must
+            # match the version used to generate pkg/storage/sqlcdb)
+            sqlc
 
             # https://github.com/sqlite/sqlite
             sqlite

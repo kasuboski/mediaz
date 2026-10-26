@@ -14,7 +14,7 @@ import (
 	downloadMocks "github.com/kasuboski/mediaz/pkg/download/mocks"
 	"github.com/kasuboski/mediaz/pkg/manager"
 	storeMocks "github.com/kasuboski/mediaz/pkg/storage/mocks"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
+	"github.com/kasuboski/mediaz/pkg/storage/model"
 	tmdbMocks "github.com/kasuboski/mediaz/pkg/tmdb/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

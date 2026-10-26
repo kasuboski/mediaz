@@ -5,15 +5,13 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/go-jet/jet/v2/sqlite"
 	"github.com/kasuboski/mediaz/config"
 	downloadMock "github.com/kasuboski/mediaz/pkg/download/mocks"
 	"github.com/kasuboski/mediaz/pkg/indexer"
 	indexerMock "github.com/kasuboski/mediaz/pkg/indexer/mocks"
 	"github.com/kasuboski/mediaz/pkg/storage"
 	storageMocks "github.com/kasuboski/mediaz/pkg/storage/mocks"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/table"
+	"github.com/kasuboski/mediaz/pkg/storage/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -105,7 +103,7 @@ func TestMediaManager_SearchForSeries(t *testing.T) {
 		defer ctrl.Finish()
 
 		store := storageMocks.NewMockStorage(ctrl)
-		store.EXPECT().GetSeries(gomock.Any(), gomock.Any()).Return(nil, storage.ErrNotFound)
+		store.EXPECT().GetSeriesByID(gomock.Any(), gomock.Any()).Return(nil, storage.ErrNotFound)
 
 		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
 		err := m.SearchForSeries(context.Background(), 1)
@@ -119,7 +117,7 @@ func TestMediaManager_SearchForSeries(t *testing.T) {
 		defer ctrl.Finish()
 
 		store := storageMocks.NewMockStorage(ctrl)
-		store.EXPECT().GetSeries(gomock.Any(), gomock.Any()).Return(&storage.Series{
+		store.EXPECT().GetSeriesByID(gomock.Any(), gomock.Any()).Return(&storage.Series{
 			Series: model.Series{
 				ID:        1,
 				Monitored: 0,
@@ -138,14 +136,14 @@ func TestMediaManager_SearchForSeries(t *testing.T) {
 		defer ctrl.Finish()
 
 		store := storageMocks.NewMockStorage(ctrl)
-		store.EXPECT().GetSeries(gomock.Any(), gomock.Any()).Return(&storage.Series{
+		store.EXPECT().GetSeriesByID(gomock.Any(), gomock.Any()).Return(&storage.Series{
 			Series: model.Series{
 				ID:        1,
 				Monitored: 1,
 			},
 		}, nil)
 		store.EXPECT().ListSeasons(gomock.Any(), gomock.Any()).Return(nil, nil)
-		store.EXPECT().UpdateSeries(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+		store.EXPECT().UpdateSeriesByID(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
 
 		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
 		err := m.SearchForSeries(context.Background(), 1)
@@ -158,7 +156,7 @@ func TestMediaManager_SearchForSeries(t *testing.T) {
 		defer ctrl.Finish()
 
 		store := storageMocks.NewMockStorage(ctrl)
-		store.EXPECT().GetSeries(gomock.Any(), gomock.Any()).Return(&storage.Series{
+		store.EXPECT().GetSeriesByID(gomock.Any(), gomock.Any()).Return(&storage.Series{
 			Series: model.Series{
 				ID:        1,
 				Monitored: 1,
@@ -168,7 +166,7 @@ func TestMediaManager_SearchForSeries(t *testing.T) {
 			{Season: model.Season{ID: 1, SeriesID: 1, SeasonNumber: 1, Monitored: 0}},
 			{Season: model.Season{ID: 2, SeriesID: 1, SeasonNumber: 2, Monitored: 0}},
 		}, nil)
-		store.EXPECT().UpdateSeries(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+		store.EXPECT().UpdateSeriesByID(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
 
 		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
 		err := m.SearchForSeries(context.Background(), 1)
@@ -183,7 +181,7 @@ func TestMediaManager_SearchForSeason(t *testing.T) {
 		defer ctrl.Finish()
 
 		store := storageMocks.NewMockStorage(ctrl)
-		store.EXPECT().GetSeason(gomock.Any(), gomock.Any()).Return(nil, storage.ErrNotFound)
+		store.EXPECT().GetSeasonByID(gomock.Any(), gomock.Any()).Return(nil, storage.ErrNotFound)
 
 		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
 		err := m.SearchForSeason(context.Background(), 1)
@@ -197,7 +195,7 @@ func TestMediaManager_SearchForSeason(t *testing.T) {
 		defer ctrl.Finish()
 
 		store := storageMocks.NewMockStorage(ctrl)
-		store.EXPECT().GetSeason(gomock.Any(), gomock.Any()).Return(&storage.Season{
+		store.EXPECT().GetSeasonByID(gomock.Any(), gomock.Any()).Return(&storage.Season{
 			Season: model.Season{
 				ID:        1,
 				Monitored: 0,
@@ -216,7 +214,7 @@ func TestMediaManager_SearchForSeason(t *testing.T) {
 		defer ctrl.Finish()
 
 		store := storageMocks.NewMockStorage(ctrl)
-		store.EXPECT().GetSeason(gomock.Any(), gomock.Any()).Return(&storage.Season{
+		store.EXPECT().GetSeasonByID(gomock.Any(), gomock.Any()).Return(&storage.Season{
 			Season: model.Season{
 				ID:        1,
 				SeriesID:  1,
@@ -239,7 +237,7 @@ func TestMediaManager_SearchForSeason(t *testing.T) {
 		indexerFactory := indexerMock.NewMockFactory(ctrl)
 		downloadFactory := downloadMock.NewMockFactory(ctrl)
 
-		store.EXPECT().GetSeason(gomock.Any(), gomock.Any()).Return(&storage.Season{
+		store.EXPECT().GetSeasonByID(gomock.Any(), gomock.Any()).Return(&storage.Season{
 			Season: model.Season{
 				ID:           1,
 				SeriesID:     1,
@@ -251,7 +249,7 @@ func TestMediaManager_SearchForSeason(t *testing.T) {
 			{ID: 1, Type: "torrent", Implementation: "transmission"},
 		}, nil)
 		store.EXPECT().ListIndexers(gomock.Any()).Return(nil, nil)
-		store.EXPECT().GetSeries(gomock.Any(), table.Series.ID.EQ(sqlite.Int32(1))).Return(&storage.Series{
+		store.EXPECT().GetSeriesByID(gomock.Any(), int64(1)).Return(&storage.Series{
 			Series: model.Series{
 				ID:               1,
 				QualityProfileID: 0,
@@ -283,7 +281,7 @@ func TestMediaManager_SearchForEpisode(t *testing.T) {
 		defer ctrl.Finish()
 
 		store := storageMocks.NewMockStorage(ctrl)
-		store.EXPECT().GetEpisode(gomock.Any(), gomock.Any()).Return(nil, storage.ErrNotFound)
+		store.EXPECT().GetEpisodeByID(gomock.Any(), gomock.Any()).Return(nil, storage.ErrNotFound)
 
 		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
 		err := m.SearchForEpisode(context.Background(), 1)
@@ -297,7 +295,7 @@ func TestMediaManager_SearchForEpisode(t *testing.T) {
 		defer ctrl.Finish()
 
 		store := storageMocks.NewMockStorage(ctrl)
-		store.EXPECT().GetEpisode(gomock.Any(), gomock.Any()).Return(&storage.Episode{
+		store.EXPECT().GetEpisodeByID(gomock.Any(), gomock.Any()).Return(&storage.Episode{
 			Episode: model.Episode{
 				ID:        1,
 				Monitored: 0,
@@ -316,14 +314,14 @@ func TestMediaManager_SearchForEpisode(t *testing.T) {
 		defer ctrl.Finish()
 
 		store := storageMocks.NewMockStorage(ctrl)
-		store.EXPECT().GetEpisode(gomock.Any(), gomock.Any()).Return(&storage.Episode{
+		store.EXPECT().GetEpisodeByID(gomock.Any(), gomock.Any()).Return(&storage.Episode{
 			Episode: model.Episode{
 				ID:        1,
 				SeasonID:  1,
 				Monitored: 1,
 			},
 		}, nil)
-		store.EXPECT().GetSeason(gomock.Any(), gomock.Any()).Return(nil, storage.ErrNotFound)
+		store.EXPECT().GetSeasonByID(gomock.Any(), gomock.Any()).Return(nil, storage.ErrNotFound)
 
 		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
 		err := m.SearchForEpisode(context.Background(), 1)
@@ -337,14 +335,14 @@ func TestMediaManager_SearchForEpisode(t *testing.T) {
 		defer ctrl.Finish()
 
 		store := storageMocks.NewMockStorage(ctrl)
-		store.EXPECT().GetEpisode(gomock.Any(), gomock.Any()).Return(&storage.Episode{
+		store.EXPECT().GetEpisodeByID(gomock.Any(), gomock.Any()).Return(&storage.Episode{
 			Episode: model.Episode{
 				ID:        1,
 				SeasonID:  1,
 				Monitored: 1,
 			},
 		}, nil)
-		store.EXPECT().GetSeason(gomock.Any(), gomock.Any()).Return(&storage.Season{
+		store.EXPECT().GetSeasonByID(gomock.Any(), gomock.Any()).Return(&storage.Season{
 			Season: model.Season{
 				ID:       1,
 				SeriesID: 1,

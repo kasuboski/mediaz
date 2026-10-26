@@ -2,14 +2,72 @@ package sqlite
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 
-	"github.com/go-jet/jet/v2/qrm"
-	"github.com/go-jet/jet/v2/sqlite"
 	"github.com/kasuboski/mediaz/pkg/storage"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/table"
+	"github.com/kasuboski/mediaz/pkg/storage/model"
+	"github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 )
+
+// tvEpisodeFromRow converts a single-row episode result into the domain shape.
+// The transition join is a LEFT JOIN, so transition columns may be NULL when
+// an episode has no transitions yet.
+func tvEpisodeFromRow(r sqlcdb.GetEpisodeRow) *storage.Episode {
+	return &storage.Episode{
+		Episode: model.Episode{
+			ID:                int32(r.ID),
+			SeasonID:          int32(r.SeasonID),
+			EpisodeNumber:     int32(r.EpisodeNumber),
+			Monitored:         int32(r.Monitored),
+			EpisodeMetadataID: tvInt32Ptr(r.EpisodeMetadataID),
+			EpisodeFileID:     tvInt32Ptr(r.EpisodeFileID),
+		},
+		State:                  storage.EpisodeState(tvStringFromNull(r.ToState)),
+		DownloadID:             tvStringFromNull(r.DownloadID),
+		DownloadClientID:       tvInt32(r.DownloadClientID),
+		IsEntireSeasonDownload: r.IsEntireSeasonDownload.Bool && r.IsEntireSeasonDownload.Valid,
+	}
+}
+
+// tvEpisodeFromListRow converts a list-episode result into the domain shape.
+// The list query uses an INNER JOIN, so the state is always present.
+func tvEpisodeFromListRow(r sqlcdb.ListEpisodesRow) *storage.Episode {
+	return &storage.Episode{
+		Episode: model.Episode{
+			ID:                int32(r.ID),
+			SeasonID:          int32(r.SeasonID),
+			EpisodeNumber:     int32(r.EpisodeNumber),
+			Monitored:         int32(r.Monitored),
+			EpisodeMetadataID: tvInt32Ptr(r.EpisodeMetadataID),
+			EpisodeFileID:     tvInt32Ptr(r.EpisodeFileID),
+		},
+		State:                  storage.EpisodeState(r.ToState),
+		DownloadID:             tvStringFromNull(r.DownloadID),
+		DownloadClientID:       tvInt32(r.DownloadClientID),
+		IsEntireSeasonDownload: r.IsEntireSeasonDownload.Bool && r.IsEntireSeasonDownload.Valid,
+	}
+}
+
+// tvEpisodeFromFileIDRow converts a GetEpisodeByEpisodeFileID result into the
+// domain shape. Like the legacy statement it does not select
+// is_entire_season_download, so that field stays false here.
+func tvEpisodeFromFileIDRow(r sqlcdb.GetEpisodeByEpisodeFileIDRow) *storage.Episode {
+	return &storage.Episode{
+		Episode: model.Episode{
+			ID:                int32(r.ID),
+			SeasonID:          int32(r.SeasonID),
+			EpisodeNumber:     int32(r.EpisodeNumber),
+			Monitored:         int32(r.Monitored),
+			EpisodeMetadataID: tvInt32Ptr(r.EpisodeMetadataID),
+			EpisodeFileID:     tvInt32Ptr(r.EpisodeFileID),
+		},
+		State:            storage.EpisodeState(tvStringFromNull(r.ToState)),
+		DownloadID:       tvStringFromNull(r.DownloadID),
+		DownloadClientID: tvInt32(r.DownloadClientID),
+	}
+}
 
 // CreateEpisode stores an episode and creates an initial transition state
 func (s *SQLite) CreateEpisode(ctx context.Context, episode storage.Episode, initialState storage.EpisodeState) (int64, error) {
@@ -27,55 +85,35 @@ func (s *SQLite) CreateEpisode(ctx context.Context, episode storage.Episode, ini
 		return 0, err
 	}
 
-	setColumns := make([]sqlite.Expression, len(table.Episode.MutableColumns))
-	for i, c := range table.Episode.MutableColumns {
-		setColumns[i] = c
-	}
-	// don't insert a zeroed ID
-	insertColumns := table.Episode.MutableColumns
-	if episode.ID != 0 {
-		insertColumns = table.Episode.AllColumns
-	}
-
-	stmt := table.Episode.
-		INSERT(insertColumns).
-		MODEL(episode.Episode).
-		RETURNING(table.Episode.ID).
-		ON_CONFLICT(table.Episode.ID).
-		DO_UPDATE(sqlite.SET(table.Episode.MutableColumns.SET(sqlite.ROW(setColumns...))))
-
-	result, err := stmt.ExecContext(ctx, tx)
+	// A NULL id lets SQLite assign a fresh AUTOINCREMENT rowid; a non-zero id
+	// inserts explicitly or lands in the ON CONFLICT branch, matching the two
+	// legacy insert column lists.
+	inserted, err := s.txQueries(tx).CreateEpisode(ctx, sqlcdb.CreateEpisodeParams{
+		ID:                tvNullID(episode.ID),
+		SeasonID:          int64(episode.SeasonID),
+		EpisodeNumber:     int64(episode.EpisodeNumber),
+		Monitored:         int64(episode.Monitored),
+		EpisodeMetadataID: tvNullInt64FromInt32Ptr(episode.EpisodeMetadataID),
+		EpisodeFileID:     tvNullInt64FromInt32Ptr(episode.EpisodeFileID),
+	})
 	if err != nil {
 		tx.Rollback()
 		return 0, err
 	}
 
-	inserted, err := result.LastInsertId()
-	if err != nil {
-		tx.Rollback()
-		return 0, err
-	}
-
-	state := storage.EpisodeTransition{
-		EpisodeID:  int32(inserted),
+	err = s.txQueries(tx).InsertEpisodeTransition(ctx, sqlcdb.InsertEpisodeTransitionParams{
+		EpisodeID:  inserted,
 		ToState:    string(initialState),
+		FromState:  sql.NullString{},
 		MostRecent: true,
 		SortKey:    1,
-	}
-
-	transitionStmt := table.EpisodeTransition.
-		INSERT(table.EpisodeTransition.AllColumns.
-			Except(table.EpisodeTransition.ID, table.EpisodeTransition.CreatedAt, table.EpisodeTransition.UpdatedAt)).
-		MODEL(state)
-
-	_, err = transitionStmt.ExecContext(ctx, tx)
+	})
 	if err != nil {
 		tx.Rollback()
 		return 0, err
 	}
 
-	err = tx.Commit()
-	if err != nil {
+	if err := tx.Commit(); err != nil {
 		tx.Rollback()
 		return 0, err
 	}
@@ -83,39 +121,26 @@ func (s *SQLite) CreateEpisode(ctx context.Context, episode storage.Episode, ini
 	return inserted, nil
 }
 
-// GetEpisode gets an episode by id
-func (s *SQLite) GetEpisode(ctx context.Context, where sqlite.BoolExpression) (*storage.Episode, error) {
-	stmt := sqlite.
-		SELECT(
-			table.Episode.AllColumns,
-			table.EpisodeTransition.AllColumns,
-		).
-		FROM(table.Episode.
-			LEFT_JOIN(table.EpisodeTransition,
-				table.Episode.ID.EQ(table.EpisodeTransition.EpisodeID).
-					AND(table.EpisodeTransition.MostRecent.IS_TRUE()),
-			)).
-		WHERE(where)
+// GetEpisodeByID gets an episode by id
+func (s *SQLite) GetEpisodeByID(ctx context.Context, id int64) (*storage.Episode, error) {
+	return s.getEpisode(ctx, sqlcdb.GetEpisodeParams{ID: sql.NullInt64{Int64: id, Valid: true}})
+}
 
-	var episode storage.Episode
-	err := stmt.QueryContext(ctx, s.db, &episode)
+func (s *SQLite) getEpisode(ctx context.Context, params sqlcdb.GetEpisodeParams) (*storage.Episode, error) {
+	row, err := s.Queries.GetEpisode(ctx, params)
 	if err != nil {
-		if errors.Is(err, qrm.ErrNoRows) {
+		if errors.Is(err, sql.ErrNoRows) {
 			return nil, storage.ErrNotFound
 		}
 		return nil, fmt.Errorf("failed to get episode: %w", err)
 	}
 
-	return &episode, nil
+	return tvEpisodeFromRow(row), nil
 }
 
 // DeleteEpisode removes an episode by id
 func (s *SQLite) DeleteEpisode(ctx context.Context, id int64) error {
-	stmt := table.Episode.
-		DELETE().
-		WHERE(table.Episode.ID.EQ(sqlite.Int64(id)))
-
-	_, err := s.handleDelete(ctx, stmt)
+	err := s.Queries.DeleteEpisode(ctx, id)
 	if err != nil {
 		return fmt.Errorf("failed to delete episode: %w", err)
 	}
@@ -123,29 +148,31 @@ func (s *SQLite) DeleteEpisode(ctx context.Context, id int64) error {
 	return nil
 }
 
-// ListEpisodes lists all episodes for a season
-func (s *SQLite) ListEpisodes(ctx context.Context, where ...sqlite.BoolExpression) ([]*storage.Episode, error) {
-	stmt := table.Episode.
-		SELECT(
-			table.Episode.AllColumns,
-			table.EpisodeTransition.AllColumns,
-		).
-		FROM(
-			table.Episode.
-				INNER_JOIN(
-					table.EpisodeTransition,
-					table.Episode.ID.EQ(table.EpisodeTransition.EpisodeID).
-						AND(table.EpisodeTransition.MostRecent.EQ(sqlite.Bool(true)))),
-		)
-
-	for _, w := range where {
-		stmt = stmt.WHERE(w)
+// ListEpisodes lists episodes constrained by the filter; a zero-value filter
+// lists everything.
+func (s *SQLite) ListEpisodes(ctx context.Context, filter storage.EpisodeFilter) ([]*storage.Episode, error) {
+	params := sqlcdb.ListEpisodesParams{}
+	if filter.SeasonID != nil {
+		params.SeasonID = sql.NullInt64{Int64: *filter.SeasonID, Valid: true}
 	}
 
-	var episodes []*storage.Episode
-	err := stmt.QueryContext(ctx, s.db, &episodes)
+	slots, err := tvStateSlotsFrom(tvStateStrings(filter.States))
 	if err != nil {
 		return nil, fmt.Errorf("failed to list episodes: %w", err)
+	}
+	params.StatesAny = slots.Any
+	params.State2 = slots.S2
+	params.State3 = slots.S3
+	params.State4 = slots.S4
+
+	rows, err := s.Queries.ListEpisodes(ctx, params)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list episodes: %w", err)
+	}
+
+	episodes := make([]*storage.Episode, 0, len(rows))
+	for _, r := range rows {
+		episodes = append(episodes, tvEpisodeFromListRow(r))
 	}
 
 	return episodes, nil
@@ -153,35 +180,21 @@ func (s *SQLite) ListEpisodes(ctx context.Context, where ...sqlite.BoolExpressio
 
 // GetEpisodeByEpisodeFileID gets an episode by its associated file ID
 func (s *SQLite) GetEpisodeByEpisodeFileID(ctx context.Context, fileID int64) (*storage.Episode, error) {
-	stmt := sqlite.SELECT(
-		table.Episode.AllColumns,
-		table.EpisodeTransition.ToState,
-		table.EpisodeTransition.DownloadID,
-		table.EpisodeTransition.DownloadClientID,
-	).
-		FROM(table.Episode.
-			LEFT_JOIN(table.EpisodeTransition,
-				table.Episode.ID.EQ(table.EpisodeTransition.EpisodeID).
-					AND(table.EpisodeTransition.MostRecent.IS_TRUE()),
-			)).
-		WHERE(table.Episode.EpisodeFileID.EQ(sqlite.Int64(fileID)))
-
-	var episode storage.Episode
-	err := stmt.QueryContext(ctx, s.db, &episode)
+	row, err := s.Queries.GetEpisodeByEpisodeFileID(ctx, sql.NullInt64{Int64: fileID, Valid: true})
 	if err != nil {
-		if errors.Is(err, qrm.ErrNoRows) {
+		if errors.Is(err, sql.ErrNoRows) {
 			return nil, storage.ErrNotFound
 		}
 		return nil, fmt.Errorf("failed to get episode by file id: %w", err)
 	}
 
-	return &episode, nil
+	return tvEpisodeFromFileIDRow(row), nil
 }
 
 // UpdateEpisodeState updates the transition state of an episode
 // Metadata is optional and can be nil
 func (s *SQLite) UpdateEpisodeState(ctx context.Context, id int64, state storage.EpisodeState, metadata *storage.TransitionStateMetadata) error {
-	episode, err := s.GetEpisode(ctx, table.Episode.ID.EQ(sqlite.Int64(id)))
+	episode, err := s.GetEpisodeByID(ctx, id)
 	if err != nil {
 		return err
 	}
@@ -196,48 +209,35 @@ func (s *SQLite) UpdateEpisodeState(ctx context.Context, id int64, state storage
 		return err
 	}
 
-	previousTransitionStmt := table.EpisodeTransition.
-		UPDATE().
-		SET(
-			table.EpisodeTransition.MostRecent.SET(sqlite.Bool(false))).
-		WHERE(
-			table.EpisodeTransition.EpisodeID.EQ(sqlite.Int(id)).
-				AND(table.EpisodeTransition.MostRecent.EQ(sqlite.Bool(true)))).
-		RETURNING(table.EpisodeTransition.AllColumns)
-
-	var previousTransition storage.EpisodeTransition
-	err = previousTransitionStmt.QueryContext(ctx, tx, &previousTransition)
+	// Demote the current most recent transition; the query errors when the
+	// episode has no transition, matching the legacy behavior.
+	previousSortKey, err := s.txQueries(tx).DemoteEpisodeTransition(ctx, id)
 	if err != nil {
 		tx.Rollback()
 		return err
 	}
 
-	transition := storage.EpisodeTransition{
-		EpisodeID:  int32(id),
+	transition := sqlcdb.InsertEpisodeTransitionParams{
+		EpisodeID:  id,
 		ToState:    string(state),
+		FromState:  sql.NullString{},
 		MostRecent: true,
-		SortKey:    previousTransition.SortKey + 1,
+		SortKey:    int64(int32(previousSortKey) + 1),
 	}
 
 	if metadata != nil {
 		if metadata.DownloadClientID != nil {
-			transition.DownloadClientID = metadata.DownloadClientID
+			transition.DownloadClientID = sql.NullInt64{Int64: int64(*metadata.DownloadClientID), Valid: true}
 		}
 		if metadata.DownloadID != nil {
-			transition.DownloadID = metadata.DownloadID
+			transition.DownloadID = sql.NullString{String: *metadata.DownloadID, Valid: true}
 		}
 		if metadata.IsEntireSeasonDownload != nil {
-			transition.IsEntireSeasonDownload = metadata.IsEntireSeasonDownload
+			transition.IsEntireSeasonDownload = sql.NullBool{Bool: *metadata.IsEntireSeasonDownload, Valid: true}
 		}
 	}
 
-	newTransitionStmt := table.EpisodeTransition.
-		INSERT(table.EpisodeTransition.AllColumns.
-			Except(table.EpisodeTransition.ID, table.EpisodeTransition.CreatedAt, table.EpisodeTransition.UpdatedAt)).
-		MODEL(transition).
-		RETURNING(table.EpisodeTransition.AllColumns)
-
-	_, err = newTransitionStmt.ExecContext(ctx, tx)
+	err = s.txQueries(tx).InsertEpisodeTransition(ctx, transition)
 	if err != nil {
 		tx.Rollback()
 		return err
@@ -248,12 +248,10 @@ func (s *SQLite) UpdateEpisodeState(ctx context.Context, id int64, state storage
 
 // UpdateEpisodeEpisodeFileID updates the episode file id for an episode
 func (s *SQLite) UpdateEpisodeEpisodeFileID(ctx context.Context, id int64, fileID int64) error {
-	stmt := table.Episode.
-		UPDATE().
-		SET(table.Episode.EpisodeFileID.SET(sqlite.Int64(fileID))).
-		WHERE(table.Episode.ID.EQ(sqlite.Int64(id)))
-
-	_, err := s.handleStatement(ctx, stmt)
+	err := s.Queries.UpdateEpisodeEpisodeFileID(ctx, sqlcdb.UpdateEpisodeEpisodeFileIDParams{
+		EpisodeFileID: sql.NullInt64{Int64: fileID, Valid: true},
+		ID:            id,
+	})
 	if err != nil {
 		return fmt.Errorf("failed to update episode file id: %w", err)
 	}
@@ -263,9 +261,9 @@ func (s *SQLite) UpdateEpisodeEpisodeFileID(ctx context.Context, id int64, fileI
 
 // LinkEpisodeMetadata links an episode with its season and episode metadata
 func (s *SQLite) LinkEpisodeMetadata(ctx context.Context, episodeID int64, seasonID int32, episodeMetadataID int32) error {
-	stmt := table.Episode.UPDATE(table.Episode.SeasonID, table.Episode.EpisodeMetadataID).
-		SET(seasonID, episodeMetadataID).
-		WHERE(table.Episode.ID.EQ(sqlite.Int64(episodeID)))
-	_, err := stmt.Exec(s.db)
-	return err
+	return s.Queries.LinkEpisodeMetadata(ctx, sqlcdb.LinkEpisodeMetadataParams{
+		SeasonID:          int64(seasonID),
+		EpisodeMetadataID: sql.NullInt64{Int64: int64(episodeMetadataID), Valid: true},
+		ID:                episodeID,
+	})
 }

@@ -38,7 +38,6 @@ $ mediaz search indexer <query>  # Search indexers for content
 
 ### System Management
 ```
-$ mediaz generate schema  # Create DB schema
 $ mediaz generate testlib [path]  # Generate test library from database
 $ mediaz --config <path>  # Specify config file
 ```

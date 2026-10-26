@@ -4,10 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/go-jet/jet/v2/sqlite"
 	"github.com/kasuboski/mediaz/pkg/storage"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/table"
+	"github.com/kasuboski/mediaz/pkg/storage/model"
 )
 
 type QualityService struct {
@@ -134,13 +132,11 @@ func (qs QualityService) GetQualityProfile(ctx context.Context, id int64) (stora
 }
 
 func (qs QualityService) ListEpisodeQualityProfiles(ctx context.Context) ([]*storage.QualityProfile, error) {
-	where := table.QualityDefinition.MediaType.EQ(sqlite.String("episode"))
-	return qs.qualityStorage.ListQualityProfiles(ctx, where)
+	return qs.qualityStorage.ListQualityProfilesByMediaType(ctx, "episode")
 }
 
 func (qs QualityService) ListMovieQualityProfiles(ctx context.Context) ([]*storage.QualityProfile, error) {
-	where := table.QualityDefinition.MediaType.EQ(sqlite.String("movie"))
-	return qs.qualityStorage.ListQualityProfiles(ctx, where)
+	return qs.qualityStorage.ListQualityProfilesByMediaType(ctx, "movie")
 }
 
 func (qs QualityService) ListQualityProfiles(ctx context.Context) ([]*storage.QualityProfile, error) {
@@ -215,19 +211,17 @@ func (qs QualityService) UpdateQualityProfile(ctx context.Context, id int64, req
 		return storage.QualityProfile{}, err
 	}
 
-	existingProfile, err := qs.qualityStorage.GetQualityProfile(ctx, id)
-	if err != nil {
+	if _, err := qs.qualityStorage.GetQualityProfile(ctx, id); err != nil {
 		return storage.QualityProfile{}, err
 	}
 
-	profile := model.QualityProfile{
-		ID:              existingProfile.ID,
+	profile := storage.QualityProfile{
 		Name:            request.Name,
 		CutoffQualityID: request.CutoffQualityID,
 		UpgradeAllowed:  request.UpgradeAllowed,
 	}
 
-	err = qs.qualityStorage.UpdateQualityProfile(ctx, id, profile)
+	err := qs.qualityStorage.UpdateQualityProfile(ctx, id, profile)
 	if err != nil {
 		return storage.QualityProfile{}, err
 	}

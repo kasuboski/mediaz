@@ -1,9 +1,29 @@
+-- Application schema after migrations 000001 through 000007.
+-- Keep this snapshot aligned with migrations: sqlc compiles every application query against it.
+
+CREATE TABLE IF NOT EXISTS "indexer_source" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "name" TEXT NOT NULL,
+    "implementation" TEXT NOT NULL,
+    "scheme" TEXT NOT NULL DEFAULT 'http',
+    "host" TEXT NOT NULL,
+    "port" INTEGER,
+    "api_key" TEXT,
+    "enabled" BOOLEAN NOT NULL DEFAULT 1,
+    "created_at" DATETIME DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS "idx_indexer_source_implementation" ON "indexer_source" ("implementation");
+CREATE INDEX IF NOT EXISTS "idx_indexer_source_enabled" ON "indexer_source" ("enabled");
+
 CREATE TABLE IF NOT EXISTS "indexer" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     "name" TEXT NOT NULL,
     "priority" INTEGER NOT NULL DEFAULT 25,
     "uri" TEXT NOT NULL,
-    "api_key" TEXT
+    "api_key" TEXT,
+    "indexer_source_id" INTEGER REFERENCES "indexer_source"("id") ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS "quality_definition" (
@@ -102,7 +122,7 @@ CREATE TABLE IF NOT EXISTS "series" (
     "quality_profile_id" INTEGER NOT NULL,
     "series_metadata_id" INTEGER UNIQUE,
     "last_search_time" DATETIME,
-    "monitor_new_seasons" INTEGER NOT NULL
+    "monitor_new_seasons" INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS "series_metadata" (
@@ -245,7 +265,7 @@ CREATE TABLE IF NOT EXISTS "job" (
 
 CREATE TABLE IF NOT EXISTS "job_transition" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-    "job_id" INTEGER NOT NULL REFERENCES "job"("id"),
+    "job_id" INTEGER NOT NULL REFERENCES "job"("id") ON DELETE CASCADE,
     "type" TEXT NOT NULL,
     "to_state" TEXT NOT NULL,
     "from_state" TEXT,
@@ -256,7 +276,8 @@ CREATE TABLE IF NOT EXISTS "job_transition" (
     "updated_at" DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS "idx_indexer_name" ON "indexer" ("name" ASC);
+CREATE INDEX IF NOT EXISTS "idx_indexer_by_source" ON "indexer" ("indexer_source_id");
+CREATE UNIQUE INDEX IF NOT EXISTS "idx_indexer_unique_source_name" ON "indexer" ("indexer_source_id", "name");
 
 CREATE UNIQUE INDEX IF NOT EXISTS "idx_movie_transitions_by_parent_most_recent" ON "movie_transition"("movie_id", "most_recent")
 WHERE
@@ -286,12 +307,9 @@ CREATE UNIQUE INDEX IF NOT EXISTS "idx_season_metadata_unique_series_season" ON 
 
 CREATE UNIQUE INDEX IF NOT EXISTS "idx_episode_metadata_unique_season_episode" ON "episode_metadata" ("season_metadata_id", "number");
 
-CREATE UNIQUE INDEX IF NOT EXISTS "idx_job_transitions_by_parent_most_recent" ON "job_transition"("job_id", "most_recent")
-WHERE
-    "most_recent" = 1;
+CREATE INDEX IF NOT EXISTS "idx_job_transition_type_state_updated"
+ON "job_transition"("type", "to_state", "updated_at" DESC)
+WHERE "most_recent" = 1;
 
-CREATE UNIQUE INDEX IF NOT EXISTS "idx_job_transitions_by_parent_sort_key" ON "job_transition"("job_id", "sort_key");
-
-CREATE UNIQUE INDEX IF NOT EXISTS "idx_job_type_pending" ON "job_transition"("type", "to_state")
-WHERE
-    "to_state" = 'pending' AND "most_recent" = 1;
+CREATE INDEX IF NOT EXISTS "idx_job_created_at" ON "job"("created_at" DESC);
+CREATE INDEX IF NOT EXISTS "idx_job_type" ON "job"("type");

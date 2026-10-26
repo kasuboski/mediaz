@@ -7,11 +7,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/go-jet/jet/v2/sqlite"
 	"github.com/kasuboski/mediaz/pkg/logger"
 	"github.com/kasuboski/mediaz/pkg/storage"
 	sqliteStorage "github.com/kasuboski/mediaz/pkg/storage/sqlite"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/table"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
@@ -281,7 +279,7 @@ func generateMoviesWithGeneratedNames(ctx context.Context, store storage.Storage
 		var year int
 
 		if movie.MovieMetadataID != nil {
-			metadata, err := store.GetMovieMetadata(ctx, table.MovieMetadata.ID.EQ(sqlite.Int32(*movie.MovieMetadataID)))
+			metadata, err := store.GetMovieMetadataByID(ctx, int64(*movie.MovieMetadataID))
 			if err == nil {
 				title = metadata.Title
 				if metadata.ReleaseDate != nil {
@@ -348,7 +346,7 @@ func generateMoviesWithGeneratedNames(ctx context.Context, store storage.Storage
 
 func generateTVFromDB(ctx context.Context, store storage.Storage, outputDir string, log *zap.SugaredLogger) (int, int, int, error) {
 	// Get all series
-	allSeries, err := store.ListSeries(ctx, nil)
+	allSeries, err := store.ListSeries(ctx, storage.SeriesFilter{})
 	if err != nil && err != storage.ErrNotFound {
 		return 0, 0, 0, fmt.Errorf("failed to list series: %w", err)
 	}
@@ -361,7 +359,7 @@ func generateTVFromDB(ctx context.Context, store storage.Storage, outputDir stri
 		// Get series title
 		var seriesTitle string
 		if series.SeriesMetadataID != nil {
-			metadata, err := store.GetSeriesMetadata(ctx, table.SeriesMetadata.ID.EQ(sqlite.Int32(*series.SeriesMetadataID)))
+			metadata, err := store.GetSeriesMetadataByID(ctx, int64(*series.SeriesMetadataID))
 			if err == nil {
 				seriesTitle = metadata.Title
 			}
@@ -377,7 +375,8 @@ func generateTVFromDB(ctx context.Context, store storage.Storage, outputDir stri
 		}
 
 		// Get seasons for this series
-		seasons, err := store.ListSeasons(ctx, table.Season.SeriesID.EQ(sqlite.Int32(series.ID)))
+		seriesIDInt := int64(series.ID)
+		seasons, err := store.ListSeasons(ctx, storage.SeasonFilter{SeriesID: &seriesIDInt})
 		if err != nil && err != storage.ErrNotFound {
 			log.Warnf("failed to list seasons for series %s: %v", seriesTitle, err)
 			continue
@@ -399,7 +398,8 @@ func generateTVFromDB(ctx context.Context, store storage.Storage, outputDir stri
 			}
 
 			// Get episodes for this season
-			episodes, err := store.ListEpisodes(ctx, table.Episode.SeasonID.EQ(sqlite.Int32(season.ID)))
+			seasonIDInt := int64(season.ID)
+			episodes, err := store.ListEpisodes(ctx, storage.EpisodeFilter{SeasonID: &seasonIDInt})
 			if err != nil && err != storage.ErrNotFound {
 				log.Warnf("failed to list episodes for season %s S%d: %v", seriesTitle, season.SeasonNumber, err)
 				continue
@@ -412,7 +412,7 @@ func generateTVFromDB(ctx context.Context, store storage.Storage, outputDir stri
 				// Get episode title from metadata if available
 				var episodeTitle string
 				if episode.EpisodeMetadataID != nil {
-					metadata, err := store.GetEpisodeMetadata(ctx, table.EpisodeMetadata.ID.EQ(sqlite.Int32(*episode.EpisodeMetadataID)))
+					metadata, err := store.GetEpisodeMetadataByID(ctx, int64(*episode.EpisodeMetadataID))
 					if err == nil {
 						episodeTitle = metadata.Title
 					}

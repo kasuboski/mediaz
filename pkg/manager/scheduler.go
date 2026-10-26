@@ -6,13 +6,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-jet/jet/v2/sqlite"
 	"github.com/kasuboski/mediaz/config"
 	"github.com/kasuboski/mediaz/pkg/cache"
 	"github.com/kasuboski/mediaz/pkg/logger"
 	"github.com/kasuboski/mediaz/pkg/storage"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/table"
+	"github.com/kasuboski/mediaz/pkg/storage/model"
 	"go.uber.org/zap"
 )
 
@@ -78,12 +76,8 @@ func (s *Scheduler) pruneOldJobs(ctx context.Context) {
 	totalDeleted := int64(0)
 
 	for _, jobType := range jobTypes {
-		where := sqlite.AND(
-			table.Job.Type.EQ(sqlite.String(string(jobType))),
-			table.JobTransition.MostRecent.EQ(sqlite.Bool(true)),
-		)
-
-		allJobs, err := s.storage.ListJobs(ctx, 0, 0, where)
+		jobTypeStr := string(jobType)
+		allJobs, err := s.storage.ListJobs(ctx, 0, 0, storage.JobFilter{Type: &jobTypeStr})
 		if err != nil {
 			log.Error("failed to list jobs",
 				zap.String("type", string(jobType)),
@@ -99,21 +93,16 @@ func (s *Scheduler) pruneOldJobs(ctx context.Context) {
 			continue
 		}
 
-		jobIDsToDelete := make([]int32, 0)
+		jobIDsToDelete := make([]int64, 0)
 		for i := s.config.Jobs.MinJobsToKeep; i < len(allJobs); i++ {
-			jobIDsToDelete = append(jobIDsToDelete, allJobs[i].ID)
+			jobIDsToDelete = append(jobIDsToDelete, int64(allJobs[i].ID))
 		}
 
 		if len(jobIDsToDelete) == 0 {
 			continue
 		}
 
-		ids := make([]sqlite.Expression, len(jobIDsToDelete))
-		for i, id := range jobIDsToDelete {
-			ids[i] = sqlite.Int32(id)
-		}
-
-		deleted, err := s.storage.DeleteJobs(ctx, table.Job.ID.IN(ids...))
+		deleted, err := s.storage.DeleteJobsByIDs(ctx, jobIDsToDelete)
 		if err != nil {
 			log.Error("failed to delete jobs",
 				zap.String("type", string(jobType)),
@@ -181,11 +170,8 @@ func (s *Scheduler) checkAndScheduleJob(ctx context.Context, jobType JobType) {
 
 	interval := s.getIntervalForJobType(jobType)
 
-	where := sqlite.AND(
-		table.Job.Type.EQ(sqlite.String(string(jobType))),
-		table.JobTransition.MostRecent.EQ(sqlite.Bool(true)),
-	)
-	jobs, err := s.storage.ListJobs(ctx, 0, 1, where)
+	jobTypeStr := string(jobType)
+	jobs, err := s.storage.ListJobs(ctx, 0, 1, storage.JobFilter{Type: &jobTypeStr})
 
 	if err != nil {
 		log.Error("failed to get last job", zap.Error(err))
@@ -274,20 +260,14 @@ func (s *Scheduler) createPendingJob(ctx context.Context, jobType JobType) (int6
 }
 
 func (s *Scheduler) listPendingJobs(ctx context.Context) ([]*storage.Job, error) {
-	where := sqlite.AND(
-		table.JobTransition.ToState.EQ(sqlite.String(string(storage.JobStatePending))),
-		table.JobTransition.MostRecent.EQ(sqlite.Bool(true)),
-	)
-	return s.storage.ListJobs(ctx, 0, 0, where)
+	state := string(storage.JobStatePending)
+	return s.storage.ListJobs(ctx, 0, 0, storage.JobFilter{State: &state})
 }
 
 func (s *Scheduler) listPendingJobsByType(ctx context.Context, jobType JobType) ([]*storage.Job, error) {
-	where := sqlite.AND(
-		table.JobTransition.Type.EQ(sqlite.String(string(jobType))),
-		table.JobTransition.ToState.EQ(sqlite.String(string(storage.JobStatePending))),
-		table.JobTransition.MostRecent.EQ(sqlite.Bool(true)),
-	)
-	return s.storage.ListJobs(ctx, 0, 0, where)
+	jobTypeStr := string(jobType)
+	state := string(storage.JobStatePending)
+	return s.storage.ListJobs(ctx, 0, 0, storage.JobFilter{Type: &jobTypeStr, State: &state})
 }
 
 func (s *Scheduler) processPendingJobs(ctx context.Context) {

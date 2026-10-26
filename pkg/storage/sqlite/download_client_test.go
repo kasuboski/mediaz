@@ -4,7 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
+	"github.com/kasuboski/mediaz/pkg/storage"
+	"github.com/kasuboski/mediaz/pkg/storage/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -53,11 +54,25 @@ func TestDownloadClientStorage(t *testing.T) {
 	assert.Equal(t, clientTwo.Scheme, storedClient.Scheme)
 	assert.Equal(t, clientTwo.Port, storedClient.Port)
 
+	clients, err := store.ListDownloadClients(ctx)
+	require.NoError(t, err)
+	require.Len(t, clients, 2)
+	assert.Equal(t, client1ID, int64(clients[0].ID))
+	assert.Equal(t, client2ID, int64(clients[1].ID))
+
 	err = store.DeleteDownloadClient(ctx, client1ID)
 	assert.Nil(t, err)
 
 	err = store.DeleteDownloadClient(ctx, client2ID)
 	assert.Nil(t, err)
+}
+
+func TestGetDownloadClientNotFound(t *testing.T) {
+	ctx := context.Background()
+	store := initSqlite(t, ctx)
+
+	_, err := store.GetDownloadClient(ctx, 1234)
+	assert.ErrorIs(t, err, storage.ErrNotFound)
 }
 
 func TestUpdateDownloadClient(t *testing.T) {

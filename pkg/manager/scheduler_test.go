@@ -8,8 +8,8 @@ import (
 
 	"github.com/kasuboski/mediaz/config"
 	"github.com/kasuboski/mediaz/pkg/storage"
+	"github.com/kasuboski/mediaz/pkg/storage/model"
 	mediaSqlite "github.com/kasuboski/mediaz/pkg/storage/sqlite"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -812,13 +812,13 @@ func TestScheduler_pruneOldJobs(t *testing.T) {
 			require.NoError(t, err)
 		}
 
-		allJobs, err := store.ListJobs(ctx, 0, 0)
+		allJobs, err := store.ListJobs(ctx, 0, 0, storage.JobFilter{})
 		require.NoError(t, err)
 		assert.Len(t, allJobs, 5)
 
 		scheduler.pruneOldJobs(ctx)
 
-		remainingJobs, err := store.ListJobs(ctx, 0, 0)
+		remainingJobs, err := store.ListJobs(ctx, 0, 0, storage.JobFilter{})
 		require.NoError(t, err)
 		assert.Equal(t, 2, len(remainingJobs), "should retain exactly minimum jobs")
 	})
@@ -848,7 +848,7 @@ func TestScheduler_pruneOldJobs(t *testing.T) {
 
 		scheduler.pruneOldJobs(ctx)
 
-		remainingJobs, err := store.ListJobs(ctx, 0, 0)
+		remainingJobs, err := store.ListJobs(ctx, 0, 0, storage.JobFilter{})
 		require.NoError(t, err)
 		require.Len(t, remainingJobs, 1)
 		assert.Equal(t, jobID, int64(remainingJobs[0].ID))
@@ -888,7 +888,7 @@ func TestScheduler_pruneOldJobs(t *testing.T) {
 
 		assert.False(t, called, "pruning should not run when min jobs to keep is 0")
 
-		remainingJobs, err := store.ListJobs(ctx, 0, 0)
+		remainingJobs, err := store.ListJobs(ctx, 0, 0, storage.JobFilter{})
 		require.NoError(t, err)
 		require.Len(t, remainingJobs, 1)
 		assert.Equal(t, jobID, int64(remainingJobs[0].ID))

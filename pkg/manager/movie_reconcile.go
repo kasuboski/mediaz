@@ -6,15 +6,13 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/go-jet/jet/v2/sqlite"
 	"github.com/kasuboski/mediaz/pkg/download"
 	"github.com/kasuboski/mediaz/pkg/indexer"
 	"github.com/kasuboski/mediaz/pkg/logger"
 	"github.com/kasuboski/mediaz/pkg/prowlarr"
 	"github.com/kasuboski/mediaz/pkg/ptr"
 	"github.com/kasuboski/mediaz/pkg/storage"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/table"
+	"github.com/kasuboski/mediaz/pkg/storage/model"
 	"go.uber.org/zap"
 )
 
@@ -177,7 +175,7 @@ func (m MediaManager) reconcileDownloadingMovie(ctx context.Context, movie *stor
 		return nil
 	}
 
-	movieMetadata, err := m.movieMetaStorage.GetMovieMetadata(ctx, table.MovieMetadata.ID.EQ(sqlite.Int32(*movie.MovieMetadataID)))
+	movieMetadata, err := m.movieMetaStorage.GetMovieMetadataByID(ctx, int64(*movie.MovieMetadataID))
 	if err != nil {
 		log.Error("failed to get movie metadata", zap.Error(err))
 		return err
@@ -244,7 +242,7 @@ func (m MediaManager) reconcileMissingMovie(ctx context.Context, movie *storage.
 		return m.updateMovieState(ctx, movie, storage.MovieStateDownloaded, nil)
 	}
 
-	det, err := m.movieMetaStorage.GetMovieMetadata(ctx, table.MovieMetadata.ID.EQ(sqlite.Int32(*movie.MovieMetadataID)))
+	det, err := m.movieMetaStorage.GetMovieMetadataByID(ctx, int64(*movie.MovieMetadataID))
 	if err != nil {
 		log.Debug("failed to find movie metadata", zap.Int32("meta_id", *movie.MovieMetadataID))
 		return err
@@ -344,7 +342,7 @@ func (m *MediaManager) reconcileUnreleasedMovie(ctx context.Context, movie *stor
 		return nil
 	}
 
-	det, err := m.movieMetaStorage.GetMovieMetadata(ctx, table.MovieMetadata.ID.EQ(sqlite.Int32(*movie.MovieMetadataID)))
+	det, err := m.movieMetaStorage.GetMovieMetadataByID(ctx, int64(*movie.MovieMetadataID))
 	if err != nil {
 		log.Debug("failed to find movie metadata", zap.Error(err))
 		return err

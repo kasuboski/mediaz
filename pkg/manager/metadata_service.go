@@ -9,11 +9,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-jet/jet/v2/sqlite"
 	"github.com/kasuboski/mediaz/pkg/logger"
 	"github.com/kasuboski/mediaz/pkg/storage"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/table"
+	"github.com/kasuboski/mediaz/pkg/storage/model"
 	"github.com/kasuboski/mediaz/pkg/tmdb"
 	"github.com/mattn/go-sqlite3"
 	"go.uber.org/zap"
@@ -36,7 +34,7 @@ func NewMetadataService(tmbdClient tmdb.ITmdb, movieMetaStorage storage.MovieMet
 }
 
 func (ms MetadataService) GetMovieMetadata(ctx context.Context, tmdbID int) (*model.MovieMetadata, error) {
-	res, err := ms.movieMetaStorage.GetMovieMetadata(ctx, table.MovieMetadata.TmdbID.EQ(sqlite.Int(int64(tmdbID))))
+	res, err := ms.movieMetaStorage.GetMovieMetadataByTmdbID(ctx, int64(tmdbID))
 	if err != nil {
 		if !errors.Is(err, storage.ErrNotFound) {
 			return nil, err
@@ -58,7 +56,7 @@ func (ms MetadataService) UpdateMovieMetadataFromTMDB(ctx context.Context, tmdbI
 		return nil, err
 	}
 
-	existing, err := ms.movieMetaStorage.GetMovieMetadata(ctx, table.MovieMetadata.TmdbID.EQ(sqlite.Int(int64(tmdbID))))
+	existing, err := ms.movieMetaStorage.GetMovieMetadataByTmdbID(ctx, int64(tmdbID))
 	if err != nil {
 		log.Error("failed to get existing movie metadata", zap.Error(err))
 		return nil, err
@@ -94,12 +92,12 @@ func (ms MetadataService) loadMovieMetadata(ctx context.Context, tmdbID int) (*m
 }
 
 func (ms MetadataService) GetMovieMetadataByID(ctx context.Context, metadataID int32) (*model.MovieMetadata, error) {
-	return ms.movieMetaStorage.GetMovieMetadata(ctx, table.MovieMetadata.ID.EQ(sqlite.Int(int64(metadataID))))
+	return ms.movieMetaStorage.GetMovieMetadataByID(ctx, int64(metadataID))
 }
 
 // GetSeriesMetadata gets all metadata around a series. If it does not exist, it will be created including seasons and episodes.
 func (ms MetadataService) GetSeriesMetadata(ctx context.Context, tmdbID int) (*model.SeriesMetadata, error) {
-	metadata, err := ms.seriesMetaStorage.GetSeriesMetadata(ctx, table.SeriesMetadata.TmdbID.EQ(sqlite.Int64(int64(tmdbID))))
+	metadata, err := ms.seriesMetaStorage.GetSeriesMetadataByTmdbID(ctx, int64(tmdbID))
 	if err == nil {
 		return metadata, nil
 	}
@@ -124,7 +122,7 @@ func (ms MetadataService) UpdateSeriesMetadataFromTMDB(ctx context.Context, tmdb
 		return nil, err
 	}
 
-	existing, err := ms.seriesMetaStorage.GetSeriesMetadata(ctx, table.SeriesMetadata.TmdbID.EQ(sqlite.Int64(int64(tmdbID))))
+	existing, err := ms.seriesMetaStorage.GetSeriesMetadataByTmdbID(ctx, int64(tmdbID))
 	if err != nil {
 		log.Error("failed to get existing series metadata", zap.Error(err))
 		return nil, err
@@ -186,7 +184,7 @@ func (ms MetadataService) loadSeriesMetadata(ctx context.Context, tmdbID int) (*
 			return nil, err
 		}
 
-		existing, getErr := ms.seriesMetaStorage.GetSeriesMetadata(ctx, table.SeriesMetadata.TmdbID.EQ(sqlite.Int64(int64(series.TmdbID))))
+		existing, getErr := ms.seriesMetaStorage.GetSeriesMetadataByTmdbID(ctx, int64(series.TmdbID))
 		if getErr != nil {
 			log.Error("failed to get existing series metadata", zap.NamedError("createErr", err), zap.NamedError("getErr", getErr))
 			return nil, getErr
@@ -205,7 +203,7 @@ func (ms MetadataService) loadSeriesMetadata(ctx context.Context, tmdbID int) (*
 		season := FromSeriesSeasons(s)
 		season.SeriesMetadataID = int32(seriesMetadataID)
 
-		existingSeason, err := ms.seriesMetaStorage.GetSeasonMetadata(ctx, table.SeasonMetadata.TmdbID.EQ(sqlite.Int(int64(season.TmdbID))))
+		existingSeason, err := ms.seriesMetaStorage.GetSeasonMetadataByTmdbID(ctx, int64(season.TmdbID))
 		if err != nil && !errors.Is(err, storage.ErrNotFound) {
 			log.Error("failed to get existing season metadata", zap.Error(err))
 			return nil, err
@@ -227,7 +225,7 @@ func (ms MetadataService) loadSeriesMetadata(ctx context.Context, tmdbID int) (*
 			episodeMetadata := FromSeriesEpisodes(episode)
 			episodeMetadata.SeasonMetadataID = int32(seasonMetadataID)
 
-			_, err = ms.seriesMetaStorage.GetEpisodeMetadata(ctx, table.EpisodeMetadata.TmdbID.EQ(sqlite.Int(int64(episodeMetadata.TmdbID))))
+			_, err = ms.seriesMetaStorage.GetEpisodeMetadataByTmdbID(ctx, int64(episodeMetadata.TmdbID))
 			if err == nil {
 				continue
 			}
@@ -244,7 +242,7 @@ func (ms MetadataService) loadSeriesMetadata(ctx context.Context, tmdbID int) (*
 		}
 	}
 
-	return ms.seriesMetaStorage.GetSeriesMetadata(ctx, table.SeriesMetadata.ID.EQ(sqlite.Int(seriesMetadataID)))
+	return ms.seriesMetaStorage.GetSeriesMetadataByID(ctx, seriesMetadataID)
 }
 
 func (ms MetadataService) fetchExternalIDs(ctx context.Context, tmdbID int) (*string, error) {
@@ -312,7 +310,7 @@ func (ms MetadataService) RefreshSeriesMetadata(ctx context.Context, tmdbIDs ...
 	var errs []error
 
 	if len(tmdbIDs) == 0 {
-		allSeries, err := ms.seriesMetaStorage.ListSeriesMetadata(ctx, table.SeriesMetadata.Status.EQ(sqlite.String("")))
+		allSeries, err := ms.seriesMetaStorage.ListSeriesMetadataByStatus(ctx, "")
 		if err != nil {
 			log.Error("failed to list series with empty status", zap.Error(err))
 			return err

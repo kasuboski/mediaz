@@ -7,7 +7,7 @@ import (
 
 	"github.com/kasuboski/mediaz/pkg/ptr"
 	"github.com/kasuboski/mediaz/pkg/storage"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
+	"github.com/kasuboski/mediaz/pkg/storage/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -234,4 +234,126 @@ func TestSQLite_GetMovieByMovieFileID(t *testing.T) {
 		assert.Equal(t, int32(1), movie.ID)
 		assert.Equal(t, int32(1), int32(*movie.MovieFileID))
 	})
+}
+
+func TestSQLite_UpdateMovieByID(t *testing.T) {
+	t.Run("updates only monitored", func(t *testing.T) {
+		ctx := t.Context()
+		store := initSqlite(t, ctx)
+		require.NotNil(t, store)
+
+		path := "Title/Title.mkv"
+		created, err := store.CreateMovie(ctx, storage.Movie{
+			Movie: model.Movie{
+				Monitored:        1,
+				QualityProfileID: 7,
+				Path:             &path,
+			},
+		}, storage.MovieStateDiscovered)
+		require.NoError(t, err)
+
+		err = store.UpdateMovieByID(ctx, created, model.Movie{
+			ID:               int32(created),
+			Monitored:        0,
+			QualityProfileID: 99, // must not be persisted
+			Path:             ptr.To("changed"),
+		})
+		require.NoError(t, err)
+
+		movie, err := store.GetMovie(ctx, created)
+		require.NoError(t, err)
+		require.NotNil(t, movie)
+
+		assert.Equal(t, int32(0), movie.Monitored, "monitored should be updated")
+		assert.Equal(t, int32(7), movie.QualityProfileID, "quality profile should remain unchanged")
+		assert.Equal(t, path, *movie.Path, "path should remain unchanged")
+	})
+}
+
+func TestSQLite_CreateMovieWithAdded(t *testing.T) {
+	t.Run("persists provided added timestamp", func(t *testing.T) {
+		ctx := t.Context()
+		store := initSqlite(t, ctx)
+		require.NotNil(t, store)
+
+		added := time.Date(2024, 5, 1, 12, 30, 0, 0, time.UTC)
+		path := "Added/Added.mkv"
+		id, err := store.CreateMovie(ctx, storage.Movie{
+			Movie: model.Movie{
+				Monitored: 1,
+				Path:      &path,
+				Added:     &added,
+			},
+		}, storage.MovieStateDiscovered)
+		require.NoError(t, err)
+
+		movie, err := store.GetMovie(ctx, id)
+		require.NoError(t, err)
+		require.NotNil(t, movie.Added)
+		assert.True(t, added.Equal(*movie.Added), "expected added %v, got %v", added, *movie.Added)
+	})
+
+	t.Run("defaults added when zero timestamp given", func(t *testing.T) {
+		ctx := t.Context()
+		store := initSqlite(t, ctx)
+		require.NotNil(t, store)
+
+		path := "Zero/Zero.mkv"
+		id, err := store.CreateMovie(ctx, storage.Movie{
+			Movie: model.Movie{
+				Monitored: 1,
+				Path:      &path,
+				Added:     &time.Time{},
+			},
+		}, storage.MovieStateDiscovered)
+		require.NoError(t, err)
+
+		movie, err := store.GetMovie(ctx, id)
+		require.NoError(t, err)
+		require.NotNil(t, movie.Added, "database default timestamp should be used")
+		assert.False(t, movie.Added.IsZero())
+	})
+}
+
+func TestSQLite_GetMovieByPath(t *testing.T) {
+	t.Run("gets movie by path", func(t *testing.T) {
+		ctx := t.Context()
+		store := initSqlite(t, ctx)
+		require.NotNil(t, store)
+
+		path := "Some Movie/Some Movie.mkv"
+		_, err := store.CreateMovie(ctx, storage.Movie{
+			Movie: model.Movie{
+				Monitored: 1,
+				Path:      &path,
+			},
+		}, storage.MovieStateDiscovered)
+		require.NoError(t, err)
+
+		movie, err := store.GetMovieByPath(ctx, path)
+		require.NoError(t, err)
+		require.NotNil(t, movie)
+		assert.Equal(t, path, *movie.Path)
+		assert.Equal(t, storage.MovieStateDiscovered, movie.State)
+	})
+
+	t.Run("missing movie", func(t *testing.T) {
+		ctx := t.Context()
+		store := initSqlite(t, ctx)
+		require.NotNil(t, store)
+
+		movie, err := store.GetMovieByPath(ctx, "does/not/exist")
+		assert.Error(t, err)
+		assert.Nil(t, movie)
+	})
+}
+
+func TestSQLite_GetMovieByMetadataID_Missing(t *testing.T) {
+	ctx := t.Context()
+	store := initSqlite(t, ctx)
+	require.NotNil(t, store)
+
+	movie, err := store.GetMovieByMetadataID(ctx, 424242)
+	assert.ErrorIs(t, err, storage.ErrNotFound)
+	assert.Nil(t, movie)
 }

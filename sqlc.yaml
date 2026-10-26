@@ -8,3 +8,11 @@ sql:
         package: "sqlcdb"
         out: "pkg/storage/sqlcdb"
         emit_interface: true
+        # NOTE: sqlc (≤ v1.31) ignores `rename` for table model structs, so
+        # generated names remain MovieMetadatum/SeriesMetadatum/etc. Kept to
+        # document intent and take effect if sqlc starts honoring it.
+        rename:
+          episode_metadata: "EpisodeMetadata"
+          movie_metadata: "MovieMetadata"
+          season_metadata: "SeasonMetadata"
+          series_metadata: "SeriesMetadata"

@@ -10,7 +10,7 @@ import (
 	indexerMock "github.com/kasuboski/mediaz/pkg/indexer/mocks"
 	"github.com/kasuboski/mediaz/pkg/prowlarr"
 	storageMocks "github.com/kasuboski/mediaz/pkg/storage/mocks"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
+	"github.com/kasuboski/mediaz/pkg/storage/model"
 	"github.com/oapi-codegen/nullable"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -668,7 +668,7 @@ func TestIndexerService_RefreshAllIndexerSources(t *testing.T) {
 		svc, _, srcStorage, factory := newTestIndexerService(ctrl)
 
 		src := indexerMock.NewMockIndexerSource(ctrl)
-		srcStorage.EXPECT().ListIndexerSources(ctx, gomock.Any()).Return([]*model.IndexerSource{
+		srcStorage.EXPECT().ListEnabledIndexerSources(ctx).Return([]*model.IndexerSource{
 			{ID: 1, Name: "src1", Scheme: "http", Host: "host1", Enabled: true},
 			{ID: 2, Name: "src2", Scheme: "http", Host: "host2", Enabled: true},
 		}, nil)
@@ -707,7 +707,7 @@ func TestIndexerService_RefreshAllIndexerSources(t *testing.T) {
 		svc, _, srcStorage, factory := newTestIndexerService(ctrl)
 
 		src := indexerMock.NewMockIndexerSource(ctrl)
-		srcStorage.EXPECT().ListIndexerSources(ctx, gomock.Any()).Return([]*model.IndexerSource{
+		srcStorage.EXPECT().ListEnabledIndexerSources(ctx).Return([]*model.IndexerSource{
 			{ID: 1, Enabled: true},
 			{ID: 2, Enabled: true},
 		}, nil)

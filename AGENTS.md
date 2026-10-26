@@ -34,8 +34,10 @@ go test -cover ./...        # Run tests with coverage
 
 ### Database
 ```bash
-./mediaz generate schema    # Create database schema
+make generate               # Regenerate sqlc queries + mocks (runs sqlc generate)
 ```
+Migrations live in `pkg/storage/sqlite/migrations/`; the sqlc schema snapshot
+is `pkg/storage/sqlite/schema/schema.sql` (guarded by `schema_parity_test.go`).
 
 ## Architecture Overview
 
@@ -53,9 +55,10 @@ go test -cover ./...        # Run tests with coverage
 - Handles movie/TV metadata fetching and library management
 - Manages indexers, quality profiles, and download clients
 
-**Storage Layer**: `pkg/storage/sqlite/` using Jet ORM
-- SQLite database with generated models in `schema/gen/`
-- Schema defined in `schema/schema.sql` and `schema/defaults.sql`
+**Storage Layer**: `pkg/storage/sqlite/` using sqlc
+- SQLite database with sqlc-generated queries in `pkg/storage/sqlcdb/`
+- Handwritten domain models in `pkg/storage/model/` (legacy shapes preserved)
+- Schema defined in `pkg/storage/sqlite/schema/schema.sql` and `defaults.sql`
 
 **External Integrations**:
 - `pkg/tmdb/` - TMDB API client (generated from schema)
@@ -118,7 +121,7 @@ When disabled:
 The project uses code generation extensively:
 - TMDB client from `tmdb.schema.json` (fetched from TMDB OpenAPI)
 - Prowlarr client from `prowlarr.schema.json` (fetched from Prowlarr repo)
-- Database models via Jet ORM from SQL schema
+- Database queries via sqlc from `pkg/storage/sqlite/queries/*.sql`
 - Mock interfaces via go:generate directives
 
 Run `make generate` to regenerate all external schemas and code.
@@ -170,6 +173,5 @@ store.EXPECT().ListMoviesByState(ctx, storage.MovieStateDownloaded).Return([]*st
 - `mediaz search indexer <query>` - Search indexers for content
 
 **System Management**:
-- `mediaz generate schema` - Create DB schema
 - `mediaz --config <path>` - Specify config file
 

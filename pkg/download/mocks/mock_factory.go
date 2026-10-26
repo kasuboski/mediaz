@@ -13,7 +13,7 @@ import (
 	reflect "reflect"
 
 	download "github.com/kasuboski/mediaz/pkg/download"
-	model "github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
+	model "github.com/kasuboski/mediaz/pkg/storage/model"
 	gomock "go.uber.org/mock/gomock"
 )
 

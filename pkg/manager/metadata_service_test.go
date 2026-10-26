@@ -12,7 +12,7 @@ import (
 
 	"github.com/kasuboski/mediaz/pkg/ptr"
 	storeMocks "github.com/kasuboski/mediaz/pkg/storage/mocks"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
+	"github.com/kasuboski/mediaz/pkg/storage/model"
 	"github.com/kasuboski/mediaz/pkg/tmdb"
 	tmdbMocks "github.com/kasuboski/mediaz/pkg/tmdb/mocks"
 	"github.com/stretchr/testify/assert"
@@ -81,7 +81,7 @@ func TestMetadataService_GetMovieMetadata(t *testing.T) {
 		ctrl := gomock.NewController(t)
 
 		store := storeMocks.NewMockStorage(ctrl)
-		store.EXPECT().GetMovieMetadata(ctx, gomock.Any()).Return(nil, errors.New("db error"))
+		store.EXPECT().GetMovieMetadataByTmdbID(ctx, gomock.Any()).Return(nil, errors.New("db error"))
 
 		svc := NewMetadataService(nil, store, nil)
 		_, err := svc.GetMovieMetadata(ctx, 1)
@@ -300,13 +300,13 @@ func TestMetadataService_GetSeriesMetadata(t *testing.T) {
 			Overview:     ptr.To(""),
 		}, *series)
 
-		seasons, err := store.ListSeasonMetadata(ctx)
+		seasons, err := store.ListSeasonMetadataBySeriesMetadataID(ctx, 1)
 		require.NoError(t, err)
 		assert.Equal(t, []*model.SeasonMetadata{
 			{ID: 1, SeriesMetadataID: 1, TmdbID: 10, Title: "Season 1", Number: 1, AirDate: &airDate, Overview: ptr.To("")},
 		}, seasons)
 
-		episodes, err := store.ListEpisodeMetadata(ctx)
+		episodes, err := store.ListEpisodeMetadataBySeasonMetadataID(ctx, 1)
 		require.NoError(t, err)
 		assert.Equal(t, []*model.EpisodeMetadata{
 			{ID: 1, SeasonMetadataID: 1, TmdbID: 100, Title: "Pilot", Number: 1, AirDate: &airDate, Runtime: &epRuntime, Overview: ptr.To("Episode overview")},
@@ -318,7 +318,7 @@ func TestMetadataService_GetSeriesMetadata(t *testing.T) {
 		ctrl := gomock.NewController(t)
 
 		store := storeMocks.NewMockStorage(ctrl)
-		store.EXPECT().GetSeriesMetadata(ctx, gomock.Any()).Return(nil, errors.New("storage down"))
+		store.EXPECT().GetSeriesMetadataByTmdbID(ctx, gomock.Any()).Return(nil, errors.New("storage down"))
 
 		svc := NewMetadataService(nil, nil, store)
 		_, err := svc.GetSeriesMetadata(ctx, 502)
@@ -802,13 +802,13 @@ func TestMetadataService_RefreshSeriesMetadataFromTMDB(t *testing.T) {
 			Overview:     ptr.To(""),
 		}, *series)
 
-		seasons, err := store.ListSeasonMetadata(ctx)
+		seasons, err := store.ListSeasonMetadataBySeriesMetadataID(ctx, 1)
 		require.NoError(t, err)
 		assert.Equal(t, []*model.SeasonMetadata{
 			{ID: 1, SeriesMetadataID: 1, TmdbID: 20, Title: "Season 1", Number: 1, AirDate: &airDate, Overview: ptr.To("")},
 		}, seasons)
 
-		episodes, err := store.ListEpisodeMetadata(ctx)
+		episodes, err := store.ListEpisodeMetadataBySeasonMetadataID(ctx, 1)
 		require.NoError(t, err)
 		assert.Equal(t, []*model.EpisodeMetadata{
 			{ID: 1, SeasonMetadataID: 1, TmdbID: 200, Title: "Episode One", Number: 1, AirDate: &airDate, Runtime: &epRuntime, Overview: ptr.To("")},

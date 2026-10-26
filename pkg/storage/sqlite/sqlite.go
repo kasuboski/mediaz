@@ -5,12 +5,9 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/go-jet/jet/v2/sqlite"
-	"github.com/kasuboski/mediaz/pkg/logger"
 	"github.com/kasuboski/mediaz/pkg/storage"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 	_ "github.com/mattn/go-sqlite3"
-	"go.uber.org/zap"
 )
 
 // SQLite wraps a *sql.DB and an embedded *sqlcdb.Queries that is bound to the
@@ -24,7 +21,7 @@ type SQLite struct {
 }
 
 // txQueries returns a *sqlcdb.Queries scoped to tx so that sqlc-generated
-// calls participate in the same transaction as jet ORM statements.
+// calls participate in the transaction rather than running on the base DB.
 func (s *SQLite) txQueries(tx *sql.Tx) *sqlcdb.Queries {
 	return s.Queries.WithTx(tx)
 }
@@ -74,32 +71,4 @@ func (s *SQLite) Init(ctx context.Context, schemas ...string) error {
 	}
 
 	return tx.Commit()
-}
-
-func (s *SQLite) handleInsert(ctx context.Context, stmt sqlite.InsertStatement) (sql.Result, error) {
-	return s.handleStatement(ctx, stmt)
-}
-
-func (s *SQLite) handleDelete(ctx context.Context, stmt sqlite.DeleteStatement) (sql.Result, error) {
-	return s.handleStatement(ctx, stmt)
-}
-
-func (s *SQLite) handleStatement(ctx context.Context, stmt sqlite.Statement) (sql.Result, error) {
-	log := logger.FromCtx(ctx)
-	var result sql.Result
-
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		log.Debug("failed to init transaction", zap.Error(err))
-		return result, err
-	}
-
-	result, err = stmt.ExecContext(ctx, tx)
-	if err != nil {
-		log.Debug("failed to execute statement", zap.String("query", stmt.DebugSql()), zap.Error(err))
-		tx.Rollback()
-		return result, err
-	}
-
-	return result, tx.Commit()
 }

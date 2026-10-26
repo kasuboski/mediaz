@@ -16,7 +16,7 @@ import (
 
 	indexer "github.com/kasuboski/mediaz/pkg/indexer"
 	prowlarr "github.com/kasuboski/mediaz/pkg/prowlarr"
-	model "github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
+	model "github.com/kasuboski/mediaz/pkg/storage/model"
 	gomock "go.uber.org/mock/gomock"
 )
 

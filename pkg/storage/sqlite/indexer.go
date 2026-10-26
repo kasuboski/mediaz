@@ -4,15 +4,20 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/go-jet/jet/v2/sqlite"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/table"
+	"github.com/kasuboski/mediaz/pkg/storage/model"
+	"github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 )
 
-// CreateIndexer stores a new indexer in the database
+// CreateIndexer stores a new indexer in the database. If an indexer with the
+// same (source, name) pair already exists the insert does nothing.
 func (s *SQLite) CreateIndexer(ctx context.Context, indexer model.Indexer) (int64, error) {
-	stmt := table.Indexer.INSERT(table.Indexer.AllColumns.Except(table.Indexer.ID)).MODEL(indexer).ON_CONFLICT(table.Indexer.IndexerSourceID, table.Indexer.Name).DO_NOTHING().RETURNING(table.Indexer.AllColumns)
-	result, err := s.handleInsert(ctx, stmt)
+	result, err := s.Queries.CreateIndexer(ctx, sqlcdb.CreateIndexerParams{
+		Name:            indexer.Name,
+		Priority:        int64(indexer.Priority),
+		Uri:             indexer.URI,
+		ApiKey:          cfgNullString(indexer.APIKey),
+		IndexerSourceID: cfgNullInt64FromInt32(indexer.IndexerSourceID),
+	})
 	if err != nil {
 		return 0, err
 	}
@@ -20,49 +25,40 @@ func (s *SQLite) CreateIndexer(ctx context.Context, indexer model.Indexer) (int6
 	return result.LastInsertId()
 }
 
+// UpdateIndexer updates an indexer. A nil APIKey leaves the stored key
+// untouched (COALESCE in the query).
 func (s *SQLite) UpdateIndexer(ctx context.Context, id int64, indexer model.Indexer) error {
-	if indexer.APIKey != nil {
-		stmt := table.Indexer.UPDATE(
-			table.Indexer.Name,
-			table.Indexer.Priority,
-			table.Indexer.URI,
-			table.Indexer.APIKey,
-		).MODEL(indexer).WHERE(table.Indexer.ID.EQ(sqlite.Int64(id)))
-		_, err := stmt.ExecContext(ctx, s.db)
-		return err
-	}
-
-	stmt := table.Indexer.UPDATE(
-		table.Indexer.Name,
-		table.Indexer.Priority,
-		table.Indexer.URI,
-	).MODEL(indexer).WHERE(table.Indexer.ID.EQ(sqlite.Int64(id)))
-	_, err := stmt.ExecContext(ctx, s.db)
-	return err
+	return s.Queries.UpdateIndexer(ctx, sqlcdb.UpdateIndexerParams{
+		Name:     indexer.Name,
+		Priority: int64(indexer.Priority),
+		Uri:      indexer.URI,
+		ApiKey:   cfgNullString(indexer.APIKey),
+		ID:       id,
+	})
 }
 
 // DeleteIndexer deletes a stored indexer given the indexer ID
 func (s *SQLite) DeleteIndexer(ctx context.Context, id int64) error {
-	stmt := table.Indexer.DELETE().WHERE(table.Indexer.ID.EQ(sqlite.Int64(id))).RETURNING(table.Indexer.AllColumns)
-	_, err := s.handleDelete(ctx, stmt)
-	return err
+	return s.Queries.DeleteIndexer(ctx, id)
 }
 
-// ListIndexers lists the stored indexers
-func (s *SQLite) ListIndexers(ctx context.Context, where ...sqlite.BoolExpression) ([]*model.Indexer, error) {
-	indexers := make([]*model.Indexer, 0)
-
-	stmt := table.Indexer.SELECT(table.Indexer.AllColumns).FROM(table.Indexer)
-
-	for _, w := range where {
-		stmt = stmt.WHERE(w)
-	}
-
-	stmt = stmt.ORDER_BY(table.Indexer.Priority.DESC())
-
-	err := stmt.QueryContext(ctx, s.db, &indexers)
+// ListIndexers lists the stored indexers ordered by priority descending
+func (s *SQLite) ListIndexers(ctx context.Context) ([]*model.Indexer, error) {
+	rows, err := s.Queries.ListIndexers(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list indexers: %w", err)
+	}
+
+	indexers := make([]*model.Indexer, 0, len(rows))
+	for _, r := range rows {
+		indexers = append(indexers, &model.Indexer{
+			ID:              int32(r.ID),
+			Name:            r.Name,
+			Priority:        int32(r.Priority),
+			URI:             r.Uri,
+			APIKey:          cfgStringPtr(r.ApiKey),
+			IndexerSourceID: cfgInt32Ptr(r.IndexerSourceID),
+		})
 	}
 
 	return indexers, nil

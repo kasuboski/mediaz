@@ -8,9 +8,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/go-jet/jet/v2/sqlite"
 	"github.com/kasuboski/mediaz/pkg/machine"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
+	"github.com/kasuboski/mediaz/pkg/storage/model"
 )
 
 var ErrNotFound = errors.New("not found in storage")
@@ -39,13 +38,14 @@ type IndexerStorage interface {
 	CreateIndexer(ctx context.Context, indexer model.Indexer) (int64, error)
 	UpdateIndexer(ctx context.Context, id int64, indexer model.Indexer) error
 	DeleteIndexer(ctx context.Context, id int64) error
-	ListIndexers(ctx context.Context, where ...sqlite.BoolExpression) ([]*model.Indexer, error)
+	ListIndexers(ctx context.Context) ([]*model.Indexer, error)
 }
 
 type IndexerSourceStorage interface {
 	CreateIndexerSource(ctx context.Context, source model.IndexerSource) (int64, error)
 	GetIndexerSource(ctx context.Context, id int64) (model.IndexerSource, error)
-	ListIndexerSources(ctx context.Context, where ...sqlite.BoolExpression) ([]*model.IndexerSource, error)
+	ListIndexerSources(ctx context.Context) ([]*model.IndexerSource, error)
+	ListEnabledIndexerSources(ctx context.Context) ([]*model.IndexerSource, error)
 	UpdateIndexerSource(ctx context.Context, id int64, source model.IndexerSource) error
 	DeleteIndexerSource(ctx context.Context, id int64) error
 	// DeleteIndexerSourceCascade deletes an indexer source and all its child
@@ -57,8 +57,9 @@ type IndexerSourceStorage interface {
 type QualityStorage interface {
 	CreateQualityProfile(ctx context.Context, profile model.QualityProfile) (int64, error)
 	GetQualityProfile(ctx context.Context, id int64) (QualityProfile, error)
-	ListQualityProfiles(ctx context.Context, where ...sqlite.BoolExpression) ([]*QualityProfile, error)
-	UpdateQualityProfile(ctx context.Context, id int64, profile model.QualityProfile) error
+	ListQualityProfiles(ctx context.Context) ([]*QualityProfile, error)
+	ListQualityProfilesByMediaType(ctx context.Context, mediaType string) ([]*QualityProfile, error)
+	UpdateQualityProfile(ctx context.Context, id int64, profile QualityProfile) error
 	DeleteQualityProfile(ctx context.Context, id int64) error //TODO: do we cascade associated items?
 
 	CreateQualityProfileItem(ctx context.Context, item model.QualityProfileItem) (int64, error)
@@ -122,7 +123,7 @@ type MovieStorage interface {
 	UpdateMovieState(ctx context.Context, id int64, state MovieState, metadata *TransitionStateMetadata) error
 	UpdateMovieMovieFileID(ctx context.Context, id int64, fileID int64) error
 	UpdateMovieQualityProfile(ctx context.Context, id int64, qualityProfileID int32) error
-	UpdateMovie(ctx context.Context, movie model.Movie, where ...sqlite.BoolExpression) error
+	UpdateMovieByID(ctx context.Context, id int64, movie model.Movie) error
 
 	GetMovieFilesByMovieName(ctx context.Context, name string) ([]*model.MovieFile, error)
 	CreateMovieFile(ctx context.Context, movieFile model.MovieFile) (int64, error)
@@ -136,7 +137,8 @@ type MovieMetadataStorage interface {
 	UpdateMovieMetadata(ctx context.Context, metadata model.MovieMetadata) error
 	DeleteMovieMetadata(ctx context.Context, id int64) error
 	ListMovieMetadata(ctx context.Context) ([]*model.MovieMetadata, error)
-	GetMovieMetadata(ctx context.Context, where sqlite.BoolExpression) (*model.MovieMetadata, error)
+	GetMovieMetadataByID(ctx context.Context, id int64) (*model.MovieMetadata, error)
+	GetMovieMetadataByTmdbID(ctx context.Context, tmdbID int64) (*model.MovieMetadata, error)
 }
 
 type DownloadClientStorage interface {
@@ -175,14 +177,21 @@ func (j Job) Machine() *machine.StateMachine[JobState] {
 	)
 }
 
+// JobFilter constrains current job state. Zero value matches all jobs;
+// implementations always constrain to the most recent transition.
+type JobFilter struct {
+	Type  *string
+	State *string
+}
+
 type JobStorage interface {
 	CreateJob(ctx context.Context, job Job, initialState JobState) (int64, error)
 	GetJob(ctx context.Context, id int64) (*Job, error)
-	CountJobs(ctx context.Context, where ...sqlite.BoolExpression) (int, error)
-	ListJobs(ctx context.Context, offset, limit int, where ...sqlite.BoolExpression) ([]*Job, error)
+	CountJobs(ctx context.Context, filter JobFilter) (int, error)
+	ListJobs(ctx context.Context, offset, limit int, filter JobFilter) ([]*Job, error)
 	UpdateJobState(ctx context.Context, id int64, state JobState, errorMsg *string) error
 	DeleteJob(ctx context.Context, id int64) error
-	DeleteJobs(ctx context.Context, where ...sqlite.BoolExpression) (int64, error)
+	DeleteJobsByIDs(ctx context.Context, ids []int64) (int64, error)
 }
 
 type QualityProfile struct {
@@ -295,27 +304,48 @@ func (e Episode) Machine() *machine.StateMachine[EpisodeState] {
 	)
 }
 
+// SeriesFilter constrains series by current state. Zero value matches all.
+type SeriesFilter struct {
+	States    []SeriesState
+	Monitored *bool
+}
+
+// SeasonFilter constrains seasons. Zero value matches all.
+type SeasonFilter struct {
+	SeriesID *int64
+	States   []SeasonState
+}
+
+// EpisodeFilter constrains episodes. Zero value matches all.
+type EpisodeFilter struct {
+	SeasonID *int64
+	States   []EpisodeState
+}
+
 type SeriesStorage interface {
-	GetSeries(ctx context.Context, where sqlite.BoolExpression) (*Series, error)
+	GetSeriesByID(ctx context.Context, id int64) (*Series, error)
+	GetSeriesByMetadataID(ctx context.Context, metadataID int32) (*Series, error)
+	GetSeriesByPath(ctx context.Context, path string) (*Series, error)
 	CreateSeries(ctx context.Context, series Series, initialState SeriesState) (int64, error)
 	DeleteSeries(ctx context.Context, id int64) error
-	ListSeries(ctx context.Context, where ...sqlite.BoolExpression) ([]*Series, error)
+	ListSeries(ctx context.Context, filter SeriesFilter) ([]*Series, error)
 	UpdateSeriesState(ctx context.Context, id int64, state SeriesState, metadata *TransitionStateMetadata) error
 	LinkSeriesMetadata(ctx context.Context, seriesID int64, metadataID int32) error
-	UpdateSeries(ctx context.Context, series model.Series, where ...sqlite.BoolExpression) error
+	UpdateSeriesByID(ctx context.Context, id int64, series model.Series) error
 
-	GetSeason(ctx context.Context, where sqlite.BoolExpression) (*Season, error)
+	GetSeasonByID(ctx context.Context, id int64) (*Season, error)
+	GetSeasonBySeriesIDAndNumber(ctx context.Context, seriesID int64, seasonNumber int32) (*Season, error)
 	CreateSeason(ctx context.Context, season Season, initialState SeasonState) (int64, error)
 	DeleteSeason(ctx context.Context, id int64) error
-	ListSeasons(ctx context.Context, where ...sqlite.BoolExpression) ([]*Season, error)
+	ListSeasons(ctx context.Context, filter SeasonFilter) ([]*Season, error)
 	UpdateSeasonState(ctx context.Context, id int64, season SeasonState, metadata *TransitionStateMetadata) error
 	LinkSeasonMetadata(ctx context.Context, seasonID int64, metadataID int32) error
 
-	GetEpisode(ctx context.Context, where sqlite.BoolExpression) (*Episode, error)
+	GetEpisodeByID(ctx context.Context, id int64) (*Episode, error)
 	GetEpisodeByEpisodeFileID(ctx context.Context, fileID int64) (*Episode, error)
 	CreateEpisode(ctx context.Context, episode Episode, initialState EpisodeState) (int64, error)
 	DeleteEpisode(ctx context.Context, id int64) error
-	ListEpisodes(ctx context.Context, where ...sqlite.BoolExpression) ([]*Episode, error)
+	ListEpisodes(ctx context.Context, filter EpisodeFilter) ([]*Episode, error)
 	UpdateEpisodeEpisodeFileID(ctx context.Context, id int64, fileID int64) error
 	UpdateEpisodeState(ctx context.Context, id int64, state EpisodeState, metadata *TransitionStateMetadata) error
 	LinkEpisodeMetadata(ctx context.Context, episodeID int64, seasonID int32, episodeMetadataID int32) error
@@ -332,18 +362,24 @@ type SeriesMetadataStorage interface {
 	CreateSeriesMetadata(ctx context.Context, SeriesMeta model.SeriesMetadata) (int64, error)
 	UpdateSeriesMetadata(ctx context.Context, metadata model.SeriesMetadata) error
 	DeleteSeriesMetadata(ctx context.Context, id int64) error
-	ListSeriesMetadata(ctx context.Context, where ...sqlite.BoolExpression) ([]*model.SeriesMetadata, error)
-	GetSeriesMetadata(ctx context.Context, where sqlite.BoolExpression) (*model.SeriesMetadata, error)
+	ListSeriesMetadata(ctx context.Context) ([]*model.SeriesMetadata, error)
+	ListSeriesMetadataByStatus(ctx context.Context, status string) ([]*model.SeriesMetadata, error)
+	GetSeriesMetadataByID(ctx context.Context, id int64) (*model.SeriesMetadata, error)
+	GetSeriesMetadataByTmdbID(ctx context.Context, tmdbID int64) (*model.SeriesMetadata, error)
 
 	CreateSeasonMetadata(ctx context.Context, seasonMeta model.SeasonMetadata) (int64, error)
 	DeleteSeasonMetadata(ctx context.Context, id int64) error
-	ListSeasonMetadata(ctx context.Context, where ...sqlite.BoolExpression) ([]*model.SeasonMetadata, error)
-	GetSeasonMetadata(ctx context.Context, where sqlite.BoolExpression) (*model.SeasonMetadata, error)
+	ListSeasonMetadataBySeriesMetadataID(ctx context.Context, seriesMetadataID int32) ([]*model.SeasonMetadata, error)
+	GetSeasonMetadataByID(ctx context.Context, id int64) (*model.SeasonMetadata, error)
+	GetSeasonMetadataByTmdbID(ctx context.Context, tmdbID int64) (*model.SeasonMetadata, error)
 
 	CreateEpisodeMetadata(ctx context.Context, episodeMeta model.EpisodeMetadata) (int64, error)
 	DeleteEpisodeMetadata(ctx context.Context, id int64) error
-	ListEpisodeMetadata(ctx context.Context, where ...sqlite.BoolExpression) ([]*model.EpisodeMetadata, error)
-	GetEpisodeMetadata(ctx context.Context, where sqlite.BoolExpression) (*model.EpisodeMetadata, error)
+	ListEpisodeMetadataBySeasonMetadataID(ctx context.Context, seasonMetadataID int32) ([]*model.EpisodeMetadata, error)
+	ListEpisodeMetadataByIDs(ctx context.Context, ids []int64) ([]*model.EpisodeMetadata, error)
+	GetEpisodeMetadataByID(ctx context.Context, id int64) (*model.EpisodeMetadata, error)
+	GetEpisodeMetadataByTmdbID(ctx context.Context, tmdbID int64) (*model.EpisodeMetadata, error)
+	GetEpisodeMetadataBySeasonAndNumber(ctx context.Context, seasonMetadataID, number int32) (*model.EpisodeMetadata, error)
 }
 
 func ReadSchemaFiles(files ...string) ([]string, error) {
