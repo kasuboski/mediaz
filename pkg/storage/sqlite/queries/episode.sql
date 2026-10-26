@@ -1,25 +1,14 @@
--- TV episode queries. Mirrors the legacy Jet statements that used to live in
--- episode.go:
---   - CreateEpisode inserted the id column only when it was non-zero. A NULL
---     id makes SQLite AUTOINCREMENT assign a fresh rowid; a non-NULL id lands
---     in the ON CONFLICT (id) DO UPDATE branch, matching the two legacy
---     branches without conditional SQL.
---   - GetEpisode used a LEFT JOIN on the most recent episode_transition (an
---     episode without transitions is still returned) while ListEpisodes used
---     an INNER JOIN; preserved exactly.
---   - GetEpisodeByEpisodeFileID intentionally selects only to_state,
---     download_id and download_client_id from the transition, matching the
---     legacy column list (is_entire_season_download stays false on this path).
---   - Transition inserts omit created_at/updated_at so the column defaults
---     (CURRENT_TIMESTAMP) apply.
---   - Filter params are nullable (sqlc narg) so zero-value filters mean "no
---     constraint". States uses fixed nullable slots standing in for an IN
---     list; the first slot doubles as the "any state" guard. Nullable params
---     are wrapped in typed casts so sqlc emits sql.Null types instead of
---     interface; the casts are identity no-ops for the bound values. Never
---     cast to datetime types: SQLite affinity would truncate timestamps.
+-- TV episode queries. Entity reads join the most recent episode_transition via
+-- embed(e) plus named transition columns. Get-by-id keeps the legacy LEFT
+-- JOIN (an episode without transitions is still returned) while ListEpisodes
+-- uses an INNER JOIN. ListEpisodes supports any-length state filters through
+-- slice guarded by a nullable param (A3). Unlike the legacy statement,
+-- GetEpisodeByEpisodeFileID now also selects is_entire_season_download so all
+-- episode reads share one column shape.
 
 -- name: CreateEpisode :one
+-- A NULL id lets SQLite assign a fresh AUTOINCREMENT rowid; a non-NULL id
+-- inserts explicitly or lands in the ON CONFLICT branch (upsert by id).
 INSERT INTO
     episode (
         "id",
@@ -45,15 +34,10 @@ ON CONFLICT ("id") DO UPDATE SET
     "episode_file_id" = excluded."episode_file_id"
 RETURNING "id";
 
--- name: GetEpisode :one
+-- name: GetEpisodeByID :one
 SELECT
-    e.id,
-    e.season_id,
-    e.episode_number,
-    e.monitored,
-    e.episode_metadata_id,
-    e.episode_file_id,
-    et.to_state,
+    sqlc.embed(e),
+    et.to_state AS state,
     et.download_id,
     et.download_client_id,
     et.is_entire_season_download
@@ -61,25 +45,14 @@ FROM
     episode AS e
     LEFT JOIN episode_transition AS et ON e.id = et.episode_id
     AND et.most_recent = 1
-WHERE
-    (
-        CAST(sqlc.narg('id') AS INTEGER) IS NULL
-        OR e.id = CAST(sqlc.narg('id') AS INTEGER)
-    )
-    AND (
-        CAST(sqlc.narg('season_id') AS INTEGER) IS NULL
-        OR e.season_id = CAST(sqlc.narg('season_id') AS INTEGER)
-    );
+WHERE e.id = sqlc.arg('id');
 
 -- name: ListEpisodes :many
+-- states_any is a NULL guard: when NULL no state constraint applies; when set,
+-- the states slice constrains the current transition state (any length).
 SELECT
-    e.id,
-    e.season_id,
-    e.episode_number,
-    e.monitored,
-    e.episode_metadata_id,
-    e.episode_file_id,
-    et.to_state,
+    sqlc.embed(e),
+    et.to_state AS state,
     et.download_id,
     et.download_client_id,
     et.is_entire_season_download
@@ -94,25 +67,17 @@ WHERE
     )
     AND (
         CAST(sqlc.narg('states_any') AS TEXT) IS NULL
-        OR et.to_state IN (
-            CAST(sqlc.narg('states_any') AS TEXT),
-            CAST(sqlc.narg('state_2') AS TEXT),
-            CAST(sqlc.narg('state_3') AS TEXT),
-            CAST(sqlc.narg('state_4') AS TEXT)
-        )
-    );
+        OR et.to_state IN (sqlc.slice('states'))
+    )
+ORDER BY e.season_id ASC, e.episode_number ASC, e.id ASC;
 
 -- name: GetEpisodeByEpisodeFileID :one
 SELECT
-    e.id,
-    e.season_id,
-    e.episode_number,
-    e.monitored,
-    e.episode_metadata_id,
-    e.episode_file_id,
-    et.to_state,
+    sqlc.embed(e),
+    et.to_state AS state,
     et.download_id,
-    et.download_client_id
+    et.download_client_id,
+    et.is_entire_season_download
 FROM
     episode AS e
     LEFT JOIN episode_transition AS et ON e.id = et.episode_id

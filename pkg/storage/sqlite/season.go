@@ -3,65 +3,23 @@ package sqlite
 import (
 	"context"
 	"database/sql"
-	"errors"
-	"fmt"
 
 	"github.com/kasuboski/mediaz/pkg/storage"
-	"github.com/kasuboski/mediaz/pkg/storage/model"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 )
 
-// tvSeasonFromRow converts a single-row season result into the domain shape.
-// The transition join is a LEFT JOIN, so transition columns may be NULL when
-// a season has no transitions yet.
-func tvSeasonFromRow(r sqlcdb.GetSeasonRow) *storage.Season {
-	return &storage.Season{
-		Season: model.Season{
-			ID:               int32(r.ID),
-			SeriesID:         int32(r.SeriesID),
-			SeasonNumber:     int32(r.SeasonNumber),
-			SeasonMetadataID: tvInt32Ptr(r.SeasonMetadataID),
-			Monitored:        int32(r.Monitored),
-		},
-		DownloadID:       tvStringFromNull(r.DownloadID),
-		DownloadClientID: tvInt32(r.DownloadClientID),
-		State:            storage.SeasonState(tvStringFromNull(r.ToState)),
-	}
-}
-
-// tvSeasonFromListRow converts a list-season result into the domain shape.
-// The list query uses an INNER JOIN, so the state is always present.
-func tvSeasonFromListRow(r sqlcdb.ListSeasonsRow) *storage.Season {
-	return &storage.Season{
-		Season: model.Season{
-			ID:               int32(r.ID),
-			SeriesID:         int32(r.SeriesID),
-			SeasonNumber:     int32(r.SeasonNumber),
-			SeasonMetadataID: tvInt32Ptr(r.SeasonMetadataID),
-			Monitored:        int32(r.Monitored),
-		},
-		DownloadID:       tvStringFromNull(r.DownloadID),
-		DownloadClientID: tvInt32(r.DownloadClientID),
-		State:            storage.SeasonState(r.ToState),
-	}
-}
-
 // LinkSeasonMetadata links a season with its metadata
-func (s *SQLite) LinkSeasonMetadata(ctx context.Context, seasonID int64, metadataID int32) error {
+func (s *SQLite) LinkSeasonMetadata(ctx context.Context, seasonID int64, metadataID int64) error {
 	return s.Queries.LinkSeasonMetadata(ctx, sqlcdb.LinkSeasonMetadataParams{
-		SeasonMetadataID: sql.NullInt64{Int64: int64(metadataID), Valid: true},
+		SeasonMetadataID: sql.NullInt64{Int64: metadataID, Valid: true},
 		ID:               seasonID,
 	})
 }
 
-// CreateSeason stores a season in the database
-func (s *SQLite) CreateSeason(ctx context.Context, season storage.Season, initialState storage.SeasonState) (int64, error) {
-	if season.State == "" {
-		season.State = storage.SeasonStateNew
-	}
-
-	err := season.Machine().ToState(initialState)
-	if err != nil {
+// CreateSeason stores a season in the database. A zero season.ID lets SQLite
+// assign a fresh autoincrement id; a non-zero id upserts by id.
+func (s *SQLite) CreateSeason(ctx context.Context, season sqlcdb.Season, initialState storage.SeasonState) (int64, error) {
+	if err := storage.SeasonStateNew.Machine().ToState(initialState); err != nil {
 		return 0, err
 	}
 
@@ -69,30 +27,36 @@ func (s *SQLite) CreateSeason(ctx context.Context, season storage.Season, initia
 	if err != nil {
 		return 0, err
 	}
+	q := s.txQueries(tx)
 
-	// A NULL id lets SQLite assign a fresh AUTOINCREMENT rowid; a non-zero id
-	// inserts explicitly or lands in the ON CONFLICT branch, matching the two
-	// legacy insert column lists.
-	inserted, err := s.txQueries(tx).CreateSeason(ctx, sqlcdb.CreateSeasonParams{
-		ID:               tvNullID(season.ID),
-		SeriesID:         int64(season.SeriesID),
-		SeasonNumber:     int64(season.SeasonNumber),
-		SeasonMetadataID: tvNullInt64FromInt32Ptr(season.SeasonMetadataID),
-		Monitored:        int64(season.Monitored),
+	inserted, err := q.CreateSeason(ctx, sqlcdb.CreateSeasonParams{
+		ID:               sql.NullInt64{Int64: season.ID, Valid: season.ID != 0},
+		SeriesID:         season.SeriesID,
+		SeasonNumber:     season.SeasonNumber,
+		SeasonMetadataID: season.SeasonMetadataID,
+		Monitored:        season.Monitored,
 	})
 	if err != nil {
 		tx.Rollback()
 		return 0, err
 	}
 
-	err = s.txQueries(tx).InsertSeasonTransition(ctx, sqlcdb.InsertSeasonTransitionParams{
+	current, err := q.GetSeasonByID(ctx, inserted)
+	if err != nil {
+		tx.Rollback()
+		return 0, err
+	}
+	// Upserts update the entity, never reset its transition history.
+	if current.State.Valid {
+		return inserted, tx.Commit()
+	}
+
+	if err := q.InsertSeasonTransition(ctx, sqlcdb.InsertSeasonTransitionParams{
 		SeasonID:   inserted,
 		ToState:    string(initialState),
-		FromState:  sql.NullString{},
 		MostRecent: true,
 		SortKey:    1,
-	})
-	if err != nil {
+	}); err != nil {
 		tx.Rollback()
 		return 0, err
 	}
@@ -106,91 +70,78 @@ func (s *SQLite) CreateSeason(ctx context.Context, season storage.Season, initia
 }
 
 // GetSeasonByID gets a season by id
-func (s *SQLite) GetSeasonByID(ctx context.Context, id int64) (*storage.Season, error) {
-	return s.getSeason(ctx, sqlcdb.GetSeasonParams{ID: sql.NullInt64{Int64: id, Valid: true}})
+func (s *SQLite) GetSeasonByID(ctx context.Context, id int64) (sqlcdb.GetSeasonByIDRow, error) {
+	row, err := s.Queries.GetSeasonByID(ctx, id)
+	if err != nil {
+		return sqlcdb.GetSeasonByIDRow{}, mapQueryErr(err, "failed to get season")
+	}
+	return row, nil
 }
 
 // GetSeasonBySeriesIDAndNumber gets a season given its series id and season number
-func (s *SQLite) GetSeasonBySeriesIDAndNumber(ctx context.Context, seriesID int64, seasonNumber int32) (*storage.Season, error) {
-	return s.getSeason(ctx, sqlcdb.GetSeasonParams{
-		SeriesID:     sql.NullInt64{Int64: seriesID, Valid: true},
-		SeasonNumber: sql.NullInt64{Int64: int64(seasonNumber), Valid: true},
+func (s *SQLite) GetSeasonBySeriesIDAndNumber(ctx context.Context, seriesID int64, seasonNumber int64) (sqlcdb.GetSeasonBySeriesIDAndNumberRow, error) {
+	row, err := s.Queries.GetSeasonBySeriesIDAndNumber(ctx, sqlcdb.GetSeasonBySeriesIDAndNumberParams{
+		SeriesID:     seriesID,
+		SeasonNumber: seasonNumber,
 	})
-}
-
-func (s *SQLite) getSeason(ctx context.Context, params sqlcdb.GetSeasonParams) (*storage.Season, error) {
-	row, err := s.Queries.GetSeason(ctx, params)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, storage.ErrNotFound
-		}
-		return nil, fmt.Errorf("failed to get season: %w", err)
+		return sqlcdb.GetSeasonBySeriesIDAndNumberRow{}, mapQueryErr(err, "failed to get season")
 	}
-
-	return tvSeasonFromRow(row), nil
+	return row, nil
 }
 
 // DeleteSeason removes a season by id
 func (s *SQLite) DeleteSeason(ctx context.Context, id int64) error {
-	err := s.Queries.DeleteSeason(ctx, id)
-	if err != nil {
-		return fmt.Errorf("failed to delete season: %w", err)
+	if err := s.Queries.DeleteSeason(ctx, id); err != nil {
+		return err
 	}
-
 	return nil
 }
 
 // ListSeasons lists seasons constrained by the filter; a zero-value filter
-// lists everything.
-func (s *SQLite) ListSeasons(ctx context.Context, filter storage.SeasonFilter) ([]*storage.Season, error) {
-	params := sqlcdb.ListSeasonsParams{}
+// lists everything. The States filter accepts any number of states.
+func (s *SQLite) ListSeasons(ctx context.Context, filter storage.SeasonFilter) ([]sqlcdb.ListSeasonsRow, error) {
+	params := sqlcdb.ListSeasonsParams{
+		States: make([]string, 0, len(filter.States)),
+	}
 	if filter.SeriesID != nil {
 		params.SeriesID = sql.NullInt64{Int64: *filter.SeriesID, Valid: true}
 	}
-
-	slots, err := tvStateSlotsFrom(tvStateStrings(filter.States))
-	if err != nil {
-		return nil, fmt.Errorf("failed to list seasons: %w", err)
+	for _, state := range filter.States {
+		params.States = append(params.States, string(state))
 	}
-	params.StatesAny = slots.Any
-	params.State2 = slots.S2
-	params.State3 = slots.S3
-	params.State4 = slots.S4
+	if len(params.States) > 0 {
+		params.StatesAny = sql.NullString{String: params.States[0], Valid: true}
+	}
 
 	rows, err := s.Queries.ListSeasons(ctx, params)
 	if err != nil {
-		return nil, fmt.Errorf("failed to list seasons: %w", err)
+		return nil, mapQueryErr(err, "failed to list seasons")
 	}
-
-	seasons := make([]*storage.Season, 0, len(rows))
-	for _, r := range rows {
-		seasons = append(seasons, tvSeasonFromListRow(r))
-	}
-
-	return seasons, nil
+	return rows, nil
 }
 
-// UpdateSeasonState updates the transition state of a season
-// Metadata is optional and can be nil
+// UpdateSeasonState updates the transition state of a season. Metadata is
+// optional and can be nil. The demote+insert pair runs in one transaction; on
+// any failure nothing is written.
 func (s *SQLite) UpdateSeasonState(ctx context.Context, id int64, state storage.SeasonState, metadata *storage.TransitionStateMetadata) error {
-	season, err := s.GetSeasonByID(ctx, id)
-	if err != nil {
-		return err
-	}
-
-	err = season.Machine().ToState(state)
-	if err != nil {
-		return err
-	}
-
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	q := s.txQueries(tx)
+	season, err := q.GetSeasonByID(ctx, id)
+	if err != nil {
+		return mapQueryErr(err, "failed to get season")
+	}
+	if err := storage.SeasonState(season.State.String).Machine().ToState(state); err != nil {
 		return err
 	}
 
 	// Demote the current most recent transition; the query errors when the
 	// season has no transition, matching the legacy behavior.
-	previousSortKey, err := s.txQueries(tx).DemoteSeasonTransition(ctx, id)
+	previousSortKey, err := q.DemoteSeasonTransition(ctx, id)
 	if err != nil {
 		tx.Rollback()
 		return err
@@ -198,15 +149,14 @@ func (s *SQLite) UpdateSeasonState(ctx context.Context, id int64, state storage.
 
 	transition := sqlcdb.InsertSeasonTransitionParams{
 		SeasonID:   id,
+		FromState:  season.State,
 		ToState:    string(state),
-		FromState:  sql.NullString{},
 		MostRecent: true,
-		SortKey:    int64(int32(previousSortKey) + 1),
+		SortKey:    previousSortKey + 1,
 	}
-
 	if metadata != nil {
 		if metadata.DownloadClientID != nil {
-			transition.DownloadClientID = sql.NullInt64{Int64: int64(*metadata.DownloadClientID), Valid: true}
+			transition.DownloadClientID = sql.NullInt64{Int64: *metadata.DownloadClientID, Valid: true}
 		}
 		if metadata.DownloadID != nil {
 			transition.DownloadID = sql.NullString{String: *metadata.DownloadID, Valid: true}
@@ -216,8 +166,7 @@ func (s *SQLite) UpdateSeasonState(ctx context.Context, id int64, state storage.
 		}
 	}
 
-	err = s.txQueries(tx).InsertSeasonTransition(ctx, transition)
-	if err != nil {
+	if err := q.InsertSeasonTransition(ctx, transition); err != nil {
 		tx.Rollback()
 		return err
 	}

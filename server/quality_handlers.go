@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"github.com/kasuboski/mediaz/pkg/manager"
-	"github.com/kasuboski/mediaz/pkg/storage"
+	"github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 )
 
 // ListQualityDefinitions lists all stored quality definitions
@@ -15,7 +15,7 @@ func (s Server) ListQualityDefinitions() http.HandlerFunc {
 			s.respondError(r, w, http.StatusInternalServerError, err)
 			return
 		}
-		s.respond(r, w, http.StatusOK, result)
+		s.respond(r, w, http.StatusOK, qualityDefinitionsDTO(result))
 	}
 }
 
@@ -32,7 +32,7 @@ func (s Server) GetQualityDefinition() http.HandlerFunc {
 			s.respondError(r, w, http.StatusInternalServerError, err)
 			return
 		}
-		s.respond(r, w, http.StatusOK, result)
+		s.respond(r, w, http.StatusOK, qualityDefinitionDTO(result))
 	}
 }
 
@@ -49,7 +49,7 @@ func (s Server) CreateQualityDefinition() http.HandlerFunc {
 			s.respondError(r, w, http.StatusInternalServerError, err)
 			return
 		}
-		s.respond(r, w, http.StatusCreated, definition)
+		s.respond(r, w, http.StatusCreated, qualityDefinitionDTO(definition))
 	}
 }
 
@@ -61,8 +61,7 @@ func (s Server) DeleteQualityDefinition() http.HandlerFunc {
 			return
 		}
 
-		idInt := int(id)
-		if err := s.manager.DeleteQualityDefinition(r.Context(), manager.DeleteQualityDefinitionRequest{ID: &idInt}); err != nil {
+		if err := s.manager.DeleteQualityDefinition(r.Context(), manager.DeleteQualityDefinitionRequest{ID: &id}); err != nil {
 			s.respondError(r, w, http.StatusInternalServerError, err)
 			return
 		}
@@ -87,7 +86,7 @@ func (s Server) UpdateQualityDefinition() http.HandlerFunc {
 			s.respondError(r, w, http.StatusInternalServerError, err)
 			return
 		}
-		s.respond(r, w, http.StatusOK, definition)
+		s.respond(r, w, http.StatusOK, qualityDefinitionDTO(definition))
 	}
 }
 
@@ -104,7 +103,12 @@ func (s Server) GetQualityProfile() http.HandlerFunc {
 			s.respondError(r, w, http.StatusInternalServerError, err)
 			return
 		}
-		s.respond(r, w, http.StatusOK, profile)
+		response, err := s.profileDTO(r.Context(), profile)
+		if err != nil {
+			s.respondError(r, w, http.StatusInternalServerError, err)
+			return
+		}
+		s.respond(r, w, http.StatusOK, response)
 	}
 }
 
@@ -113,7 +117,7 @@ func (s Server) ListQualityProfiles() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		mediaType := r.URL.Query().Get("type")
 
-		var profiles []*storage.QualityProfile
+		var profiles []sqlcdb.QualityProfile
 		var err error
 
 		switch mediaType {
@@ -129,7 +133,12 @@ func (s Server) ListQualityProfiles() http.HandlerFunc {
 			s.respondError(r, w, http.StatusInternalServerError, err)
 			return
 		}
-		s.respond(r, w, http.StatusOK, profiles)
+		response, err := s.profilesDTO(r.Context(), profiles)
+		if err != nil {
+			s.respondError(r, w, http.StatusInternalServerError, err)
+			return
+		}
+		s.respond(r, w, http.StatusOK, response)
 	}
 }
 
@@ -145,7 +154,12 @@ func (s Server) CreateQualityProfile() http.HandlerFunc {
 			s.respondError(r, w, http.StatusInternalServerError, err)
 			return
 		}
-		s.respond(r, w, http.StatusCreated, profile)
+		response, err := s.profileDTO(r.Context(), profile)
+		if err != nil {
+			s.respondError(r, w, http.StatusInternalServerError, err)
+			return
+		}
+		s.respond(r, w, http.StatusCreated, response)
 	}
 }
 
@@ -166,7 +180,12 @@ func (s Server) UpdateQualityProfile() http.HandlerFunc {
 			s.respondError(r, w, http.StatusInternalServerError, err)
 			return
 		}
-		s.respond(r, w, http.StatusOK, profile)
+		response, err := s.profileDTO(r.Context(), profile)
+		if err != nil {
+			s.respondError(r, w, http.StatusInternalServerError, err)
+			return
+		}
+		s.respond(r, w, http.StatusOK, response)
 	}
 }
 
@@ -177,9 +196,8 @@ func (s Server) DeleteQualityProfile() http.HandlerFunc {
 			return
 		}
 
-		idInt := int(id)
 		req := manager.DeleteQualityProfileRequest{
-			ID: &idInt,
+			ID: &id,
 		}
 
 		if err := s.manager.DeleteQualityProfile(r.Context(), req); err != nil {

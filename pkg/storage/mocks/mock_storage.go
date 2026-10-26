@@ -11,11 +11,11 @@ package mocks
 
 import (
 	context "context"
+	sql "database/sql"
 	reflect "reflect"
-	time "time"
 
 	storage "github.com/kasuboski/mediaz/pkg/storage"
-	model "github.com/kasuboski/mediaz/pkg/storage/model"
+	sqlcdb "github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -58,22 +58,22 @@ func (mr *MockStorageMockRecorder) CountJobs(ctx, filter any) *gomock.Call {
 }
 
 // CountTransitionsByDate mocks base method.
-func (m *MockStorage) CountTransitionsByDate(ctx context.Context, startDate, endDate time.Time) (int, error) {
+func (m *MockStorage) CountTransitionsByDate(ctx context.Context, arg sqlcdb.CountTransitionsByDateParams) (int64, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CountTransitionsByDate", ctx, startDate, endDate)
-	ret0, _ := ret[0].(int)
+	ret := m.ctrl.Call(m, "CountTransitionsByDate", ctx, arg)
+	ret0, _ := ret[0].(int64)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // CountTransitionsByDate indicates an expected call of CountTransitionsByDate.
-func (mr *MockStorageMockRecorder) CountTransitionsByDate(ctx, startDate, endDate any) *gomock.Call {
+func (mr *MockStorageMockRecorder) CountTransitionsByDate(ctx, arg any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CountTransitionsByDate", reflect.TypeOf((*MockStorage)(nil).CountTransitionsByDate), ctx, startDate, endDate)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CountTransitionsByDate", reflect.TypeOf((*MockStorage)(nil).CountTransitionsByDate), ctx, arg)
 }
 
 // CreateDownloadClient mocks base method.
-func (m *MockStorage) CreateDownloadClient(ctx context.Context, client model.DownloadClient) (int64, error) {
+func (m *MockStorage) CreateDownloadClient(ctx context.Context, client sqlcdb.DownloadClient) (int64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateDownloadClient", ctx, client)
 	ret0, _ := ret[0].(int64)
@@ -88,7 +88,7 @@ func (mr *MockStorageMockRecorder) CreateDownloadClient(ctx, client any) *gomock
 }
 
 // CreateEpisode mocks base method.
-func (m *MockStorage) CreateEpisode(ctx context.Context, episode storage.Episode, initialState storage.EpisodeState) (int64, error) {
+func (m *MockStorage) CreateEpisode(ctx context.Context, episode sqlcdb.Episode, initialState storage.EpisodeState) (int64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateEpisode", ctx, episode, initialState)
 	ret0, _ := ret[0].(int64)
@@ -103,7 +103,7 @@ func (mr *MockStorageMockRecorder) CreateEpisode(ctx, episode, initialState any)
 }
 
 // CreateEpisodeFile mocks base method.
-func (m *MockStorage) CreateEpisodeFile(ctx context.Context, episodeFile model.EpisodeFile) (int64, error) {
+func (m *MockStorage) CreateEpisodeFile(ctx context.Context, episodeFile sqlcdb.EpisodeFile) (int64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateEpisodeFile", ctx, episodeFile)
 	ret0, _ := ret[0].(int64)
@@ -118,7 +118,7 @@ func (mr *MockStorageMockRecorder) CreateEpisodeFile(ctx, episodeFile any) *gomo
 }
 
 // CreateEpisodeMetadata mocks base method.
-func (m *MockStorage) CreateEpisodeMetadata(ctx context.Context, episodeMeta model.EpisodeMetadata) (int64, error) {
+func (m *MockStorage) CreateEpisodeMetadata(ctx context.Context, episodeMeta sqlcdb.EpisodeMetadatum) (int64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateEpisodeMetadata", ctx, episodeMeta)
 	ret0, _ := ret[0].(int64)
@@ -133,7 +133,7 @@ func (mr *MockStorageMockRecorder) CreateEpisodeMetadata(ctx, episodeMeta any) *
 }
 
 // CreateIndexer mocks base method.
-func (m *MockStorage) CreateIndexer(ctx context.Context, indexer model.Indexer) (int64, error) {
+func (m *MockStorage) CreateIndexer(ctx context.Context, indexer sqlcdb.Indexer) (int64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateIndexer", ctx, indexer)
 	ret0, _ := ret[0].(int64)
@@ -148,7 +148,7 @@ func (mr *MockStorageMockRecorder) CreateIndexer(ctx, indexer any) *gomock.Call 
 }
 
 // CreateIndexerSource mocks base method.
-func (m *MockStorage) CreateIndexerSource(ctx context.Context, source model.IndexerSource) (int64, error) {
+func (m *MockStorage) CreateIndexerSource(ctx context.Context, source sqlcdb.IndexerSource) (int64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateIndexerSource", ctx, source)
 	ret0, _ := ret[0].(int64)
@@ -163,7 +163,7 @@ func (mr *MockStorageMockRecorder) CreateIndexerSource(ctx, source any) *gomock.
 }
 
 // CreateJob mocks base method.
-func (m *MockStorage) CreateJob(ctx context.Context, job storage.Job, initialState storage.JobState) (int64, error) {
+func (m *MockStorage) CreateJob(ctx context.Context, job sqlcdb.Job, initialState storage.JobState) (int64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateJob", ctx, job, initialState)
 	ret0, _ := ret[0].(int64)
@@ -178,7 +178,7 @@ func (mr *MockStorageMockRecorder) CreateJob(ctx, job, initialState any) *gomock
 }
 
 // CreateMovie mocks base method.
-func (m *MockStorage) CreateMovie(ctx context.Context, movie storage.Movie, state storage.MovieState) (int64, error) {
+func (m *MockStorage) CreateMovie(ctx context.Context, movie sqlcdb.Movie, state storage.MovieState) (int64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateMovie", ctx, movie, state)
 	ret0, _ := ret[0].(int64)
@@ -193,7 +193,7 @@ func (mr *MockStorageMockRecorder) CreateMovie(ctx, movie, state any) *gomock.Ca
 }
 
 // CreateMovieFile mocks base method.
-func (m *MockStorage) CreateMovieFile(ctx context.Context, movieFile model.MovieFile) (int64, error) {
+func (m *MockStorage) CreateMovieFile(ctx context.Context, movieFile sqlcdb.MovieFile) (int64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateMovieFile", ctx, movieFile)
 	ret0, _ := ret[0].(int64)
@@ -208,7 +208,7 @@ func (mr *MockStorageMockRecorder) CreateMovieFile(ctx, movieFile any) *gomock.C
 }
 
 // CreateMovieMetadata mocks base method.
-func (m *MockStorage) CreateMovieMetadata(ctx context.Context, movieMeta model.MovieMetadata) (int64, error) {
+func (m *MockStorage) CreateMovieMetadata(ctx context.Context, movieMeta sqlcdb.MovieMetadatum) (int64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateMovieMetadata", ctx, movieMeta)
 	ret0, _ := ret[0].(int64)
@@ -223,7 +223,7 @@ func (mr *MockStorageMockRecorder) CreateMovieMetadata(ctx, movieMeta any) *gomo
 }
 
 // CreateQualityDefinition mocks base method.
-func (m *MockStorage) CreateQualityDefinition(ctx context.Context, definition model.QualityDefinition) (int64, error) {
+func (m *MockStorage) CreateQualityDefinition(ctx context.Context, definition sqlcdb.QualityDefinition) (int64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateQualityDefinition", ctx, definition)
 	ret0, _ := ret[0].(int64)
@@ -238,7 +238,7 @@ func (mr *MockStorageMockRecorder) CreateQualityDefinition(ctx, definition any) 
 }
 
 // CreateQualityProfile mocks base method.
-func (m *MockStorage) CreateQualityProfile(ctx context.Context, profile model.QualityProfile) (int64, error) {
+func (m *MockStorage) CreateQualityProfile(ctx context.Context, profile sqlcdb.QualityProfile) (int64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateQualityProfile", ctx, profile)
 	ret0, _ := ret[0].(int64)
@@ -253,7 +253,7 @@ func (mr *MockStorageMockRecorder) CreateQualityProfile(ctx, profile any) *gomoc
 }
 
 // CreateQualityProfileItem mocks base method.
-func (m *MockStorage) CreateQualityProfileItem(ctx context.Context, item model.QualityProfileItem) (int64, error) {
+func (m *MockStorage) CreateQualityProfileItem(ctx context.Context, item sqlcdb.QualityProfileItem) (int64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateQualityProfileItem", ctx, item)
 	ret0, _ := ret[0].(int64)
@@ -268,7 +268,7 @@ func (mr *MockStorageMockRecorder) CreateQualityProfileItem(ctx, item any) *gomo
 }
 
 // CreateQualityProfileItems mocks base method.
-func (m *MockStorage) CreateQualityProfileItems(ctx context.Context, items []model.QualityProfileItem) error {
+func (m *MockStorage) CreateQualityProfileItems(ctx context.Context, items []sqlcdb.QualityProfileItem) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateQualityProfileItems", ctx, items)
 	ret0, _ := ret[0].(error)
@@ -282,7 +282,7 @@ func (mr *MockStorageMockRecorder) CreateQualityProfileItems(ctx, items any) *go
 }
 
 // CreateSeason mocks base method.
-func (m *MockStorage) CreateSeason(ctx context.Context, season storage.Season, initialState storage.SeasonState) (int64, error) {
+func (m *MockStorage) CreateSeason(ctx context.Context, season sqlcdb.Season, initialState storage.SeasonState) (int64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateSeason", ctx, season, initialState)
 	ret0, _ := ret[0].(int64)
@@ -297,7 +297,7 @@ func (mr *MockStorageMockRecorder) CreateSeason(ctx, season, initialState any) *
 }
 
 // CreateSeasonMetadata mocks base method.
-func (m *MockStorage) CreateSeasonMetadata(ctx context.Context, seasonMeta model.SeasonMetadata) (int64, error) {
+func (m *MockStorage) CreateSeasonMetadata(ctx context.Context, seasonMeta sqlcdb.SeasonMetadatum) (int64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateSeasonMetadata", ctx, seasonMeta)
 	ret0, _ := ret[0].(int64)
@@ -312,7 +312,7 @@ func (mr *MockStorageMockRecorder) CreateSeasonMetadata(ctx, seasonMeta any) *go
 }
 
 // CreateSeries mocks base method.
-func (m *MockStorage) CreateSeries(ctx context.Context, series storage.Series, initialState storage.SeriesState) (int64, error) {
+func (m *MockStorage) CreateSeries(ctx context.Context, series sqlcdb.Series, initialState storage.SeriesState) (int64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateSeries", ctx, series, initialState)
 	ret0, _ := ret[0].(int64)
@@ -327,7 +327,7 @@ func (mr *MockStorageMockRecorder) CreateSeries(ctx, series, initialState any) *
 }
 
 // CreateSeriesMetadata mocks base method.
-func (m *MockStorage) CreateSeriesMetadata(ctx context.Context, SeriesMeta model.SeriesMetadata) (int64, error) {
+func (m *MockStorage) CreateSeriesMetadata(ctx context.Context, SeriesMeta sqlcdb.SeriesMetadatum) (int64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateSeriesMetadata", ctx, SeriesMeta)
 	ret0, _ := ret[0].(int64)
@@ -623,10 +623,10 @@ func (mr *MockStorageMockRecorder) DeleteSeriesMetadata(ctx, id any) *gomock.Cal
 }
 
 // GetDownloadClient mocks base method.
-func (m *MockStorage) GetDownloadClient(ctx context.Context, id int64) (model.DownloadClient, error) {
+func (m *MockStorage) GetDownloadClient(ctx context.Context, id int64) (sqlcdb.DownloadClient, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetDownloadClient", ctx, id)
-	ret0, _ := ret[0].(model.DownloadClient)
+	ret0, _ := ret[0].(sqlcdb.DownloadClient)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -637,26 +637,86 @@ func (mr *MockStorageMockRecorder) GetDownloadClient(ctx, id any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDownloadClient", reflect.TypeOf((*MockStorage)(nil).GetDownloadClient), ctx, id)
 }
 
-// GetEntityTransitions mocks base method.
-func (m *MockStorage) GetEntityTransitions(ctx context.Context, entityType string, entityID int64) (*storage.HistoryResponse, error) {
+// GetEntityTransitionsEpisode mocks base method.
+func (m *MockStorage) GetEntityTransitionsEpisode(ctx context.Context, entityID int64) ([]sqlcdb.GetEntityTransitionsEpisodeRow, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetEntityTransitions", ctx, entityType, entityID)
-	ret0, _ := ret[0].(*storage.HistoryResponse)
+	ret := m.ctrl.Call(m, "GetEntityTransitionsEpisode", ctx, entityID)
+	ret0, _ := ret[0].([]sqlcdb.GetEntityTransitionsEpisodeRow)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// GetEntityTransitions indicates an expected call of GetEntityTransitions.
-func (mr *MockStorageMockRecorder) GetEntityTransitions(ctx, entityType, entityID any) *gomock.Call {
+// GetEntityTransitionsEpisode indicates an expected call of GetEntityTransitionsEpisode.
+func (mr *MockStorageMockRecorder) GetEntityTransitionsEpisode(ctx, entityID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetEntityTransitions", reflect.TypeOf((*MockStorage)(nil).GetEntityTransitions), ctx, entityType, entityID)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetEntityTransitionsEpisode", reflect.TypeOf((*MockStorage)(nil).GetEntityTransitionsEpisode), ctx, entityID)
+}
+
+// GetEntityTransitionsJob mocks base method.
+func (m *MockStorage) GetEntityTransitionsJob(ctx context.Context, entityID int64) ([]sqlcdb.GetEntityTransitionsJobRow, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetEntityTransitionsJob", ctx, entityID)
+	ret0, _ := ret[0].([]sqlcdb.GetEntityTransitionsJobRow)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetEntityTransitionsJob indicates an expected call of GetEntityTransitionsJob.
+func (mr *MockStorageMockRecorder) GetEntityTransitionsJob(ctx, entityID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetEntityTransitionsJob", reflect.TypeOf((*MockStorage)(nil).GetEntityTransitionsJob), ctx, entityID)
+}
+
+// GetEntityTransitionsMovie mocks base method.
+func (m *MockStorage) GetEntityTransitionsMovie(ctx context.Context, entityID int64) ([]sqlcdb.GetEntityTransitionsMovieRow, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetEntityTransitionsMovie", ctx, entityID)
+	ret0, _ := ret[0].([]sqlcdb.GetEntityTransitionsMovieRow)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetEntityTransitionsMovie indicates an expected call of GetEntityTransitionsMovie.
+func (mr *MockStorageMockRecorder) GetEntityTransitionsMovie(ctx, entityID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetEntityTransitionsMovie", reflect.TypeOf((*MockStorage)(nil).GetEntityTransitionsMovie), ctx, entityID)
+}
+
+// GetEntityTransitionsSeason mocks base method.
+func (m *MockStorage) GetEntityTransitionsSeason(ctx context.Context, entityID int64) ([]sqlcdb.GetEntityTransitionsSeasonRow, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetEntityTransitionsSeason", ctx, entityID)
+	ret0, _ := ret[0].([]sqlcdb.GetEntityTransitionsSeasonRow)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetEntityTransitionsSeason indicates an expected call of GetEntityTransitionsSeason.
+func (mr *MockStorageMockRecorder) GetEntityTransitionsSeason(ctx, entityID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetEntityTransitionsSeason", reflect.TypeOf((*MockStorage)(nil).GetEntityTransitionsSeason), ctx, entityID)
+}
+
+// GetEntityTransitionsSeries mocks base method.
+func (m *MockStorage) GetEntityTransitionsSeries(ctx context.Context, entityID int64) ([]sqlcdb.GetEntityTransitionsSeriesRow, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetEntityTransitionsSeries", ctx, entityID)
+	ret0, _ := ret[0].([]sqlcdb.GetEntityTransitionsSeriesRow)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetEntityTransitionsSeries indicates an expected call of GetEntityTransitionsSeries.
+func (mr *MockStorageMockRecorder) GetEntityTransitionsSeries(ctx, entityID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetEntityTransitionsSeries", reflect.TypeOf((*MockStorage)(nil).GetEntityTransitionsSeries), ctx, entityID)
 }
 
 // GetEpisodeByEpisodeFileID mocks base method.
-func (m *MockStorage) GetEpisodeByEpisodeFileID(ctx context.Context, fileID int64) (*storage.Episode, error) {
+func (m *MockStorage) GetEpisodeByEpisodeFileID(ctx context.Context, fileID int64) (sqlcdb.GetEpisodeByEpisodeFileIDRow, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetEpisodeByEpisodeFileID", ctx, fileID)
-	ret0, _ := ret[0].(*storage.Episode)
+	ret0, _ := ret[0].(sqlcdb.GetEpisodeByEpisodeFileIDRow)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -668,10 +728,10 @@ func (mr *MockStorageMockRecorder) GetEpisodeByEpisodeFileID(ctx, fileID any) *g
 }
 
 // GetEpisodeByID mocks base method.
-func (m *MockStorage) GetEpisodeByID(ctx context.Context, id int64) (*storage.Episode, error) {
+func (m *MockStorage) GetEpisodeByID(ctx context.Context, id int64) (sqlcdb.GetEpisodeByIDRow, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetEpisodeByID", ctx, id)
-	ret0, _ := ret[0].(*storage.Episode)
+	ret0, _ := ret[0].(sqlcdb.GetEpisodeByIDRow)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -683,10 +743,10 @@ func (mr *MockStorageMockRecorder) GetEpisodeByID(ctx, id any) *gomock.Call {
 }
 
 // GetEpisodeFile mocks base method.
-func (m *MockStorage) GetEpisodeFile(ctx context.Context, id int32) (*model.EpisodeFile, error) {
+func (m *MockStorage) GetEpisodeFile(ctx context.Context, id int64) (sqlcdb.EpisodeFile, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetEpisodeFile", ctx, id)
-	ret0, _ := ret[0].(*model.EpisodeFile)
+	ret0, _ := ret[0].(sqlcdb.EpisodeFile)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -698,10 +758,10 @@ func (mr *MockStorageMockRecorder) GetEpisodeFile(ctx, id any) *gomock.Call {
 }
 
 // GetEpisodeFileByID mocks base method.
-func (m *MockStorage) GetEpisodeFileByID(ctx context.Context, id int64) ([]*model.EpisodeFile, error) {
+func (m *MockStorage) GetEpisodeFileByID(ctx context.Context, id int64) ([]sqlcdb.EpisodeFile, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetEpisodeFileByID", ctx, id)
-	ret0, _ := ret[0].([]*model.EpisodeFile)
+	ret0, _ := ret[0].([]sqlcdb.EpisodeFile)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -713,10 +773,10 @@ func (mr *MockStorageMockRecorder) GetEpisodeFileByID(ctx, id any) *gomock.Call 
 }
 
 // GetEpisodeMetadataByID mocks base method.
-func (m *MockStorage) GetEpisodeMetadataByID(ctx context.Context, id int64) (*model.EpisodeMetadata, error) {
+func (m *MockStorage) GetEpisodeMetadataByID(ctx context.Context, id int64) (sqlcdb.EpisodeMetadatum, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetEpisodeMetadataByID", ctx, id)
-	ret0, _ := ret[0].(*model.EpisodeMetadata)
+	ret0, _ := ret[0].(sqlcdb.EpisodeMetadatum)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -728,10 +788,10 @@ func (mr *MockStorageMockRecorder) GetEpisodeMetadataByID(ctx, id any) *gomock.C
 }
 
 // GetEpisodeMetadataBySeasonAndNumber mocks base method.
-func (m *MockStorage) GetEpisodeMetadataBySeasonAndNumber(ctx context.Context, seasonMetadataID, number int32) (*model.EpisodeMetadata, error) {
+func (m *MockStorage) GetEpisodeMetadataBySeasonAndNumber(ctx context.Context, seasonMetadataID, number int64) (sqlcdb.EpisodeMetadatum, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetEpisodeMetadataBySeasonAndNumber", ctx, seasonMetadataID, number)
-	ret0, _ := ret[0].(*model.EpisodeMetadata)
+	ret0, _ := ret[0].(sqlcdb.EpisodeMetadatum)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -743,10 +803,10 @@ func (mr *MockStorageMockRecorder) GetEpisodeMetadataBySeasonAndNumber(ctx, seas
 }
 
 // GetEpisodeMetadataByTmdbID mocks base method.
-func (m *MockStorage) GetEpisodeMetadataByTmdbID(ctx context.Context, tmdbID int64) (*model.EpisodeMetadata, error) {
+func (m *MockStorage) GetEpisodeMetadataByTmdbID(ctx context.Context, tmdbID int64) (sqlcdb.EpisodeMetadatum, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetEpisodeMetadataByTmdbID", ctx, tmdbID)
-	ret0, _ := ret[0].(*model.EpisodeMetadata)
+	ret0, _ := ret[0].(sqlcdb.EpisodeMetadatum)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -757,11 +817,26 @@ func (mr *MockStorageMockRecorder) GetEpisodeMetadataByTmdbID(ctx, tmdbID any) *
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetEpisodeMetadataByTmdbID", reflect.TypeOf((*MockStorage)(nil).GetEpisodeMetadataByTmdbID), ctx, tmdbID)
 }
 
+// GetEpisodeTransitionItems mocks base method.
+func (m *MockStorage) GetEpisodeTransitionItems(ctx context.Context, arg sqlcdb.GetEpisodeTransitionItemsParams) ([]sqlcdb.GetEpisodeTransitionItemsRow, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetEpisodeTransitionItems", ctx, arg)
+	ret0, _ := ret[0].([]sqlcdb.GetEpisodeTransitionItemsRow)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetEpisodeTransitionItems indicates an expected call of GetEpisodeTransitionItems.
+func (mr *MockStorageMockRecorder) GetEpisodeTransitionItems(ctx, arg any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetEpisodeTransitionItems", reflect.TypeOf((*MockStorage)(nil).GetEpisodeTransitionItems), ctx, arg)
+}
+
 // GetIndexerSource mocks base method.
-func (m *MockStorage) GetIndexerSource(ctx context.Context, id int64) (model.IndexerSource, error) {
+func (m *MockStorage) GetIndexerSource(ctx context.Context, id int64) (sqlcdb.IndexerSource, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetIndexerSource", ctx, id)
-	ret0, _ := ret[0].(model.IndexerSource)
+	ret0, _ := ret[0].(sqlcdb.IndexerSource)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -773,10 +848,10 @@ func (mr *MockStorageMockRecorder) GetIndexerSource(ctx, id any) *gomock.Call {
 }
 
 // GetJob mocks base method.
-func (m *MockStorage) GetJob(ctx context.Context, id int64) (*storage.Job, error) {
+func (m *MockStorage) GetJob(ctx context.Context, id int64) (sqlcdb.GetJobByIDRow, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetJob", ctx, id)
-	ret0, _ := ret[0].(*storage.Job)
+	ret0, _ := ret[0].(sqlcdb.GetJobByIDRow)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -785,6 +860,36 @@ func (m *MockStorage) GetJob(ctx context.Context, id int64) (*storage.Job, error
 func (mr *MockStorageMockRecorder) GetJob(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetJob", reflect.TypeOf((*MockStorage)(nil).GetJob), ctx, id)
+}
+
+// GetJobTransitionItems mocks base method.
+func (m *MockStorage) GetJobTransitionItems(ctx context.Context, arg sqlcdb.GetJobTransitionItemsParams) ([]sqlcdb.GetJobTransitionItemsRow, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetJobTransitionItems", ctx, arg)
+	ret0, _ := ret[0].([]sqlcdb.GetJobTransitionItemsRow)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetJobTransitionItems indicates an expected call of GetJobTransitionItems.
+func (mr *MockStorageMockRecorder) GetJobTransitionItems(ctx, arg any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetJobTransitionItems", reflect.TypeOf((*MockStorage)(nil).GetJobTransitionItems), ctx, arg)
+}
+
+// GetJobTransitionsByDate mocks base method.
+func (m *MockStorage) GetJobTransitionsByDate(ctx context.Context, arg sqlcdb.GetJobTransitionsByDateParams) ([]sqlcdb.GetJobTransitionsByDateRow, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetJobTransitionsByDate", ctx, arg)
+	ret0, _ := ret[0].([]sqlcdb.GetJobTransitionsByDateRow)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetJobTransitionsByDate indicates an expected call of GetJobTransitionsByDate.
+func (mr *MockStorageMockRecorder) GetJobTransitionsByDate(ctx, arg any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetJobTransitionsByDate", reflect.TypeOf((*MockStorage)(nil).GetJobTransitionsByDate), ctx, arg)
 }
 
 // GetLibraryStats mocks base method.
@@ -803,10 +908,10 @@ func (mr *MockStorageMockRecorder) GetLibraryStats(ctx any) *gomock.Call {
 }
 
 // GetMovie mocks base method.
-func (m *MockStorage) GetMovie(ctx context.Context, id int64) (*storage.Movie, error) {
+func (m *MockStorage) GetMovie(ctx context.Context, id int64) (sqlcdb.GetMovieByIDRow, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetMovie", ctx, id)
-	ret0, _ := ret[0].(*storage.Movie)
+	ret0, _ := ret[0].(sqlcdb.GetMovieByIDRow)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -818,10 +923,10 @@ func (mr *MockStorageMockRecorder) GetMovie(ctx, id any) *gomock.Call {
 }
 
 // GetMovieByMetadataID mocks base method.
-func (m *MockStorage) GetMovieByMetadataID(ctx context.Context, metadataID int) (*storage.Movie, error) {
+func (m *MockStorage) GetMovieByMetadataID(ctx context.Context, metadataID int64) (sqlcdb.GetMovieByMetadataIDRow, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetMovieByMetadataID", ctx, metadataID)
-	ret0, _ := ret[0].(*storage.Movie)
+	ret0, _ := ret[0].(sqlcdb.GetMovieByMetadataIDRow)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -833,10 +938,10 @@ func (mr *MockStorageMockRecorder) GetMovieByMetadataID(ctx, metadataID any) *go
 }
 
 // GetMovieByMovieFileID mocks base method.
-func (m *MockStorage) GetMovieByMovieFileID(ctx context.Context, fileID int64) (*storage.Movie, error) {
+func (m *MockStorage) GetMovieByMovieFileID(ctx context.Context, fileID int64) (sqlcdb.GetMovieByFileIDRow, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetMovieByMovieFileID", ctx, fileID)
-	ret0, _ := ret[0].(*storage.Movie)
+	ret0, _ := ret[0].(sqlcdb.GetMovieByFileIDRow)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -848,10 +953,10 @@ func (mr *MockStorageMockRecorder) GetMovieByMovieFileID(ctx, fileID any) *gomoc
 }
 
 // GetMovieByPath mocks base method.
-func (m *MockStorage) GetMovieByPath(ctx context.Context, path string) (*storage.Movie, error) {
+func (m *MockStorage) GetMovieByPath(ctx context.Context, path string) (sqlcdb.GetMovieByPathRow, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetMovieByPath", ctx, path)
-	ret0, _ := ret[0].(*storage.Movie)
+	ret0, _ := ret[0].(sqlcdb.GetMovieByPathRow)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -863,10 +968,10 @@ func (mr *MockStorageMockRecorder) GetMovieByPath(ctx, path any) *gomock.Call {
 }
 
 // GetMovieFilesByMovieName mocks base method.
-func (m *MockStorage) GetMovieFilesByMovieName(ctx context.Context, name string) ([]*model.MovieFile, error) {
+func (m *MockStorage) GetMovieFilesByMovieName(ctx context.Context, name string) ([]sqlcdb.MovieFile, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetMovieFilesByMovieName", ctx, name)
-	ret0, _ := ret[0].([]*model.MovieFile)
+	ret0, _ := ret[0].([]sqlcdb.MovieFile)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -878,10 +983,10 @@ func (mr *MockStorageMockRecorder) GetMovieFilesByMovieName(ctx, name any) *gomo
 }
 
 // GetMovieMetadataByID mocks base method.
-func (m *MockStorage) GetMovieMetadataByID(ctx context.Context, id int64) (*model.MovieMetadata, error) {
+func (m *MockStorage) GetMovieMetadataByID(ctx context.Context, id int64) (sqlcdb.MovieMetadatum, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetMovieMetadataByID", ctx, id)
-	ret0, _ := ret[0].(*model.MovieMetadata)
+	ret0, _ := ret[0].(sqlcdb.MovieMetadatum)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -893,10 +998,10 @@ func (mr *MockStorageMockRecorder) GetMovieMetadataByID(ctx, id any) *gomock.Cal
 }
 
 // GetMovieMetadataByTmdbID mocks base method.
-func (m *MockStorage) GetMovieMetadataByTmdbID(ctx context.Context, tmdbID int64) (*model.MovieMetadata, error) {
+func (m *MockStorage) GetMovieMetadataByTmdbID(ctx context.Context, tmdbID int64) (sqlcdb.MovieMetadatum, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetMovieMetadataByTmdbID", ctx, tmdbID)
-	ret0, _ := ret[0].(*model.MovieMetadata)
+	ret0, _ := ret[0].(sqlcdb.MovieMetadatum)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -907,11 +1012,41 @@ func (mr *MockStorageMockRecorder) GetMovieMetadataByTmdbID(ctx, tmdbID any) *go
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMovieMetadataByTmdbID", reflect.TypeOf((*MockStorage)(nil).GetMovieMetadataByTmdbID), ctx, tmdbID)
 }
 
+// GetMovieTransitionItems mocks base method.
+func (m *MockStorage) GetMovieTransitionItems(ctx context.Context, arg sqlcdb.GetMovieTransitionItemsParams) ([]sqlcdb.GetMovieTransitionItemsRow, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetMovieTransitionItems", ctx, arg)
+	ret0, _ := ret[0].([]sqlcdb.GetMovieTransitionItemsRow)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetMovieTransitionItems indicates an expected call of GetMovieTransitionItems.
+func (mr *MockStorageMockRecorder) GetMovieTransitionItems(ctx, arg any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMovieTransitionItems", reflect.TypeOf((*MockStorage)(nil).GetMovieTransitionItems), ctx, arg)
+}
+
+// GetMovieTransitionsByDate mocks base method.
+func (m *MockStorage) GetMovieTransitionsByDate(ctx context.Context, arg sqlcdb.GetMovieTransitionsByDateParams) ([]sqlcdb.GetMovieTransitionsByDateRow, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetMovieTransitionsByDate", ctx, arg)
+	ret0, _ := ret[0].([]sqlcdb.GetMovieTransitionsByDateRow)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetMovieTransitionsByDate indicates an expected call of GetMovieTransitionsByDate.
+func (mr *MockStorageMockRecorder) GetMovieTransitionsByDate(ctx, arg any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMovieTransitionsByDate", reflect.TypeOf((*MockStorage)(nil).GetMovieTransitionsByDate), ctx, arg)
+}
+
 // GetQualityDefinition mocks base method.
-func (m *MockStorage) GetQualityDefinition(ctx context.Context, id int64) (model.QualityDefinition, error) {
+func (m *MockStorage) GetQualityDefinition(ctx context.Context, id int64) (sqlcdb.QualityDefinition, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetQualityDefinition", ctx, id)
-	ret0, _ := ret[0].(model.QualityDefinition)
+	ret0, _ := ret[0].(sqlcdb.QualityDefinition)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -923,10 +1058,10 @@ func (mr *MockStorageMockRecorder) GetQualityDefinition(ctx, id any) *gomock.Cal
 }
 
 // GetQualityProfile mocks base method.
-func (m *MockStorage) GetQualityProfile(ctx context.Context, id int64) (storage.QualityProfile, error) {
+func (m *MockStorage) GetQualityProfile(ctx context.Context, id int64) (sqlcdb.QualityProfile, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetQualityProfile", ctx, id)
-	ret0, _ := ret[0].(storage.QualityProfile)
+	ret0, _ := ret[0].(sqlcdb.QualityProfile)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -938,10 +1073,10 @@ func (mr *MockStorageMockRecorder) GetQualityProfile(ctx, id any) *gomock.Call {
 }
 
 // GetQualityProfileItem mocks base method.
-func (m *MockStorage) GetQualityProfileItem(ctx context.Context, id int64) (model.QualityProfileItem, error) {
+func (m *MockStorage) GetQualityProfileItem(ctx context.Context, id int64) (sqlcdb.QualityProfileItem, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetQualityProfileItem", ctx, id)
-	ret0, _ := ret[0].(model.QualityProfileItem)
+	ret0, _ := ret[0].(sqlcdb.QualityProfileItem)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -953,10 +1088,10 @@ func (mr *MockStorageMockRecorder) GetQualityProfileItem(ctx, id any) *gomock.Ca
 }
 
 // GetSeasonByID mocks base method.
-func (m *MockStorage) GetSeasonByID(ctx context.Context, id int64) (*storage.Season, error) {
+func (m *MockStorage) GetSeasonByID(ctx context.Context, id int64) (sqlcdb.GetSeasonByIDRow, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetSeasonByID", ctx, id)
-	ret0, _ := ret[0].(*storage.Season)
+	ret0, _ := ret[0].(sqlcdb.GetSeasonByIDRow)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -968,10 +1103,10 @@ func (mr *MockStorageMockRecorder) GetSeasonByID(ctx, id any) *gomock.Call {
 }
 
 // GetSeasonBySeriesIDAndNumber mocks base method.
-func (m *MockStorage) GetSeasonBySeriesIDAndNumber(ctx context.Context, seriesID int64, seasonNumber int32) (*storage.Season, error) {
+func (m *MockStorage) GetSeasonBySeriesIDAndNumber(ctx context.Context, seriesID, seasonNumber int64) (sqlcdb.GetSeasonBySeriesIDAndNumberRow, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetSeasonBySeriesIDAndNumber", ctx, seriesID, seasonNumber)
-	ret0, _ := ret[0].(*storage.Season)
+	ret0, _ := ret[0].(sqlcdb.GetSeasonBySeriesIDAndNumberRow)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -983,10 +1118,10 @@ func (mr *MockStorageMockRecorder) GetSeasonBySeriesIDAndNumber(ctx, seriesID, s
 }
 
 // GetSeasonMetadataByID mocks base method.
-func (m *MockStorage) GetSeasonMetadataByID(ctx context.Context, id int64) (*model.SeasonMetadata, error) {
+func (m *MockStorage) GetSeasonMetadataByID(ctx context.Context, id int64) (sqlcdb.SeasonMetadatum, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetSeasonMetadataByID", ctx, id)
-	ret0, _ := ret[0].(*model.SeasonMetadata)
+	ret0, _ := ret[0].(sqlcdb.SeasonMetadatum)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -998,10 +1133,10 @@ func (mr *MockStorageMockRecorder) GetSeasonMetadataByID(ctx, id any) *gomock.Ca
 }
 
 // GetSeasonMetadataByTmdbID mocks base method.
-func (m *MockStorage) GetSeasonMetadataByTmdbID(ctx context.Context, tmdbID int64) (*model.SeasonMetadata, error) {
+func (m *MockStorage) GetSeasonMetadataByTmdbID(ctx context.Context, tmdbID int64) (sqlcdb.SeasonMetadatum, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetSeasonMetadataByTmdbID", ctx, tmdbID)
-	ret0, _ := ret[0].(*model.SeasonMetadata)
+	ret0, _ := ret[0].(sqlcdb.SeasonMetadatum)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1012,11 +1147,26 @@ func (mr *MockStorageMockRecorder) GetSeasonMetadataByTmdbID(ctx, tmdbID any) *g
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSeasonMetadataByTmdbID", reflect.TypeOf((*MockStorage)(nil).GetSeasonMetadataByTmdbID), ctx, tmdbID)
 }
 
+// GetSeasonTransitionItems mocks base method.
+func (m *MockStorage) GetSeasonTransitionItems(ctx context.Context, arg sqlcdb.GetSeasonTransitionItemsParams) ([]sqlcdb.GetSeasonTransitionItemsRow, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetSeasonTransitionItems", ctx, arg)
+	ret0, _ := ret[0].([]sqlcdb.GetSeasonTransitionItemsRow)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetSeasonTransitionItems indicates an expected call of GetSeasonTransitionItems.
+func (mr *MockStorageMockRecorder) GetSeasonTransitionItems(ctx, arg any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSeasonTransitionItems", reflect.TypeOf((*MockStorage)(nil).GetSeasonTransitionItems), ctx, arg)
+}
+
 // GetSeriesByID mocks base method.
-func (m *MockStorage) GetSeriesByID(ctx context.Context, id int64) (*storage.Series, error) {
+func (m *MockStorage) GetSeriesByID(ctx context.Context, id int64) (sqlcdb.GetSeriesRow, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetSeriesByID", ctx, id)
-	ret0, _ := ret[0].(*storage.Series)
+	ret0, _ := ret[0].(sqlcdb.GetSeriesRow)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1028,10 +1178,10 @@ func (mr *MockStorageMockRecorder) GetSeriesByID(ctx, id any) *gomock.Call {
 }
 
 // GetSeriesByMetadataID mocks base method.
-func (m *MockStorage) GetSeriesByMetadataID(ctx context.Context, metadataID int32) (*storage.Series, error) {
+func (m *MockStorage) GetSeriesByMetadataID(ctx context.Context, metadataID int64) (sqlcdb.GetSeriesRow, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetSeriesByMetadataID", ctx, metadataID)
-	ret0, _ := ret[0].(*storage.Series)
+	ret0, _ := ret[0].(sqlcdb.GetSeriesRow)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1043,10 +1193,10 @@ func (mr *MockStorageMockRecorder) GetSeriesByMetadataID(ctx, metadataID any) *g
 }
 
 // GetSeriesByPath mocks base method.
-func (m *MockStorage) GetSeriesByPath(ctx context.Context, path string) (*storage.Series, error) {
+func (m *MockStorage) GetSeriesByPath(ctx context.Context, path string) (sqlcdb.GetSeriesRow, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetSeriesByPath", ctx, path)
-	ret0, _ := ret[0].(*storage.Series)
+	ret0, _ := ret[0].(sqlcdb.GetSeriesRow)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1058,10 +1208,10 @@ func (mr *MockStorageMockRecorder) GetSeriesByPath(ctx, path any) *gomock.Call {
 }
 
 // GetSeriesMetadataByID mocks base method.
-func (m *MockStorage) GetSeriesMetadataByID(ctx context.Context, id int64) (*model.SeriesMetadata, error) {
+func (m *MockStorage) GetSeriesMetadataByID(ctx context.Context, id int64) (sqlcdb.SeriesMetadatum, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetSeriesMetadataByID", ctx, id)
-	ret0, _ := ret[0].(*model.SeriesMetadata)
+	ret0, _ := ret[0].(sqlcdb.SeriesMetadatum)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1073,10 +1223,10 @@ func (mr *MockStorageMockRecorder) GetSeriesMetadataByID(ctx, id any) *gomock.Ca
 }
 
 // GetSeriesMetadataByTmdbID mocks base method.
-func (m *MockStorage) GetSeriesMetadataByTmdbID(ctx context.Context, tmdbID int64) (*model.SeriesMetadata, error) {
+func (m *MockStorage) GetSeriesMetadataByTmdbID(ctx context.Context, tmdbID int64) (sqlcdb.SeriesMetadatum, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetSeriesMetadataByTmdbID", ctx, tmdbID)
-	ret0, _ := ret[0].(*model.SeriesMetadata)
+	ret0, _ := ret[0].(sqlcdb.SeriesMetadatum)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1087,42 +1237,23 @@ func (mr *MockStorageMockRecorder) GetSeriesMetadataByTmdbID(ctx, tmdbID any) *g
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSeriesMetadataByTmdbID", reflect.TypeOf((*MockStorage)(nil).GetSeriesMetadataByTmdbID), ctx, tmdbID)
 }
 
-// GetTransitionsByDate mocks base method.
-func (m *MockStorage) GetTransitionsByDate(ctx context.Context, startDate, endDate time.Time, offset, limit int) (*storage.TimelineResponse, error) {
+// GetSeriesTransitionsByDate mocks base method.
+func (m *MockStorage) GetSeriesTransitionsByDate(ctx context.Context, arg sqlcdb.GetSeriesTransitionsByDateParams) ([]sqlcdb.GetSeriesTransitionsByDateRow, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetTransitionsByDate", ctx, startDate, endDate, offset, limit)
-	ret0, _ := ret[0].(*storage.TimelineResponse)
+	ret := m.ctrl.Call(m, "GetSeriesTransitionsByDate", ctx, arg)
+	ret0, _ := ret[0].([]sqlcdb.GetSeriesTransitionsByDateRow)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// GetTransitionsByDate indicates an expected call of GetTransitionsByDate.
-func (mr *MockStorageMockRecorder) GetTransitionsByDate(ctx, startDate, endDate, offset, limit any) *gomock.Call {
+// GetSeriesTransitionsByDate indicates an expected call of GetSeriesTransitionsByDate.
+func (mr *MockStorageMockRecorder) GetSeriesTransitionsByDate(ctx, arg any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTransitionsByDate", reflect.TypeOf((*MockStorage)(nil).GetTransitionsByDate), ctx, startDate, endDate, offset, limit)
-}
-
-// Init mocks base method.
-func (m *MockStorage) Init(ctx context.Context, schemas ...string) error {
-	m.ctrl.T.Helper()
-	varargs := []any{ctx}
-	for _, a := range schemas {
-		varargs = append(varargs, a)
-	}
-	ret := m.ctrl.Call(m, "Init", varargs...)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// Init indicates an expected call of Init.
-func (mr *MockStorageMockRecorder) Init(ctx any, schemas ...any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	varargs := append([]any{ctx}, schemas...)
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Init", reflect.TypeOf((*MockStorage)(nil).Init), varargs...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSeriesTransitionsByDate", reflect.TypeOf((*MockStorage)(nil).GetSeriesTransitionsByDate), ctx, arg)
 }
 
 // LinkEpisodeMetadata mocks base method.
-func (m *MockStorage) LinkEpisodeMetadata(ctx context.Context, episodeID int64, seasonID, episodeMetadataID int32) error {
+func (m *MockStorage) LinkEpisodeMetadata(ctx context.Context, episodeID, seasonID, episodeMetadataID int64) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "LinkEpisodeMetadata", ctx, episodeID, seasonID, episodeMetadataID)
 	ret0, _ := ret[0].(error)
@@ -1136,7 +1267,7 @@ func (mr *MockStorageMockRecorder) LinkEpisodeMetadata(ctx, episodeID, seasonID,
 }
 
 // LinkMovieMetadata mocks base method.
-func (m *MockStorage) LinkMovieMetadata(ctx context.Context, movieID int64, metadataID int32) error {
+func (m *MockStorage) LinkMovieMetadata(ctx context.Context, movieID, metadataID int64) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "LinkMovieMetadata", ctx, movieID, metadataID)
 	ret0, _ := ret[0].(error)
@@ -1150,7 +1281,7 @@ func (mr *MockStorageMockRecorder) LinkMovieMetadata(ctx, movieID, metadataID an
 }
 
 // LinkSeasonMetadata mocks base method.
-func (m *MockStorage) LinkSeasonMetadata(ctx context.Context, seasonID int64, metadataID int32) error {
+func (m *MockStorage) LinkSeasonMetadata(ctx context.Context, seasonID, metadataID int64) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "LinkSeasonMetadata", ctx, seasonID, metadataID)
 	ret0, _ := ret[0].(error)
@@ -1164,7 +1295,7 @@ func (mr *MockStorageMockRecorder) LinkSeasonMetadata(ctx, seasonID, metadataID 
 }
 
 // LinkSeriesMetadata mocks base method.
-func (m *MockStorage) LinkSeriesMetadata(ctx context.Context, seriesID int64, metadataID int32) error {
+func (m *MockStorage) LinkSeriesMetadata(ctx context.Context, seriesID, metadataID int64) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "LinkSeriesMetadata", ctx, seriesID, metadataID)
 	ret0, _ := ret[0].(error)
@@ -1178,10 +1309,10 @@ func (mr *MockStorageMockRecorder) LinkSeriesMetadata(ctx, seriesID, metadataID 
 }
 
 // ListDownloadClients mocks base method.
-func (m *MockStorage) ListDownloadClients(ctx context.Context) ([]*model.DownloadClient, error) {
+func (m *MockStorage) ListDownloadClients(ctx context.Context) ([]sqlcdb.DownloadClient, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListDownloadClients", ctx)
-	ret0, _ := ret[0].([]*model.DownloadClient)
+	ret0, _ := ret[0].([]sqlcdb.DownloadClient)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1193,10 +1324,10 @@ func (mr *MockStorageMockRecorder) ListDownloadClients(ctx any) *gomock.Call {
 }
 
 // ListDownloadingMovies mocks base method.
-func (m *MockStorage) ListDownloadingMovies(ctx context.Context) ([]*storage.ActiveMovie, error) {
+func (m *MockStorage) ListDownloadingMovies(ctx context.Context) ([]sqlcdb.ListDownloadingMoviesRow, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListDownloadingMovies", ctx)
-	ret0, _ := ret[0].([]*storage.ActiveMovie)
+	ret0, _ := ret[0].([]sqlcdb.ListDownloadingMoviesRow)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1208,10 +1339,10 @@ func (mr *MockStorageMockRecorder) ListDownloadingMovies(ctx any) *gomock.Call {
 }
 
 // ListDownloadingSeries mocks base method.
-func (m *MockStorage) ListDownloadingSeries(ctx context.Context) ([]*storage.ActiveSeries, error) {
+func (m *MockStorage) ListDownloadingSeries(ctx context.Context) ([]sqlcdb.ListDownloadingSeriesRow, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListDownloadingSeries", ctx)
-	ret0, _ := ret[0].([]*storage.ActiveSeries)
+	ret0, _ := ret[0].([]sqlcdb.ListDownloadingSeriesRow)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1223,10 +1354,10 @@ func (mr *MockStorageMockRecorder) ListDownloadingSeries(ctx any) *gomock.Call {
 }
 
 // ListEnabledIndexerSources mocks base method.
-func (m *MockStorage) ListEnabledIndexerSources(ctx context.Context) ([]*model.IndexerSource, error) {
+func (m *MockStorage) ListEnabledIndexerSources(ctx context.Context) ([]sqlcdb.IndexerSource, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListEnabledIndexerSources", ctx)
-	ret0, _ := ret[0].([]*model.IndexerSource)
+	ret0, _ := ret[0].([]sqlcdb.IndexerSource)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1238,10 +1369,10 @@ func (mr *MockStorageMockRecorder) ListEnabledIndexerSources(ctx any) *gomock.Ca
 }
 
 // ListEpisodeFiles mocks base method.
-func (m *MockStorage) ListEpisodeFiles(ctx context.Context) ([]*model.EpisodeFile, error) {
+func (m *MockStorage) ListEpisodeFiles(ctx context.Context) ([]sqlcdb.EpisodeFile, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListEpisodeFiles", ctx)
-	ret0, _ := ret[0].([]*model.EpisodeFile)
+	ret0, _ := ret[0].([]sqlcdb.EpisodeFile)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1253,10 +1384,10 @@ func (mr *MockStorageMockRecorder) ListEpisodeFiles(ctx any) *gomock.Call {
 }
 
 // ListEpisodeMetadataByIDs mocks base method.
-func (m *MockStorage) ListEpisodeMetadataByIDs(ctx context.Context, ids []int64) ([]*model.EpisodeMetadata, error) {
+func (m *MockStorage) ListEpisodeMetadataByIDs(ctx context.Context, ids []int64) ([]sqlcdb.EpisodeMetadatum, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListEpisodeMetadataByIDs", ctx, ids)
-	ret0, _ := ret[0].([]*model.EpisodeMetadata)
+	ret0, _ := ret[0].([]sqlcdb.EpisodeMetadatum)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1268,10 +1399,10 @@ func (mr *MockStorageMockRecorder) ListEpisodeMetadataByIDs(ctx, ids any) *gomoc
 }
 
 // ListEpisodeMetadataBySeasonMetadataID mocks base method.
-func (m *MockStorage) ListEpisodeMetadataBySeasonMetadataID(ctx context.Context, seasonMetadataID int32) ([]*model.EpisodeMetadata, error) {
+func (m *MockStorage) ListEpisodeMetadataBySeasonMetadataID(ctx context.Context, seasonMetadataID int64) ([]sqlcdb.EpisodeMetadatum, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListEpisodeMetadataBySeasonMetadataID", ctx, seasonMetadataID)
-	ret0, _ := ret[0].([]*model.EpisodeMetadata)
+	ret0, _ := ret[0].([]sqlcdb.EpisodeMetadatum)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1283,10 +1414,10 @@ func (mr *MockStorageMockRecorder) ListEpisodeMetadataBySeasonMetadataID(ctx, se
 }
 
 // ListEpisodes mocks base method.
-func (m *MockStorage) ListEpisodes(ctx context.Context, filter storage.EpisodeFilter) ([]*storage.Episode, error) {
+func (m *MockStorage) ListEpisodes(ctx context.Context, filter storage.EpisodeFilter) ([]sqlcdb.ListEpisodesRow, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListEpisodes", ctx, filter)
-	ret0, _ := ret[0].([]*storage.Episode)
+	ret0, _ := ret[0].([]sqlcdb.ListEpisodesRow)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1298,25 +1429,25 @@ func (mr *MockStorageMockRecorder) ListEpisodes(ctx, filter any) *gomock.Call {
 }
 
 // ListErrorJobs mocks base method.
-func (m *MockStorage) ListErrorJobs(ctx context.Context, hours int) ([]*storage.ActiveJob, error) {
+func (m *MockStorage) ListErrorJobs(ctx context.Context, cutoffDatetime sql.NullTime) ([]sqlcdb.ListErrorJobsRow, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListErrorJobs", ctx, hours)
-	ret0, _ := ret[0].([]*storage.ActiveJob)
+	ret := m.ctrl.Call(m, "ListErrorJobs", ctx, cutoffDatetime)
+	ret0, _ := ret[0].([]sqlcdb.ListErrorJobsRow)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListErrorJobs indicates an expected call of ListErrorJobs.
-func (mr *MockStorageMockRecorder) ListErrorJobs(ctx, hours any) *gomock.Call {
+func (mr *MockStorageMockRecorder) ListErrorJobs(ctx, cutoffDatetime any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListErrorJobs", reflect.TypeOf((*MockStorage)(nil).ListErrorJobs), ctx, hours)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListErrorJobs", reflect.TypeOf((*MockStorage)(nil).ListErrorJobs), ctx, cutoffDatetime)
 }
 
 // ListIndexerSources mocks base method.
-func (m *MockStorage) ListIndexerSources(ctx context.Context) ([]*model.IndexerSource, error) {
+func (m *MockStorage) ListIndexerSources(ctx context.Context) ([]sqlcdb.IndexerSource, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListIndexerSources", ctx)
-	ret0, _ := ret[0].([]*model.IndexerSource)
+	ret0, _ := ret[0].([]sqlcdb.IndexerSource)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1328,10 +1459,10 @@ func (mr *MockStorageMockRecorder) ListIndexerSources(ctx any) *gomock.Call {
 }
 
 // ListIndexers mocks base method.
-func (m *MockStorage) ListIndexers(ctx context.Context) ([]*model.Indexer, error) {
+func (m *MockStorage) ListIndexers(ctx context.Context) ([]sqlcdb.Indexer, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListIndexers", ctx)
-	ret0, _ := ret[0].([]*model.Indexer)
+	ret0, _ := ret[0].([]sqlcdb.Indexer)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1343,10 +1474,10 @@ func (mr *MockStorageMockRecorder) ListIndexers(ctx any) *gomock.Call {
 }
 
 // ListJobs mocks base method.
-func (m *MockStorage) ListJobs(ctx context.Context, offset, limit int, filter storage.JobFilter) ([]*storage.Job, error) {
+func (m *MockStorage) ListJobs(ctx context.Context, offset, limit int, filter storage.JobFilter) ([]sqlcdb.ListJobsRow, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListJobs", ctx, offset, limit, filter)
-	ret0, _ := ret[0].([]*storage.Job)
+	ret0, _ := ret[0].([]sqlcdb.ListJobsRow)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1358,10 +1489,10 @@ func (mr *MockStorageMockRecorder) ListJobs(ctx, offset, limit, filter any) *gom
 }
 
 // ListMovieFiles mocks base method.
-func (m *MockStorage) ListMovieFiles(ctx context.Context) ([]*model.MovieFile, error) {
+func (m *MockStorage) ListMovieFiles(ctx context.Context) ([]sqlcdb.MovieFile, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListMovieFiles", ctx)
-	ret0, _ := ret[0].([]*model.MovieFile)
+	ret0, _ := ret[0].([]sqlcdb.MovieFile)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1373,10 +1504,10 @@ func (mr *MockStorageMockRecorder) ListMovieFiles(ctx any) *gomock.Call {
 }
 
 // ListMovieMetadata mocks base method.
-func (m *MockStorage) ListMovieMetadata(ctx context.Context) ([]*model.MovieMetadata, error) {
+func (m *MockStorage) ListMovieMetadata(ctx context.Context) ([]sqlcdb.MovieMetadatum, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListMovieMetadata", ctx)
-	ret0, _ := ret[0].([]*model.MovieMetadata)
+	ret0, _ := ret[0].([]sqlcdb.MovieMetadatum)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1388,10 +1519,10 @@ func (mr *MockStorageMockRecorder) ListMovieMetadata(ctx any) *gomock.Call {
 }
 
 // ListMovies mocks base method.
-func (m *MockStorage) ListMovies(ctx context.Context) ([]*storage.Movie, error) {
+func (m *MockStorage) ListMovies(ctx context.Context) ([]sqlcdb.ListMoviesRow, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListMovies", ctx)
-	ret0, _ := ret[0].([]*storage.Movie)
+	ret0, _ := ret[0].([]sqlcdb.ListMoviesRow)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1403,25 +1534,30 @@ func (mr *MockStorageMockRecorder) ListMovies(ctx any) *gomock.Call {
 }
 
 // ListMoviesByState mocks base method.
-func (m *MockStorage) ListMoviesByState(ctx context.Context, state storage.MovieState) ([]*storage.Movie, error) {
+func (m *MockStorage) ListMoviesByState(ctx context.Context, states ...storage.MovieState) ([]sqlcdb.ListMoviesByStatesRow, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListMoviesByState", ctx, state)
-	ret0, _ := ret[0].([]*storage.Movie)
+	varargs := []any{ctx}
+	for _, a := range states {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "ListMoviesByState", varargs...)
+	ret0, _ := ret[0].([]sqlcdb.ListMoviesByStatesRow)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListMoviesByState indicates an expected call of ListMoviesByState.
-func (mr *MockStorageMockRecorder) ListMoviesByState(ctx, state any) *gomock.Call {
+func (mr *MockStorageMockRecorder) ListMoviesByState(ctx any, states ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListMoviesByState", reflect.TypeOf((*MockStorage)(nil).ListMoviesByState), ctx, state)
+	varargs := append([]any{ctx}, states...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListMoviesByState", reflect.TypeOf((*MockStorage)(nil).ListMoviesByState), varargs...)
 }
 
 // ListQualityDefinitions mocks base method.
-func (m *MockStorage) ListQualityDefinitions(ctx context.Context) ([]*model.QualityDefinition, error) {
+func (m *MockStorage) ListQualityDefinitions(ctx context.Context) ([]sqlcdb.QualityDefinition, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListQualityDefinitions", ctx)
-	ret0, _ := ret[0].([]*model.QualityDefinition)
+	ret0, _ := ret[0].([]sqlcdb.QualityDefinition)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1433,10 +1569,10 @@ func (mr *MockStorageMockRecorder) ListQualityDefinitions(ctx any) *gomock.Call 
 }
 
 // ListQualityProfileItems mocks base method.
-func (m *MockStorage) ListQualityProfileItems(ctx context.Context) ([]*model.QualityProfileItem, error) {
+func (m *MockStorage) ListQualityProfileItems(ctx context.Context) ([]sqlcdb.QualityProfileItem, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListQualityProfileItems", ctx)
-	ret0, _ := ret[0].([]*model.QualityProfileItem)
+	ret0, _ := ret[0].([]sqlcdb.QualityProfileItem)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1447,11 +1583,26 @@ func (mr *MockStorageMockRecorder) ListQualityProfileItems(ctx any) *gomock.Call
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListQualityProfileItems", reflect.TypeOf((*MockStorage)(nil).ListQualityProfileItems), ctx)
 }
 
+// ListQualityProfileRows mocks base method.
+func (m *MockStorage) ListQualityProfileRows(ctx context.Context, profileID int64) ([]sqlcdb.ListQualityProfileRowsRow, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListQualityProfileRows", ctx, profileID)
+	ret0, _ := ret[0].([]sqlcdb.ListQualityProfileRowsRow)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListQualityProfileRows indicates an expected call of ListQualityProfileRows.
+func (mr *MockStorageMockRecorder) ListQualityProfileRows(ctx, profileID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListQualityProfileRows", reflect.TypeOf((*MockStorage)(nil).ListQualityProfileRows), ctx, profileID)
+}
+
 // ListQualityProfiles mocks base method.
-func (m *MockStorage) ListQualityProfiles(ctx context.Context) ([]*storage.QualityProfile, error) {
+func (m *MockStorage) ListQualityProfiles(ctx context.Context) ([]sqlcdb.QualityProfile, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListQualityProfiles", ctx)
-	ret0, _ := ret[0].([]*storage.QualityProfile)
+	ret0, _ := ret[0].([]sqlcdb.QualityProfile)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1463,10 +1614,10 @@ func (mr *MockStorageMockRecorder) ListQualityProfiles(ctx any) *gomock.Call {
 }
 
 // ListQualityProfilesByMediaType mocks base method.
-func (m *MockStorage) ListQualityProfilesByMediaType(ctx context.Context, mediaType string) ([]*storage.QualityProfile, error) {
+func (m *MockStorage) ListQualityProfilesByMediaType(ctx context.Context, mediaType string) ([]sqlcdb.QualityProfile, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListQualityProfilesByMediaType", ctx, mediaType)
-	ret0, _ := ret[0].([]*storage.QualityProfile)
+	ret0, _ := ret[0].([]sqlcdb.QualityProfile)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1478,10 +1629,10 @@ func (mr *MockStorageMockRecorder) ListQualityProfilesByMediaType(ctx, mediaType
 }
 
 // ListRunningJobs mocks base method.
-func (m *MockStorage) ListRunningJobs(ctx context.Context) ([]*storage.ActiveJob, error) {
+func (m *MockStorage) ListRunningJobs(ctx context.Context) ([]sqlcdb.ListRunningJobsRow, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListRunningJobs", ctx)
-	ret0, _ := ret[0].([]*storage.ActiveJob)
+	ret0, _ := ret[0].([]sqlcdb.ListRunningJobsRow)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1493,10 +1644,10 @@ func (mr *MockStorageMockRecorder) ListRunningJobs(ctx any) *gomock.Call {
 }
 
 // ListSeasonMetadataBySeriesMetadataID mocks base method.
-func (m *MockStorage) ListSeasonMetadataBySeriesMetadataID(ctx context.Context, seriesMetadataID int32) ([]*model.SeasonMetadata, error) {
+func (m *MockStorage) ListSeasonMetadataBySeriesMetadataID(ctx context.Context, seriesMetadataID int64) ([]sqlcdb.SeasonMetadatum, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListSeasonMetadataBySeriesMetadataID", ctx, seriesMetadataID)
-	ret0, _ := ret[0].([]*model.SeasonMetadata)
+	ret0, _ := ret[0].([]sqlcdb.SeasonMetadatum)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1508,10 +1659,10 @@ func (mr *MockStorageMockRecorder) ListSeasonMetadataBySeriesMetadataID(ctx, ser
 }
 
 // ListSeasons mocks base method.
-func (m *MockStorage) ListSeasons(ctx context.Context, filter storage.SeasonFilter) ([]*storage.Season, error) {
+func (m *MockStorage) ListSeasons(ctx context.Context, filter storage.SeasonFilter) ([]sqlcdb.ListSeasonsRow, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListSeasons", ctx, filter)
-	ret0, _ := ret[0].([]*storage.Season)
+	ret0, _ := ret[0].([]sqlcdb.ListSeasonsRow)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1523,10 +1674,10 @@ func (mr *MockStorageMockRecorder) ListSeasons(ctx, filter any) *gomock.Call {
 }
 
 // ListSeries mocks base method.
-func (m *MockStorage) ListSeries(ctx context.Context, filter storage.SeriesFilter) ([]*storage.Series, error) {
+func (m *MockStorage) ListSeries(ctx context.Context, filter storage.SeriesFilter) ([]sqlcdb.ListSeriesRow, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListSeries", ctx, filter)
-	ret0, _ := ret[0].([]*storage.Series)
+	ret0, _ := ret[0].([]sqlcdb.ListSeriesRow)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1538,10 +1689,10 @@ func (mr *MockStorageMockRecorder) ListSeries(ctx, filter any) *gomock.Call {
 }
 
 // ListSeriesMetadata mocks base method.
-func (m *MockStorage) ListSeriesMetadata(ctx context.Context) ([]*model.SeriesMetadata, error) {
+func (m *MockStorage) ListSeriesMetadata(ctx context.Context) ([]sqlcdb.SeriesMetadatum, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListSeriesMetadata", ctx)
-	ret0, _ := ret[0].([]*model.SeriesMetadata)
+	ret0, _ := ret[0].([]sqlcdb.SeriesMetadatum)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1553,10 +1704,10 @@ func (mr *MockStorageMockRecorder) ListSeriesMetadata(ctx any) *gomock.Call {
 }
 
 // ListSeriesMetadataByStatus mocks base method.
-func (m *MockStorage) ListSeriesMetadataByStatus(ctx context.Context, status string) ([]*model.SeriesMetadata, error) {
+func (m *MockStorage) ListSeriesMetadataByStatus(ctx context.Context, status string) ([]sqlcdb.SeriesMetadatum, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListSeriesMetadataByStatus", ctx, status)
-	ret0, _ := ret[0].([]*model.SeriesMetadata)
+	ret0, _ := ret[0].([]sqlcdb.SeriesMetadatum)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1582,7 +1733,7 @@ func (mr *MockStorageMockRecorder) RunMigrations(ctx any) *gomock.Call {
 }
 
 // UpdateDownloadClient mocks base method.
-func (m *MockStorage) UpdateDownloadClient(ctx context.Context, id int64, client model.DownloadClient) error {
+func (m *MockStorage) UpdateDownloadClient(ctx context.Context, id int64, client sqlcdb.DownloadClient) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UpdateDownloadClient", ctx, id, client)
 	ret0, _ := ret[0].(error)
@@ -1610,7 +1761,7 @@ func (mr *MockStorageMockRecorder) UpdateEpisodeEpisodeFileID(ctx, id, fileID an
 }
 
 // UpdateEpisodeFile mocks base method.
-func (m *MockStorage) UpdateEpisodeFile(ctx context.Context, id int32, episodeFile model.EpisodeFile) error {
+func (m *MockStorage) UpdateEpisodeFile(ctx context.Context, id int64, episodeFile sqlcdb.EpisodeFile) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UpdateEpisodeFile", ctx, id, episodeFile)
 	ret0, _ := ret[0].(error)
@@ -1638,7 +1789,7 @@ func (mr *MockStorageMockRecorder) UpdateEpisodeState(ctx, id, state, metadata a
 }
 
 // UpdateIndexer mocks base method.
-func (m *MockStorage) UpdateIndexer(ctx context.Context, id int64, indexer model.Indexer) error {
+func (m *MockStorage) UpdateIndexer(ctx context.Context, id int64, indexer sqlcdb.Indexer) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UpdateIndexer", ctx, id, indexer)
 	ret0, _ := ret[0].(error)
@@ -1652,7 +1803,7 @@ func (mr *MockStorageMockRecorder) UpdateIndexer(ctx, id, indexer any) *gomock.C
 }
 
 // UpdateIndexerSource mocks base method.
-func (m *MockStorage) UpdateIndexerSource(ctx context.Context, id int64, source model.IndexerSource) error {
+func (m *MockStorage) UpdateIndexerSource(ctx context.Context, id int64, source sqlcdb.IndexerSource) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UpdateIndexerSource", ctx, id, source)
 	ret0, _ := ret[0].(error)
@@ -1680,7 +1831,7 @@ func (mr *MockStorageMockRecorder) UpdateJobState(ctx, id, state, errorMsg any) 
 }
 
 // UpdateMovieByID mocks base method.
-func (m *MockStorage) UpdateMovieByID(ctx context.Context, id int64, movie model.Movie) error {
+func (m *MockStorage) UpdateMovieByID(ctx context.Context, id int64, movie sqlcdb.Movie) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UpdateMovieByID", ctx, id, movie)
 	ret0, _ := ret[0].(error)
@@ -1694,7 +1845,7 @@ func (mr *MockStorageMockRecorder) UpdateMovieByID(ctx, id, movie any) *gomock.C
 }
 
 // UpdateMovieMetadata mocks base method.
-func (m *MockStorage) UpdateMovieMetadata(ctx context.Context, metadata model.MovieMetadata) error {
+func (m *MockStorage) UpdateMovieMetadata(ctx context.Context, metadata sqlcdb.MovieMetadatum) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UpdateMovieMetadata", ctx, metadata)
 	ret0, _ := ret[0].(error)
@@ -1722,7 +1873,7 @@ func (mr *MockStorageMockRecorder) UpdateMovieMovieFileID(ctx, id, fileID any) *
 }
 
 // UpdateMovieQualityProfile mocks base method.
-func (m *MockStorage) UpdateMovieQualityProfile(ctx context.Context, id int64, qualityProfileID int32) error {
+func (m *MockStorage) UpdateMovieQualityProfile(ctx context.Context, id, qualityProfileID int64) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UpdateMovieQualityProfile", ctx, id, qualityProfileID)
 	ret0, _ := ret[0].(error)
@@ -1750,7 +1901,7 @@ func (mr *MockStorageMockRecorder) UpdateMovieState(ctx, id, state, metadata any
 }
 
 // UpdateQualityDefinition mocks base method.
-func (m *MockStorage) UpdateQualityDefinition(ctx context.Context, id int64, definition model.QualityDefinition) error {
+func (m *MockStorage) UpdateQualityDefinition(ctx context.Context, id int64, definition sqlcdb.QualityDefinition) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UpdateQualityDefinition", ctx, id, definition)
 	ret0, _ := ret[0].(error)
@@ -1764,7 +1915,7 @@ func (mr *MockStorageMockRecorder) UpdateQualityDefinition(ctx, id, definition a
 }
 
 // UpdateQualityProfile mocks base method.
-func (m *MockStorage) UpdateQualityProfile(ctx context.Context, id int64, profile storage.QualityProfile) error {
+func (m *MockStorage) UpdateQualityProfile(ctx context.Context, id int64, profile sqlcdb.QualityProfile) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UpdateQualityProfile", ctx, id, profile)
 	ret0, _ := ret[0].(error)
@@ -1778,21 +1929,21 @@ func (mr *MockStorageMockRecorder) UpdateQualityProfile(ctx, id, profile any) *g
 }
 
 // UpdateSeasonState mocks base method.
-func (m *MockStorage) UpdateSeasonState(ctx context.Context, id int64, season storage.SeasonState, metadata *storage.TransitionStateMetadata) error {
+func (m *MockStorage) UpdateSeasonState(ctx context.Context, id int64, state storage.SeasonState, metadata *storage.TransitionStateMetadata) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UpdateSeasonState", ctx, id, season, metadata)
+	ret := m.ctrl.Call(m, "UpdateSeasonState", ctx, id, state, metadata)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // UpdateSeasonState indicates an expected call of UpdateSeasonState.
-func (mr *MockStorageMockRecorder) UpdateSeasonState(ctx, id, season, metadata any) *gomock.Call {
+func (mr *MockStorageMockRecorder) UpdateSeasonState(ctx, id, state, metadata any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateSeasonState", reflect.TypeOf((*MockStorage)(nil).UpdateSeasonState), ctx, id, season, metadata)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateSeasonState", reflect.TypeOf((*MockStorage)(nil).UpdateSeasonState), ctx, id, state, metadata)
 }
 
 // UpdateSeriesByID mocks base method.
-func (m *MockStorage) UpdateSeriesByID(ctx context.Context, id int64, series model.Series) error {
+func (m *MockStorage) UpdateSeriesByID(ctx context.Context, id int64, series sqlcdb.Series) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UpdateSeriesByID", ctx, id, series)
 	ret0, _ := ret[0].(error)
@@ -1806,7 +1957,7 @@ func (mr *MockStorageMockRecorder) UpdateSeriesByID(ctx, id, series any) *gomock
 }
 
 // UpdateSeriesMetadata mocks base method.
-func (m *MockStorage) UpdateSeriesMetadata(ctx context.Context, metadata model.SeriesMetadata) error {
+func (m *MockStorage) UpdateSeriesMetadata(ctx context.Context, metadata sqlcdb.SeriesMetadatum) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UpdateSeriesMetadata", ctx, metadata)
 	ret0, _ := ret[0].(error)
@@ -1857,7 +2008,7 @@ func (m *MockIndexerStorage) EXPECT() *MockIndexerStorageMockRecorder {
 }
 
 // CreateIndexer mocks base method.
-func (m *MockIndexerStorage) CreateIndexer(ctx context.Context, indexer model.Indexer) (int64, error) {
+func (m *MockIndexerStorage) CreateIndexer(ctx context.Context, indexer sqlcdb.Indexer) (int64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateIndexer", ctx, indexer)
 	ret0, _ := ret[0].(int64)
@@ -1886,10 +2037,10 @@ func (mr *MockIndexerStorageMockRecorder) DeleteIndexer(ctx, id any) *gomock.Cal
 }
 
 // ListIndexers mocks base method.
-func (m *MockIndexerStorage) ListIndexers(ctx context.Context) ([]*model.Indexer, error) {
+func (m *MockIndexerStorage) ListIndexers(ctx context.Context) ([]sqlcdb.Indexer, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListIndexers", ctx)
-	ret0, _ := ret[0].([]*model.Indexer)
+	ret0, _ := ret[0].([]sqlcdb.Indexer)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1901,7 +2052,7 @@ func (mr *MockIndexerStorageMockRecorder) ListIndexers(ctx any) *gomock.Call {
 }
 
 // UpdateIndexer mocks base method.
-func (m *MockIndexerStorage) UpdateIndexer(ctx context.Context, id int64, indexer model.Indexer) error {
+func (m *MockIndexerStorage) UpdateIndexer(ctx context.Context, id int64, indexer sqlcdb.Indexer) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UpdateIndexer", ctx, id, indexer)
 	ret0, _ := ret[0].(error)
@@ -1938,7 +2089,7 @@ func (m *MockIndexerSourceStorage) EXPECT() *MockIndexerSourceStorageMockRecorde
 }
 
 // CreateIndexerSource mocks base method.
-func (m *MockIndexerSourceStorage) CreateIndexerSource(ctx context.Context, source model.IndexerSource) (int64, error) {
+func (m *MockIndexerSourceStorage) CreateIndexerSource(ctx context.Context, source sqlcdb.IndexerSource) (int64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateIndexerSource", ctx, source)
 	ret0, _ := ret[0].(int64)
@@ -1981,10 +2132,10 @@ func (mr *MockIndexerSourceStorageMockRecorder) DeleteIndexerSourceCascade(ctx, 
 }
 
 // GetIndexerSource mocks base method.
-func (m *MockIndexerSourceStorage) GetIndexerSource(ctx context.Context, id int64) (model.IndexerSource, error) {
+func (m *MockIndexerSourceStorage) GetIndexerSource(ctx context.Context, id int64) (sqlcdb.IndexerSource, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetIndexerSource", ctx, id)
-	ret0, _ := ret[0].(model.IndexerSource)
+	ret0, _ := ret[0].(sqlcdb.IndexerSource)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -1996,10 +2147,10 @@ func (mr *MockIndexerSourceStorageMockRecorder) GetIndexerSource(ctx, id any) *g
 }
 
 // ListEnabledIndexerSources mocks base method.
-func (m *MockIndexerSourceStorage) ListEnabledIndexerSources(ctx context.Context) ([]*model.IndexerSource, error) {
+func (m *MockIndexerSourceStorage) ListEnabledIndexerSources(ctx context.Context) ([]sqlcdb.IndexerSource, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListEnabledIndexerSources", ctx)
-	ret0, _ := ret[0].([]*model.IndexerSource)
+	ret0, _ := ret[0].([]sqlcdb.IndexerSource)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -2011,10 +2162,10 @@ func (mr *MockIndexerSourceStorageMockRecorder) ListEnabledIndexerSources(ctx an
 }
 
 // ListIndexerSources mocks base method.
-func (m *MockIndexerSourceStorage) ListIndexerSources(ctx context.Context) ([]*model.IndexerSource, error) {
+func (m *MockIndexerSourceStorage) ListIndexerSources(ctx context.Context) ([]sqlcdb.IndexerSource, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListIndexerSources", ctx)
-	ret0, _ := ret[0].([]*model.IndexerSource)
+	ret0, _ := ret[0].([]sqlcdb.IndexerSource)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -2026,7 +2177,7 @@ func (mr *MockIndexerSourceStorageMockRecorder) ListIndexerSources(ctx any) *gom
 }
 
 // UpdateIndexerSource mocks base method.
-func (m *MockIndexerSourceStorage) UpdateIndexerSource(ctx context.Context, id int64, source model.IndexerSource) error {
+func (m *MockIndexerSourceStorage) UpdateIndexerSource(ctx context.Context, id int64, source sqlcdb.IndexerSource) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UpdateIndexerSource", ctx, id, source)
 	ret0, _ := ret[0].(error)
@@ -2063,7 +2214,7 @@ func (m *MockQualityStorage) EXPECT() *MockQualityStorageMockRecorder {
 }
 
 // CreateQualityDefinition mocks base method.
-func (m *MockQualityStorage) CreateQualityDefinition(ctx context.Context, definition model.QualityDefinition) (int64, error) {
+func (m *MockQualityStorage) CreateQualityDefinition(ctx context.Context, definition sqlcdb.QualityDefinition) (int64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateQualityDefinition", ctx, definition)
 	ret0, _ := ret[0].(int64)
@@ -2078,7 +2229,7 @@ func (mr *MockQualityStorageMockRecorder) CreateQualityDefinition(ctx, definitio
 }
 
 // CreateQualityProfile mocks base method.
-func (m *MockQualityStorage) CreateQualityProfile(ctx context.Context, profile model.QualityProfile) (int64, error) {
+func (m *MockQualityStorage) CreateQualityProfile(ctx context.Context, profile sqlcdb.QualityProfile) (int64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateQualityProfile", ctx, profile)
 	ret0, _ := ret[0].(int64)
@@ -2093,7 +2244,7 @@ func (mr *MockQualityStorageMockRecorder) CreateQualityProfile(ctx, profile any)
 }
 
 // CreateQualityProfileItem mocks base method.
-func (m *MockQualityStorage) CreateQualityProfileItem(ctx context.Context, item model.QualityProfileItem) (int64, error) {
+func (m *MockQualityStorage) CreateQualityProfileItem(ctx context.Context, item sqlcdb.QualityProfileItem) (int64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateQualityProfileItem", ctx, item)
 	ret0, _ := ret[0].(int64)
@@ -2108,7 +2259,7 @@ func (mr *MockQualityStorageMockRecorder) CreateQualityProfileItem(ctx, item any
 }
 
 // CreateQualityProfileItems mocks base method.
-func (m *MockQualityStorage) CreateQualityProfileItems(ctx context.Context, items []model.QualityProfileItem) error {
+func (m *MockQualityStorage) CreateQualityProfileItems(ctx context.Context, items []sqlcdb.QualityProfileItem) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateQualityProfileItems", ctx, items)
 	ret0, _ := ret[0].(error)
@@ -2178,10 +2329,10 @@ func (mr *MockQualityStorageMockRecorder) DeleteQualityProfileItemsByProfileID(c
 }
 
 // GetQualityDefinition mocks base method.
-func (m *MockQualityStorage) GetQualityDefinition(ctx context.Context, id int64) (model.QualityDefinition, error) {
+func (m *MockQualityStorage) GetQualityDefinition(ctx context.Context, id int64) (sqlcdb.QualityDefinition, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetQualityDefinition", ctx, id)
-	ret0, _ := ret[0].(model.QualityDefinition)
+	ret0, _ := ret[0].(sqlcdb.QualityDefinition)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -2193,10 +2344,10 @@ func (mr *MockQualityStorageMockRecorder) GetQualityDefinition(ctx, id any) *gom
 }
 
 // GetQualityProfile mocks base method.
-func (m *MockQualityStorage) GetQualityProfile(ctx context.Context, id int64) (storage.QualityProfile, error) {
+func (m *MockQualityStorage) GetQualityProfile(ctx context.Context, id int64) (sqlcdb.QualityProfile, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetQualityProfile", ctx, id)
-	ret0, _ := ret[0].(storage.QualityProfile)
+	ret0, _ := ret[0].(sqlcdb.QualityProfile)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -2208,10 +2359,10 @@ func (mr *MockQualityStorageMockRecorder) GetQualityProfile(ctx, id any) *gomock
 }
 
 // GetQualityProfileItem mocks base method.
-func (m *MockQualityStorage) GetQualityProfileItem(ctx context.Context, id int64) (model.QualityProfileItem, error) {
+func (m *MockQualityStorage) GetQualityProfileItem(ctx context.Context, id int64) (sqlcdb.QualityProfileItem, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetQualityProfileItem", ctx, id)
-	ret0, _ := ret[0].(model.QualityProfileItem)
+	ret0, _ := ret[0].(sqlcdb.QualityProfileItem)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -2223,10 +2374,10 @@ func (mr *MockQualityStorageMockRecorder) GetQualityProfileItem(ctx, id any) *go
 }
 
 // ListQualityDefinitions mocks base method.
-func (m *MockQualityStorage) ListQualityDefinitions(ctx context.Context) ([]*model.QualityDefinition, error) {
+func (m *MockQualityStorage) ListQualityDefinitions(ctx context.Context) ([]sqlcdb.QualityDefinition, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListQualityDefinitions", ctx)
-	ret0, _ := ret[0].([]*model.QualityDefinition)
+	ret0, _ := ret[0].([]sqlcdb.QualityDefinition)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -2238,10 +2389,10 @@ func (mr *MockQualityStorageMockRecorder) ListQualityDefinitions(ctx any) *gomoc
 }
 
 // ListQualityProfileItems mocks base method.
-func (m *MockQualityStorage) ListQualityProfileItems(ctx context.Context) ([]*model.QualityProfileItem, error) {
+func (m *MockQualityStorage) ListQualityProfileItems(ctx context.Context) ([]sqlcdb.QualityProfileItem, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListQualityProfileItems", ctx)
-	ret0, _ := ret[0].([]*model.QualityProfileItem)
+	ret0, _ := ret[0].([]sqlcdb.QualityProfileItem)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -2252,11 +2403,26 @@ func (mr *MockQualityStorageMockRecorder) ListQualityProfileItems(ctx any) *gomo
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListQualityProfileItems", reflect.TypeOf((*MockQualityStorage)(nil).ListQualityProfileItems), ctx)
 }
 
+// ListQualityProfileRows mocks base method.
+func (m *MockQualityStorage) ListQualityProfileRows(ctx context.Context, profileID int64) ([]sqlcdb.ListQualityProfileRowsRow, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListQualityProfileRows", ctx, profileID)
+	ret0, _ := ret[0].([]sqlcdb.ListQualityProfileRowsRow)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListQualityProfileRows indicates an expected call of ListQualityProfileRows.
+func (mr *MockQualityStorageMockRecorder) ListQualityProfileRows(ctx, profileID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListQualityProfileRows", reflect.TypeOf((*MockQualityStorage)(nil).ListQualityProfileRows), ctx, profileID)
+}
+
 // ListQualityProfiles mocks base method.
-func (m *MockQualityStorage) ListQualityProfiles(ctx context.Context) ([]*storage.QualityProfile, error) {
+func (m *MockQualityStorage) ListQualityProfiles(ctx context.Context) ([]sqlcdb.QualityProfile, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListQualityProfiles", ctx)
-	ret0, _ := ret[0].([]*storage.QualityProfile)
+	ret0, _ := ret[0].([]sqlcdb.QualityProfile)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -2268,10 +2434,10 @@ func (mr *MockQualityStorageMockRecorder) ListQualityProfiles(ctx any) *gomock.C
 }
 
 // ListQualityProfilesByMediaType mocks base method.
-func (m *MockQualityStorage) ListQualityProfilesByMediaType(ctx context.Context, mediaType string) ([]*storage.QualityProfile, error) {
+func (m *MockQualityStorage) ListQualityProfilesByMediaType(ctx context.Context, mediaType string) ([]sqlcdb.QualityProfile, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListQualityProfilesByMediaType", ctx, mediaType)
-	ret0, _ := ret[0].([]*storage.QualityProfile)
+	ret0, _ := ret[0].([]sqlcdb.QualityProfile)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -2283,7 +2449,7 @@ func (mr *MockQualityStorageMockRecorder) ListQualityProfilesByMediaType(ctx, me
 }
 
 // UpdateQualityDefinition mocks base method.
-func (m *MockQualityStorage) UpdateQualityDefinition(ctx context.Context, id int64, definition model.QualityDefinition) error {
+func (m *MockQualityStorage) UpdateQualityDefinition(ctx context.Context, id int64, definition sqlcdb.QualityDefinition) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UpdateQualityDefinition", ctx, id, definition)
 	ret0, _ := ret[0].(error)
@@ -2297,7 +2463,7 @@ func (mr *MockQualityStorageMockRecorder) UpdateQualityDefinition(ctx, id, defin
 }
 
 // UpdateQualityProfile mocks base method.
-func (m *MockQualityStorage) UpdateQualityProfile(ctx context.Context, id int64, profile storage.QualityProfile) error {
+func (m *MockQualityStorage) UpdateQualityProfile(ctx context.Context, id int64, profile sqlcdb.QualityProfile) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UpdateQualityProfile", ctx, id, profile)
 	ret0, _ := ret[0].(error)
@@ -2334,7 +2500,7 @@ func (m *MockMovieStorage) EXPECT() *MockMovieStorageMockRecorder {
 }
 
 // CreateMovie mocks base method.
-func (m *MockMovieStorage) CreateMovie(ctx context.Context, movie storage.Movie, state storage.MovieState) (int64, error) {
+func (m *MockMovieStorage) CreateMovie(ctx context.Context, movie sqlcdb.Movie, state storage.MovieState) (int64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateMovie", ctx, movie, state)
 	ret0, _ := ret[0].(int64)
@@ -2349,7 +2515,7 @@ func (mr *MockMovieStorageMockRecorder) CreateMovie(ctx, movie, state any) *gomo
 }
 
 // CreateMovieFile mocks base method.
-func (m *MockMovieStorage) CreateMovieFile(ctx context.Context, movieFile model.MovieFile) (int64, error) {
+func (m *MockMovieStorage) CreateMovieFile(ctx context.Context, movieFile sqlcdb.MovieFile) (int64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateMovieFile", ctx, movieFile)
 	ret0, _ := ret[0].(int64)
@@ -2392,10 +2558,10 @@ func (mr *MockMovieStorageMockRecorder) DeleteMovieFile(ctx, id any) *gomock.Cal
 }
 
 // GetMovie mocks base method.
-func (m *MockMovieStorage) GetMovie(ctx context.Context, id int64) (*storage.Movie, error) {
+func (m *MockMovieStorage) GetMovie(ctx context.Context, id int64) (sqlcdb.GetMovieByIDRow, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetMovie", ctx, id)
-	ret0, _ := ret[0].(*storage.Movie)
+	ret0, _ := ret[0].(sqlcdb.GetMovieByIDRow)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -2407,10 +2573,10 @@ func (mr *MockMovieStorageMockRecorder) GetMovie(ctx, id any) *gomock.Call {
 }
 
 // GetMovieByMetadataID mocks base method.
-func (m *MockMovieStorage) GetMovieByMetadataID(ctx context.Context, metadataID int) (*storage.Movie, error) {
+func (m *MockMovieStorage) GetMovieByMetadataID(ctx context.Context, metadataID int64) (sqlcdb.GetMovieByMetadataIDRow, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetMovieByMetadataID", ctx, metadataID)
-	ret0, _ := ret[0].(*storage.Movie)
+	ret0, _ := ret[0].(sqlcdb.GetMovieByMetadataIDRow)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -2422,10 +2588,10 @@ func (mr *MockMovieStorageMockRecorder) GetMovieByMetadataID(ctx, metadataID any
 }
 
 // GetMovieByMovieFileID mocks base method.
-func (m *MockMovieStorage) GetMovieByMovieFileID(ctx context.Context, fileID int64) (*storage.Movie, error) {
+func (m *MockMovieStorage) GetMovieByMovieFileID(ctx context.Context, fileID int64) (sqlcdb.GetMovieByFileIDRow, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetMovieByMovieFileID", ctx, fileID)
-	ret0, _ := ret[0].(*storage.Movie)
+	ret0, _ := ret[0].(sqlcdb.GetMovieByFileIDRow)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -2437,10 +2603,10 @@ func (mr *MockMovieStorageMockRecorder) GetMovieByMovieFileID(ctx, fileID any) *
 }
 
 // GetMovieByPath mocks base method.
-func (m *MockMovieStorage) GetMovieByPath(ctx context.Context, path string) (*storage.Movie, error) {
+func (m *MockMovieStorage) GetMovieByPath(ctx context.Context, path string) (sqlcdb.GetMovieByPathRow, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetMovieByPath", ctx, path)
-	ret0, _ := ret[0].(*storage.Movie)
+	ret0, _ := ret[0].(sqlcdb.GetMovieByPathRow)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -2452,10 +2618,10 @@ func (mr *MockMovieStorageMockRecorder) GetMovieByPath(ctx, path any) *gomock.Ca
 }
 
 // GetMovieFilesByMovieName mocks base method.
-func (m *MockMovieStorage) GetMovieFilesByMovieName(ctx context.Context, name string) ([]*model.MovieFile, error) {
+func (m *MockMovieStorage) GetMovieFilesByMovieName(ctx context.Context, name string) ([]sqlcdb.MovieFile, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetMovieFilesByMovieName", ctx, name)
-	ret0, _ := ret[0].([]*model.MovieFile)
+	ret0, _ := ret[0].([]sqlcdb.MovieFile)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -2467,7 +2633,7 @@ func (mr *MockMovieStorageMockRecorder) GetMovieFilesByMovieName(ctx, name any) 
 }
 
 // LinkMovieMetadata mocks base method.
-func (m *MockMovieStorage) LinkMovieMetadata(ctx context.Context, movieID int64, metadataID int32) error {
+func (m *MockMovieStorage) LinkMovieMetadata(ctx context.Context, movieID, metadataID int64) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "LinkMovieMetadata", ctx, movieID, metadataID)
 	ret0, _ := ret[0].(error)
@@ -2481,10 +2647,10 @@ func (mr *MockMovieStorageMockRecorder) LinkMovieMetadata(ctx, movieID, metadata
 }
 
 // ListMovieFiles mocks base method.
-func (m *MockMovieStorage) ListMovieFiles(ctx context.Context) ([]*model.MovieFile, error) {
+func (m *MockMovieStorage) ListMovieFiles(ctx context.Context) ([]sqlcdb.MovieFile, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListMovieFiles", ctx)
-	ret0, _ := ret[0].([]*model.MovieFile)
+	ret0, _ := ret[0].([]sqlcdb.MovieFile)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -2496,10 +2662,10 @@ func (mr *MockMovieStorageMockRecorder) ListMovieFiles(ctx any) *gomock.Call {
 }
 
 // ListMovies mocks base method.
-func (m *MockMovieStorage) ListMovies(ctx context.Context) ([]*storage.Movie, error) {
+func (m *MockMovieStorage) ListMovies(ctx context.Context) ([]sqlcdb.ListMoviesRow, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListMovies", ctx)
-	ret0, _ := ret[0].([]*storage.Movie)
+	ret0, _ := ret[0].([]sqlcdb.ListMoviesRow)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -2511,22 +2677,27 @@ func (mr *MockMovieStorageMockRecorder) ListMovies(ctx any) *gomock.Call {
 }
 
 // ListMoviesByState mocks base method.
-func (m *MockMovieStorage) ListMoviesByState(ctx context.Context, state storage.MovieState) ([]*storage.Movie, error) {
+func (m *MockMovieStorage) ListMoviesByState(ctx context.Context, states ...storage.MovieState) ([]sqlcdb.ListMoviesByStatesRow, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListMoviesByState", ctx, state)
-	ret0, _ := ret[0].([]*storage.Movie)
+	varargs := []any{ctx}
+	for _, a := range states {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "ListMoviesByState", varargs...)
+	ret0, _ := ret[0].([]sqlcdb.ListMoviesByStatesRow)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListMoviesByState indicates an expected call of ListMoviesByState.
-func (mr *MockMovieStorageMockRecorder) ListMoviesByState(ctx, state any) *gomock.Call {
+func (mr *MockMovieStorageMockRecorder) ListMoviesByState(ctx any, states ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListMoviesByState", reflect.TypeOf((*MockMovieStorage)(nil).ListMoviesByState), ctx, state)
+	varargs := append([]any{ctx}, states...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListMoviesByState", reflect.TypeOf((*MockMovieStorage)(nil).ListMoviesByState), varargs...)
 }
 
 // UpdateMovieByID mocks base method.
-func (m *MockMovieStorage) UpdateMovieByID(ctx context.Context, id int64, movie model.Movie) error {
+func (m *MockMovieStorage) UpdateMovieByID(ctx context.Context, id int64, movie sqlcdb.Movie) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UpdateMovieByID", ctx, id, movie)
 	ret0, _ := ret[0].(error)
@@ -2554,7 +2725,7 @@ func (mr *MockMovieStorageMockRecorder) UpdateMovieMovieFileID(ctx, id, fileID a
 }
 
 // UpdateMovieQualityProfile mocks base method.
-func (m *MockMovieStorage) UpdateMovieQualityProfile(ctx context.Context, id int64, qualityProfileID int32) error {
+func (m *MockMovieStorage) UpdateMovieQualityProfile(ctx context.Context, id, qualityProfileID int64) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UpdateMovieQualityProfile", ctx, id, qualityProfileID)
 	ret0, _ := ret[0].(error)
@@ -2605,7 +2776,7 @@ func (m *MockMovieMetadataStorage) EXPECT() *MockMovieMetadataStorageMockRecorde
 }
 
 // CreateMovieMetadata mocks base method.
-func (m *MockMovieMetadataStorage) CreateMovieMetadata(ctx context.Context, movieMeta model.MovieMetadata) (int64, error) {
+func (m *MockMovieMetadataStorage) CreateMovieMetadata(ctx context.Context, movieMeta sqlcdb.MovieMetadatum) (int64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateMovieMetadata", ctx, movieMeta)
 	ret0, _ := ret[0].(int64)
@@ -2634,10 +2805,10 @@ func (mr *MockMovieMetadataStorageMockRecorder) DeleteMovieMetadata(ctx, id any)
 }
 
 // GetMovieMetadataByID mocks base method.
-func (m *MockMovieMetadataStorage) GetMovieMetadataByID(ctx context.Context, id int64) (*model.MovieMetadata, error) {
+func (m *MockMovieMetadataStorage) GetMovieMetadataByID(ctx context.Context, id int64) (sqlcdb.MovieMetadatum, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetMovieMetadataByID", ctx, id)
-	ret0, _ := ret[0].(*model.MovieMetadata)
+	ret0, _ := ret[0].(sqlcdb.MovieMetadatum)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -2649,10 +2820,10 @@ func (mr *MockMovieMetadataStorageMockRecorder) GetMovieMetadataByID(ctx, id any
 }
 
 // GetMovieMetadataByTmdbID mocks base method.
-func (m *MockMovieMetadataStorage) GetMovieMetadataByTmdbID(ctx context.Context, tmdbID int64) (*model.MovieMetadata, error) {
+func (m *MockMovieMetadataStorage) GetMovieMetadataByTmdbID(ctx context.Context, tmdbID int64) (sqlcdb.MovieMetadatum, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetMovieMetadataByTmdbID", ctx, tmdbID)
-	ret0, _ := ret[0].(*model.MovieMetadata)
+	ret0, _ := ret[0].(sqlcdb.MovieMetadatum)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -2664,10 +2835,10 @@ func (mr *MockMovieMetadataStorageMockRecorder) GetMovieMetadataByTmdbID(ctx, tm
 }
 
 // ListMovieMetadata mocks base method.
-func (m *MockMovieMetadataStorage) ListMovieMetadata(ctx context.Context) ([]*model.MovieMetadata, error) {
+func (m *MockMovieMetadataStorage) ListMovieMetadata(ctx context.Context) ([]sqlcdb.MovieMetadatum, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListMovieMetadata", ctx)
-	ret0, _ := ret[0].([]*model.MovieMetadata)
+	ret0, _ := ret[0].([]sqlcdb.MovieMetadatum)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -2679,7 +2850,7 @@ func (mr *MockMovieMetadataStorageMockRecorder) ListMovieMetadata(ctx any) *gomo
 }
 
 // UpdateMovieMetadata mocks base method.
-func (m *MockMovieMetadataStorage) UpdateMovieMetadata(ctx context.Context, metadata model.MovieMetadata) error {
+func (m *MockMovieMetadataStorage) UpdateMovieMetadata(ctx context.Context, metadata sqlcdb.MovieMetadatum) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UpdateMovieMetadata", ctx, metadata)
 	ret0, _ := ret[0].(error)
@@ -2716,7 +2887,7 @@ func (m *MockDownloadClientStorage) EXPECT() *MockDownloadClientStorageMockRecor
 }
 
 // CreateDownloadClient mocks base method.
-func (m *MockDownloadClientStorage) CreateDownloadClient(ctx context.Context, client model.DownloadClient) (int64, error) {
+func (m *MockDownloadClientStorage) CreateDownloadClient(ctx context.Context, client sqlcdb.DownloadClient) (int64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateDownloadClient", ctx, client)
 	ret0, _ := ret[0].(int64)
@@ -2745,10 +2916,10 @@ func (mr *MockDownloadClientStorageMockRecorder) DeleteDownloadClient(ctx, id an
 }
 
 // GetDownloadClient mocks base method.
-func (m *MockDownloadClientStorage) GetDownloadClient(ctx context.Context, id int64) (model.DownloadClient, error) {
+func (m *MockDownloadClientStorage) GetDownloadClient(ctx context.Context, id int64) (sqlcdb.DownloadClient, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetDownloadClient", ctx, id)
-	ret0, _ := ret[0].(model.DownloadClient)
+	ret0, _ := ret[0].(sqlcdb.DownloadClient)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -2760,10 +2931,10 @@ func (mr *MockDownloadClientStorageMockRecorder) GetDownloadClient(ctx, id any) 
 }
 
 // ListDownloadClients mocks base method.
-func (m *MockDownloadClientStorage) ListDownloadClients(ctx context.Context) ([]*model.DownloadClient, error) {
+func (m *MockDownloadClientStorage) ListDownloadClients(ctx context.Context) ([]sqlcdb.DownloadClient, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListDownloadClients", ctx)
-	ret0, _ := ret[0].([]*model.DownloadClient)
+	ret0, _ := ret[0].([]sqlcdb.DownloadClient)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -2775,7 +2946,7 @@ func (mr *MockDownloadClientStorageMockRecorder) ListDownloadClients(ctx any) *g
 }
 
 // UpdateDownloadClient mocks base method.
-func (m *MockDownloadClientStorage) UpdateDownloadClient(ctx context.Context, id int64, client model.DownloadClient) error {
+func (m *MockDownloadClientStorage) UpdateDownloadClient(ctx context.Context, id int64, client sqlcdb.DownloadClient) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UpdateDownloadClient", ctx, id, client)
 	ret0, _ := ret[0].(error)
@@ -2827,7 +2998,7 @@ func (mr *MockJobStorageMockRecorder) CountJobs(ctx, filter any) *gomock.Call {
 }
 
 // CreateJob mocks base method.
-func (m *MockJobStorage) CreateJob(ctx context.Context, job storage.Job, initialState storage.JobState) (int64, error) {
+func (m *MockJobStorage) CreateJob(ctx context.Context, job sqlcdb.Job, initialState storage.JobState) (int64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateJob", ctx, job, initialState)
 	ret0, _ := ret[0].(int64)
@@ -2871,10 +3042,10 @@ func (mr *MockJobStorageMockRecorder) DeleteJobsByIDs(ctx, ids any) *gomock.Call
 }
 
 // GetJob mocks base method.
-func (m *MockJobStorage) GetJob(ctx context.Context, id int64) (*storage.Job, error) {
+func (m *MockJobStorage) GetJob(ctx context.Context, id int64) (sqlcdb.GetJobByIDRow, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetJob", ctx, id)
-	ret0, _ := ret[0].(*storage.Job)
+	ret0, _ := ret[0].(sqlcdb.GetJobByIDRow)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -2886,10 +3057,10 @@ func (mr *MockJobStorageMockRecorder) GetJob(ctx, id any) *gomock.Call {
 }
 
 // ListJobs mocks base method.
-func (m *MockJobStorage) ListJobs(ctx context.Context, offset, limit int, filter storage.JobFilter) ([]*storage.Job, error) {
+func (m *MockJobStorage) ListJobs(ctx context.Context, offset, limit int, filter storage.JobFilter) ([]sqlcdb.ListJobsRow, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListJobs", ctx, offset, limit, filter)
-	ret0, _ := ret[0].([]*storage.Job)
+	ret0, _ := ret[0].([]sqlcdb.ListJobsRow)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -2938,7 +3109,7 @@ func (m *MockSeriesStorage) EXPECT() *MockSeriesStorageMockRecorder {
 }
 
 // CreateEpisode mocks base method.
-func (m *MockSeriesStorage) CreateEpisode(ctx context.Context, episode storage.Episode, initialState storage.EpisodeState) (int64, error) {
+func (m *MockSeriesStorage) CreateEpisode(ctx context.Context, episode sqlcdb.Episode, initialState storage.EpisodeState) (int64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateEpisode", ctx, episode, initialState)
 	ret0, _ := ret[0].(int64)
@@ -2953,7 +3124,7 @@ func (mr *MockSeriesStorageMockRecorder) CreateEpisode(ctx, episode, initialStat
 }
 
 // CreateEpisodeFile mocks base method.
-func (m *MockSeriesStorage) CreateEpisodeFile(ctx context.Context, episodeFile model.EpisodeFile) (int64, error) {
+func (m *MockSeriesStorage) CreateEpisodeFile(ctx context.Context, episodeFile sqlcdb.EpisodeFile) (int64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateEpisodeFile", ctx, episodeFile)
 	ret0, _ := ret[0].(int64)
@@ -2968,7 +3139,7 @@ func (mr *MockSeriesStorageMockRecorder) CreateEpisodeFile(ctx, episodeFile any)
 }
 
 // CreateSeason mocks base method.
-func (m *MockSeriesStorage) CreateSeason(ctx context.Context, season storage.Season, initialState storage.SeasonState) (int64, error) {
+func (m *MockSeriesStorage) CreateSeason(ctx context.Context, season sqlcdb.Season, initialState storage.SeasonState) (int64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateSeason", ctx, season, initialState)
 	ret0, _ := ret[0].(int64)
@@ -2983,7 +3154,7 @@ func (mr *MockSeriesStorageMockRecorder) CreateSeason(ctx, season, initialState 
 }
 
 // CreateSeries mocks base method.
-func (m *MockSeriesStorage) CreateSeries(ctx context.Context, series storage.Series, initialState storage.SeriesState) (int64, error) {
+func (m *MockSeriesStorage) CreateSeries(ctx context.Context, series sqlcdb.Series, initialState storage.SeriesState) (int64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateSeries", ctx, series, initialState)
 	ret0, _ := ret[0].(int64)
@@ -3054,10 +3225,10 @@ func (mr *MockSeriesStorageMockRecorder) DeleteSeries(ctx, id any) *gomock.Call 
 }
 
 // GetEpisodeByEpisodeFileID mocks base method.
-func (m *MockSeriesStorage) GetEpisodeByEpisodeFileID(ctx context.Context, fileID int64) (*storage.Episode, error) {
+func (m *MockSeriesStorage) GetEpisodeByEpisodeFileID(ctx context.Context, fileID int64) (sqlcdb.GetEpisodeByEpisodeFileIDRow, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetEpisodeByEpisodeFileID", ctx, fileID)
-	ret0, _ := ret[0].(*storage.Episode)
+	ret0, _ := ret[0].(sqlcdb.GetEpisodeByEpisodeFileIDRow)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -3069,10 +3240,10 @@ func (mr *MockSeriesStorageMockRecorder) GetEpisodeByEpisodeFileID(ctx, fileID a
 }
 
 // GetEpisodeByID mocks base method.
-func (m *MockSeriesStorage) GetEpisodeByID(ctx context.Context, id int64) (*storage.Episode, error) {
+func (m *MockSeriesStorage) GetEpisodeByID(ctx context.Context, id int64) (sqlcdb.GetEpisodeByIDRow, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetEpisodeByID", ctx, id)
-	ret0, _ := ret[0].(*storage.Episode)
+	ret0, _ := ret[0].(sqlcdb.GetEpisodeByIDRow)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -3084,10 +3255,10 @@ func (mr *MockSeriesStorageMockRecorder) GetEpisodeByID(ctx, id any) *gomock.Cal
 }
 
 // GetEpisodeFile mocks base method.
-func (m *MockSeriesStorage) GetEpisodeFile(ctx context.Context, id int32) (*model.EpisodeFile, error) {
+func (m *MockSeriesStorage) GetEpisodeFile(ctx context.Context, id int64) (sqlcdb.EpisodeFile, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetEpisodeFile", ctx, id)
-	ret0, _ := ret[0].(*model.EpisodeFile)
+	ret0, _ := ret[0].(sqlcdb.EpisodeFile)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -3099,10 +3270,10 @@ func (mr *MockSeriesStorageMockRecorder) GetEpisodeFile(ctx, id any) *gomock.Cal
 }
 
 // GetEpisodeFileByID mocks base method.
-func (m *MockSeriesStorage) GetEpisodeFileByID(ctx context.Context, id int64) ([]*model.EpisodeFile, error) {
+func (m *MockSeriesStorage) GetEpisodeFileByID(ctx context.Context, id int64) ([]sqlcdb.EpisodeFile, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetEpisodeFileByID", ctx, id)
-	ret0, _ := ret[0].([]*model.EpisodeFile)
+	ret0, _ := ret[0].([]sqlcdb.EpisodeFile)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -3114,10 +3285,10 @@ func (mr *MockSeriesStorageMockRecorder) GetEpisodeFileByID(ctx, id any) *gomock
 }
 
 // GetSeasonByID mocks base method.
-func (m *MockSeriesStorage) GetSeasonByID(ctx context.Context, id int64) (*storage.Season, error) {
+func (m *MockSeriesStorage) GetSeasonByID(ctx context.Context, id int64) (sqlcdb.GetSeasonByIDRow, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetSeasonByID", ctx, id)
-	ret0, _ := ret[0].(*storage.Season)
+	ret0, _ := ret[0].(sqlcdb.GetSeasonByIDRow)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -3129,10 +3300,10 @@ func (mr *MockSeriesStorageMockRecorder) GetSeasonByID(ctx, id any) *gomock.Call
 }
 
 // GetSeasonBySeriesIDAndNumber mocks base method.
-func (m *MockSeriesStorage) GetSeasonBySeriesIDAndNumber(ctx context.Context, seriesID int64, seasonNumber int32) (*storage.Season, error) {
+func (m *MockSeriesStorage) GetSeasonBySeriesIDAndNumber(ctx context.Context, seriesID, seasonNumber int64) (sqlcdb.GetSeasonBySeriesIDAndNumberRow, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetSeasonBySeriesIDAndNumber", ctx, seriesID, seasonNumber)
-	ret0, _ := ret[0].(*storage.Season)
+	ret0, _ := ret[0].(sqlcdb.GetSeasonBySeriesIDAndNumberRow)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -3144,10 +3315,10 @@ func (mr *MockSeriesStorageMockRecorder) GetSeasonBySeriesIDAndNumber(ctx, serie
 }
 
 // GetSeriesByID mocks base method.
-func (m *MockSeriesStorage) GetSeriesByID(ctx context.Context, id int64) (*storage.Series, error) {
+func (m *MockSeriesStorage) GetSeriesByID(ctx context.Context, id int64) (sqlcdb.GetSeriesRow, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetSeriesByID", ctx, id)
-	ret0, _ := ret[0].(*storage.Series)
+	ret0, _ := ret[0].(sqlcdb.GetSeriesRow)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -3159,10 +3330,10 @@ func (mr *MockSeriesStorageMockRecorder) GetSeriesByID(ctx, id any) *gomock.Call
 }
 
 // GetSeriesByMetadataID mocks base method.
-func (m *MockSeriesStorage) GetSeriesByMetadataID(ctx context.Context, metadataID int32) (*storage.Series, error) {
+func (m *MockSeriesStorage) GetSeriesByMetadataID(ctx context.Context, metadataID int64) (sqlcdb.GetSeriesRow, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetSeriesByMetadataID", ctx, metadataID)
-	ret0, _ := ret[0].(*storage.Series)
+	ret0, _ := ret[0].(sqlcdb.GetSeriesRow)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -3174,10 +3345,10 @@ func (mr *MockSeriesStorageMockRecorder) GetSeriesByMetadataID(ctx, metadataID a
 }
 
 // GetSeriesByPath mocks base method.
-func (m *MockSeriesStorage) GetSeriesByPath(ctx context.Context, path string) (*storage.Series, error) {
+func (m *MockSeriesStorage) GetSeriesByPath(ctx context.Context, path string) (sqlcdb.GetSeriesRow, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetSeriesByPath", ctx, path)
-	ret0, _ := ret[0].(*storage.Series)
+	ret0, _ := ret[0].(sqlcdb.GetSeriesRow)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -3189,7 +3360,7 @@ func (mr *MockSeriesStorageMockRecorder) GetSeriesByPath(ctx, path any) *gomock.
 }
 
 // LinkEpisodeMetadata mocks base method.
-func (m *MockSeriesStorage) LinkEpisodeMetadata(ctx context.Context, episodeID int64, seasonID, episodeMetadataID int32) error {
+func (m *MockSeriesStorage) LinkEpisodeMetadata(ctx context.Context, episodeID, seasonID, episodeMetadataID int64) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "LinkEpisodeMetadata", ctx, episodeID, seasonID, episodeMetadataID)
 	ret0, _ := ret[0].(error)
@@ -3203,7 +3374,7 @@ func (mr *MockSeriesStorageMockRecorder) LinkEpisodeMetadata(ctx, episodeID, sea
 }
 
 // LinkSeasonMetadata mocks base method.
-func (m *MockSeriesStorage) LinkSeasonMetadata(ctx context.Context, seasonID int64, metadataID int32) error {
+func (m *MockSeriesStorage) LinkSeasonMetadata(ctx context.Context, seasonID, metadataID int64) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "LinkSeasonMetadata", ctx, seasonID, metadataID)
 	ret0, _ := ret[0].(error)
@@ -3217,7 +3388,7 @@ func (mr *MockSeriesStorageMockRecorder) LinkSeasonMetadata(ctx, seasonID, metad
 }
 
 // LinkSeriesMetadata mocks base method.
-func (m *MockSeriesStorage) LinkSeriesMetadata(ctx context.Context, seriesID int64, metadataID int32) error {
+func (m *MockSeriesStorage) LinkSeriesMetadata(ctx context.Context, seriesID, metadataID int64) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "LinkSeriesMetadata", ctx, seriesID, metadataID)
 	ret0, _ := ret[0].(error)
@@ -3231,10 +3402,10 @@ func (mr *MockSeriesStorageMockRecorder) LinkSeriesMetadata(ctx, seriesID, metad
 }
 
 // ListEpisodeFiles mocks base method.
-func (m *MockSeriesStorage) ListEpisodeFiles(ctx context.Context) ([]*model.EpisodeFile, error) {
+func (m *MockSeriesStorage) ListEpisodeFiles(ctx context.Context) ([]sqlcdb.EpisodeFile, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListEpisodeFiles", ctx)
-	ret0, _ := ret[0].([]*model.EpisodeFile)
+	ret0, _ := ret[0].([]sqlcdb.EpisodeFile)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -3246,10 +3417,10 @@ func (mr *MockSeriesStorageMockRecorder) ListEpisodeFiles(ctx any) *gomock.Call 
 }
 
 // ListEpisodes mocks base method.
-func (m *MockSeriesStorage) ListEpisodes(ctx context.Context, filter storage.EpisodeFilter) ([]*storage.Episode, error) {
+func (m *MockSeriesStorage) ListEpisodes(ctx context.Context, filter storage.EpisodeFilter) ([]sqlcdb.ListEpisodesRow, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListEpisodes", ctx, filter)
-	ret0, _ := ret[0].([]*storage.Episode)
+	ret0, _ := ret[0].([]sqlcdb.ListEpisodesRow)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -3261,10 +3432,10 @@ func (mr *MockSeriesStorageMockRecorder) ListEpisodes(ctx, filter any) *gomock.C
 }
 
 // ListSeasons mocks base method.
-func (m *MockSeriesStorage) ListSeasons(ctx context.Context, filter storage.SeasonFilter) ([]*storage.Season, error) {
+func (m *MockSeriesStorage) ListSeasons(ctx context.Context, filter storage.SeasonFilter) ([]sqlcdb.ListSeasonsRow, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListSeasons", ctx, filter)
-	ret0, _ := ret[0].([]*storage.Season)
+	ret0, _ := ret[0].([]sqlcdb.ListSeasonsRow)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -3276,10 +3447,10 @@ func (mr *MockSeriesStorageMockRecorder) ListSeasons(ctx, filter any) *gomock.Ca
 }
 
 // ListSeries mocks base method.
-func (m *MockSeriesStorage) ListSeries(ctx context.Context, filter storage.SeriesFilter) ([]*storage.Series, error) {
+func (m *MockSeriesStorage) ListSeries(ctx context.Context, filter storage.SeriesFilter) ([]sqlcdb.ListSeriesRow, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListSeries", ctx, filter)
-	ret0, _ := ret[0].([]*storage.Series)
+	ret0, _ := ret[0].([]sqlcdb.ListSeriesRow)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -3305,7 +3476,7 @@ func (mr *MockSeriesStorageMockRecorder) UpdateEpisodeEpisodeFileID(ctx, id, fil
 }
 
 // UpdateEpisodeFile mocks base method.
-func (m *MockSeriesStorage) UpdateEpisodeFile(ctx context.Context, id int32, episodeFile model.EpisodeFile) error {
+func (m *MockSeriesStorage) UpdateEpisodeFile(ctx context.Context, id int64, episodeFile sqlcdb.EpisodeFile) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UpdateEpisodeFile", ctx, id, episodeFile)
 	ret0, _ := ret[0].(error)
@@ -3333,21 +3504,21 @@ func (mr *MockSeriesStorageMockRecorder) UpdateEpisodeState(ctx, id, state, meta
 }
 
 // UpdateSeasonState mocks base method.
-func (m *MockSeriesStorage) UpdateSeasonState(ctx context.Context, id int64, season storage.SeasonState, metadata *storage.TransitionStateMetadata) error {
+func (m *MockSeriesStorage) UpdateSeasonState(ctx context.Context, id int64, state storage.SeasonState, metadata *storage.TransitionStateMetadata) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UpdateSeasonState", ctx, id, season, metadata)
+	ret := m.ctrl.Call(m, "UpdateSeasonState", ctx, id, state, metadata)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // UpdateSeasonState indicates an expected call of UpdateSeasonState.
-func (mr *MockSeriesStorageMockRecorder) UpdateSeasonState(ctx, id, season, metadata any) *gomock.Call {
+func (mr *MockSeriesStorageMockRecorder) UpdateSeasonState(ctx, id, state, metadata any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateSeasonState", reflect.TypeOf((*MockSeriesStorage)(nil).UpdateSeasonState), ctx, id, season, metadata)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateSeasonState", reflect.TypeOf((*MockSeriesStorage)(nil).UpdateSeasonState), ctx, id, state, metadata)
 }
 
 // UpdateSeriesByID mocks base method.
-func (m *MockSeriesStorage) UpdateSeriesByID(ctx context.Context, id int64, series model.Series) error {
+func (m *MockSeriesStorage) UpdateSeriesByID(ctx context.Context, id int64, series sqlcdb.Series) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UpdateSeriesByID", ctx, id, series)
 	ret0, _ := ret[0].(error)
@@ -3398,7 +3569,7 @@ func (m *MockSeriesMetadataStorage) EXPECT() *MockSeriesMetadataStorageMockRecor
 }
 
 // CreateEpisodeMetadata mocks base method.
-func (m *MockSeriesMetadataStorage) CreateEpisodeMetadata(ctx context.Context, episodeMeta model.EpisodeMetadata) (int64, error) {
+func (m *MockSeriesMetadataStorage) CreateEpisodeMetadata(ctx context.Context, episodeMeta sqlcdb.EpisodeMetadatum) (int64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateEpisodeMetadata", ctx, episodeMeta)
 	ret0, _ := ret[0].(int64)
@@ -3413,7 +3584,7 @@ func (mr *MockSeriesMetadataStorageMockRecorder) CreateEpisodeMetadata(ctx, epis
 }
 
 // CreateSeasonMetadata mocks base method.
-func (m *MockSeriesMetadataStorage) CreateSeasonMetadata(ctx context.Context, seasonMeta model.SeasonMetadata) (int64, error) {
+func (m *MockSeriesMetadataStorage) CreateSeasonMetadata(ctx context.Context, seasonMeta sqlcdb.SeasonMetadatum) (int64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateSeasonMetadata", ctx, seasonMeta)
 	ret0, _ := ret[0].(int64)
@@ -3428,7 +3599,7 @@ func (mr *MockSeriesMetadataStorageMockRecorder) CreateSeasonMetadata(ctx, seaso
 }
 
 // CreateSeriesMetadata mocks base method.
-func (m *MockSeriesMetadataStorage) CreateSeriesMetadata(ctx context.Context, SeriesMeta model.SeriesMetadata) (int64, error) {
+func (m *MockSeriesMetadataStorage) CreateSeriesMetadata(ctx context.Context, SeriesMeta sqlcdb.SeriesMetadatum) (int64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateSeriesMetadata", ctx, SeriesMeta)
 	ret0, _ := ret[0].(int64)
@@ -3485,10 +3656,10 @@ func (mr *MockSeriesMetadataStorageMockRecorder) DeleteSeriesMetadata(ctx, id an
 }
 
 // GetEpisodeMetadataByID mocks base method.
-func (m *MockSeriesMetadataStorage) GetEpisodeMetadataByID(ctx context.Context, id int64) (*model.EpisodeMetadata, error) {
+func (m *MockSeriesMetadataStorage) GetEpisodeMetadataByID(ctx context.Context, id int64) (sqlcdb.EpisodeMetadatum, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetEpisodeMetadataByID", ctx, id)
-	ret0, _ := ret[0].(*model.EpisodeMetadata)
+	ret0, _ := ret[0].(sqlcdb.EpisodeMetadatum)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -3500,10 +3671,10 @@ func (mr *MockSeriesMetadataStorageMockRecorder) GetEpisodeMetadataByID(ctx, id 
 }
 
 // GetEpisodeMetadataBySeasonAndNumber mocks base method.
-func (m *MockSeriesMetadataStorage) GetEpisodeMetadataBySeasonAndNumber(ctx context.Context, seasonMetadataID, number int32) (*model.EpisodeMetadata, error) {
+func (m *MockSeriesMetadataStorage) GetEpisodeMetadataBySeasonAndNumber(ctx context.Context, seasonMetadataID, number int64) (sqlcdb.EpisodeMetadatum, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetEpisodeMetadataBySeasonAndNumber", ctx, seasonMetadataID, number)
-	ret0, _ := ret[0].(*model.EpisodeMetadata)
+	ret0, _ := ret[0].(sqlcdb.EpisodeMetadatum)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -3515,10 +3686,10 @@ func (mr *MockSeriesMetadataStorageMockRecorder) GetEpisodeMetadataBySeasonAndNu
 }
 
 // GetEpisodeMetadataByTmdbID mocks base method.
-func (m *MockSeriesMetadataStorage) GetEpisodeMetadataByTmdbID(ctx context.Context, tmdbID int64) (*model.EpisodeMetadata, error) {
+func (m *MockSeriesMetadataStorage) GetEpisodeMetadataByTmdbID(ctx context.Context, tmdbID int64) (sqlcdb.EpisodeMetadatum, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetEpisodeMetadataByTmdbID", ctx, tmdbID)
-	ret0, _ := ret[0].(*model.EpisodeMetadata)
+	ret0, _ := ret[0].(sqlcdb.EpisodeMetadatum)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -3530,10 +3701,10 @@ func (mr *MockSeriesMetadataStorageMockRecorder) GetEpisodeMetadataByTmdbID(ctx,
 }
 
 // GetSeasonMetadataByID mocks base method.
-func (m *MockSeriesMetadataStorage) GetSeasonMetadataByID(ctx context.Context, id int64) (*model.SeasonMetadata, error) {
+func (m *MockSeriesMetadataStorage) GetSeasonMetadataByID(ctx context.Context, id int64) (sqlcdb.SeasonMetadatum, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetSeasonMetadataByID", ctx, id)
-	ret0, _ := ret[0].(*model.SeasonMetadata)
+	ret0, _ := ret[0].(sqlcdb.SeasonMetadatum)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -3545,10 +3716,10 @@ func (mr *MockSeriesMetadataStorageMockRecorder) GetSeasonMetadataByID(ctx, id a
 }
 
 // GetSeasonMetadataByTmdbID mocks base method.
-func (m *MockSeriesMetadataStorage) GetSeasonMetadataByTmdbID(ctx context.Context, tmdbID int64) (*model.SeasonMetadata, error) {
+func (m *MockSeriesMetadataStorage) GetSeasonMetadataByTmdbID(ctx context.Context, tmdbID int64) (sqlcdb.SeasonMetadatum, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetSeasonMetadataByTmdbID", ctx, tmdbID)
-	ret0, _ := ret[0].(*model.SeasonMetadata)
+	ret0, _ := ret[0].(sqlcdb.SeasonMetadatum)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -3560,10 +3731,10 @@ func (mr *MockSeriesMetadataStorageMockRecorder) GetSeasonMetadataByTmdbID(ctx, 
 }
 
 // GetSeriesMetadataByID mocks base method.
-func (m *MockSeriesMetadataStorage) GetSeriesMetadataByID(ctx context.Context, id int64) (*model.SeriesMetadata, error) {
+func (m *MockSeriesMetadataStorage) GetSeriesMetadataByID(ctx context.Context, id int64) (sqlcdb.SeriesMetadatum, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetSeriesMetadataByID", ctx, id)
-	ret0, _ := ret[0].(*model.SeriesMetadata)
+	ret0, _ := ret[0].(sqlcdb.SeriesMetadatum)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -3575,10 +3746,10 @@ func (mr *MockSeriesMetadataStorageMockRecorder) GetSeriesMetadataByID(ctx, id a
 }
 
 // GetSeriesMetadataByTmdbID mocks base method.
-func (m *MockSeriesMetadataStorage) GetSeriesMetadataByTmdbID(ctx context.Context, tmdbID int64) (*model.SeriesMetadata, error) {
+func (m *MockSeriesMetadataStorage) GetSeriesMetadataByTmdbID(ctx context.Context, tmdbID int64) (sqlcdb.SeriesMetadatum, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetSeriesMetadataByTmdbID", ctx, tmdbID)
-	ret0, _ := ret[0].(*model.SeriesMetadata)
+	ret0, _ := ret[0].(sqlcdb.SeriesMetadatum)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -3590,10 +3761,10 @@ func (mr *MockSeriesMetadataStorageMockRecorder) GetSeriesMetadataByTmdbID(ctx, 
 }
 
 // ListEpisodeMetadataByIDs mocks base method.
-func (m *MockSeriesMetadataStorage) ListEpisodeMetadataByIDs(ctx context.Context, ids []int64) ([]*model.EpisodeMetadata, error) {
+func (m *MockSeriesMetadataStorage) ListEpisodeMetadataByIDs(ctx context.Context, ids []int64) ([]sqlcdb.EpisodeMetadatum, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListEpisodeMetadataByIDs", ctx, ids)
-	ret0, _ := ret[0].([]*model.EpisodeMetadata)
+	ret0, _ := ret[0].([]sqlcdb.EpisodeMetadatum)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -3605,10 +3776,10 @@ func (mr *MockSeriesMetadataStorageMockRecorder) ListEpisodeMetadataByIDs(ctx, i
 }
 
 // ListEpisodeMetadataBySeasonMetadataID mocks base method.
-func (m *MockSeriesMetadataStorage) ListEpisodeMetadataBySeasonMetadataID(ctx context.Context, seasonMetadataID int32) ([]*model.EpisodeMetadata, error) {
+func (m *MockSeriesMetadataStorage) ListEpisodeMetadataBySeasonMetadataID(ctx context.Context, seasonMetadataID int64) ([]sqlcdb.EpisodeMetadatum, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListEpisodeMetadataBySeasonMetadataID", ctx, seasonMetadataID)
-	ret0, _ := ret[0].([]*model.EpisodeMetadata)
+	ret0, _ := ret[0].([]sqlcdb.EpisodeMetadatum)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -3620,10 +3791,10 @@ func (mr *MockSeriesMetadataStorageMockRecorder) ListEpisodeMetadataBySeasonMeta
 }
 
 // ListSeasonMetadataBySeriesMetadataID mocks base method.
-func (m *MockSeriesMetadataStorage) ListSeasonMetadataBySeriesMetadataID(ctx context.Context, seriesMetadataID int32) ([]*model.SeasonMetadata, error) {
+func (m *MockSeriesMetadataStorage) ListSeasonMetadataBySeriesMetadataID(ctx context.Context, seriesMetadataID int64) ([]sqlcdb.SeasonMetadatum, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListSeasonMetadataBySeriesMetadataID", ctx, seriesMetadataID)
-	ret0, _ := ret[0].([]*model.SeasonMetadata)
+	ret0, _ := ret[0].([]sqlcdb.SeasonMetadatum)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -3635,10 +3806,10 @@ func (mr *MockSeriesMetadataStorageMockRecorder) ListSeasonMetadataBySeriesMetad
 }
 
 // ListSeriesMetadata mocks base method.
-func (m *MockSeriesMetadataStorage) ListSeriesMetadata(ctx context.Context) ([]*model.SeriesMetadata, error) {
+func (m *MockSeriesMetadataStorage) ListSeriesMetadata(ctx context.Context) ([]sqlcdb.SeriesMetadatum, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListSeriesMetadata", ctx)
-	ret0, _ := ret[0].([]*model.SeriesMetadata)
+	ret0, _ := ret[0].([]sqlcdb.SeriesMetadatum)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -3650,10 +3821,10 @@ func (mr *MockSeriesMetadataStorageMockRecorder) ListSeriesMetadata(ctx any) *go
 }
 
 // ListSeriesMetadataByStatus mocks base method.
-func (m *MockSeriesMetadataStorage) ListSeriesMetadataByStatus(ctx context.Context, status string) ([]*model.SeriesMetadata, error) {
+func (m *MockSeriesMetadataStorage) ListSeriesMetadataByStatus(ctx context.Context, status string) ([]sqlcdb.SeriesMetadatum, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListSeriesMetadataByStatus", ctx, status)
-	ret0, _ := ret[0].([]*model.SeriesMetadata)
+	ret0, _ := ret[0].([]sqlcdb.SeriesMetadatum)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -3665,7 +3836,7 @@ func (mr *MockSeriesMetadataStorageMockRecorder) ListSeriesMetadataByStatus(ctx,
 }
 
 // UpdateSeriesMetadata mocks base method.
-func (m *MockSeriesMetadataStorage) UpdateSeriesMetadata(ctx context.Context, metadata model.SeriesMetadata) error {
+func (m *MockSeriesMetadataStorage) UpdateSeriesMetadata(ctx context.Context, metadata sqlcdb.SeriesMetadatum) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UpdateSeriesMetadata", ctx, metadata)
 	ret0, _ := ret[0].(error)

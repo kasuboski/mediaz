@@ -1,0 +1,1 @@
+{"response":{"name":"Gold Profile","qualities":[{"id":1,"name":"HDTV-720p","type":"movie","preferredSize":1999,"minSize":17.1,"maxSize":2000},{"id":2,"name":"WEBDL-720p","type":"movie","preferredSize":1999,"minSize":12.5,"maxSize":2000}],"id":7,"cutoff_quality_id":2,"upgradeAllowed":true}}

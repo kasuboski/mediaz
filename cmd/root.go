@@ -75,8 +75,6 @@ func initConfig() {
 	viper.SetDefault("library.useHardlinks", true)
 
 	viper.SetDefault("storage.filePath", "mediaz.sqlite")
-	viper.SetDefault("storage.schemas", []string{"./pkg/storage/sqlite/schema/schema.sql"})
-	viper.SetDefault("storage.tableValueSchemas", []string{"./pkg/storage/sqlite/schema/defaults.sql"})
 
 	viper.SetDefault("manager.jobs.movieIndex", defaultIndexJobInterval)
 	viper.SetDefault("manager.jobs.movieReconcile", defaultReconcileJobInterval)

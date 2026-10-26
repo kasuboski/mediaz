@@ -1,25 +1,31 @@
+// Package storage defines the persistence interfaces for mediaz plus the
+// small set of genuine business wrappers that live above the generated sqlc
+// layer (pkg/storage/sqlcdb): state-machine types, transition metadata,
+// filters and domain errors. Presentation belongs to manager/server.
+//
+// All entity and row types come straight from sqlc (sqlcdb.Movie,
+// sqlcdb.GetMovieByIDRow, ...) — IDs are int64 and nullables are sql.Null*
+// end to end. int32/string conversions happen only at external SDK edges
+// (TMDB/Prowlarr/download clients) in the caller packages.
 package storage
 
 import (
 	"context"
-	"embed"
 	"errors"
-	"fmt"
-	"os"
-	"time"
 
 	"github.com/kasuboski/mediaz/pkg/machine"
-	"github.com/kasuboski/mediaz/pkg/storage/model"
+	"github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 )
 
+// ErrNotFound is returned when a requested entity does not exist.
 var ErrNotFound = errors.New("not found in storage")
+
+// ErrJobAlreadyPending is returned when creating a pending job of a type that
+// already has a pending job (DB-enforced by idx_job_type_pending).
 var ErrJobAlreadyPending = errors.New("job of this type already pending")
 
-//go:embed sqlite/schema/*.sql
-var schemaFiles embed.FS
-
+// Storage is the root persistence interface implemented by pkg/storage/sqlite.
 type Storage interface {
-	Init(ctx context.Context, schemas ...string) error
 	RunMigrations(ctx context.Context) error
 	IndexerStorage
 	IndexerSourceStorage
@@ -35,18 +41,18 @@ type Storage interface {
 }
 
 type IndexerStorage interface {
-	CreateIndexer(ctx context.Context, indexer model.Indexer) (int64, error)
-	UpdateIndexer(ctx context.Context, id int64, indexer model.Indexer) error
+	CreateIndexer(ctx context.Context, indexer sqlcdb.Indexer) (int64, error)
+	UpdateIndexer(ctx context.Context, id int64, indexer sqlcdb.Indexer) error
 	DeleteIndexer(ctx context.Context, id int64) error
-	ListIndexers(ctx context.Context) ([]*model.Indexer, error)
+	ListIndexers(ctx context.Context) ([]sqlcdb.Indexer, error)
 }
 
 type IndexerSourceStorage interface {
-	CreateIndexerSource(ctx context.Context, source model.IndexerSource) (int64, error)
-	GetIndexerSource(ctx context.Context, id int64) (model.IndexerSource, error)
-	ListIndexerSources(ctx context.Context) ([]*model.IndexerSource, error)
-	ListEnabledIndexerSources(ctx context.Context) ([]*model.IndexerSource, error)
-	UpdateIndexerSource(ctx context.Context, id int64, source model.IndexerSource) error
+	CreateIndexerSource(ctx context.Context, source sqlcdb.IndexerSource) (int64, error)
+	GetIndexerSource(ctx context.Context, id int64) (sqlcdb.IndexerSource, error)
+	ListIndexerSources(ctx context.Context) ([]sqlcdb.IndexerSource, error)
+	ListEnabledIndexerSources(ctx context.Context) ([]sqlcdb.IndexerSource, error)
+	UpdateIndexerSource(ctx context.Context, id int64, source sqlcdb.IndexerSource) error
 	DeleteIndexerSource(ctx context.Context, id int64) error
 	// DeleteIndexerSourceCascade deletes an indexer source and all its child
 	// indexers in a single transaction. If any operation fails the transaction
@@ -54,28 +60,32 @@ type IndexerSourceStorage interface {
 	DeleteIndexerSourceCascade(ctx context.Context, id int64) error
 }
 
+// QualityStorage reads and writes generated profiles, definitions and joined rows.
 type QualityStorage interface {
-	CreateQualityProfile(ctx context.Context, profile model.QualityProfile) (int64, error)
-	GetQualityProfile(ctx context.Context, id int64) (QualityProfile, error)
-	ListQualityProfiles(ctx context.Context) ([]*QualityProfile, error)
-	ListQualityProfilesByMediaType(ctx context.Context, mediaType string) ([]*QualityProfile, error)
-	UpdateQualityProfile(ctx context.Context, id int64, profile QualityProfile) error
-	DeleteQualityProfile(ctx context.Context, id int64) error //TODO: do we cascade associated items?
+	CreateQualityProfile(ctx context.Context, profile sqlcdb.QualityProfile) (int64, error)
+	GetQualityProfile(ctx context.Context, id int64) (sqlcdb.QualityProfile, error)
+	ListQualityProfiles(ctx context.Context) ([]sqlcdb.QualityProfile, error)
+	ListQualityProfilesByMediaType(ctx context.Context, mediaType string) ([]sqlcdb.QualityProfile, error)
+	ListQualityProfileRows(ctx context.Context, profileID int64) ([]sqlcdb.ListQualityProfileRowsRow, error)
+	UpdateQualityProfile(ctx context.Context, id int64, profile sqlcdb.QualityProfile) error
+	DeleteQualityProfile(ctx context.Context, id int64) error
 
-	CreateQualityProfileItem(ctx context.Context, item model.QualityProfileItem) (int64, error)
-	CreateQualityProfileItems(ctx context.Context, items []model.QualityProfileItem) error
+	CreateQualityProfileItem(ctx context.Context, item sqlcdb.QualityProfileItem) (int64, error)
+	CreateQualityProfileItems(ctx context.Context, items []sqlcdb.QualityProfileItem) error
 	DeleteQualityProfileItem(ctx context.Context, id int64) error
 	DeleteQualityProfileItemsByProfileID(ctx context.Context, profileID int64) error
-	GetQualityProfileItem(ctx context.Context, id int64) (model.QualityProfileItem, error)
-	ListQualityProfileItems(ctx context.Context) ([]*model.QualityProfileItem, error)
+	GetQualityProfileItem(ctx context.Context, id int64) (sqlcdb.QualityProfileItem, error)
+	ListQualityProfileItems(ctx context.Context) ([]sqlcdb.QualityProfileItem, error)
 
-	CreateQualityDefinition(ctx context.Context, definition model.QualityDefinition) (int64, error)
-	GetQualityDefinition(ctx context.Context, id int64) (model.QualityDefinition, error)
-	ListQualityDefinitions(ctx context.Context) ([]*model.QualityDefinition, error)
-	UpdateQualityDefinition(ctx context.Context, id int64, definition model.QualityDefinition) error
+	CreateQualityDefinition(ctx context.Context, definition sqlcdb.QualityDefinition) (int64, error)
+	GetQualityDefinition(ctx context.Context, id int64) (sqlcdb.QualityDefinition, error)
+	ListQualityDefinitions(ctx context.Context) ([]sqlcdb.QualityDefinition, error)
+	UpdateQualityDefinition(ctx context.Context, id int64, definition sqlcdb.QualityDefinition) error
 	DeleteQualityDefinition(ctx context.Context, id int64) error
 }
 
+// MovieState enumerates the movie transition states. MovieStateNew ("") is
+// the zero value of a movie before its first transition.
 type MovieState string
 
 const (
@@ -87,23 +97,9 @@ const (
 	MovieStateDownloaded  MovieState = "downloaded"
 )
 
-type TransitionStateMetadata struct {
-	DownloadID             *string
-	DownloadClientID       *int32
-	IsEntireSeasonDownload *bool // applicable only to episodes
-}
-
-type Movie struct {
-	model.Movie
-	State            MovieState `alias:"movie_transition.to_state" json:"state"`
-	DownloadID       string     `alias:"movie_transition.download_id" json:"-"`
-	DownloadClientID int32      `alias:"movie_transition.download_client_id" json:"-"`
-}
-
-type MovieTransition model.MovieTransition
-
-func (m Movie) Machine() *machine.StateMachine[MovieState] {
-	return machine.New(m.State,
+// Machine returns the movie state machine rooted at s.
+func (s MovieState) Machine() *machine.StateMachine[MovieState] {
+	return machine.New(s,
 		machine.From(MovieStateNew).To(MovieStateUnreleased, MovieStateMissing, MovieStateDiscovered),
 		machine.From(MovieStateMissing).To(MovieStateDiscovered, MovieStateDownloading, MovieStateDownloaded),
 		machine.From(MovieStateUnreleased).To(MovieStateDiscovered, MovieStateMissing),
@@ -111,44 +107,58 @@ func (m Movie) Machine() *machine.StateMachine[MovieState] {
 	)
 }
 
+// TransitionStateMetadata carries optional download information attached to a
+// transition write. Nil fields are stored as NULL.
+type TransitionStateMetadata struct {
+	DownloadID             *string
+	DownloadClientID       *int64
+	IsEntireSeasonDownload *bool // applicable only to episodes
+}
+
+// MovieStorage reads and writes movies, movie files and movie transitions.
+// Entity reads return generated join rows (entity embedded + named transition
+// columns) so callers get the movie and its current state in one round trip.
 type MovieStorage interface {
-	GetMovie(ctx context.Context, id int64) (*Movie, error)
-	GetMovieByMovieFileID(ctx context.Context, fileID int64) (*Movie, error)
-	GetMovieByPath(ctx context.Context, path string) (*Movie, error)
-	GetMovieByMetadataID(ctx context.Context, metadataID int) (*Movie, error)
-	CreateMovie(ctx context.Context, movie Movie, state MovieState) (int64, error)
+	GetMovie(ctx context.Context, id int64) (sqlcdb.GetMovieByIDRow, error)
+	GetMovieByMovieFileID(ctx context.Context, fileID int64) (sqlcdb.GetMovieByFileIDRow, error)
+	GetMovieByPath(ctx context.Context, path string) (sqlcdb.GetMovieByPathRow, error)
+	GetMovieByMetadataID(ctx context.Context, metadataID int64) (sqlcdb.GetMovieByMetadataIDRow, error)
+	CreateMovie(ctx context.Context, movie sqlcdb.Movie, state MovieState) (int64, error)
 	DeleteMovie(ctx context.Context, id int64) error
-	ListMovies(ctx context.Context) ([]*Movie, error)
-	ListMoviesByState(ctx context.Context, state MovieState) ([]*Movie, error)
+	ListMovies(ctx context.Context) ([]sqlcdb.ListMoviesRow, error)
+	// ListMoviesByState filters movies by any combination of current states; a
+	// zero-value MovieState (or no arguments) applies no state filter.
+	ListMoviesByState(ctx context.Context, states ...MovieState) ([]sqlcdb.ListMoviesByStatesRow, error)
 	UpdateMovieState(ctx context.Context, id int64, state MovieState, metadata *TransitionStateMetadata) error
 	UpdateMovieMovieFileID(ctx context.Context, id int64, fileID int64) error
-	UpdateMovieQualityProfile(ctx context.Context, id int64, qualityProfileID int32) error
-	UpdateMovieByID(ctx context.Context, id int64, movie model.Movie) error
+	UpdateMovieQualityProfile(ctx context.Context, id int64, qualityProfileID int64) error
+	UpdateMovieByID(ctx context.Context, id int64, movie sqlcdb.Movie) error
 
-	GetMovieFilesByMovieName(ctx context.Context, name string) ([]*model.MovieFile, error)
-	CreateMovieFile(ctx context.Context, movieFile model.MovieFile) (int64, error)
+	GetMovieFilesByMovieName(ctx context.Context, name string) ([]sqlcdb.MovieFile, error)
+	CreateMovieFile(ctx context.Context, movieFile sqlcdb.MovieFile) (int64, error)
 	DeleteMovieFile(ctx context.Context, id int64) error
-	ListMovieFiles(ctx context.Context) ([]*model.MovieFile, error)
-	LinkMovieMetadata(ctx context.Context, movieID int64, metadataID int32) error
+	ListMovieFiles(ctx context.Context) ([]sqlcdb.MovieFile, error)
+	LinkMovieMetadata(ctx context.Context, movieID int64, metadataID int64) error
 }
 
 type MovieMetadataStorage interface {
-	CreateMovieMetadata(ctx context.Context, movieMeta model.MovieMetadata) (int64, error)
-	UpdateMovieMetadata(ctx context.Context, metadata model.MovieMetadata) error
+	CreateMovieMetadata(ctx context.Context, movieMeta sqlcdb.MovieMetadatum) (int64, error)
+	UpdateMovieMetadata(ctx context.Context, metadata sqlcdb.MovieMetadatum) error
 	DeleteMovieMetadata(ctx context.Context, id int64) error
-	ListMovieMetadata(ctx context.Context) ([]*model.MovieMetadata, error)
-	GetMovieMetadataByID(ctx context.Context, id int64) (*model.MovieMetadata, error)
-	GetMovieMetadataByTmdbID(ctx context.Context, tmdbID int64) (*model.MovieMetadata, error)
+	ListMovieMetadata(ctx context.Context) ([]sqlcdb.MovieMetadatum, error)
+	GetMovieMetadataByID(ctx context.Context, id int64) (sqlcdb.MovieMetadatum, error)
+	GetMovieMetadataByTmdbID(ctx context.Context, tmdbID int64) (sqlcdb.MovieMetadatum, error)
 }
 
 type DownloadClientStorage interface {
-	CreateDownloadClient(ctx context.Context, client model.DownloadClient) (int64, error)
-	GetDownloadClient(ctx context.Context, id int64) (model.DownloadClient, error)
-	ListDownloadClients(ctx context.Context) ([]*model.DownloadClient, error)
-	UpdateDownloadClient(ctx context.Context, id int64, client model.DownloadClient) error
+	CreateDownloadClient(ctx context.Context, client sqlcdb.DownloadClient) (int64, error)
+	GetDownloadClient(ctx context.Context, id int64) (sqlcdb.DownloadClient, error)
+	ListDownloadClients(ctx context.Context) ([]sqlcdb.DownloadClient, error)
+	UpdateDownloadClient(ctx context.Context, id int64, client sqlcdb.DownloadClient) error
 	DeleteDownloadClient(ctx context.Context, id int64) error
 }
 
+// JobState enumerates the job transition states.
 type JobState string
 
 const (
@@ -160,17 +170,9 @@ const (
 	JobStateCancelled JobState = "cancelled"
 )
 
-type Job struct {
-	model.Job
-	State     JobState   `alias:"job_transition.to_state" json:"state"`
-	UpdatedAt *time.Time `alias:"job_transition.updated_at" json:"updatedAt"`
-	Error     *string    `alias:"job_transition.error" json:"error,omitempty"`
-}
-
-type JobTransition model.JobTransition
-
-func (j Job) Machine() *machine.StateMachine[JobState] {
-	return machine.New(j.State,
+// Machine returns the job state machine rooted at s.
+func (s JobState) Machine() *machine.StateMachine[JobState] {
+	return machine.New(s,
 		machine.From(JobStateNew).To(JobStatePending),
 		machine.From(JobStatePending).To(JobStateRunning, JobStateError, JobStateCancelled),
 		machine.From(JobStateRunning).To(JobStateError, JobStateDone, JobStateCancelled),
@@ -185,30 +187,15 @@ type JobFilter struct {
 }
 
 type JobStorage interface {
-	CreateJob(ctx context.Context, job Job, initialState JobState) (int64, error)
-	GetJob(ctx context.Context, id int64) (*Job, error)
+	CreateJob(ctx context.Context, job sqlcdb.Job, initialState JobState) (int64, error)
+	GetJob(ctx context.Context, id int64) (sqlcdb.GetJobByIDRow, error)
 	CountJobs(ctx context.Context, filter JobFilter) (int, error)
-	ListJobs(ctx context.Context, offset, limit int, filter JobFilter) ([]*Job, error)
+	// ListJobs returns jobs ordered by created_at DESC with an id DESC
+	// tie-break (stable pagination). limit 0 means unlimited.
+	ListJobs(ctx context.Context, offset, limit int, filter JobFilter) ([]sqlcdb.ListJobsRow, error)
 	UpdateJobState(ctx context.Context, id int64, state JobState, errorMsg *string) error
 	DeleteJob(ctx context.Context, id int64) error
 	DeleteJobsByIDs(ctx context.Context, ids []int64) (int64, error)
-}
-
-type QualityProfile struct {
-	Name            string              `json:"name"`
-	Qualities       []QualityDefinition `json:"qualities"`
-	ID              int32               `sql:"primary_key" json:"id"`
-	CutoffQualityID *int32              `alias:"cutoff_quality_id" json:"cutoff_quality_id,omitempty"`
-	UpgradeAllowed  bool                `json:"upgradeAllowed"`
-}
-
-type QualityDefinition struct {
-	ID            int32   `alias:"quality_definition.id" json:"id"`
-	Name          string  `alias:"quality_definition.name" json:"name"`
-	MediaType     string  `alias:"quality_definition.media_type" json:"type"`
-	PreferredSize float64 `alias:"quality_definition.preferred_size" json:"preferredSize"`
-	MinSize       float64 `alias:"quality_definition.min_size" json:"minSize"`
-	MaxSize       float64 `alias:"quality_definition.max_size" json:"maxSize"`
 }
 
 type (
@@ -243,15 +230,9 @@ const (
 	EpisodeStateCompleted   EpisodeState = "completed"
 )
 
-type Series struct {
-	model.Series
-	State SeriesState `alias:"series_transition.to_state" json:"state"`
-}
-
-type SeriesTransition model.SeriesTransition
-
-func (s Series) Machine() *machine.StateMachine[SeriesState] {
-	return machine.New(s.State,
+// Machine returns the series state machine rooted at s.
+func (s SeriesState) Machine() *machine.StateMachine[SeriesState] {
+	return machine.New(s,
 		machine.From(SeriesStateNew).To(SeriesStateUnreleased, SeriesStateMissing, SeriesStateDiscovered),
 		machine.From(SeriesStateDiscovered).To(SeriesStateMissing, SeriesStateContinuing, SeriesStateCompleted),
 		machine.From(SeriesStateMissing).To(SeriesStateDiscovered, SeriesStateDownloading),
@@ -262,17 +243,9 @@ func (s Series) Machine() *machine.StateMachine[SeriesState] {
 	)
 }
 
-type Season struct {
-	model.Season
-	DownloadID       string      `alias:"season_transition.download_id" json:"-"`
-	DownloadClientID int32       `alias:"season_transition.download_client_id" json:"-"`
-	State            SeasonState `alias:"season_transition.to_state" json:"state"`
-}
-
-type SeasonTransition model.SeasonTransition
-
-func (s Season) Machine() *machine.StateMachine[SeasonState] {
-	return machine.New(s.State,
+// Machine returns the season state machine rooted at s.
+func (s SeasonState) Machine() *machine.StateMachine[SeasonState] {
+	return machine.New(s,
 		machine.From(SeasonStateNew).To(SeasonStateUnreleased, SeasonStateMissing, SeasonStateDiscovered),
 		machine.From(SeasonStateDiscovered).To(SeasonStateMissing, SeasonStateContinuing, SeasonStateCompleted),
 		machine.From(SeasonStateMissing).To(SeasonStateDiscovered, SeasonStateDownloading),
@@ -283,18 +256,9 @@ func (s Season) Machine() *machine.StateMachine[SeasonState] {
 	)
 }
 
-type Episode struct {
-	model.Episode
-	State                  EpisodeState `alias:"episode_transition.to_state" json:"state"`
-	DownloadID             string       `alias:"episode_transition.download_id" json:"-"`
-	DownloadClientID       int32        `alias:"episode_transition.download_client_id" json:"-"`
-	IsEntireSeasonDownload bool         `alias:"episode_transition.is_entire_season_download" json:"-"`
-}
-
-type EpisodeTransition model.EpisodeTransition
-
-func (e Episode) Machine() *machine.StateMachine[EpisodeState] {
-	return machine.New(e.State,
+// Machine returns the episode state machine rooted at s.
+func (s EpisodeState) Machine() *machine.StateMachine[EpisodeState] {
+	return machine.New(s,
 		machine.From(EpisodeStateNew).To(EpisodeStateUnreleased, EpisodeStateMissing, EpisodeStateDiscovered),
 		machine.From(EpisodeStateDiscovered).To(EpisodeStateCompleted),
 		machine.From(EpisodeStateMissing).To(EpisodeStateDiscovered, EpisodeStateDownloading, EpisodeStateUnreleased),
@@ -305,6 +269,7 @@ func (e Episode) Machine() *machine.StateMachine[EpisodeState] {
 }
 
 // SeriesFilter constrains series by current state. Zero value matches all.
+// States accepts any number of states (no fixed-slot cap).
 type SeriesFilter struct {
 	States    []SeriesState
 	Monitored *bool
@@ -322,95 +287,65 @@ type EpisodeFilter struct {
 	States   []EpisodeState
 }
 
+// SeriesStorage reads and writes series, seasons, episodes and their files.
+// Entity reads return generated join rows (entity embedded + named transition
+// columns). Seasons/episodes are ordered by (season/series id, number).
 type SeriesStorage interface {
-	GetSeriesByID(ctx context.Context, id int64) (*Series, error)
-	GetSeriesByMetadataID(ctx context.Context, metadataID int32) (*Series, error)
-	GetSeriesByPath(ctx context.Context, path string) (*Series, error)
-	CreateSeries(ctx context.Context, series Series, initialState SeriesState) (int64, error)
+	GetSeriesByID(ctx context.Context, id int64) (sqlcdb.GetSeriesRow, error)
+	GetSeriesByMetadataID(ctx context.Context, metadataID int64) (sqlcdb.GetSeriesRow, error)
+	GetSeriesByPath(ctx context.Context, path string) (sqlcdb.GetSeriesRow, error)
+	CreateSeries(ctx context.Context, series sqlcdb.Series, initialState SeriesState) (int64, error)
 	DeleteSeries(ctx context.Context, id int64) error
-	ListSeries(ctx context.Context, filter SeriesFilter) ([]*Series, error)
+	ListSeries(ctx context.Context, filter SeriesFilter) ([]sqlcdb.ListSeriesRow, error)
 	UpdateSeriesState(ctx context.Context, id int64, state SeriesState, metadata *TransitionStateMetadata) error
-	LinkSeriesMetadata(ctx context.Context, seriesID int64, metadataID int32) error
-	UpdateSeriesByID(ctx context.Context, id int64, series model.Series) error
+	LinkSeriesMetadata(ctx context.Context, seriesID int64, metadataID int64) error
+	UpdateSeriesByID(ctx context.Context, id int64, series sqlcdb.Series) error
 
-	GetSeasonByID(ctx context.Context, id int64) (*Season, error)
-	GetSeasonBySeriesIDAndNumber(ctx context.Context, seriesID int64, seasonNumber int32) (*Season, error)
-	CreateSeason(ctx context.Context, season Season, initialState SeasonState) (int64, error)
+	GetSeasonByID(ctx context.Context, id int64) (sqlcdb.GetSeasonByIDRow, error)
+	GetSeasonBySeriesIDAndNumber(ctx context.Context, seriesID int64, seasonNumber int64) (sqlcdb.GetSeasonBySeriesIDAndNumberRow, error)
+	CreateSeason(ctx context.Context, season sqlcdb.Season, initialState SeasonState) (int64, error)
 	DeleteSeason(ctx context.Context, id int64) error
-	ListSeasons(ctx context.Context, filter SeasonFilter) ([]*Season, error)
-	UpdateSeasonState(ctx context.Context, id int64, season SeasonState, metadata *TransitionStateMetadata) error
-	LinkSeasonMetadata(ctx context.Context, seasonID int64, metadataID int32) error
+	ListSeasons(ctx context.Context, filter SeasonFilter) ([]sqlcdb.ListSeasonsRow, error)
+	UpdateSeasonState(ctx context.Context, id int64, state SeasonState, metadata *TransitionStateMetadata) error
+	LinkSeasonMetadata(ctx context.Context, seasonID int64, metadataID int64) error
 
-	GetEpisodeByID(ctx context.Context, id int64) (*Episode, error)
-	GetEpisodeByEpisodeFileID(ctx context.Context, fileID int64) (*Episode, error)
-	CreateEpisode(ctx context.Context, episode Episode, initialState EpisodeState) (int64, error)
+	GetEpisodeByID(ctx context.Context, id int64) (sqlcdb.GetEpisodeByIDRow, error)
+	GetEpisodeByEpisodeFileID(ctx context.Context, fileID int64) (sqlcdb.GetEpisodeByEpisodeFileIDRow, error)
+	CreateEpisode(ctx context.Context, episode sqlcdb.Episode, initialState EpisodeState) (int64, error)
 	DeleteEpisode(ctx context.Context, id int64) error
-	ListEpisodes(ctx context.Context, filter EpisodeFilter) ([]*Episode, error)
+	ListEpisodes(ctx context.Context, filter EpisodeFilter) ([]sqlcdb.ListEpisodesRow, error)
 	UpdateEpisodeEpisodeFileID(ctx context.Context, id int64, fileID int64) error
 	UpdateEpisodeState(ctx context.Context, id int64, state EpisodeState, metadata *TransitionStateMetadata) error
-	LinkEpisodeMetadata(ctx context.Context, episodeID int64, seasonID int32, episodeMetadataID int32) error
+	LinkEpisodeMetadata(ctx context.Context, episodeID int64, seasonID int64, episodeMetadataID int64) error
 
-	GetEpisodeFile(ctx context.Context, id int32) (*model.EpisodeFile, error)
-	GetEpisodeFileByID(ctx context.Context, id int64) ([]*model.EpisodeFile, error)
-	CreateEpisodeFile(ctx context.Context, episodeFile model.EpisodeFile) (int64, error)
-	UpdateEpisodeFile(ctx context.Context, id int32, episodeFile model.EpisodeFile) error
+	GetEpisodeFile(ctx context.Context, id int64) (sqlcdb.EpisodeFile, error)
+	GetEpisodeFileByID(ctx context.Context, id int64) ([]sqlcdb.EpisodeFile, error)
+	CreateEpisodeFile(ctx context.Context, episodeFile sqlcdb.EpisodeFile) (int64, error)
+	UpdateEpisodeFile(ctx context.Context, id int64, episodeFile sqlcdb.EpisodeFile) error
 	DeleteEpisodeFile(ctx context.Context, id int64) error
-	ListEpisodeFiles(ctx context.Context) ([]*model.EpisodeFile, error)
+	ListEpisodeFiles(ctx context.Context) ([]sqlcdb.EpisodeFile, error)
 }
 
 type SeriesMetadataStorage interface {
-	CreateSeriesMetadata(ctx context.Context, SeriesMeta model.SeriesMetadata) (int64, error)
-	UpdateSeriesMetadata(ctx context.Context, metadata model.SeriesMetadata) error
+	CreateSeriesMetadata(ctx context.Context, SeriesMeta sqlcdb.SeriesMetadatum) (int64, error)
+	UpdateSeriesMetadata(ctx context.Context, metadata sqlcdb.SeriesMetadatum) error
 	DeleteSeriesMetadata(ctx context.Context, id int64) error
-	ListSeriesMetadata(ctx context.Context) ([]*model.SeriesMetadata, error)
-	ListSeriesMetadataByStatus(ctx context.Context, status string) ([]*model.SeriesMetadata, error)
-	GetSeriesMetadataByID(ctx context.Context, id int64) (*model.SeriesMetadata, error)
-	GetSeriesMetadataByTmdbID(ctx context.Context, tmdbID int64) (*model.SeriesMetadata, error)
+	ListSeriesMetadata(ctx context.Context) ([]sqlcdb.SeriesMetadatum, error)
+	ListSeriesMetadataByStatus(ctx context.Context, status string) ([]sqlcdb.SeriesMetadatum, error)
+	GetSeriesMetadataByID(ctx context.Context, id int64) (sqlcdb.SeriesMetadatum, error)
+	GetSeriesMetadataByTmdbID(ctx context.Context, tmdbID int64) (sqlcdb.SeriesMetadatum, error)
 
-	CreateSeasonMetadata(ctx context.Context, seasonMeta model.SeasonMetadata) (int64, error)
+	CreateSeasonMetadata(ctx context.Context, seasonMeta sqlcdb.SeasonMetadatum) (int64, error)
 	DeleteSeasonMetadata(ctx context.Context, id int64) error
-	ListSeasonMetadataBySeriesMetadataID(ctx context.Context, seriesMetadataID int32) ([]*model.SeasonMetadata, error)
-	GetSeasonMetadataByID(ctx context.Context, id int64) (*model.SeasonMetadata, error)
-	GetSeasonMetadataByTmdbID(ctx context.Context, tmdbID int64) (*model.SeasonMetadata, error)
+	ListSeasonMetadataBySeriesMetadataID(ctx context.Context, seriesMetadataID int64) ([]sqlcdb.SeasonMetadatum, error)
+	GetSeasonMetadataByID(ctx context.Context, id int64) (sqlcdb.SeasonMetadatum, error)
+	GetSeasonMetadataByTmdbID(ctx context.Context, tmdbID int64) (sqlcdb.SeasonMetadatum, error)
 
-	CreateEpisodeMetadata(ctx context.Context, episodeMeta model.EpisodeMetadata) (int64, error)
+	CreateEpisodeMetadata(ctx context.Context, episodeMeta sqlcdb.EpisodeMetadatum) (int64, error)
 	DeleteEpisodeMetadata(ctx context.Context, id int64) error
-	ListEpisodeMetadataBySeasonMetadataID(ctx context.Context, seasonMetadataID int32) ([]*model.EpisodeMetadata, error)
-	ListEpisodeMetadataByIDs(ctx context.Context, ids []int64) ([]*model.EpisodeMetadata, error)
-	GetEpisodeMetadataByID(ctx context.Context, id int64) (*model.EpisodeMetadata, error)
-	GetEpisodeMetadataByTmdbID(ctx context.Context, tmdbID int64) (*model.EpisodeMetadata, error)
-	GetEpisodeMetadataBySeasonAndNumber(ctx context.Context, seasonMetadataID, number int32) (*model.EpisodeMetadata, error)
-}
-
-func ReadSchemaFiles(files ...string) ([]string, error) {
-	var schemas []string
-	for _, f := range files {
-		f, err := os.ReadFile(f)
-		if err != nil {
-			return schemas, err
-		}
-
-		schemas = append(schemas, string(f))
-	}
-
-	return schemas, nil
-}
-
-// GetSchemas returns the SQL schema files as string slices
-func GetSchemas() ([]string, error) {
-	var schemas []string
-
-	schemaSQL, err := schemaFiles.ReadFile("sqlite/schema/schema.sql")
-	if err != nil {
-		return nil, fmt.Errorf("failed to read schema.sql: %w", err)
-	}
-	schemas = append(schemas, string(schemaSQL))
-
-	defaultsSQL, err := schemaFiles.ReadFile("sqlite/schema/defaults.sql")
-	if err != nil {
-		return nil, fmt.Errorf("failed to read defaults.sql: %w", err)
-	}
-	schemas = append(schemas, string(defaultsSQL))
-
-	return schemas, nil
+	ListEpisodeMetadataBySeasonMetadataID(ctx context.Context, seasonMetadataID int64) ([]sqlcdb.EpisodeMetadatum, error)
+	ListEpisodeMetadataByIDs(ctx context.Context, ids []int64) ([]sqlcdb.EpisodeMetadatum, error)
+	GetEpisodeMetadataByID(ctx context.Context, id int64) (sqlcdb.EpisodeMetadatum, error)
+	GetEpisodeMetadataByTmdbID(ctx context.Context, tmdbID int64) (sqlcdb.EpisodeMetadatum, error)
+	GetEpisodeMetadataBySeasonAndNumber(ctx context.Context, seasonMetadataID, number int64) (sqlcdb.EpisodeMetadatum, error)
 }

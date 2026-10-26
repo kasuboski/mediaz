@@ -35,7 +35,7 @@ import (
 
 	"github.com/kasuboski/mediaz/pkg/ptr"
 	"github.com/kasuboski/mediaz/pkg/storage"
-	"github.com/kasuboski/mediaz/pkg/storage/model"
+	"github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -71,30 +71,18 @@ func dropTrigger(t *testing.T, s *SQLite, trigger string) {
 	require.NoError(t, err)
 }
 
-// transitionRowSnapshot is the raw persisted state of one movie_transition row.
-type transitionRowSnapshot struct {
-	ID               int64
-	ToState          string
-	MostRecent       bool
-	SortKey          int64
-	DownloadClientID sql.NullInt64
-	DownloadID       sql.NullString
-	CreatedAt        time.Time
-	UpdatedAt        time.Time
-}
-
-func movieTransitionRows(t *testing.T, s *SQLite, movieID int64) []transitionRowSnapshot {
+func movieTransitionRows(t *testing.T, s *SQLite, movieID int64) []sqlcdb.MovieTransition {
 	t.Helper()
 	rows, err := s.db.Query(
-		`SELECT id, to_state, most_recent, sort_key, download_client_id, download_id, created_at, updated_at
+		`SELECT id, movie_id, to_state, from_state, most_recent, sort_key, download_client_id, download_id, created_at, updated_at
 		 FROM movie_transition WHERE movie_id = ? ORDER BY sort_key`, movieID)
 	require.NoError(t, err)
 	defer rows.Close()
 
-	var out []transitionRowSnapshot
+	var out []sqlcdb.MovieTransition
 	for rows.Next() {
-		var r transitionRowSnapshot
-		require.NoError(t, rows.Scan(&r.ID, &r.ToState, &r.MostRecent, &r.SortKey,
+		var r sqlcdb.MovieTransition
+		require.NoError(t, rows.Scan(&r.ID, &r.MovieID, &r.ToState, &r.FromState, &r.MostRecent, &r.SortKey,
 			&r.DownloadClientID, &r.DownloadID, &r.CreatedAt, &r.UpdatedAt))
 		out = append(out, r)
 	}
@@ -102,28 +90,18 @@ func movieTransitionRows(t *testing.T, s *SQLite, movieID int64) []transitionRow
 	return out
 }
 
-// seriesTransitionRowSnapshot is the raw persisted state of one series_transition row.
-type seriesTransitionRowSnapshot struct {
-	ID         int64
-	ToState    string
-	MostRecent bool
-	SortKey    int64
-	CreatedAt  time.Time
-	UpdatedAt  time.Time
-}
-
-func seriesTransitionRows(t *testing.T, s *SQLite, seriesID int64) []seriesTransitionRowSnapshot {
+func seriesTransitionRows(t *testing.T, s *SQLite, seriesID int64) []sqlcdb.SeriesTransition {
 	t.Helper()
 	rows, err := s.db.Query(
-		`SELECT id, to_state, most_recent, sort_key, created_at, updated_at
+		`SELECT id, series_id, to_state, from_state, most_recent, sort_key, created_at, updated_at
 		 FROM series_transition WHERE series_id = ? ORDER BY sort_key`, seriesID)
 	require.NoError(t, err)
 	defer rows.Close()
 
-	var out []seriesTransitionRowSnapshot
+	var out []sqlcdb.SeriesTransition
 	for rows.Next() {
-		var r seriesTransitionRowSnapshot
-		require.NoError(t, rows.Scan(&r.ID, &r.ToState, &r.MostRecent, &r.SortKey, &r.CreatedAt, &r.UpdatedAt))
+		var r sqlcdb.SeriesTransition
+		require.NoError(t, rows.Scan(&r.ID, &r.SeriesID, &r.ToState, &r.FromState, &r.MostRecent, &r.SortKey, &r.CreatedAt, &r.UpdatedAt))
 		out = append(out, r)
 	}
 	require.NoError(t, rows.Err())
@@ -156,33 +134,31 @@ func TestSqlcIntegration_MigrationPreservesDefaultsAndTimestamps(t *testing.T) {
 	ctx := context.Background()
 	s := sqlcIntegrationStore(t)
 
-	_, err := s.CreateDownloadClient(ctx, model.DownloadClient{
+	_, err := s.CreateDownloadClient(ctx, sqlcdb.DownloadClient{
 		Type: "nzb", Implementation: "sabnzbd", Scheme: "http", Host: "localhost", Port: 8080,
 	})
 	require.NoError(t, err)
 
 	path := "Defaults/defaults.mkv"
-	movieID, err := s.CreateMovie(ctx, storage.Movie{
-		Movie: model.Movie{Path: &path, Monitored: 1},
-	}, storage.MovieStateMissing)
+	movieID, err := s.CreateMovie(ctx, sqlcdb.Movie{Path: sql.NullString{String: path, Valid: true}, Monitored: 1, QualityProfileID: 1}, storage.MovieStateMissing)
 	require.NoError(t, err)
 
 	movie, err := s.GetMovie(ctx, movieID)
 	require.NoError(t, err)
-	require.NotNil(t, movie)
 
 	// movie.added must come from the DEFAULT CURRENT_TIMESTAMP, not be NULL.
-	require.NotNil(t, movie.Added, "movie.added default must be applied")
-	assert.False(t, movie.Added.IsZero(), "movie.added default must be a real timestamp")
+	require.True(t, movie.Movie.Added.Valid, "movie.added default must be applied")
+	assert.False(t, movie.Movie.Added.Time.IsZero(), "movie.added default must be a real timestamp")
 
 	// The initial transition row must carry database-generated timestamps.
 	rows := movieTransitionRows(t, s, movieID)
 	require.Len(t, rows, 1)
 	initial := rows[0]
-	assert.False(t, initial.CreatedAt.IsZero(), "created_at default must be applied")
-	assert.False(t, initial.UpdatedAt.IsZero(), "updated_at default must be applied")
-	assert.Equal(t, transitionRowSnapshot{
+	assert.False(t, initial.CreatedAt.Time.IsZero(), "created_at default must be applied")
+	assert.False(t, initial.UpdatedAt.Time.IsZero(), "updated_at default must be applied")
+	assert.Equal(t, sqlcdb.MovieTransition{
 		ID:         initial.ID,
+		MovieID:    movieID,
 		ToState:    "missing",
 		MostRecent: true,
 		SortKey:    1,
@@ -192,7 +168,7 @@ func TestSqlcIntegration_MigrationPreservesDefaultsAndTimestamps(t *testing.T) {
 
 	require.NoError(t, s.UpdateMovieState(ctx, movieID, storage.MovieStateDownloading,
 		&storage.TransitionStateMetadata{
-			DownloadClientID: ptr.To(int32(1)),
+			DownloadClientID: ptr.To(int64(1)),
 			DownloadID:       ptr.To("dl-42"),
 		}))
 
@@ -201,7 +177,7 @@ func TestSqlcIntegration_MigrationPreservesDefaultsAndTimestamps(t *testing.T) {
 
 	// The superseded row keeps its history and its timestamps.
 	assert.False(t, rows[0].MostRecent)
-	assert.False(t, rows[0].UpdatedAt.IsZero(), "superseded transition must keep a non-zero updated_at")
+	assert.False(t, rows[0].UpdatedAt.Time.IsZero(), "superseded transition must keep a non-zero updated_at")
 
 	// The new row must get its timestamps from the database defaults, and
 	// updated_at must never trail created_at.
@@ -210,9 +186,9 @@ func TestSqlcIntegration_MigrationPreservesDefaultsAndTimestamps(t *testing.T) {
 	assert.Equal(t, "downloading", latest.ToState)
 	assert.Equal(t, "dl-42", latest.DownloadID.String)
 	assert.Equal(t, int64(1), latest.DownloadClientID.Int64)
-	assert.False(t, latest.CreatedAt.IsZero(), "created_at default must be applied to new transitions")
-	assert.False(t, latest.UpdatedAt.IsZero(), "updated_at default must be applied to new transitions")
-	assert.False(t, latest.UpdatedAt.Before(latest.CreatedAt),
+	assert.False(t, latest.CreatedAt.Time.IsZero(), "created_at default must be applied to new transitions")
+	assert.False(t, latest.UpdatedAt.Time.IsZero(), "updated_at default must be applied to new transitions")
+	assert.False(t, latest.UpdatedAt.Time.Before(latest.CreatedAt.Time),
 		"updated_at must not be before created_at")
 }
 
@@ -222,10 +198,10 @@ func TestSqlcIntegration_MovieFileDateAddedDefault(t *testing.T) {
 	ctx := context.Background()
 	s := sqlcIntegrationStore(t)
 
-	fileID, err := s.CreateMovieFile(ctx, model.MovieFile{
+	fileID, err := s.CreateMovieFile(ctx, sqlcdb.MovieFile{
 		Quality:      "HDTV-720p",
 		Size:         1_000_000_000,
-		RelativePath: ptr.To("Defaults/defaults.mkv"),
+		RelativePath: sql.NullString{String: "Defaults/defaults.mkv", Valid: true},
 	})
 	require.NoError(t, err)
 	require.NotZero(t, fileID)
@@ -237,11 +213,11 @@ func TestSqlcIntegration_MovieFileDateAddedDefault(t *testing.T) {
 	assert.False(t, files[0].DateAdded.IsZero(),
 		"movie_file.date_added default must be applied, not zero/NULL")
 	files[0].DateAdded = time.Time{}
-	assert.Equal(t, &model.MovieFile{
-		ID:           int32(fileID),
+	assert.Equal(t, sqlcdb.MovieFile{
+		ID:           int64(fileID),
 		Quality:      "HDTV-720p",
 		Size:         1_000_000_000,
-		RelativePath: ptr.To("Defaults/defaults.mkv"),
+		RelativePath: sql.NullString{String: "Defaults/defaults.mkv", Valid: true},
 		IndexerFlags: 0,
 	}, files[0])
 }
@@ -254,16 +230,12 @@ func TestSqlcIntegration_MovieLatestTransitionUniqueness(t *testing.T) {
 	ctx := context.Background()
 	s := sqlcIntegrationStore(t)
 
-	movieID, err := s.CreateMovie(ctx, storage.Movie{
-		Movie: model.Movie{Path: ptr.To("Unique/one.mkv"), Monitored: 1},
-	}, storage.MovieStateMissing)
+	movieID, err := s.CreateMovie(ctx, sqlcdb.Movie{Path: sql.NullString{String: "Unique/one.mkv", Valid: true}, Monitored: 1, QualityProfileID: 1}, storage.MovieStateMissing)
 	require.NoError(t, err)
 	require.NoError(t, s.UpdateMovieState(ctx, movieID, storage.MovieStateDownloading,
-		&storage.TransitionStateMetadata{DownloadID: ptr.To("dl-1"), DownloadClientID: ptr.To(int32(1))}))
+		&storage.TransitionStateMetadata{DownloadID: ptr.To("dl-1")}))
 
-	secondID, err := s.CreateMovie(ctx, storage.Movie{
-		Movie: model.Movie{Path: ptr.To("Unique/two.mkv"), Monitored: 1},
-	}, storage.MovieStateMissing)
+	secondID, err := s.CreateMovie(ctx, sqlcdb.Movie{Path: sql.NullString{String: "Unique/two.mkv", Valid: true}, Monitored: 1, QualityProfileID: 1}, storage.MovieStateMissing)
 	require.NoError(t, err)
 
 	// Normal history: exactly one most_recent row per movie.
@@ -282,9 +254,9 @@ func TestSqlcIntegration_MovieLatestTransitionUniqueness(t *testing.T) {
 		`INSERT INTO movie_transition (movie_id, to_state, most_recent, sort_key) VALUES (?, 'downloaded', 0, 2)`, movieID)
 	require.ErrorContains(t, err, "UNIQUE")
 
-	// The constraints are per parent: a new movie's first transition is fine.
+	// The constraints are per parent: another existing movie can use the same sort key.
 	_, err = s.db.Exec(
-		`INSERT INTO movie_transition (movie_id, to_state, most_recent, sort_key) VALUES (?, 'missing', 1, 1)`, secondID+100)
+		`INSERT INTO movie_transition (movie_id, to_state, most_recent, sort_key) VALUES (?, 'missing', 0, 2)`, secondID)
 	assert.NoError(t, err)
 
 	// The API-level history stays consistent: sort keys increase 1..N and the
@@ -299,7 +271,7 @@ func TestSqlcIntegration_MovieLatestTransitionUniqueness(t *testing.T) {
 
 	movie, err := s.GetMovie(ctx, movieID)
 	require.NoError(t, err)
-	assert.Equal(t, storage.MovieStateDownloading, movie.State)
+	assert.Equal(t, string(storage.MovieStateDownloading), movie.State)
 }
 
 // TestSqlcIntegration_MovieTransitionInsertFailureRollsBackAtomically injects a
@@ -311,18 +283,16 @@ func TestSqlcIntegration_MovieTransitionInsertFailureRollsBackAtomically(t *test
 	ctx := context.Background()
 	s := sqlcIntegrationStore(t)
 
-	_, err := s.CreateDownloadClient(ctx, model.DownloadClient{
+	_, err := s.CreateDownloadClient(ctx, sqlcdb.DownloadClient{
 		Type: "nzb", Implementation: "sabnzbd", Scheme: "http", Host: "localhost", Port: 8080,
 	})
 	require.NoError(t, err)
 
 	path := "Rollback/rollback.mkv"
-	movieID, err := s.CreateMovie(ctx, storage.Movie{
-		Movie: model.Movie{Path: &path, Monitored: 1},
-	}, storage.MovieStateMissing)
+	movieID, err := s.CreateMovie(ctx, sqlcdb.Movie{Path: sql.NullString{String: path, Valid: true}, Monitored: 1, QualityProfileID: 1}, storage.MovieStateMissing)
 	require.NoError(t, err)
 	require.NoError(t, s.UpdateMovieState(ctx, movieID, storage.MovieStateDownloading,
-		&storage.TransitionStateMetadata{DownloadClientID: ptr.To(int32(1)), DownloadID: ptr.To("dl-42")}))
+		&storage.TransitionStateMetadata{DownloadClientID: ptr.To(int64(1)), DownloadID: ptr.To("dl-42")}))
 
 	rowsBefore := movieTransitionRows(t, s, movieID)
 	require.Len(t, rowsBefore, 2)
@@ -340,9 +310,9 @@ func TestSqlcIntegration_MovieTransitionInsertFailureRollsBackAtomically(t *test
 
 	movie, err := s.GetMovie(ctx, movieID)
 	require.NoError(t, err)
-	assert.Equal(t, storage.MovieStateDownloading, movie.State)
-	assert.Equal(t, "dl-42", movie.DownloadID)
-	assert.Equal(t, int32(1), movie.DownloadClientID)
+	assert.Equal(t, string(storage.MovieStateDownloading), movie.State)
+	assert.Equal(t, "dl-42", movie.DownloadID.String)
+	assert.Equal(t, int64(1), movie.DownloadClientID.Int64)
 
 	// Once the failure is removed the same transition must succeed, proving
 	// the failed attempt left no lasting corruption.
@@ -368,9 +338,7 @@ func TestSqlcIntegration_CreateMovieRollbackLeavesNoPartialRows(t *testing.T) {
 	installAbortTrigger(t, s, "sqlc_it_abort_movie_transition_insert", "movie_transition", "INSERT")
 	t.Cleanup(func() { dropTrigger(t, s, "sqlc_it_abort_movie_transition_insert") })
 
-	_, err := s.CreateMovie(ctx, storage.Movie{
-		Movie: model.Movie{Path: &path, Monitored: 1},
-	}, storage.MovieStateMissing)
+	_, err := s.CreateMovie(ctx, sqlcdb.Movie{Path: sql.NullString{String: path, Valid: true}, Monitored: 1, QualityProfileID: 1}, storage.MovieStateMissing)
 	require.ErrorContains(t, err, "injected failure")
 
 	assert.Zero(t, countRows(t, s, "movie"), "no movie row may survive a failed create")
@@ -388,9 +356,7 @@ func TestSqlcIntegration_SeriesLatestTransitionUniquenessAndRollback(t *testing.
 	ctx := context.Background()
 	s := sqlcIntegrationStore(t)
 
-	series := storage.Series{
-		Series: model.Series{Monitored: 1, QualityProfileID: 1},
-	}
+	series := sqlcdb.Series{Monitored: 1, QualityProfileID: 1}
 	seriesID, err := s.CreateSeries(ctx, series, storage.SeriesStateMissing)
 	require.NoError(t, err)
 	require.NoError(t, s.UpdateSeriesState(ctx, seriesID, storage.SeriesStateDownloading, nil))
@@ -422,7 +388,7 @@ func TestSqlcIntegration_SeriesLatestTransitionUniquenessAndRollback(t *testing.
 	seriesList, err := s.ListSeries(ctx, storage.SeriesFilter{})
 	require.NoError(t, err)
 	require.Len(t, seriesList, 1)
-	assert.Equal(t, storage.SeriesStateDownloading, seriesList[0].State)
+	assert.Equal(t, string(storage.SeriesStateDownloading), seriesList[0].State)
 
 	// Recovery: after removing the trigger the transition succeeds.
 	dropTrigger(t, s, "sqlc_it_abort_series_transition_insert")
@@ -443,63 +409,63 @@ func TestSqlcIntegration_IndexerSourceCascadeRollbackAtomicity(t *testing.T) {
 	ctx := context.Background()
 	s := sqlcIntegrationStore(t)
 
-	sourceID, err := s.CreateIndexerSource(ctx, model.IndexerSource{
+	sourceID, err := s.CreateIndexerSource(ctx, sqlcdb.IndexerSource{
 		Name:           "prowlarr",
 		Implementation: "prowlarr",
 		Scheme:         "http",
 		Host:           "prowlarr.local",
-		Port:           ptr.To(int32(9696)),
-		APIKey:         ptr.To("source-key"),
+		Port:           sql.NullInt64{Int64: int64(9696), Valid: true},
+		ApiKey:         sql.NullString{String: "source-key", Valid: true},
 		Enabled:        true,
 	})
 	require.NoError(t, err)
 	require.Equal(t, int64(1), sourceID)
 
-	wantSource := model.IndexerSource{
-		ID:             int32(sourceID),
+	wantSource := sqlcdb.IndexerSource{
+		ID:             int64(sourceID),
 		Name:           "prowlarr",
 		Implementation: "prowlarr",
 		Scheme:         "http",
 		Host:           "prowlarr.local",
-		Port:           ptr.To(int32(9696)),
-		APIKey:         ptr.To("source-key"),
+		Port:           sql.NullInt64{Int64: int64(9696), Valid: true},
+		ApiKey:         sql.NullString{String: "source-key", Valid: true},
 		Enabled:        true,
 	}
 
-	_, err = s.CreateIndexer(ctx, model.Indexer{
+	_, err = s.CreateIndexer(ctx, sqlcdb.Indexer{
 		Name:            "nzbgeek",
 		Priority:        25,
-		URI:             "https://api.nzbgeek",
-		APIKey:          ptr.To("child-key-1"),
-		IndexerSourceID: ptr.To(int32(sourceID)),
+		Uri:             "https://api.nzbgeek",
+		ApiKey:          sql.NullString{String: "child-key-1", Valid: true},
+		IndexerSourceID: sql.NullInt64{Int64: int64(sourceID), Valid: true},
 	})
 	require.NoError(t, err)
 
-	_, err = s.CreateIndexer(ctx, model.Indexer{
+	_, err = s.CreateIndexer(ctx, sqlcdb.Indexer{
 		Name:            "dzp",
 		Priority:        50,
-		URI:             "https://api.dognzb.cr",
-		APIKey:          ptr.To("child-key-2"),
-		IndexerSourceID: ptr.To(int32(sourceID)),
+		Uri:             "https://api.dognzb.cr",
+		ApiKey:          sql.NullString{String: "child-key-2", Valid: true},
+		IndexerSourceID: sql.NullInt64{Int64: int64(sourceID), Valid: true},
 	})
 	require.NoError(t, err)
 
-	wantChildren := []*model.Indexer{
+	wantChildren := []sqlcdb.Indexer{
 		{
 			ID:              1,
 			Name:            "nzbgeek",
 			Priority:        25,
-			URI:             "https://api.nzbgeek",
-			APIKey:          ptr.To("child-key-1"),
-			IndexerSourceID: ptr.To(int32(sourceID)),
+			Uri:             "https://api.nzbgeek",
+			ApiKey:          sql.NullString{String: "child-key-1", Valid: true},
+			IndexerSourceID: sql.NullInt64{Int64: int64(sourceID), Valid: true},
 		},
 		{
 			ID:              2,
 			Name:            "dzp",
 			Priority:        50,
-			URI:             "https://api.dognzb.cr",
-			APIKey:          ptr.To("child-key-2"),
-			IndexerSourceID: ptr.To(int32(sourceID)),
+			Uri:             "https://api.dognzb.cr",
+			ApiKey:          sql.NullString{String: "child-key-2", Valid: true},
+			IndexerSourceID: sql.NullInt64{Int64: int64(sourceID), Valid: true},
 		},
 	}
 
@@ -514,8 +480,8 @@ func TestSqlcIntegration_IndexerSourceCascadeRollbackAtomicity(t *testing.T) {
 	require.NoError(t, err)
 	// Timestamps are database-managed and intentionally not part of this
 	// assertion; they are covered by the defaults tests above.
-	gotSource.CreatedAt = nil
-	gotSource.UpdatedAt = nil
+	gotSource.CreatedAt = sql.NullTime{}
+	gotSource.UpdatedAt = sql.NullTime{}
 	assert.Equal(t, wantSource, gotSource)
 
 	children, err := s.ListIndexers(ctx)

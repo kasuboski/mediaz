@@ -3,6 +3,7 @@ package manager
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"io"
@@ -14,7 +15,7 @@ import (
 	"github.com/kasuboski/mediaz/pkg/ptr"
 	"github.com/kasuboski/mediaz/pkg/storage"
 	storageMocks "github.com/kasuboski/mediaz/pkg/storage/mocks"
-	"github.com/kasuboski/mediaz/pkg/storage/model"
+	"github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 	tmdbMocks "github.com/kasuboski/mediaz/pkg/tmdb/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -23,16 +24,16 @@ import (
 
 // mockMovieMetadataProvider is a test double for MovieMetadataProvider
 type mockMovieMetadataProvider struct {
-	metadata    *model.MovieMetadata
-	metadataMap map[int32]*model.MovieMetadata
+	metadata    *sqlcdb.MovieMetadatum
+	metadataMap map[int64]*sqlcdb.MovieMetadatum
 	err         error
 }
 
-func (m *mockMovieMetadataProvider) GetMovieMetadata(ctx context.Context, tmdbID int) (*model.MovieMetadata, error) {
+func (m *mockMovieMetadataProvider) GetMovieMetadata(ctx context.Context, tmdbID int64) (*sqlcdb.MovieMetadatum, error) {
 	return m.metadata, m.err
 }
 
-func (m *mockMovieMetadataProvider) GetMovieMetadataByID(ctx context.Context, metadataID int32) (*model.MovieMetadata, error) {
+func (m *mockMovieMetadataProvider) GetMovieMetadataByID(ctx context.Context, metadataID int64) (*sqlcdb.MovieMetadatum, error) {
 	if m.metadataMap != nil {
 		if meta, ok := m.metadataMap[metadataID]; ok {
 			return meta, nil
@@ -82,42 +83,42 @@ func TestMovieService_AddMovieToLibrary(t *testing.T) {
 	svc, store, _, _ := newTestMovieService(ctrl)
 
 	releaseDate := time.Now().AddDate(0, 0, -1)
-	metadata := &model.MovieMetadata{
+	metadata := &sqlcdb.MovieMetadatum{
 		ID:          1,
 		TmdbID:      1234,
 		Title:       "Test Movie",
-		ReleaseDate: &releaseDate,
+		ReleaseDate: sql.NullTime{Time: releaseDate, Valid: true},
 	}
 
 	svc.metadataProvider = &mockMovieMetadataProvider{metadata: metadata}
 
-	store.EXPECT().GetQualityProfile(ctx, int64(1)).Return(storage.QualityProfile{ID: 1}, nil)
-	store.EXPECT().GetMovieByMetadataID(ctx, 1).Return(nil, storage.ErrNotFound)
+	store.EXPECT().GetQualityProfile(ctx, int64(1)).Return(sqlcdb.QualityProfile{ID: 1}, nil)
+	store.EXPECT().GetMovieByMetadataID(ctx, int64(1)).Return(sqlcdb.GetMovieByMetadataIDRow{}, storage.ErrNotFound)
 	store.EXPECT().CreateMovie(ctx, gomock.Any(), storage.MovieStateMissing).Return(int64(1), nil)
-	store.EXPECT().GetMovie(ctx, int64(1)).Return(&storage.Movie{
-		Movie: model.Movie{
+	store.EXPECT().GetMovie(ctx, int64(1)).Return(sqlcdb.GetMovieByIDRow{
+		Movie: sqlcdb.Movie{
 			ID:               1,
 			Monitored:        1,
 			QualityProfileID: 1,
-			MovieMetadataID:  ptr.To(int32(1)),
-			Path:             ptr.To("Test Movie"),
+			MovieMetadataID:  sql.NullInt64{Int64: 1, Valid: true},
+			Path:             sql.NullString{String: "Test Movie", Valid: true},
 		},
-		State: storage.MovieStateMissing,
+		State: string(storage.MovieStateMissing),
 	}, nil)
 
 	movie, err := svc.AddMovieToLibrary(ctx, AddMovieRequest{TMDBID: 1234, QualityProfileID: 1})
 	require.NoError(t, err)
 	require.NotNil(t, movie)
 
-	expected := &storage.Movie{
-		Movie: model.Movie{
+	expected := &sqlcdb.GetMovieByIDRow{
+		Movie: sqlcdb.Movie{
 			ID:               1,
 			Monitored:        1,
 			QualityProfileID: 1,
-			MovieMetadataID:  ptr.To(int32(1)),
-			Path:             ptr.To("Test Movie"),
+			MovieMetadataID:  sql.NullInt64{Int64: 1, Valid: true},
+			Path:             sql.NullString{String: "Test Movie", Valid: true},
 		},
-		State: storage.MovieStateMissing,
+		State: string(storage.MovieStateMissing),
 	}
 	assert.Equal(t, expected, movie)
 }
@@ -129,7 +130,7 @@ func TestMovieService_AddMovieToLibrary_AlreadyExists_Downloaded(t *testing.T) {
 	ctx := context.Background()
 	svc, store, _, _ := newTestMovieService(ctrl)
 
-	metadata := &model.MovieMetadata{
+	metadata := &sqlcdb.MovieMetadatum{
 		ID:     1,
 		TmdbID: 1234,
 		Title:  "Existing Movie",
@@ -137,15 +138,15 @@ func TestMovieService_AddMovieToLibrary_AlreadyExists_Downloaded(t *testing.T) {
 
 	svc.metadataProvider = &mockMovieMetadataProvider{metadata: metadata}
 
-	store.EXPECT().GetQualityProfile(ctx, int64(1)).Return(storage.QualityProfile{ID: 1}, nil)
-	store.EXPECT().GetMovieByMetadataID(ctx, 1).Return(&storage.Movie{
-		Movie: model.Movie{
+	store.EXPECT().GetQualityProfile(ctx, int64(1)).Return(sqlcdb.QualityProfile{ID: 1}, nil)
+	store.EXPECT().GetMovieByMetadataID(ctx, int64(1)).Return(sqlcdb.GetMovieByMetadataIDRow{
+		Movie: sqlcdb.Movie{
 			ID:               5,
-			MovieMetadataID:  ptr.To(int32(1)),
+			MovieMetadataID:  sql.NullInt64{Int64: 1, Valid: true},
 			Monitored:        1,
 			QualityProfileID: 1,
 		},
-		State: storage.MovieStateDownloaded,
+		State: string(storage.MovieStateDownloaded),
 	}, nil)
 
 	movie, err := svc.AddMovieToLibrary(ctx, AddMovieRequest{TMDBID: 1234, QualityProfileID: 1})
@@ -153,14 +154,14 @@ func TestMovieService_AddMovieToLibrary_AlreadyExists_Downloaded(t *testing.T) {
 	assert.True(t, errors.Is(err, ErrMovieAlreadyExists))
 	require.NotNil(t, movie)
 
-	expected := &storage.Movie{
-		Movie: model.Movie{
+	expected := &sqlcdb.GetMovieByIDRow{
+		Movie: sqlcdb.Movie{
 			ID:               5,
-			MovieMetadataID:  ptr.To(int32(1)),
+			MovieMetadataID:  sql.NullInt64{Int64: 1, Valid: true},
 			Monitored:        1,
 			QualityProfileID: 1,
 		},
-		State: storage.MovieStateDownloaded,
+		State: string(storage.MovieStateDownloaded),
 	}
 	assert.Equal(t, expected, movie)
 }
@@ -172,7 +173,7 @@ func TestMovieService_AddMovieToLibrary_AlreadyExists_Downloading(t *testing.T) 
 	ctx := context.Background()
 	svc, store, _, _ := newTestMovieService(ctrl)
 
-	metadata := &model.MovieMetadata{
+	metadata := &sqlcdb.MovieMetadatum{
 		ID:     1,
 		TmdbID: 1234,
 		Title:  "Downloading Movie",
@@ -180,15 +181,15 @@ func TestMovieService_AddMovieToLibrary_AlreadyExists_Downloading(t *testing.T) 
 
 	svc.metadataProvider = &mockMovieMetadataProvider{metadata: metadata}
 
-	store.EXPECT().GetQualityProfile(ctx, int64(1)).Return(storage.QualityProfile{ID: 1}, nil)
-	store.EXPECT().GetMovieByMetadataID(ctx, 1).Return(&storage.Movie{
-		Movie: model.Movie{
+	store.EXPECT().GetQualityProfile(ctx, int64(1)).Return(sqlcdb.QualityProfile{ID: 1}, nil)
+	store.EXPECT().GetMovieByMetadataID(ctx, int64(1)).Return(sqlcdb.GetMovieByMetadataIDRow{
+		Movie: sqlcdb.Movie{
 			ID:               6,
-			MovieMetadataID:  ptr.To(int32(1)),
+			MovieMetadataID:  sql.NullInt64{Int64: 1, Valid: true},
 			Monitored:        1,
 			QualityProfileID: 1,
 		},
-		State: storage.MovieStateDownloading,
+		State: string(storage.MovieStateDownloading),
 	}, nil)
 
 	movie, err := svc.AddMovieToLibrary(ctx, AddMovieRequest{TMDBID: 1234, QualityProfileID: 1})
@@ -196,14 +197,14 @@ func TestMovieService_AddMovieToLibrary_AlreadyExists_Downloading(t *testing.T) 
 	assert.True(t, errors.Is(err, ErrMovieAlreadyExists))
 	require.NotNil(t, movie)
 
-	expected := &storage.Movie{
-		Movie: model.Movie{
+	expected := &sqlcdb.GetMovieByIDRow{
+		Movie: sqlcdb.Movie{
 			ID:               6,
-			MovieMetadataID:  ptr.To(int32(1)),
+			MovieMetadataID:  sql.NullInt64{Int64: 1, Valid: true},
 			Monitored:        1,
 			QualityProfileID: 1,
 		},
-		State: storage.MovieStateDownloading,
+		State: string(storage.MovieStateDownloading),
 	}
 	assert.Equal(t, expected, movie)
 }
@@ -215,7 +216,7 @@ func TestMovieService_AddMovieToLibrary_AlreadyExists_Discovered(t *testing.T) {
 	ctx := context.Background()
 	svc, store, _, _ := newTestMovieService(ctrl)
 
-	metadata := &model.MovieMetadata{
+	metadata := &sqlcdb.MovieMetadatum{
 		ID:     1,
 		TmdbID: 1234,
 		Title:  "Discovered Movie",
@@ -223,29 +224,29 @@ func TestMovieService_AddMovieToLibrary_AlreadyExists_Discovered(t *testing.T) {
 
 	svc.metadataProvider = &mockMovieMetadataProvider{metadata: metadata}
 
-	store.EXPECT().GetQualityProfile(ctx, int64(1)).Return(storage.QualityProfile{ID: 1}, nil)
-	store.EXPECT().GetMovieByMetadataID(ctx, 1).Return(&storage.Movie{
-		Movie: model.Movie{
+	store.EXPECT().GetQualityProfile(ctx, int64(1)).Return(sqlcdb.QualityProfile{ID: 1}, nil)
+	store.EXPECT().GetMovieByMetadataID(ctx, int64(1)).Return(sqlcdb.GetMovieByMetadataIDRow{
+		Movie: sqlcdb.Movie{
 			ID:               7,
-			MovieMetadataID:  ptr.To(int32(1)),
+			MovieMetadataID:  sql.NullInt64{Int64: 1, Valid: true},
 			Monitored:        1,
 			QualityProfileID: 1,
 		},
-		State: storage.MovieStateDiscovered,
+		State: string(storage.MovieStateDiscovered),
 	}, nil)
 
 	movie, err := svc.AddMovieToLibrary(ctx, AddMovieRequest{TMDBID: 1234, QualityProfileID: 1})
 	require.NoError(t, err)
 	require.NotNil(t, movie)
 
-	expected := &storage.Movie{
-		Movie: model.Movie{
+	expected := &sqlcdb.GetMovieByIDRow{
+		Movie: sqlcdb.Movie{
 			ID:               7,
-			MovieMetadataID:  ptr.To(int32(1)),
+			MovieMetadataID:  sql.NullInt64{Int64: 1, Valid: true},
 			Monitored:        1,
 			QualityProfileID: 1,
 		},
-		State: storage.MovieStateDiscovered,
+		State: string(storage.MovieStateDiscovered),
 	}
 	assert.Equal(t, expected, movie)
 }
@@ -257,7 +258,7 @@ func TestMovieService_AddMovieToLibrary_AlreadyExists_Missing(t *testing.T) {
 	ctx := context.Background()
 	svc, store, _, _ := newTestMovieService(ctrl)
 
-	metadata := &model.MovieMetadata{
+	metadata := &sqlcdb.MovieMetadatum{
 		ID:     1,
 		TmdbID: 1234,
 		Title:  "Missing Movie",
@@ -265,29 +266,29 @@ func TestMovieService_AddMovieToLibrary_AlreadyExists_Missing(t *testing.T) {
 
 	svc.metadataProvider = &mockMovieMetadataProvider{metadata: metadata}
 
-	store.EXPECT().GetQualityProfile(ctx, int64(1)).Return(storage.QualityProfile{ID: 1}, nil)
-	store.EXPECT().GetMovieByMetadataID(ctx, 1).Return(&storage.Movie{
-		Movie: model.Movie{
+	store.EXPECT().GetQualityProfile(ctx, int64(1)).Return(sqlcdb.QualityProfile{ID: 1}, nil)
+	store.EXPECT().GetMovieByMetadataID(ctx, int64(1)).Return(sqlcdb.GetMovieByMetadataIDRow{
+		Movie: sqlcdb.Movie{
 			ID:               8,
-			MovieMetadataID:  ptr.To(int32(1)),
+			MovieMetadataID:  sql.NullInt64{Int64: 1, Valid: true},
 			Monitored:        1,
 			QualityProfileID: 1,
 		},
-		State: storage.MovieStateMissing,
+		State: string(storage.MovieStateMissing),
 	}, nil)
 
 	movie, err := svc.AddMovieToLibrary(ctx, AddMovieRequest{TMDBID: 1234, QualityProfileID: 1})
 	require.NoError(t, err)
 	require.NotNil(t, movie)
 
-	expected := &storage.Movie{
-		Movie: model.Movie{
+	expected := &sqlcdb.GetMovieByIDRow{
+		Movie: sqlcdb.Movie{
 			ID:               8,
-			MovieMetadataID:  ptr.To(int32(1)),
+			MovieMetadataID:  sql.NullInt64{Int64: 1, Valid: true},
 			Monitored:        1,
 			QualityProfileID: 1,
 		},
-		State: storage.MovieStateMissing,
+		State: string(storage.MovieStateMissing),
 	}
 	assert.Equal(t, expected, movie)
 }
@@ -299,7 +300,7 @@ func TestMovieService_AddMovieToLibrary_AlreadyExists_Unreleased(t *testing.T) {
 	ctx := context.Background()
 	svc, store, _, _ := newTestMovieService(ctrl)
 
-	metadata := &model.MovieMetadata{
+	metadata := &sqlcdb.MovieMetadatum{
 		ID:     1,
 		TmdbID: 1234,
 		Title:  "Unreleased Movie",
@@ -307,29 +308,29 @@ func TestMovieService_AddMovieToLibrary_AlreadyExists_Unreleased(t *testing.T) {
 
 	svc.metadataProvider = &mockMovieMetadataProvider{metadata: metadata}
 
-	store.EXPECT().GetQualityProfile(ctx, int64(1)).Return(storage.QualityProfile{ID: 1}, nil)
-	store.EXPECT().GetMovieByMetadataID(ctx, 1).Return(&storage.Movie{
-		Movie: model.Movie{
+	store.EXPECT().GetQualityProfile(ctx, int64(1)).Return(sqlcdb.QualityProfile{ID: 1}, nil)
+	store.EXPECT().GetMovieByMetadataID(ctx, int64(1)).Return(sqlcdb.GetMovieByMetadataIDRow{
+		Movie: sqlcdb.Movie{
 			ID:               9,
-			MovieMetadataID:  ptr.To(int32(1)),
+			MovieMetadataID:  sql.NullInt64{Int64: 1, Valid: true},
 			Monitored:        1,
 			QualityProfileID: 1,
 		},
-		State: storage.MovieStateUnreleased,
+		State: string(storage.MovieStateUnreleased),
 	}, nil)
 
 	movie, err := svc.AddMovieToLibrary(ctx, AddMovieRequest{TMDBID: 1234, QualityProfileID: 1})
 	require.NoError(t, err)
 	require.NotNil(t, movie)
 
-	expected := &storage.Movie{
-		Movie: model.Movie{
+	expected := &sqlcdb.GetMovieByIDRow{
+		Movie: sqlcdb.Movie{
 			ID:               9,
-			MovieMetadataID:  ptr.To(int32(1)),
+			MovieMetadataID:  sql.NullInt64{Int64: 1, Valid: true},
 			Monitored:        1,
 			QualityProfileID: 1,
 		},
-		State: storage.MovieStateUnreleased,
+		State: string(storage.MovieStateUnreleased),
 	}
 	assert.Equal(t, expected, movie)
 }
@@ -341,7 +342,7 @@ func TestMovieService_AddMovieToLibrary_QualityProfileError(t *testing.T) {
 	ctx := context.Background()
 	svc, store, _, _ := newTestMovieService(ctrl)
 
-	store.EXPECT().GetQualityProfile(ctx, int64(99)).Return(storage.QualityProfile{}, errors.New("quality profile not found"))
+	store.EXPECT().GetQualityProfile(ctx, int64(99)).Return(sqlcdb.QualityProfile{}, errors.New("quality profile not found"))
 
 	movie, err := svc.AddMovieToLibrary(ctx, AddMovieRequest{TMDBID: 1234, QualityProfileID: 99})
 	require.Error(t, err)
@@ -357,7 +358,7 @@ func TestMovieService_AddMovieToLibrary_MetadataError(t *testing.T) {
 
 	svc.metadataProvider = &mockMovieMetadataProvider{err: errors.New("metadata fetch failed")}
 
-	store.EXPECT().GetQualityProfile(ctx, int64(1)).Return(storage.QualityProfile{ID: 1}, nil)
+	store.EXPECT().GetQualityProfile(ctx, int64(1)).Return(sqlcdb.QualityProfile{ID: 1}, nil)
 
 	movie, err := svc.AddMovieToLibrary(ctx, AddMovieRequest{TMDBID: 1234, QualityProfileID: 1})
 	require.Error(t, err)
@@ -373,42 +374,42 @@ func TestMovieService_AddMovieToLibrary_Unreleased(t *testing.T) {
 
 	// Future release date → state should be Unreleased
 	releaseDate := time.Now().AddDate(1, 0, 0)
-	metadata := &model.MovieMetadata{
+	metadata := &sqlcdb.MovieMetadatum{
 		ID:          1,
 		TmdbID:      1234,
 		Title:       "Future Movie",
-		ReleaseDate: &releaseDate,
+		ReleaseDate: sql.NullTime{Time: releaseDate, Valid: true},
 	}
 
 	svc.metadataProvider = &mockMovieMetadataProvider{metadata: metadata}
 
-	store.EXPECT().GetQualityProfile(ctx, int64(1)).Return(storage.QualityProfile{ID: 1}, nil)
-	store.EXPECT().GetMovieByMetadataID(ctx, 1).Return(nil, storage.ErrNotFound)
+	store.EXPECT().GetQualityProfile(ctx, int64(1)).Return(sqlcdb.QualityProfile{ID: 1}, nil)
+	store.EXPECT().GetMovieByMetadataID(ctx, int64(1)).Return(sqlcdb.GetMovieByMetadataIDRow{}, storage.ErrNotFound)
 	store.EXPECT().CreateMovie(ctx, gomock.Any(), storage.MovieStateUnreleased).Return(int64(1), nil)
-	store.EXPECT().GetMovie(ctx, int64(1)).Return(&storage.Movie{
-		Movie: model.Movie{
+	store.EXPECT().GetMovie(ctx, int64(1)).Return(sqlcdb.GetMovieByIDRow{
+		Movie: sqlcdb.Movie{
 			ID:               1,
 			Monitored:        1,
 			QualityProfileID: 1,
-			MovieMetadataID:  ptr.To(int32(1)),
-			Path:             ptr.To("Future Movie"),
+			MovieMetadataID:  sql.NullInt64{Int64: 1, Valid: true},
+			Path:             sql.NullString{String: "Future Movie", Valid: true},
 		},
-		State: storage.MovieStateUnreleased,
+		State: string(storage.MovieStateUnreleased),
 	}, nil)
 
 	movie, err := svc.AddMovieToLibrary(ctx, AddMovieRequest{TMDBID: 1234, QualityProfileID: 1})
 	require.NoError(t, err)
 	require.NotNil(t, movie)
 
-	expected := &storage.Movie{
-		Movie: model.Movie{
+	expected := &sqlcdb.GetMovieByIDRow{
+		Movie: sqlcdb.Movie{
 			ID:               1,
 			Monitored:        1,
 			QualityProfileID: 1,
-			MovieMetadataID:  ptr.To(int32(1)),
-			Path:             ptr.To("Future Movie"),
+			MovieMetadataID:  sql.NullInt64{Int64: 1, Valid: true},
+			Path:             sql.NullString{String: "Future Movie", Valid: true},
 		},
-		State: storage.MovieStateUnreleased,
+		State: string(storage.MovieStateUnreleased),
 	}
 	assert.Equal(t, expected, movie)
 }
@@ -421,17 +422,17 @@ func TestMovieService_AddMovieToLibrary_CreateError(t *testing.T) {
 	svc, store, _, _ := newTestMovieService(ctrl)
 
 	releaseDate := time.Now().AddDate(0, 0, -1)
-	metadata := &model.MovieMetadata{
+	metadata := &sqlcdb.MovieMetadatum{
 		ID:          1,
 		TmdbID:      1234,
 		Title:       "Test Movie",
-		ReleaseDate: &releaseDate,
+		ReleaseDate: sql.NullTime{Time: releaseDate, Valid: true},
 	}
 
 	svc.metadataProvider = &mockMovieMetadataProvider{metadata: metadata}
 
-	store.EXPECT().GetQualityProfile(ctx, int64(1)).Return(storage.QualityProfile{ID: 1}, nil)
-	store.EXPECT().GetMovieByMetadataID(ctx, 1).Return(nil, storage.ErrNotFound)
+	store.EXPECT().GetQualityProfile(ctx, int64(1)).Return(sqlcdb.QualityProfile{ID: 1}, nil)
+	store.EXPECT().GetMovieByMetadataID(ctx, int64(1)).Return(sqlcdb.GetMovieByMetadataIDRow{}, storage.ErrNotFound)
 	store.EXPECT().CreateMovie(ctx, gomock.Any(), gomock.Any()).Return(int64(0), errors.New("db insert failed"))
 
 	movie, err := svc.AddMovieToLibrary(ctx, AddMovieRequest{TMDBID: 1234, QualityProfileID: 1})
@@ -446,22 +447,22 @@ func TestMovieService_UpdateMovieMonitored(t *testing.T) {
 	ctx := context.Background()
 	svc, store, _, _ := newTestMovieService(ctrl)
 
-	movie := &storage.Movie{
-		Movie: model.Movie{
+	movie := &sqlcdb.GetMovieByIDRow{
+		Movie: sqlcdb.Movie{
 			ID:        1,
 			Monitored: 1,
 		},
 	}
 
 	store.EXPECT().UpdateMovieByID(ctx, gomock.Any(), gomock.Any()).Return(nil)
-	store.EXPECT().GetMovie(ctx, int64(1)).Return(movie, nil)
+	store.EXPECT().GetMovie(ctx, int64(1)).Return(*movie, nil)
 
 	result, err := svc.UpdateMovieMonitored(ctx, 1, true)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 
-	expected := &storage.Movie{
-		Movie: model.Movie{
+	expected := &sqlcdb.GetMovieByIDRow{
+		Movie: sqlcdb.Movie{
 			ID:        1,
 			Monitored: 1,
 		},
@@ -490,22 +491,22 @@ func TestMovieService_UpdateMovieQualityProfile(t *testing.T) {
 	ctx := context.Background()
 	svc, store, _, _ := newTestMovieService(ctrl)
 
-	movie := &storage.Movie{
-		Movie: model.Movie{
+	movie := &sqlcdb.GetMovieByIDRow{
+		Movie: sqlcdb.Movie{
 			ID:               1,
 			QualityProfileID: 3,
 		},
 	}
 
-	store.EXPECT().UpdateMovieQualityProfile(ctx, int64(1), int32(3)).Return(nil)
-	store.EXPECT().GetMovie(ctx, int64(1)).Return(movie, nil)
+	store.EXPECT().UpdateMovieQualityProfile(ctx, int64(1), int64(3)).Return(nil)
+	store.EXPECT().GetMovie(ctx, int64(1)).Return(*movie, nil)
 
 	result, err := svc.UpdateMovieQualityProfile(ctx, 1, 3)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 
-	expected := &storage.Movie{
-		Movie: model.Movie{
+	expected := &sqlcdb.GetMovieByIDRow{
+		Movie: sqlcdb.Movie{
 			ID:               1,
 			QualityProfileID: 3,
 		},
@@ -520,7 +521,7 @@ func TestMovieService_UpdateMovieQualityProfile_Error(t *testing.T) {
 	ctx := context.Background()
 	svc, store, _, _ := newTestMovieService(ctrl)
 
-	store.EXPECT().UpdateMovieQualityProfile(ctx, int64(1), int32(3)).Return(errors.New("db error"))
+	store.EXPECT().UpdateMovieQualityProfile(ctx, int64(1), int64(3)).Return(errors.New("db error"))
 
 	result, err := svc.UpdateMovieQualityProfile(ctx, 1, 3)
 	require.Error(t, err)
@@ -535,14 +536,14 @@ func TestMovieService_DeleteMovie(t *testing.T) {
 	svc, store, _, _ := newTestMovieService(ctrl)
 
 	path := "Test Movie"
-	movie := &storage.Movie{
-		Movie: model.Movie{
+	movie := &sqlcdb.GetMovieByIDRow{
+		Movie: sqlcdb.Movie{
 			ID:   1,
-			Path: &path,
+			Path: sql.NullString{String: path, Valid: true},
 		},
 	}
 
-	store.EXPECT().GetMovie(ctx, int64(1)).Return(movie, nil)
+	store.EXPECT().GetMovie(ctx, int64(1)).Return(*movie, nil)
 	store.EXPECT().DeleteMovie(ctx, int64(1)).Return(nil)
 
 	err := svc.DeleteMovie(ctx, 1, false)
@@ -557,14 +558,14 @@ func TestMovieService_DeleteMovie_WithFiles(t *testing.T) {
 	svc, store, _, lib := newTestMovieService(ctrl)
 
 	path := "Test Movie"
-	movie := &storage.Movie{
-		Movie: model.Movie{
+	movie := &sqlcdb.GetMovieByIDRow{
+		Movie: sqlcdb.Movie{
 			ID:   1,
-			Path: &path,
+			Path: sql.NullString{String: path, Valid: true},
 		},
 	}
 
-	store.EXPECT().GetMovie(ctx, int64(1)).Return(movie, nil)
+	store.EXPECT().GetMovie(ctx, int64(1)).Return(*movie, nil)
 	lib.EXPECT().DeleteMovieDirectory(ctx, path).Return(nil)
 	store.EXPECT().DeleteMovie(ctx, int64(1)).Return(nil)
 
@@ -579,7 +580,7 @@ func TestMovieService_DeleteMovie_NotFound(t *testing.T) {
 	ctx := context.Background()
 	svc, store, _, _ := newTestMovieService(ctrl)
 
-	store.EXPECT().GetMovie(ctx, int64(1)).Return(nil, storage.ErrNotFound)
+	store.EXPECT().GetMovie(ctx, int64(1)).Return(sqlcdb.GetMovieByIDRow{}, storage.ErrNotFound)
 
 	err := svc.DeleteMovie(ctx, 1, false)
 	require.Error(t, err)
@@ -593,14 +594,14 @@ func TestMovieService_DeleteMovie_NilPath(t *testing.T) {
 	ctx := context.Background()
 	svc, store, _, _ := newTestMovieService(ctrl)
 
-	movie := &storage.Movie{
-		Movie: model.Movie{
+	movie := &sqlcdb.GetMovieByIDRow{
+		Movie: sqlcdb.Movie{
 			ID:   1,
-			Path: nil,
+			Path: sql.NullString{},
 		},
 	}
 
-	store.EXPECT().GetMovie(ctx, int64(1)).Return(movie, nil)
+	store.EXPECT().GetMovie(ctx, int64(1)).Return(*movie, nil)
 
 	err := svc.DeleteMovie(ctx, 1, true)
 	require.Error(t, err)
@@ -618,39 +619,39 @@ func TestMovieService_ListMoviesInLibrary(t *testing.T) {
 	ctx := context.Background()
 	svc, store, _, _ := newTestMovieService(ctrl)
 
-	metadataID := int32(1)
+	metadataID := int64(1 << 40)
 	path := "movie1"
-	discoveredMovie := &storage.Movie{
-		Movie: model.Movie{
-			MovieMetadataID: &metadataID,
-			Path:            &path,
+	discoveredMovie := &sqlcdb.ListMoviesRow{
+		Movie: sqlcdb.Movie{
+			MovieMetadataID: sql.NullInt64{Int64: int64(metadataID), Valid: true},
+			Path:            sql.NullString{String: path, Valid: true},
 		},
-		State: storage.MovieStateDiscovered,
+		State: string(storage.MovieStateDiscovered),
 	}
 
-	downloadedMovie := &storage.Movie{
-		Movie: model.Movie{
-			MovieMetadataID: &metadataID,
-			Path:            &path,
+	downloadedMovie := &sqlcdb.ListMoviesRow{
+		Movie: sqlcdb.Movie{
+			MovieMetadataID: sql.NullInt64{Int64: int64(metadataID), Valid: true},
+			Path:            sql.NullString{String: path, Valid: true},
 		},
-		State: storage.MovieStateDownloaded,
+		State: string(storage.MovieStateDownloaded),
 	}
 
 	year := int32(2024)
-	movieMetadata := &model.MovieMetadata{
-		ID:     1,
+	movieMetadata := &sqlcdb.MovieMetadatum{
+		ID:     metadataID,
 		TmdbID: 123,
 		Title:  "Test Movie",
 		Images: "poster.jpg",
-		Year:   &year,
+		Year:   sql.NullInt64{Int64: int64(year), Valid: true},
 	}
 
 	svc.metadataProvider = &mockMovieMetadataProvider{
 		metadata:    movieMetadata,
-		metadataMap: map[int32]*model.MovieMetadata{1: movieMetadata},
+		metadataMap: map[int64]*sqlcdb.MovieMetadatum{metadataID: movieMetadata},
 	}
 
-	store.EXPECT().ListMovies(ctx).Return([]*storage.Movie{discoveredMovie, downloadedMovie}, nil)
+	store.EXPECT().ListMovies(ctx).Return([]sqlcdb.ListMoviesRow{*discoveredMovie, *downloadedMovie}, nil)
 
 	movies, err := svc.ListMoviesInLibrary(ctx)
 	require.NoError(t, err)
@@ -661,16 +662,14 @@ func TestMovieService_ListMoviesInLibrary(t *testing.T) {
 		TMDBID:     movieMetadata.TmdbID,
 		Title:      movieMetadata.Title,
 		PosterPath: movieMetadata.Images,
-		Year:       *movieMetadata.Year,
+		Year:       int32(movieMetadata.Year.Int64),
 	}
 
-	for _, movie := range movies {
-		assert.Equal(t, expectedMovie.Path, movie.Path)
-		assert.Equal(t, expectedMovie.TMDBID, movie.TMDBID)
-		assert.Equal(t, expectedMovie.Title, movie.Title)
-		assert.Equal(t, expectedMovie.PosterPath, movie.PosterPath)
-		assert.Equal(t, expectedMovie.Year, movie.Year)
-	}
+	expectedDiscovered := expectedMovie
+	expectedDiscovered.State = string(storage.MovieStateDiscovered)
+	expectedDownloaded := expectedMovie
+	expectedDownloaded.State = string(storage.MovieStateDownloaded)
+	assert.Equal(t, []LibraryMovie{expectedDiscovered, expectedDownloaded}, movies)
 }
 
 func TestMovieService_ListMoviesInLibrary_Empty(t *testing.T) {
@@ -680,7 +679,7 @@ func TestMovieService_ListMoviesInLibrary_Empty(t *testing.T) {
 	ctx := context.Background()
 	svc, store, _, _ := newTestMovieService(ctrl)
 
-	store.EXPECT().ListMovies(ctx).Return([]*storage.Movie{}, nil)
+	store.EXPECT().ListMovies(ctx).Return([]sqlcdb.ListMoviesRow{}, nil)
 
 	movies, err := svc.ListMoviesInLibrary(ctx)
 	require.NoError(t, err)
@@ -695,14 +694,14 @@ func TestMovieService_ListMoviesInLibrary_SkipsNoMetadata(t *testing.T) {
 	svc, store, _, _ := newTestMovieService(ctrl)
 
 	path := "movie1"
-	discoveredMovie := &storage.Movie{
-		Movie: model.Movie{
-			Path: &path,
+	discoveredMovie := &sqlcdb.ListMoviesRow{
+		Movie: sqlcdb.Movie{
+			Path: sql.NullString{String: path, Valid: true},
 		},
-		State: storage.MovieStateDiscovered,
+		State: string(storage.MovieStateDiscovered),
 	}
 
-	store.EXPECT().ListMovies(ctx).Return([]*storage.Movie{discoveredMovie}, nil)
+	store.EXPECT().ListMovies(ctx).Return([]sqlcdb.ListMoviesRow{*discoveredMovie}, nil)
 
 	movies, err := svc.ListMoviesInLibrary(ctx)
 	require.NoError(t, err)
@@ -784,25 +783,25 @@ func TestMovieService_GetMovieDetailByTMDBID_NotInLibrary(t *testing.T) {
 
 	releaseDate := parseTestDate("2023-01-15")
 	year := int32(2023)
-	metadata := &model.MovieMetadata{
+	metadata := &sqlcdb.MovieMetadatum{
 		ID:            1,
 		TmdbID:        123,
 		Title:         "Test Movie",
-		OriginalTitle: ptr.To("Original Test Movie"),
-		Overview:      ptr.To("Test movie overview"),
+		OriginalTitle: sql.NullString{String: "Original Test Movie", Valid: true},
+		Overview:      sql.NullString{String: "Test movie overview", Valid: true},
 		Images:        "poster.jpg",
 		Runtime:       120,
-		Genres:        ptr.To("Action, Drama"),
-		Studio:        ptr.To("Test Studio"),
-		Website:       ptr.To("https://test.com"),
-		Popularity:    ptr.To(8.5),
-		Year:          &year,
-		ReleaseDate:   &releaseDate,
+		Genres:        sql.NullString{String: "Action, Drama", Valid: true},
+		Studio:        sql.NullString{String: "Test Studio", Valid: true},
+		Website:       sql.NullString{String: "https://test.com", Valid: true},
+		Popularity:    sql.NullFloat64{Float64: 8.5, Valid: true},
+		Year:          sql.NullInt64{Int64: int64(year), Valid: true},
+		ReleaseDate:   sql.NullTime{Time: releaseDate, Valid: true},
 	}
 
 	svc.metadataProvider = &mockMovieMetadataProvider{metadata: metadata}
 
-	store.EXPECT().GetMovieByMetadataID(ctx, 1).Return(nil, storage.ErrNotFound)
+	store.EXPECT().GetMovieByMetadataID(ctx, int64(1)).Return(sqlcdb.GetMovieByMetadataIDRow{}, storage.ErrNotFound)
 
 	result, err := svc.GetMovieDetailByTMDBID(ctx, 123)
 	require.NoError(t, err)
@@ -833,7 +832,7 @@ func TestMovieService_GetMovieDetailByTMDBID_InLibrary(t *testing.T) {
 	ctx := context.Background()
 	svc, store, _, _ := newTestMovieService(ctrl)
 
-	metadata := &model.MovieMetadata{
+	metadata := &sqlcdb.MovieMetadatum{
 		ID:     1,
 		TmdbID: 123,
 		Title:  "Test Movie",
@@ -843,19 +842,19 @@ func TestMovieService_GetMovieDetailByTMDBID_InLibrary(t *testing.T) {
 	svc.metadataProvider = &mockMovieMetadataProvider{metadata: metadata}
 
 	path := "/movies/test-movie"
-	qualityProfileID := int32(2)
-	movie := &storage.Movie{
-		Movie: model.Movie{
-			ID:               1,
-			MovieMetadataID:  ptr.To(int32(1)),
-			Path:             &path,
+	qualityProfileID := int64(1 << 41)
+	movie := sqlcdb.GetMovieByMetadataIDRow{
+		Movie: sqlcdb.Movie{
+			ID:               1 << 40,
+			MovieMetadataID:  sql.NullInt64{Int64: 1, Valid: true},
+			Path:             sql.NullString{String: path, Valid: true},
 			QualityProfileID: qualityProfileID,
 			Monitored:        1,
 		},
-		State: storage.MovieStateDownloaded,
+		State: string(storage.MovieStateDownloaded),
 	}
 
-	store.EXPECT().GetMovieByMetadataID(ctx, 1).Return(movie, nil)
+	store.EXPECT().GetMovieByMetadataID(ctx, int64(1)).Return(movie, nil)
 
 	result, err := svc.GetMovieDetailByTMDBID(ctx, 123)
 	require.NoError(t, err)
@@ -868,7 +867,7 @@ func TestMovieService_GetMovieDetailByTMDBID_InLibrary(t *testing.T) {
 		PosterPath:       "poster.jpg",
 		Runtime:          ptr.To(int32(0)),
 		LibraryStatus:    string(storage.MovieStateDownloaded),
-		ID:               ptr.To(int32(1)),
+		ID:               ptr.To(int64(1 << 40)),
 		Path:             &path,
 		QualityProfileID: &qualityProfileID,
 		Monitored:        &monitored,
@@ -897,18 +896,18 @@ func TestMovieService_GetMovieDetailByTMDBID_NilReleaseDate(t *testing.T) {
 	ctx := context.Background()
 	svc, store, _, _ := newTestMovieService(ctrl)
 
-	metadata := &model.MovieMetadata{
+	metadata := &sqlcdb.MovieMetadatum{
 		ID:          1,
 		TmdbID:      123,
 		Title:       "Test Movie",
 		Images:      "poster.jpg",
 		Runtime:     120,
-		ReleaseDate: nil,
+		ReleaseDate: sql.NullTime{},
 	}
 
 	svc.metadataProvider = &mockMovieMetadataProvider{metadata: metadata}
 
-	store.EXPECT().GetMovieByMetadataID(ctx, 1).Return(nil, storage.ErrNotFound)
+	store.EXPECT().GetMovieByMetadataID(ctx, int64(1)).Return(sqlcdb.GetMovieByMetadataIDRow{}, storage.ErrNotFound)
 
 	result, err := svc.GetMovieDetailByTMDBID(ctx, 123)
 	require.NoError(t, err)

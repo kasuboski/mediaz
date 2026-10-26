@@ -55,13 +55,13 @@ func TestValidation_AddQualityProfileRequest(t *testing.T) {
 	})
 
 	t.Run("missing quality IDs fails validation", func(t *testing.T) {
-		req := manager.AddQualityProfileRequest{Name: "test", QualityIDs: []int32{}}
+		req := manager.AddQualityProfileRequest{Name: "test", QualityIDs: []int64{}}
 		err := v.validate.Struct(req)
 		assert.Error(t, err)
 	})
 
 	t.Run("valid request passes validation", func(t *testing.T) {
-		req := manager.AddQualityProfileRequest{Name: "test", QualityIDs: []int32{1}}
+		req := manager.AddQualityProfileRequest{Name: "test", QualityIDs: []int64{1}}
 		err := v.validate.Struct(req)
 		assert.NoError(t, err)
 	})

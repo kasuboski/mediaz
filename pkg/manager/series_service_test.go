@@ -2,15 +2,15 @@ package manager
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"testing"
-	"time"
 
 	mockLibrary "github.com/kasuboski/mediaz/pkg/library/mocks"
 	"github.com/kasuboski/mediaz/pkg/ptr"
 	"github.com/kasuboski/mediaz/pkg/storage"
 	storageMocks "github.com/kasuboski/mediaz/pkg/storage/mocks"
-	"github.com/kasuboski/mediaz/pkg/storage/model"
+	sqlcdb "github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 	"github.com/kasuboski/mediaz/pkg/tmdb"
 	tmdbMocks "github.com/kasuboski/mediaz/pkg/tmdb/mocks"
 	"github.com/stretchr/testify/assert"
@@ -18,13 +18,12 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
-// mockMetadataProvider is a test double for SeriesMetadataProvider
 type mockMetadataProvider struct {
-	metadata *model.SeriesMetadata
+	metadata *sqlcdb.SeriesMetadatum
 	err      error
 }
 
-func (m *mockMetadataProvider) GetSeriesMetadata(ctx context.Context, tmdbID int) (*model.SeriesMetadata, error) {
+func (m *mockMetadataProvider) GetSeriesMetadata(context.Context, int64) (*sqlcdb.SeriesMetadatum, error) {
 	return m.metadata, m.err
 }
 
@@ -34,111 +33,63 @@ func newTestSeriesService(ctrl *gomock.Controller) (*SeriesService, *storageMock
 	lib := mockLibrary.NewMockLibrary(ctrl)
 	qualityService := NewQualityService(store)
 	metadataProvider := &mockMetadataProvider{}
-
-	svc := NewSeriesService(tmdbClient, lib, store, store, qualityService, metadataProvider)
-	return svc, store, tmdbClient, lib
+	return NewSeriesService(tmdbClient, lib, store, store, qualityService, metadataProvider), store, tmdbClient, lib
 }
 
 func TestSeriesService_UpdateSeriesMonitored(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
-
 	ctx := context.Background()
 	svc, store, _, _ := newTestSeriesService(ctrl)
-
-	series := &storage.Series{
-		Series: model.Series{
-			ID:        1,
-			Monitored: 1,
-		},
-	}
-
-	store.EXPECT().UpdateSeriesByID(ctx, gomock.Any(), gomock.Any()).Return(nil)
-	store.EXPECT().GetSeriesByID(ctx, gomock.Any()).Return(series, nil)
-
-	expected := &storage.Series{
-		Series: model.Series{
-			ID:        1,
-			Monitored: 1,
-		},
-	}
-
-	result, err := svc.UpdateSeriesMonitored(ctx, 1, true)
+	want := sqlcdb.GetSeriesRow{Series: sqlcdb.Series{ID: 1, Monitored: 1}, State: string(storage.SeriesStateMissing)}
+	store.EXPECT().UpdateSeriesByID(ctx, int64(1), sqlcdb.Series{Monitored: 1}).Return(nil)
+	store.EXPECT().GetSeriesByID(ctx, int64(1)).Return(want, nil)
+	got, err := svc.UpdateSeriesMonitored(ctx, 1, true)
 	require.NoError(t, err)
-	assert.Equal(t, expected, result)
+	assert.Equal(t, &want, got)
 }
 
 func TestSeriesService_UpdateSeriesMonitored_Error(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
-
-	ctx := context.Background()
 	svc, store, _, _ := newTestSeriesService(ctrl)
-
-	store.EXPECT().UpdateSeriesByID(ctx, gomock.Any(), gomock.Any()).Return(errors.New("db error"))
-
-	result, err := svc.UpdateSeriesMonitored(ctx, 1, true)
+	store.EXPECT().UpdateSeriesByID(gomock.Any(), int64(1), gomock.Any()).Return(errors.New("db error"))
+	got, err := svc.UpdateSeriesMonitored(context.Background(), 1, true)
 	require.Error(t, err)
-	assert.Nil(t, result)
+	assert.Nil(t, got)
 }
 
 func TestSeriesService_DeleteSeries(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
-
 	ctx := context.Background()
 	svc, store, _, _ := newTestSeriesService(ctrl)
-
-	path := "Test Series"
-	series := &storage.Series{
-		Series: model.Series{
-			ID:   1,
-			Path: &path,
-		},
-	}
-
-	store.EXPECT().GetSeriesByID(ctx, gomock.Any()).Return(series, nil)
-	store.EXPECT().ListSeasons(ctx, gomock.Any()).Return([]*storage.Season{}, nil)
+	series := sqlcdb.GetSeriesRow{Series: sqlcdb.Series{ID: 1, Path: sql.NullString{String: "Test Series", Valid: true}}}
+	store.EXPECT().GetSeriesByID(ctx, int64(1)).Return(series, nil)
+	store.EXPECT().ListSeasons(ctx, storage.SeasonFilter{SeriesID: ptr.To(int64(1))}).Return([]sqlcdb.ListSeasonsRow{}, nil)
 	store.EXPECT().DeleteSeries(ctx, int64(1)).Return(nil)
-
-	err := svc.DeleteSeries(ctx, 1, false)
-	require.NoError(t, err)
+	require.NoError(t, svc.DeleteSeries(ctx, 1, false))
 }
 
 func TestSeriesService_DeleteSeries_WithDirectory(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
-
 	ctx := context.Background()
 	svc, store, _, lib := newTestSeriesService(ctrl)
-
-	path := "Test Series"
-	series := &storage.Series{
-		Series: model.Series{
-			ID:   1,
-			Path: &path,
-		},
-	}
-
-	store.EXPECT().GetSeriesByID(ctx, gomock.Any()).Return(series, nil)
-	store.EXPECT().ListSeasons(ctx, gomock.Any()).Return([]*storage.Season{}, nil)
-	lib.EXPECT().DeleteSeriesDirectory(ctx, path).Return(nil)
+	series := sqlcdb.GetSeriesRow{Series: sqlcdb.Series{ID: 1, Path: sql.NullString{String: "Test Series", Valid: true}}}
+	store.EXPECT().GetSeriesByID(ctx, int64(1)).Return(series, nil)
+	store.EXPECT().ListSeasons(ctx, gomock.Any()).Return([]sqlcdb.ListSeasonsRow{}, nil)
+	lib.EXPECT().DeleteSeriesDirectory(ctx, "Test Series").Return(nil)
 	store.EXPECT().DeleteSeries(ctx, int64(1)).Return(nil)
-
-	err := svc.DeleteSeries(ctx, 1, true)
-	require.NoError(t, err)
+	require.NoError(t, svc.DeleteSeries(ctx, 1, true))
 }
 
 func TestSeriesService_DeleteSeries_NotFound(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
-
-	ctx := context.Background()
 	svc, store, _, _ := newTestSeriesService(ctrl)
-
-	store.EXPECT().GetSeriesByID(ctx, gomock.Any()).Return(nil, storage.ErrNotFound)
-
-	err := svc.DeleteSeries(ctx, 1, false)
+	store.EXPECT().GetSeriesByID(gomock.Any(), int64(1)).Return(sqlcdb.GetSeriesRow{}, storage.ErrNotFound)
+	err := svc.DeleteSeries(context.Background(), 1, false)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to get series")
 }
@@ -146,164 +97,69 @@ func TestSeriesService_DeleteSeries_NotFound(t *testing.T) {
 func TestSeriesService_DeleteSeries_NilPath(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
-
 	ctx := context.Background()
 	svc, store, _, _ := newTestSeriesService(ctrl)
-
-	series := &storage.Series{
-		Series: model.Series{
-			ID:   1,
-			Path: nil,
-		},
-	}
-
-	store.EXPECT().GetSeriesByID(ctx, gomock.Any()).Return(series, nil)
-	store.EXPECT().ListSeasons(ctx, gomock.Any()).Return([]*storage.Season{}, nil)
-
+	store.EXPECT().GetSeriesByID(ctx, int64(1)).Return(sqlcdb.GetSeriesRow{Series: sqlcdb.Series{ID: 1}}, nil)
+	store.EXPECT().ListSeasons(ctx, gomock.Any()).Return([]sqlcdb.ListSeasonsRow{}, nil)
 	err := svc.DeleteSeries(ctx, 1, true)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "series path is nil")
 }
 
-func TestSeriesService_DeleteSeries_WithEpisodeFiles(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	ctx := context.Background()
-	svc, store, _, lib := newTestSeriesService(ctrl)
-
-	path := "Test Series"
-	series := &storage.Series{
-		Series: model.Series{
-			ID:   1,
-			Path: &path,
-		},
-	}
-
-	episodeFileID := int32(10)
-	season := &storage.Season{
-		Season: model.Season{
-			ID:       1,
-			SeriesID: 1,
-		},
-	}
-
-	episode := &storage.Episode{
-		Episode: model.Episode{
-			ID:            1,
-			SeasonID:      1,
-			EpisodeFileID: &episodeFileID,
-		},
-	}
-
-	store.EXPECT().GetSeriesByID(ctx, gomock.Any()).Return(series, nil)
-	store.EXPECT().ListSeasons(ctx, gomock.Any()).Return([]*storage.Season{season}, nil)
-	store.EXPECT().ListEpisodes(ctx, gomock.Any()).Return([]*storage.Episode{episode}, nil)
-	lib.EXPECT().DeleteSeriesDirectory(ctx, path).Return(nil)
-	store.EXPECT().DeleteEpisodeFile(ctx, int64(episodeFileID)).Return(nil)
-	store.EXPECT().DeleteSeries(ctx, int64(1)).Return(nil)
-
-	err := svc.DeleteSeries(ctx, 1, true)
-	require.NoError(t, err)
-}
-
 func TestSeriesService_DeleteSeries_WithEpisodeFiles_NoDeleteDirectory(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
-
 	ctx := context.Background()
 	svc, store, _, _ := newTestSeriesService(ctrl)
-
-	path := "Test Series"
-	series := &storage.Series{
-		Series: model.Series{
-			ID:   1,
-			Path: &path,
-		},
-	}
-
-	season := &storage.Season{
-		Season: model.Season{
-			ID:       1,
-			SeriesID: 1,
-		},
-	}
-
-	// When deleteDirectory is false, episode files should NOT be deleted.
-	// ListSeasons is still called but episodes loop is skipped entirely.
-	store.EXPECT().GetSeriesByID(ctx, gomock.Any()).Return(series, nil)
-	store.EXPECT().ListSeasons(ctx, gomock.Any()).Return([]*storage.Season{season}, nil)
-	// No ListEpisodes, DeleteEpisodeFile, or DeleteSeriesDirectory calls expected
+	series := sqlcdb.GetSeriesRow{Series: sqlcdb.Series{ID: 1, Path: sql.NullString{String: "Test Series", Valid: true}}}
+	season := sqlcdb.ListSeasonsRow{Season: sqlcdb.Season{ID: 2, SeriesID: 1}}
+	store.EXPECT().GetSeriesByID(ctx, int64(1)).Return(series, nil)
+	store.EXPECT().ListSeasons(ctx, gomock.Any()).Return([]sqlcdb.ListSeasonsRow{season}, nil)
 	store.EXPECT().DeleteSeries(ctx, int64(1)).Return(nil)
+	// No episode listing, file deletion, or filesystem deletion is expected.
+	require.NoError(t, svc.DeleteSeries(ctx, 1, false))
+}
 
-	err := svc.DeleteSeries(ctx, 1, false)
-	require.NoError(t, err)
+func TestSeriesService_DeleteSeries_WithEpisodeFiles(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	ctx := context.Background()
+	svc, store, _, lib := newTestSeriesService(ctrl)
+	series := sqlcdb.GetSeriesRow{Series: sqlcdb.Series{ID: 1, Path: sql.NullString{String: "Test Series", Valid: true}}}
+	season := sqlcdb.ListSeasonsRow{Season: sqlcdb.Season{ID: 2, SeriesID: 1}}
+	episode := sqlcdb.ListEpisodesRow{Episode: sqlcdb.Episode{ID: 3, SeasonID: 2, EpisodeFileID: sql.NullInt64{Int64: 10, Valid: true}}}
+	store.EXPECT().GetSeriesByID(ctx, int64(1)).Return(series, nil)
+	store.EXPECT().ListSeasons(ctx, gomock.Any()).Return([]sqlcdb.ListSeasonsRow{season}, nil)
+	store.EXPECT().ListEpisodes(ctx, storage.EpisodeFilter{SeasonID: ptr.To(int64(2))}).Return([]sqlcdb.ListEpisodesRow{episode}, nil)
+	lib.EXPECT().DeleteSeriesDirectory(ctx, "Test Series").Return(nil)
+	store.EXPECT().DeleteEpisodeFile(ctx, int64(10)).Return(nil)
+	store.EXPECT().DeleteSeries(ctx, int64(1)).Return(nil)
+	require.NoError(t, svc.DeleteSeries(ctx, 1, true))
 }
 
 func TestSeriesService_ListShowsInLibrary(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
-
 	ctx := context.Background()
 	svc, store, _, _ := newTestSeriesService(ctrl)
-
-	metadataID := int32(1)
-	series := []*storage.Series{
-		{
-			Series: model.Series{
-				ID:               1,
-				SeriesMetadataID: &metadataID,
-				Path:             ptr.To("Test Show"),
-			},
-			State: storage.SeriesStateMissing,
-		},
-	}
-
-	posterPath := "poster.jpg"
-	metadata := &model.SeriesMetadata{
-		ID:         1,
-		TmdbID:     123,
-		Title:      "Test Show",
-		PosterPath: &posterPath,
-	}
-
-	store.EXPECT().ListSeries(ctx, gomock.Any()).Return(series, nil)
-	store.EXPECT().GetSeriesMetadataByID(ctx, gomock.Any()).Return(metadata, nil)
-
+	store.EXPECT().ListSeries(ctx, storage.SeriesFilter{}).Return([]sqlcdb.ListSeriesRow{{
+		Series: sqlcdb.Series{ID: 1, SeriesMetadataID: sql.NullInt64{Int64: 7, Valid: true}, Path: sql.NullString{String: "Test Show", Valid: true}},
+		State:  string(storage.SeriesStateMissing),
+	}}, nil)
+	store.EXPECT().GetSeriesMetadataByID(ctx, int64(7)).Return(sqlcdb.SeriesMetadatum{
+		ID: 7, TmdbID: 123, Title: "Test Show", PosterPath: sql.NullString{String: "poster.jpg", Valid: true},
+	}, nil)
 	shows, err := svc.ListShowsInLibrary(ctx)
 	require.NoError(t, err)
-	require.Len(t, shows, 1)
-	assert.Equal(t, []LibraryShow{
-		{
-			Path:       "Test Show",
-			TMDBID:     123,
-			Title:      "Test Show",
-			PosterPath: "poster.jpg",
-			State:      string(storage.SeriesStateMissing),
-		},
-	}, shows)
+	assert.Equal(t, []LibraryShow{{Path: "Test Show", TMDBID: 123, Title: "Test Show", PosterPath: "poster.jpg", State: string(storage.SeriesStateMissing)}}, shows)
 }
 
 func TestSeriesService_ListShowsInLibrary_SkipsNoMetadata(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
-
-	ctx := context.Background()
 	svc, store, _, _ := newTestSeriesService(ctrl)
-
-	series := []*storage.Series{
-		{
-			Series: model.Series{
-				ID:               1,
-				SeriesMetadataID: nil,
-				Path:             ptr.To("Test Show"),
-			},
-		},
-	}
-
-	store.EXPECT().ListSeries(ctx, gomock.Any()).Return(series, nil)
-
-	shows, err := svc.ListShowsInLibrary(ctx)
+	store.EXPECT().ListSeries(gomock.Any(), storage.SeriesFilter{}).Return([]sqlcdb.ListSeriesRow{{Series: sqlcdb.Series{ID: 1}}}, nil)
+	shows, err := svc.ListShowsInLibrary(context.Background())
 	require.NoError(t, err)
 	assert.Empty(t, shows)
 }
@@ -311,37 +167,19 @@ func TestSeriesService_ListShowsInLibrary_SkipsNoMetadata(t *testing.T) {
 func TestSeriesService_GetSeriesDetails(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
-
 	ctx := context.Background()
 	svc, _, tmdbClient, _ := newTestSeriesService(ctrl)
-
-	tmdbClient.EXPECT().GetSeriesDetails(ctx, 123).Return(&tmdb.SeriesDetails{
-		ID:              123,
-		Name:            "Test Series",
-		NumberOfSeasons: 2,
-		FirstAirDate:    "2023-01-01",
-	}, nil)
-
-	result, err := svc.GetSeriesDetails(ctx, 123)
+	tmdbClient.EXPECT().GetSeriesDetails(ctx, 123).Return(&tmdb.SeriesDetails{ID: 123, Name: "Test Series", NumberOfSeasons: 2}, nil)
+	got, err := svc.GetSeriesDetails(ctx, 123)
 	require.NoError(t, err)
-	airDate := time.Date(2023, time.January, 1, 0, 0, 0, 0, time.UTC)
-	assert.Equal(t, model.SeriesMetadata{
-		TmdbID:       123,
-		Title:        "Test Series",
-		SeasonCount:  2,
-		FirstAirDate: &airDate,
-		Overview:     ptr.To(""),
-	}, result)
+	assert.Equal(t, sqlcdb.SeriesMetadatum{TmdbID: 123, Title: "Test Series", SeasonCount: 2, Overview: sql.NullString{String: "", Valid: true}}, got)
 }
 
 func TestSeriesService_SearchTV_EmptyQuery(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
-
-	ctx := context.Background()
 	svc, _, _, _ := newTestSeriesService(ctrl)
-
-	_, err := svc.SearchTV(ctx, "")
+	_, err := svc.SearchTV(context.Background(), "")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "query is empty")
 }
@@ -349,78 +187,35 @@ func TestSeriesService_SearchTV_EmptyQuery(t *testing.T) {
 func TestNewSeriesService(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
-
 	store := storageMocks.NewMockStorage(ctrl)
 	tmdbClient := tmdbMocks.NewMockITmdb(ctrl)
 	lib := mockLibrary.NewMockLibrary(ctrl)
 	qualityService := NewQualityService(store)
-	metadataProvider := &mockMetadataProvider{}
-
-	svc := NewSeriesService(tmdbClient, lib, store, store, qualityService, metadataProvider)
+	provider := &mockMetadataProvider{}
+	svc := NewSeriesService(tmdbClient, lib, store, store, qualityService, provider)
 	require.NotNil(t, svc)
 	assert.Equal(t, tmdbClient, svc.tmdb)
 	assert.Equal(t, lib, svc.library)
 	assert.NotNil(t, svc.qualityService)
-	assert.Equal(t, metadataProvider, svc.metadataProvider)
+	assert.Equal(t, provider, svc.metadataProvider)
 }
 
 func TestSeriesService_buildTVDetailResult(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
-
 	svc, _, _, _ := newTestSeriesService(ctrl)
-	overview := "A great show"
-	metadata := &model.SeriesMetadata{
-		TmdbID:       123,
-		Title:        "Test Series",
-		SeasonCount:  3,
-		EpisodeCount: 30,
-		Overview:     &overview,
-	}
-
-	result := svc.buildTVDetailResult(metadata, &tmdb.SeriesDetailsResponse{}, nil, nil)
-	assert.Equal(t, &TVDetailResult{
-		TMDBID:        123,
-		Title:         "Test Series",
-		Overview:      "A great show",
-		SeasonCount:   3,
-		EpisodeCount:  30,
-		LibraryStatus: "Not In Library",
-	}, result)
+	metadata := &sqlcdb.SeriesMetadatum{TmdbID: 123, Title: "Test Series", SeasonCount: 3, EpisodeCount: 30, Overview: sql.NullString{String: "A great show", Valid: true}}
+	got := svc.buildTVDetailResult(metadata, &tmdb.SeriesDetailsResponse{}, nil, nil)
+	assert.Equal(t, &TVDetailResult{TMDBID: 123, Title: "Test Series", Overview: "A great show", SeasonCount: 3, EpisodeCount: 30, LibraryStatus: "Not In Library"}, got)
 }
 
 func TestSeriesService_buildTVDetailResult_WithSeries(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
-
 	svc, _, _, _ := newTestSeriesService(ctrl)
-	path := "/tv/show"
-	monitored := int32(1)
-	metadata := &model.SeriesMetadata{
-		TmdbID: 123,
-		Title:  "Test Series",
-	}
-
-	series := &storage.Series{
-		Series: model.Series{
-			ID:               1,
-			Path:             &path,
-			QualityProfileID: 5,
-			Monitored:        monitored,
-		},
-	}
-
-	result := svc.buildTVDetailResult(metadata, &tmdb.SeriesDetailsResponse{}, series, nil)
-	assert.Equal(t, &TVDetailResult{
-		TMDBID:            123,
-		Title:             "Test Series",
-		LibraryStatus:     string(series.State),
-		SeasonCount:       0,
-		EpisodeCount:      0,
-		ID:                ptr.To(int32(1)),
-		Path:              &path,
-		QualityProfileID:  ptr.To(int32(5)),
-		Monitored:         ptr.To(true),
-		MonitorNewSeasons: ptr.To(false),
-	}, result)
+	path := "Test Show"
+	metadata := &sqlcdb.SeriesMetadatum{TmdbID: 123, Title: "Test Series"}
+	series := &sqlcdb.GetSeriesRow{Series: sqlcdb.Series{ID: 1, Path: sql.NullString{String: path, Valid: true}, QualityProfileID: 5, Monitored: 1}}
+	got := svc.buildTVDetailResult(metadata, &tmdb.SeriesDetailsResponse{}, series, nil)
+	assert.Equal(t, &TVDetailResult{TMDBID: 123, Title: "Test Series", LibraryStatus: "", ID: ptr.To(int64(1)), Path: &path, QualityProfileID: ptr.To(int64(5)), Monitored: ptr.To(true), MonitorNewSeasons: ptr.To(false)}, got)
 }

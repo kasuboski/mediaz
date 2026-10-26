@@ -10,7 +10,6 @@ import (
 	"github.com/kasuboski/mediaz/pkg/library"
 	"github.com/kasuboski/mediaz/pkg/logger"
 	"github.com/kasuboski/mediaz/pkg/manager"
-	"github.com/kasuboski/mediaz/pkg/storage"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite"
 	"github.com/kasuboski/mediaz/pkg/tmdb"
 
@@ -55,16 +54,6 @@ var reconcileMoviesCmd = &cobra.Command{
 		store, err := sqlite.New(ctx, cfg.Storage.FilePath)
 		if err != nil {
 			log.Fatal("failed to create storage connection", zap.Error(err))
-		}
-
-		schemas, err := storage.GetSchemas()
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		err = store.Init(ctx, schemas...)
-		if err != nil {
-			log.Fatal("failed to init database", zap.Error(err))
 		}
 
 		// Setup library filesystem
@@ -127,16 +116,6 @@ var reconcileSeriesCmd = &cobra.Command{
 		store, err := sqlite.New(ctx, cfg.Storage.FilePath)
 		if err != nil {
 			log.Fatal("failed to create storage connection", zap.Error(err))
-		}
-
-		schemas, err := storage.GetSchemas()
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		err = store.Init(ctx, schemas...)
-		if err != nil {
-			log.Fatal("failed to init database", zap.Error(err))
 		}
 		// Setup library filesystem
 		movieFS := os.DirFS(cfg.Library.MovieDir)

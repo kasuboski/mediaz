@@ -1,137 +1,76 @@
 package sqlite
 
 import (
-	"context"
+	"database/sql"
 	"testing"
+	"time"
 
-	"github.com/kasuboski/mediaz/pkg/ptr"
 	"github.com/kasuboski/mediaz/pkg/storage"
-	"github.com/kasuboski/mediaz/pkg/storage/model"
+	"github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
+// Season metadata is linked through the generated Season entity.
 func TestSeasonMetadataStorage(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	store := initSqlite(t, ctx)
-	assert.NotNil(t, store)
+	q := sqlcdb.New(store.(*SQLite).db)
+	seriesID := tvTestSeries(t, ctx, store)
+	seriesMetadataID, err := store.CreateSeriesMetadata(ctx, sqlcdb.SeriesMetadatum{TmdbID: 123, Title: "Series"})
+	require.NoError(t, err)
+	airDate := sql.NullTime{Time: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), Valid: true}
+	metadataID, err := q.UpsertSeasonMetadata(ctx, sqlcdb.UpsertSeasonMetadataParams{ID: sql.NullInt64{Int64: 77, Valid: true}, SeriesMetadataID: seriesMetadataID, Number: 1, TmdbID: 12345, Title: "Season One", Overview: sql.NullString{String: "overview", Valid: true}, AirDate: airDate})
+	require.NoError(t, err)
+	assert.Equal(t, int64(77), metadataID)
+	metadata, err := q.GetSeasonMetadataByID(ctx, 77)
+	require.NoError(t, err)
+	assert.Equal(t, sqlcdb.SeasonMetadatum{ID: 77, SeriesMetadataID: seriesMetadataID, Number: 1, TmdbID: 12345, Title: "Season One", Overview: sql.NullString{String: "overview", Valid: true}, AirDate: airDate}, metadata)
+	season := sqlcdb.Season{SeriesID: seriesID, SeasonNumber: 1, Monitored: 1, SeasonMetadataID: sql.NullInt64{Int64: 77, Valid: true}}
+	id, err := store.CreateSeason(ctx, season, storage.SeasonStateMissing)
+	require.NoError(t, err)
+	season.ID = id
+	got, err := store.GetSeasonByID(ctx, id)
+	require.NoError(t, err)
+	assert.Equal(t, sqlcdb.GetSeasonByIDRow{Season: season, State: sql.NullString{String: string(storage.SeasonStateMissing), Valid: true}}, got)
+	byNumber, err := store.GetSeasonBySeriesIDAndNumber(ctx, seriesID, 1)
+	require.NoError(t, err)
+	assert.Equal(t, season, byNumber.Season)
+	list, err := store.ListSeasons(ctx, storage.SeasonFilter{SeriesID: &seriesID})
+	require.NoError(t, err)
+	assert.Equal(t, []sqlcdb.ListSeasonsRow{{Season: season, State: string(storage.SeasonStateMissing)}}, list)
 
-	// Test creating season metadata
-	metadata := model.SeasonMetadata{
-		SeriesMetadataID: 1,
-		TmdbID:           12345,
-		Title:            "Season 1",
-		Overview:         ptr.To("Test season overview"),
-		Number:           1,
-	}
-
-	id, err := store.CreateSeasonMetadata(ctx, metadata)
-	assert.Nil(t, err)
-	assert.Greater(t, id, int64(0))
-
-	// Test getting the season metadata
-	retrieved, err := store.GetSeasonMetadataByID(ctx, id)
-	assert.Nil(t, err)
-	assert.NotNil(t, retrieved)
-	assert.Equal(t, metadata.TmdbID, retrieved.TmdbID)
-	assert.Equal(t, metadata.SeriesMetadataID, retrieved.SeriesMetadataID)
-	assert.Equal(t, metadata.Title, retrieved.Title)
-	assert.Equal(t, metadata.Overview, retrieved.Overview)
-	assert.Equal(t, metadata.Number, retrieved.Number)
-
-	// Test listing season metadata for the series metadata
-	metadataList, err := store.ListSeasonMetadataBySeriesMetadataID(ctx, 1)
-	assert.Nil(t, err)
-	assert.Len(t, metadataList, 1)
-	assert.Equal(t, metadata.Title, metadataList[0].Title)
-
-	// Test listing season metadata for another series metadata
-	otherList, err := store.ListSeasonMetadataBySeriesMetadataID(ctx, 2)
-	assert.Nil(t, err)
-	assert.Empty(t, otherList)
-
-	// Test deleting the season metadata
-	err = store.DeleteSeasonMetadata(ctx, id)
-	assert.Nil(t, err)
-
-	// Verify deletion
-	metadataList, err = store.ListSeasonMetadataBySeriesMetadataID(ctx, 1)
-	assert.Nil(t, err)
-	assert.Empty(t, metadataList)
-
-	// Test getting non-existent season metadata
-	_, err = store.GetSeasonMetadataByID(ctx, id)
-	assert.ErrorIs(t, err, storage.ErrNotFound)
+	// Refresh metadata by its external identity without changing the season's
+	// stored link; every mutable metadata field must reflect the new values.
+	refreshedID, err := q.UpsertSeasonMetadata(ctx, sqlcdb.UpsertSeasonMetadataParams{SeriesMetadataID: seriesMetadataID, Number: 1, TmdbID: 12345, Title: "Refreshed"})
+	require.NoError(t, err)
+	assert.Equal(t, metadataID, refreshedID)
+	metadata, err = q.GetSeasonMetadataByID(ctx, 77)
+	require.NoError(t, err)
+	assert.Equal(t, sqlcdb.SeasonMetadatum{ID: 77, SeriesMetadataID: seriesMetadataID, Number: 1, TmdbID: 12345, Title: "Refreshed"}, metadata)
+	got, err = store.GetSeasonByID(ctx, id)
+	require.NoError(t, err)
+	assert.Equal(t, season, got.Season)
 }
 
-func TestGetSeasonMetadataByTmdbID(t *testing.T) {
-	ctx := context.Background()
+func TestLinkSeasonMetadata(t *testing.T) {
+	ctx := t.Context()
 	store := initSqlite(t, ctx)
-	require.NotNil(t, store)
-
-	metadata := model.SeasonMetadata{
-		SeriesMetadataID: 3,
-		Number:           2,
-		TmdbID:           55555,
-		Title:            "Season 2",
-	}
-
-	id, err := store.CreateSeasonMetadata(ctx, metadata)
+	q := sqlcdb.New(store.(*SQLite).db)
+	seriesID := tvTestSeries(t, ctx, store)
+	id, err := store.CreateSeason(ctx, sqlcdb.Season{SeriesID: seriesID, SeasonNumber: 1}, storage.SeasonStateMissing)
 	require.NoError(t, err)
-	require.Greater(t, id, int64(0))
-
-	retrieved, err := store.GetSeasonMetadataByTmdbID(ctx, int64(metadata.TmdbID))
+	before, err := store.GetSeasonByID(ctx, id)
 	require.NoError(t, err)
-	require.NotNil(t, retrieved)
-	assert.Equal(t, id, int64(retrieved.ID))
-	assert.Equal(t, metadata.SeriesMetadataID, retrieved.SeriesMetadataID)
-	assert.Equal(t, metadata.Number, retrieved.Number)
-	assert.Equal(t, metadata.Title, retrieved.Title)
-
-	// Test getting non-existent season metadata
-	_, err = store.GetSeasonMetadataByTmdbID(ctx, 1)
-	assert.ErrorIs(t, err, storage.ErrNotFound)
-}
-
-func TestCreateSeasonMetadataUpsertConflict(t *testing.T) {
-	ctx := context.Background()
-	store := initSqlite(t, ctx)
-	require.NotNil(t, store)
-
-	// Season metadata creation is add-only: conflicting tmdb ids keep the
-	// existing row untouched, matching the legacy DO NOTHING upsert.
-	original := model.SeasonMetadata{
-		SeriesMetadataID: 1,
-		Number:           1,
-		TmdbID:           7,
-		Title:            "Season 1",
-		Overview:         ptr.To("original overview"),
-	}
-
-	id, err := store.CreateSeasonMetadata(ctx, original)
+	require.False(t, before.Season.SeasonMetadataID.Valid)
+	metadataID, err := store.CreateSeriesMetadata(ctx, sqlcdb.SeriesMetadatum{TmdbID: 123, Title: "Series"})
 	require.NoError(t, err)
-	require.Greater(t, id, int64(0))
-
-	conflicting := model.SeasonMetadata{
-		SeriesMetadataID: 2,
-		Number:           9,
-		TmdbID:           7,
-		Title:            "CHANGED",
-	}
-
-	upsertID, err := store.CreateSeasonMetadata(ctx, conflicting)
+	seasonMetadataID, err := q.UpsertSeasonMetadata(ctx, sqlcdb.UpsertSeasonMetadataParams{ID: sql.NullInt64{Int64: 78, Valid: true}, SeriesMetadataID: metadataID, Number: 1, TmdbID: 12345, Title: "Season One"})
 	require.NoError(t, err)
-	assert.Equal(t, id, upsertID, "conflicting create must return the existing id")
-
-	retrieved, err := store.GetSeasonMetadataByTmdbID(ctx, 7)
+	assert.Equal(t, int64(78), seasonMetadataID)
+	require.NoError(t, store.LinkSeasonMetadata(ctx, id, 78))
+	before.Season.SeasonMetadataID = sql.NullInt64{Int64: 78, Valid: true}
+	got, err := store.GetSeasonByID(ctx, id)
 	require.NoError(t, err)
-	assert.Equal(t, "Season 1", retrieved.Title, "title must be preserved on conflict")
-	assert.Equal(t, int32(1), retrieved.Number, "number must be preserved on conflict")
-	assert.Equal(t, int32(1), retrieved.SeriesMetadataID, "series metadata link must be preserved on conflict")
-	require.NotNil(t, retrieved.Overview)
-	assert.Equal(t, "original overview", *retrieved.Overview, "overview must be preserved on conflict")
-
-	rows, err := store.ListSeasonMetadataBySeriesMetadataID(ctx, 1)
-	require.NoError(t, err)
-	assert.Len(t, rows, 1, "conflicting create must not add a second row")
+	assert.Equal(t, before, got)
 }

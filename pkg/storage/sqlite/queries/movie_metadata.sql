@@ -1,4 +1,6 @@
--- name: CreateMovieMetadata :execresult
+-- name: CreateMovieMetadata :one
+-- Plain insert: the legacy ON CONFLICT (id) DO NOTHING clause could never
+-- fire because id was never inserted (autoincrement assigns it).
 INSERT INTO movie_metadata (
     tmdb_id, imdb_id, images, genres, title, sort_title, clean_title,
     original_title, clean_original_title, original_language, status,
@@ -6,10 +8,11 @@ INSERT INTO movie_metadata (
     ratings, recommendations, certification, youtube_trailer_id, studio,
     overview, website, popularity, collection_tmdb_id, collection_title
 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-ON CONFLICT (id) DO NOTHING;
+RETURNING id;
 
 -- name: UpdateMovieMetadataQuery :exec
 UPDATE movie_metadata SET
+    last_info_sync = CURRENT_TIMESTAMP,
     imdb_id = ?,
     images = ?,
     genres = ?,
@@ -71,7 +74,7 @@ SELECT
     collection_tmdb_id,
     collection_title
 FROM movie_metadata
-ORDER BY last_info_sync ASC;
+ORDER BY last_info_sync ASC, id ASC;
 
 -- name: GetMovieMetadataByID :one
 SELECT

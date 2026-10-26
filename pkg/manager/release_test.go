@@ -10,7 +10,7 @@ import (
 
 	"github.com/kasuboski/mediaz/pkg/prowlarr"
 	"github.com/kasuboski/mediaz/pkg/ptr"
-	"github.com/kasuboski/mediaz/pkg/storage"
+	"github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 	"github.com/oapi-codegen/nullable"
 
 	"github.com/stretchr/testify/assert"
@@ -911,7 +911,7 @@ func TestRejectMovieReleaseFunc(t *testing.T) {
 		Year:    &year2019,
 		Runtime: 120,
 	}
-	profile := storage.QualityProfile{}
+	profile := []sqlcdb.ListQualityProfileRowsRow{}
 	protocols := map[string]struct{}{}
 
 	t.Run("nil release", func(t *testing.T) {

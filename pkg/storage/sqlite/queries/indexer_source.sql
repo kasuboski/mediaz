@@ -47,7 +47,7 @@ SELECT
     updated_at
 FROM indexer_source
 WHERE enabled = 1
-ORDER BY name ASC;
+ORDER BY name ASC, id ASC;
 
 -- name: UpdateIndexerSource :exec
 UPDATE indexer_source

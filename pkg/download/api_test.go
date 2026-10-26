@@ -1,9 +1,10 @@
 package download
 
 import (
+	"database/sql"
 	"testing"
 
-	"github.com/kasuboski/mediaz/pkg/storage/model"
+	"github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -11,7 +12,7 @@ func TestDownloadClientFactory_NewDownloadClient(t *testing.T) {
 	t.Run("transmission client", func(t *testing.T) {
 		factory := NewDownloadClientFactory("mount")
 
-		client, err := factory.NewDownloadClient(model.DownloadClient{
+		client, err := factory.NewDownloadClient(sqlcdb.DownloadClient{
 			Implementation: "transmission",
 		})
 		tc, ok := client.(*TransmissionClient)
@@ -25,9 +26,9 @@ func TestDownloadClientFactory_NewDownloadClient(t *testing.T) {
 		factory := NewDownloadClientFactory()
 
 		apiKey := "hello"
-		client, err := factory.NewDownloadClient(model.DownloadClient{
+		client, err := factory.NewDownloadClient(sqlcdb.DownloadClient{
 			Implementation: "sabnzbd",
-			APIKey:         &apiKey,
+			ApiKey:         sql.NullString{String: apiKey, Valid: true},
 		})
 		_, ok := client.(*SabnzbdClient)
 		assert.True(t, ok, "client should be of type *SabnzbdClient")
@@ -38,7 +39,7 @@ func TestDownloadClientFactory_NewDownloadClient(t *testing.T) {
 	t.Run("sabnzbd client missing api key", func(t *testing.T) {
 		factory := NewDownloadClientFactory()
 
-		_, err := factory.NewDownloadClient(model.DownloadClient{
+		_, err := factory.NewDownloadClient(sqlcdb.DownloadClient{
 			Implementation: "sabnzbd",
 		})
 		assert.Error(t, err)
@@ -48,7 +49,7 @@ func TestDownloadClientFactory_NewDownloadClient(t *testing.T) {
 	t.Run("unsupported client", func(t *testing.T) {
 		factory := NewDownloadClientFactory()
 
-		_, err := factory.NewDownloadClient(model.DownloadClient{
+		_, err := factory.NewDownloadClient(sqlcdb.DownloadClient{
 			Implementation: "my-client-implementation",
 		})
 		assert.Equal(t, "unsupported client implementation: my-client-implementation", err.Error())

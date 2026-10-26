@@ -1,19 +1,11 @@
--- Series/season/episode metadata queries plus the series-entity statements that
--- live in series_metadata.go (UpdateSeriesState, UpdateSeriesByID,
--- LinkSeriesMetadata). Mirrors the legacy Jet statements:
---   - Upserts insert the id column only when it is non-zero (sqlc.narg); a NULL
---     id lets SQLite AUTOINCREMENT assign a fresh rowid, matching the two
---     legacy insert branches.
---   - Inserted nullable columns pass through as explicit NULLs, so the
---     last_info_sync CURRENT_TIMESTAMP default behaves exactly like the legacy
---     MODEL inserts.
---   - Conflict branches match legacy behavior exactly: series metadata updates
---     only title/last_info_sync/season_count/episode_count/status (last_info_sync
---     to CURRENT_TIMESTAMP), season metadata does nothing, and episode metadata
---     updates only the title.
---   - Reads return every column with no ordering, like the legacy SELECTs.
+-- Series/season/episode metadata queries plus the series-entity statements
+-- that live in series_metadata.go (UpdateSeriesByID, LinkSeriesMetadata).
+-- Upserts insert the id column only when non-zero (narg); a NULL id lets
+-- SQLite AUTOINCREMENT assign a fresh rowid. UpdateSeriesMetadata stamps
+-- last_info_sync with CURRENT_TIMESTAMP (UTC) in SQL - writers never
+-- hand-format local timestamps (B5).
 
--- name: UpsertSeriesMetadata :exec
+-- name: UpsertSeriesMetadata :one
 INSERT INTO
     series_metadata (
         "id",
@@ -47,10 +39,17 @@ VALUES (
 )
 ON CONFLICT ("tmdb_id") DO UPDATE SET
     "title" = excluded."title",
+    "overview" = excluded."overview",
     "last_info_sync" = CURRENT_TIMESTAMP,
+    "first_air_date" = excluded."first_air_date",
+    "last_air_date" = excluded."last_air_date",
     "season_count" = excluded."season_count",
     "episode_count" = excluded."episode_count",
-    "status" = excluded."status";
+    "status" = excluded."status",
+    "poster_path" = excluded."poster_path",
+    "external_ids" = excluded."external_ids",
+    "watch_providers" = excluded."watch_providers"
+RETURNING id;
 
 -- name: GetSeriesMetadataIDByTmdbID :one
 SELECT
@@ -144,7 +143,7 @@ UPDATE
 SET
     "title" = ?,
     "overview" = ?,
-    "last_info_sync" = ?,
+    "last_info_sync" = CURRENT_TIMESTAMP,
     "first_air_date" = ?,
     "last_air_date" = ?,
     "season_count" = ?,
@@ -159,7 +158,7 @@ WHERE
 -- name: DeleteSeriesMetadata :exec
 DELETE FROM series_metadata WHERE id = ?;
 
--- name: UpsertSeasonMetadata :exec
+-- name: UpsertSeasonMetadata :one
 INSERT INTO
     season_metadata (
         "id",
@@ -179,7 +178,13 @@ VALUES (
     sqlc.narg('overview'),
     sqlc.narg('air_date')
 )
-ON CONFLICT ("tmdb_id") DO NOTHING;
+ON CONFLICT ("tmdb_id") DO UPDATE SET
+    "series_metadata_id" = excluded."series_metadata_id",
+    "number" = excluded."number",
+    "title" = excluded."title",
+    "overview" = excluded."overview",
+    "air_date" = excluded."air_date"
+RETURNING id;
 
 -- name: GetSeasonMetadataIDByTmdbID :one
 SELECT
@@ -234,7 +239,7 @@ WHERE
 -- name: DeleteSeasonMetadata :exec
 DELETE FROM season_metadata WHERE id = ?;
 
--- name: UpsertEpisodeMetadata :exec
+-- name: UpsertEpisodeMetadata :one
 INSERT INTO
     episode_metadata (
         "id",
@@ -259,7 +264,14 @@ VALUES (
     sqlc.narg('still_path')
 )
 ON CONFLICT ("tmdb_id") DO UPDATE SET
-    "title" = excluded."title";
+    "season_metadata_id" = excluded."season_metadata_id",
+    "number" = excluded."number",
+    "title" = excluded."title",
+    "overview" = excluded."overview",
+    "air_date" = excluded."air_date",
+    "runtime" = excluded."runtime",
+    "still_path" = excluded."still_path"
+RETURNING id;
 
 -- name: GetEpisodeMetadataIDByTmdbID :one
 SELECT
@@ -353,13 +365,6 @@ WHERE
 -- name: DeleteEpisodeMetadata :exec
 DELETE FROM episode_metadata WHERE id = ?;
 
--- DemoteSeriesTransition backs UpdateSeriesState, which lives in
--- series_metadata.go. It mirrors the season/episode transition statements in
--- season.sql/episode.sql: the previous most-recent transition is demoted
--- (RETURNING its sort key). The new transition is inserted with
--- InsertSeriesTransition from series.sql, omitting created_at/updated_at so
--- the column defaults (CURRENT_TIMESTAMP) apply.
-
 -- name: DemoteSeriesTransition :one
 UPDATE
     series_transition
@@ -370,11 +375,6 @@ WHERE
     AND most_recent = 1
 RETURNING sort_key;
 
--- LinkSeriesMetadata / UpdateSeriesByID back LinkSeriesMetadata and
--- UpdateSeriesByID in series_metadata.go. Like the legacy statements they only
--- ever touch the given columns: the metadata link sets series_metadata_id, and
--- the series update sets only "monitored".
-
 -- name: LinkSeriesMetadata :exec
 UPDATE
     series
@@ -384,6 +384,7 @@ WHERE
     id = ?;
 
 -- name: UpdateSeriesByID :exec
+-- Legacy parity: only the monitored column is ever updated through this path.
 UPDATE
     series
 SET

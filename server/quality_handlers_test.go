@@ -387,7 +387,7 @@ func TestServer_GetQualityProfile(t *testing.T) {
 			Name:            "HD Profile",
 			CutoffQualityID: &cutoffID,
 			UpgradeAllowed:  true,
-			QualityIDs:      []int32{qd1.ID, qd2.ID},
+			QualityIDs:      []int64{qd1.ID, qd2.ID},
 		})
 		require.NoError(t, err)
 
@@ -474,7 +474,7 @@ func TestServer_ListQualityProfiles(t *testing.T) {
 
 		_, err = mgr.AddQualityProfile(ctx, manager.AddQualityProfileRequest{
 			Name:       "Movie HD",
-			QualityIDs: []int32{qd1.ID},
+			QualityIDs: []int64{qd1.ID},
 		})
 		require.NoError(t, err)
 
@@ -518,7 +518,7 @@ func TestServer_ListQualityProfiles(t *testing.T) {
 
 		_, err = mgr.AddQualityProfile(ctx, manager.AddQualityProfileRequest{
 			Name:       "Movie Profile",
-			QualityIDs: []int32{qd.ID},
+			QualityIDs: []int64{qd.ID},
 		})
 		require.NoError(t, err)
 
@@ -547,7 +547,7 @@ func TestServer_ListQualityProfiles(t *testing.T) {
 
 		_, err = mgr.AddQualityProfile(ctx, manager.AddQualityProfileRequest{
 			Name:       "Series Profile",
-			QualityIDs: []int32{qd.ID},
+			QualityIDs: []int64{qd.ID},
 		})
 		require.NoError(t, err)
 
@@ -584,8 +584,8 @@ func TestServer_CreateQualityProfile(t *testing.T) {
 
 		s := newTestServer(withManager(mgr))
 
-		cutoffID := int(qd2.ID)
-		requestBody := `{"name":"Test Profile","cutoffQualityId":` + itoa(int32(cutoffID)) + `,"upgradeAllowed":true,"qualityIds":[` + itoa(qd1.ID) + `,` + itoa(qd2.ID) + `]}`
+		cutoffID := qd2.ID
+		requestBody := `{"name":"Test Profile","cutoffQualityId":` + itoa(cutoffID) + `,"upgradeAllowed":true,"qualityIds":[` + itoa(qd1.ID) + `,` + itoa(qd2.ID) + `]}`
 		req, err := http.NewRequest("POST", "/quality/profiles", strings.NewReader(requestBody))
 		require.NoError(t, err)
 
@@ -651,14 +651,14 @@ func TestServer_UpdateQualityProfile(t *testing.T) {
 			Name:            "Old Name",
 			CutoffQualityID: &cutoffID,
 			UpgradeAllowed:  false,
-			QualityIDs:      []int32{qd1.ID},
+			QualityIDs:      []int64{qd1.ID},
 		})
 		require.NoError(t, err)
 
 		s := newTestServer(withManager(mgr))
 
-		newCutoffID := int(qd2.ID)
-		requestBody := `{"name":"Updated Profile","cutoffQualityId":` + itoa(int32(newCutoffID)) + `,"upgradeAllowed":true,"qualityIds":[` + itoa(qd1.ID) + `,` + itoa(qd2.ID) + `]}`
+		newCutoffID := qd2.ID
+		requestBody := `{"name":"Updated Profile","cutoffQualityId":` + itoa(newCutoffID) + `,"upgradeAllowed":true,"qualityIds":[` + itoa(qd1.ID) + `,` + itoa(qd2.ID) + `]}`
 		req, err := http.NewRequest("PUT", "/quality/profiles/"+itoa(profile.ID), strings.NewReader(requestBody))
 		require.NoError(t, err)
 
@@ -734,7 +734,7 @@ func TestServer_DeleteQualityProfile(t *testing.T) {
 
 		profile, err := mgr.AddQualityProfile(ctx, manager.AddQualityProfileRequest{
 			Name:       "To Delete",
-			QualityIDs: []int32{qd.ID},
+			QualityIDs: []int64{qd.ID},
 		})
 		require.NoError(t, err)
 

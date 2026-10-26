@@ -36,9 +36,7 @@ type Library struct {
 
 // Storage configuration is assumed to be for sqlite database only currently
 type Storage struct {
-	FilePath          string   `json:"filePath" yaml:"filePath" mapstructure:"filePath"`
-	Schemas           []string `json:"schemas"  yaml:"schemas" mapstructure:"schemas"`
-	TableValueSchemas []string `json:"tableValueSchemas" yaml:"tableValueSchemas" mapstructure:"tableValueSchemas"`
+	FilePath string `json:"filePath" yaml:"filePath" mapstructure:"filePath"`
 }
 
 // Manager houses configuration related to the manager and reconcillation

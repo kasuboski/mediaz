@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/kasuboski/mediaz/pkg/prowlarr"
-	"github.com/kasuboski/mediaz/pkg/storage/model"
+	"github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 )
 
 const (
@@ -35,5 +35,5 @@ type SearchOptions struct {
 }
 
 type Factory interface {
-	NewIndexerSource(config model.IndexerSource) (IndexerSource, error)
+	NewIndexerSource(config sqlcdb.IndexerSource) (IndexerSource, error)
 }

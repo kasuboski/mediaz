@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/kasuboski/mediaz/pkg/storage"
+	"github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 )
 
 func TestQualitySizeCutoff(t *testing.T) {
 	tests := []struct {
 		name       string
-		definition storage.QualityDefinition
+		definition sqlcdb.QualityDefinition
 		size       uint64
 		runtime    uint64
 		want       bool
@@ -19,7 +19,7 @@ func TestQualitySizeCutoff(t *testing.T) {
 			name:    "does not meet minimum size",
 			size:    1000,
 			runtime: 60,
-			definition: storage.QualityDefinition{
+			definition: sqlcdb.QualityDefinition{
 				MinSize:       17,
 				MaxSize:       2000,
 				PreferredSize: 1999,
@@ -30,7 +30,7 @@ func TestQualitySizeCutoff(t *testing.T) {
 			name:    "meets criteria",
 			size:    1026,
 			runtime: 60,
-			definition: storage.QualityDefinition{
+			definition: sqlcdb.QualityDefinition{
 				MinSize:       17.0,
 				MaxSize:       2000,
 				PreferredSize: 1999,
@@ -41,7 +41,7 @@ func TestQualitySizeCutoff(t *testing.T) {
 			name:    "ratio too big",
 			size:    120_001,
 			runtime: 60,
-			definition: storage.QualityDefinition{
+			definition: sqlcdb.QualityDefinition{
 				MinSize:       17.0,
 				MaxSize:       2000,
 				PreferredSize: 1999,

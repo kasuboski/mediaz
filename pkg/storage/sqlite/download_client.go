@@ -2,82 +2,53 @@ package sqlite
 
 import (
 	"context"
-	"database/sql"
-	"errors"
 
-	"github.com/kasuboski/mediaz/pkg/storage"
-	"github.com/kasuboski/mediaz/pkg/storage/model"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 )
 
 // CreateDownloadClient stores a new download client
-func (s *SQLite) CreateDownloadClient(ctx context.Context, client model.DownloadClient) (int64, error) {
+func (s *SQLite) CreateDownloadClient(ctx context.Context, client sqlcdb.DownloadClient) (int64, error) {
 	return s.Queries.CreateDownloadClient(ctx, sqlcdb.CreateDownloadClientParams{
 		Type:           client.Type,
 		Implementation: client.Implementation,
 		Scheme:         client.Scheme,
 		Host:           client.Host,
-		Port:           int64(client.Port),
-		ApiKey:         cfgNullString(client.APIKey),
+		Port:           client.Port,
+		ApiKey:         client.ApiKey,
 	})
 }
 
 // GetDownloadClient gets a stored download client given an id
-func (s *SQLite) GetDownloadClient(ctx context.Context, id int64) (model.DownloadClient, error) {
-	r, err := s.Queries.GetDownloadClient(ctx, id)
+func (s *SQLite) GetDownloadClient(ctx context.Context, id int64) (sqlcdb.DownloadClient, error) {
+	client, err := s.Queries.GetDownloadClient(ctx, id)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return model.DownloadClient{}, storage.ErrNotFound
-		}
-		return model.DownloadClient{}, err
+		return sqlcdb.DownloadClient{}, mapQueryErr(err, "failed to get download client")
 	}
-
-	return downloadClientFromRow(r), nil
+	return client, nil
 }
 
 // ListDownloadClients lists all stored download clients ordered by id
-func (s *SQLite) ListDownloadClients(ctx context.Context) ([]*model.DownloadClient, error) {
-	rows, err := s.Queries.ListDownloadClients(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	clients := make([]*model.DownloadClient, 0, len(rows))
-	for _, r := range rows {
-		client := downloadClientFromRow(r)
-		clients = append(clients, &client)
-	}
-
-	return clients, nil
+func (s *SQLite) ListDownloadClients(ctx context.Context) ([]sqlcdb.DownloadClient, error) {
+	return s.Queries.ListDownloadClients(ctx)
 }
 
-// UpdateDownloadClient updates an existing download client
-func (s *SQLite) UpdateDownloadClient(ctx context.Context, id int64, client model.DownloadClient) error {
+// UpdateDownloadClient updates an existing download client. An invalid (NULL)
+// ApiKey leaves the stored key untouched (COALESCE in the query).
+func (s *SQLite) UpdateDownloadClient(ctx context.Context, id int64, client sqlcdb.DownloadClient) error {
 	return s.Queries.UpdateDownloadClient(ctx, sqlcdb.UpdateDownloadClientParams{
 		Type:           client.Type,
 		Implementation: client.Implementation,
 		Scheme:         client.Scheme,
 		Host:           client.Host,
-		Port:           int64(client.Port),
-		ApiKey:         cfgNullString(client.APIKey),
+		Port:           client.Port,
+		ApiKey:         client.ApiKey,
 		ID:             id,
 	})
 }
 
-// DeleteDownloadClient deletes a download client given an id
+// DeleteDownloadClient deletes a download client given an id. Transitions
+// referencing the client have their download_client_id set to NULL (ON DELETE
+// SET NULL) so history survives.
 func (s *SQLite) DeleteDownloadClient(ctx context.Context, id int64) error {
 	return s.Queries.DeleteDownloadClient(ctx, id)
-}
-
-// downloadClientFromRow converts a sqlc row into the domain model.
-func downloadClientFromRow(r sqlcdb.DownloadClient) model.DownloadClient {
-	return model.DownloadClient{
-		ID:             int32(r.ID),
-		Type:           r.Type,
-		Implementation: r.Implementation,
-		Scheme:         r.Scheme,
-		Host:           r.Host,
-		Port:           int32(r.Port),
-		APIKey:         cfgStringPtr(r.ApiKey),
-	}
 }

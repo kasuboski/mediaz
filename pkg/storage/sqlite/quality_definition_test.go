@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/kasuboski/mediaz/pkg/storage"
-	"github.com/kasuboski/mediaz/pkg/storage/model"
+	"github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -19,7 +19,7 @@ func TestQualityDefinitionStorage(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEmpty(t, baseline)
 
-	definition := model.QualityDefinition{
+	definition := sqlcdb.QualityDefinition{
 		QualityID:     4,
 		Name:          "Bluray-720p-test",
 		PreferredSize: 1999,
@@ -34,13 +34,13 @@ func TestQualityDefinitionStorage(t *testing.T) {
 
 	stored, err := store.GetQualityDefinition(ctx, id)
 	require.NoError(t, err)
-	definition.ID = int32(id)
+	definition.ID = int64(id)
 	assert.Equal(t, definition, stored)
 
 	definitions, err := store.ListQualityDefinitions(ctx)
 	require.NoError(t, err)
 	require.Len(t, definitions, len(baseline)+1)
-	assert.Contains(t, definitions, &definition)
+	assert.Contains(t, definitions, definition)
 
 	// Updates change the editable columns but never quality_id.
 	definition.Name = "Bluray-1080p-test"

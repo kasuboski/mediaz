@@ -2,12 +2,12 @@ package manager
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"io"
 	"net/http"
 	"strings"
 	"testing"
-	"testing/fstest"
 	"time"
 
 	"github.com/kasuboski/mediaz/config"
@@ -16,14 +16,13 @@ import (
 	mhttpMock "github.com/kasuboski/mediaz/pkg/http/mocks"
 	"github.com/kasuboski/mediaz/pkg/indexer"
 	indexerMock "github.com/kasuboski/mediaz/pkg/indexer/mocks"
-	mio "github.com/kasuboski/mediaz/pkg/io"
 	"github.com/kasuboski/mediaz/pkg/library"
 	mockLibrary "github.com/kasuboski/mediaz/pkg/library/mocks"
 	"github.com/kasuboski/mediaz/pkg/prowlarr"
 	"github.com/kasuboski/mediaz/pkg/ptr"
 	"github.com/kasuboski/mediaz/pkg/storage"
 	storageMocks "github.com/kasuboski/mediaz/pkg/storage/mocks"
-	"github.com/kasuboski/mediaz/pkg/storage/model"
+	"github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 	mediaSqlite "github.com/kasuboski/mediaz/pkg/storage/sqlite"
 	"github.com/kasuboski/mediaz/pkg/tmdb"
 	"github.com/oapi-codegen/nullable"
@@ -32,979 +31,288 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
+func newMovieReconcileStore(t *testing.T, ctx context.Context) storage.Storage {
+	t.Helper()
+	store, err := mediaSqlite.New(ctx, ":memory:")
+	require.NoError(t, err)
+	return store
+}
+
 func Test_Manager_reconcileMissingMovie(t *testing.T) {
-	ctrl := gomock.NewController(t)
-
-	store, err := mediaSqlite.New(context.Background(), ":memory:")
-	require.NoError(t, err)
-
-	schemas, err := storage.ReadSchemaFiles("../storage/sqlite/schema/schema.sql", "../storage/sqlite/schema/defaults.sql")
-	require.NoError(t, err)
-
 	ctx := context.Background()
-	err = store.Init(ctx, schemas...)
-	require.NoError(t, err)
+	ctrl := gomock.NewController(t)
+	store := newMovieReconcileStore(t, ctx)
 
-	indexers := []model.Indexer{{ID: 1, Name: "test", Priority: 1}, {ID: 3, Name: "test2", Priority: 10}}
-
-	bigSeeders := nullable.NewNullNullable[int32]()
-	bigSeeders.Set(23)
-
-	smallerSeeders := nullable.NewNullNullable[int32]()
-	smallerSeeders.Set(15)
-
-	smallestSeeders := nullable.NewNullNullable[int32]()
-	smallestSeeders.Set(10)
-
-	torrentProto := ptr.To(prowlarr.DownloadProtocolTorrent)
-	usenetProto := ptr.To(prowlarr.DownloadProtocolUsenet)
-
-	wantRelease := &prowlarr.ReleaseResource{ID: ptr.To(int32(123)), Title: nullable.NewNullableWithValue("test movie"), Size: sizeGBToBytes(23), Seeders: bigSeeders, Protocol: torrentProto}
-	doNotWantRelease := &prowlarr.ReleaseResource{ID: ptr.To(int32(124)), Title: nullable.NewNullableWithValue("test movie"), Size: sizeGBToBytes(23), Seeders: smallerSeeders, Protocol: torrentProto}
-	smallMovie := &prowlarr.ReleaseResource{ID: ptr.To(int32(125)), Title: nullable.NewNullableWithValue("test movie - very small"), Size: sizeGBToBytes(1), Seeders: smallestSeeders, Protocol: torrentProto}
-	nzbMovie := &prowlarr.ReleaseResource{ID: ptr.To(int32(1225)), Title: nullable.NewNullableWithValue("test movie - nzb"), Size: sizeGBToBytes(23), Seeders: smallestSeeders, Protocol: usenetProto}
-
-	releases := []*prowlarr.ReleaseResource{doNotWantRelease, wantRelease, smallMovie, nzbMovie}
-
-	mockIndexerSource := indexerMock.NewMockIndexerSource(ctrl)
-	mockIndexerSource.EXPECT().Search(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(releases, nil).AnyTimes()
-
+	makeRelease := func(id, seeders int32, size int64, title string, protocol prowlarr.DownloadProtocol) *prowlarr.ReleaseResource {
+		return &prowlarr.ReleaseResource{ID: &id, Title: nullable.NewNullableWithValue(title), Size: &size, Seeders: nullable.NewNullableWithValue(seeders), Protocol: &protocol}
+	}
+	wantRelease := makeRelease(123, 23, 23*1024*1024*1024, "test movie", prowlarr.DownloadProtocolTorrent)
+	releases := []*prowlarr.ReleaseResource{
+		makeRelease(124, 15, 23*1024*1024*1024, "test movie", prowlarr.DownloadProtocolTorrent),
+		wantRelease,
+		makeRelease(125, 10, 1024*1024*1024, "test movie - very small", prowlarr.DownloadProtocolTorrent),
+		makeRelease(1225, 10, 23*1024*1024*1024, "test movie - nzb", prowlarr.DownloadProtocolUsenet),
+	}
+	source := indexerMock.NewMockIndexerSource(ctrl)
+	source.EXPECT().Search(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(releases, nil).Times(2)
+	source.EXPECT().ListIndexers(ctx).Return([]indexer.SourceIndexer{{ID: 1, Name: "test", Priority: 1}, {ID: 3, Name: "test2", Priority: 10}}, nil)
 	indexerFactory := indexerMock.NewMockFactory(ctrl)
-	indexerFactory.EXPECT().NewIndexerSource(gomock.Any()).Return(mockIndexerSource, nil).AnyTimes()
-
-	releaseDate := time.Now().AddDate(0, 0, -1).Format(tmdb.ReleaseDateFormat)
-
-	tmdbHttpMock := mhttpMock.NewMockHTTPClient(ctrl)
-	tmdbHttpMock.EXPECT().Do(gomock.Any()).Return(mediaDetailsResponse("test movie", 120, releaseDate), nil).Times(1)
-
-	tClient, err := tmdb.New("https://api.themoviedb.org", "1234", tmdb.WithHTTPClient(tmdbHttpMock))
+	indexerFactory.EXPECT().NewIndexerSource(gomock.Any()).Return(source, nil).AnyTimes()
+	sourceID, err := store.CreateIndexerSource(ctx, sqlcdb.IndexerSource{Name: "test-source", Implementation: "prowlarr", Scheme: "http", Host: "test", Enabled: true})
 	require.NoError(t, err)
 
-	downloadClient := model.DownloadClient{
-		Implementation: "transmission",
-		Type:           "torrent",
-		Port:           8080,
-		Host:           "transmission",
-		Scheme:         "http",
-	}
-
-	downloadClientID, err := store.CreateDownloadClient(ctx, downloadClient)
+	client := sqlcdb.DownloadClient{Implementation: "transmission", Type: "torrent", Port: 8080, Host: "transmission", Scheme: "http"}
+	client.ID, err = store.CreateDownloadClient(ctx, client)
 	require.NoError(t, err)
+	factory := downloadMock.NewMockFactory(ctrl)
+	dc := downloadMock.NewMockDownloadClient(ctrl)
+	factory.EXPECT().NewDownloadClient(client).Return(dc, nil)
+	dc.EXPECT().Add(ctx, download.AddRequest{Release: wantRelease}).Return(download.Status{ID: "123", Name: "test download"}, nil)
 
-	downloadClient.ID = int32(downloadClientID)
-
-	mockFactory := downloadMock.NewMockFactory(ctrl)
-	mockDownloadClient := downloadMock.NewMockDownloadClient(ctrl)
-	downloadStatus := download.Status{
-		ID:   "123",
-		Name: "test download",
-	}
-	mockDownloadClient.EXPECT().Add(ctx, download.AddRequest{Release: wantRelease}).Times(1).Return(downloadStatus, nil)
-
-	mockFactory.EXPECT().NewDownloadClient(downloadClient).Times(1).Return(mockDownloadClient, nil)
-
-	movieFS := fstest.MapFS{}
-	tvFS := fstest.MapFS{}
-	lib := library.New(
-		library.FileSystem{
-			FS: movieFS,
-		},
-		library.FileSystem{
-			FS: tvFS,
-		},
-		&mio.MediaFileSystem{},
-		true,
-	)
-
-	m := New(tClient, indexerFactory, lib, store, mockFactory, config.Manager{}, config.Config{})
-	require.NotNil(t, m)
-
-	sourceID, err := store.CreateIndexerSource(ctx, model.IndexerSource{
-		Name:           "test-source",
-		Implementation: "prowlarr",
-		Scheme:         "http",
-		Host:           "test",
-		Enabled:        true,
-	})
+	metadataID, err := store.CreateMovieMetadata(ctx, sqlcdb.MovieMetadatum{TmdbID: 1234, Title: "test movie", Runtime: 120})
 	require.NoError(t, err)
-
-	mockIndexerSource.EXPECT().ListIndexers(ctx).Return([]indexer.SourceIndexer{
-		{ID: 1, Name: "test", Priority: 1},
-		{ID: 3, Name: "test2", Priority: 10},
-	}, nil)
-	err = m.RefreshIndexerSource(ctx, sourceID)
+	movieID, err := store.CreateMovie(ctx, sqlcdb.Movie{Monitored: 1, QualityProfileID: 1, Path: sql.NullString{String: "test movie", Valid: true}, MovieMetadataID: sql.NullInt64{Int64: metadataID, Valid: true}}, storage.MovieStateMissing)
 	require.NoError(t, err)
-
-	req := AddMovieRequest{
-		TMDBID:           1234,
-		QualityProfileID: 1,
-	}
-
-	mov, err := m.AddMovieToLibrary(ctx, req)
+	movie, err := store.GetMovie(ctx, movieID)
 	require.NoError(t, err)
-	assert.NotNil(t, mov)
-
-	snapshot := newReconcileSnapshot(indexers, []*model.DownloadClient{
-		&downloadClient,
-	})
-
-	err = m.reconcileMissingMovie(ctx, mov, snapshot)
+	m := New(nil, indexerFactory, nil, store, factory, config.Manager{}, config.Config{})
+	require.NoError(t, m.RefreshIndexerSource(ctx, sourceID))
+	indexers, err := m.listIndexersInternal(ctx)
 	require.NoError(t, err)
-
-	mov, err = m.movieStorage.GetMovie(ctx, int64(mov.ID))
+	require.NoError(t, m.reconcileMissingMovie(ctx, sqlcdb.ListMoviesByStatesRow(movie), newReconcileSnapshot(indexers, []sqlcdb.DownloadClient{client})))
+	got, err := store.GetMovie(ctx, movieID)
 	require.NoError(t, err)
-
-	assert.Equal(t, mov.State, storage.MovieStateDownloading)
+	assert.Equal(t, sqlcdb.GetMovieByIDRow{Movie: movie.Movie, State: string(storage.MovieStateDownloading), DownloadID: sql.NullString{String: "123", Valid: true}, DownloadClientID: sql.NullInt64{Int64: client.ID, Valid: true}}, got)
 }
 
 func Test_Manager_reconcileDiscoveredMovie(t *testing.T) {
-	t.Run("single result", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
-
-		store := storageMocks.NewMockStorage(ctrl)
-		tmdbHttpMock := mhttpMock.NewMockHTTPClient(ctrl)
-
-		// Mock search response
-		searchResp := &http.Response{
-			Body: io.NopCloser(strings.NewReader(`{
-				"results": [{
-					"id": 1234,
-					"title": "test movie",
-					"overview": "test overview",
-					"poster_path": "/test.jpg"
-				}]
-			}`)),
-			StatusCode: http.StatusOK,
-		}
-		tmdbHttpMock.EXPECT().Do(gomock.Any()).Return(searchResp, nil).Times(1)
-
-		tClient, err := tmdb.New("https://api.themoviedb.org", "1234", tmdb.WithHTTPClient(tmdbHttpMock))
-		require.NoError(t, err)
-
-		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
-		m.tmdb = tClient
-		m.movieService.tmdb = tClient
-
-		movie := storage.Movie{
-			Movie: model.Movie{
-				ID:   1,
-				Path: func() *string { s := "test movie"; return &s }(),
-			},
-		}
-
-		ctx := context.Background()
-
-		store.EXPECT().GetMovieMetadataByTmdbID(ctx, int64(1234)).Return(&model.MovieMetadata{ID: 120}, nil)
-		store.EXPECT().GetMovieByMetadataID(ctx, 120).Return(nil, storage.ErrNotFound)
-		store.EXPECT().LinkMovieMetadata(ctx, int64(1), int32(120)).Return(nil)
-
-		// Execute reconciliation
-		err = m.reconcileDiscoveredMovie(ctx, &movie)
-		require.NoError(t, err)
-
-		// Verify movie properties
-		require.Equal(t, int32(1), movie.ID, "ID should remain unchanged")
-		require.Equal(t, "test movie", *movie.Path, "Path should remain unchanged")
-
-		// Verify that metadata was linked (ID 120 from the mock response)
-		require.NotNil(t, movie.MovieMetadataID, "MovieMetadataID should be set")
-		require.Equal(t, int32(120), *movie.MovieMetadataID, "MovieMetadataID should be set to the ID from GetMovieMetadata")
-		// We don't verify MovieMetadataID here since it's managed by the mock expectations
-	})
-
-	t.Run("no results", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
-
-		store := storageMocks.NewMockStorage(ctrl)
-		tmdbHttpMock := mhttpMock.NewMockHTTPClient(ctrl)
-
-		// Mock search response with no results
-		searchResp := &http.Response{
-			Body: io.NopCloser(strings.NewReader(`{
-				"results": []
-			}`)),
-			StatusCode: http.StatusOK,
-		}
-		tmdbHttpMock.EXPECT().Do(gomock.Any()).Return(searchResp, nil).Times(1)
-
-		tClient, err := tmdb.New("https://api.themoviedb.org", "1234", tmdb.WithHTTPClient(tmdbHttpMock))
-		require.NoError(t, err)
-
-		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
-		m.tmdb = tClient
-		m.movieService.tmdb = tClient
-
-		movie := storage.Movie{
-			Movie: model.Movie{
-				ID:   1,
-				Path: func() *string { s := "test movie"; return &s }(),
-			},
-		}
-
-		ctx := context.Background()
-
-		// Execute reconciliation
-		err = m.reconcileDiscoveredMovie(ctx, &movie)
-		require.NoError(t, err)
-
-		// Verify movie properties
-		require.Equal(t, int32(1), movie.ID, "ID should remain unchanged")
-		require.Equal(t, "test movie", *movie.Path, "Path should remain unchanged")
-	})
-
-	t.Run("multiple results", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
-
-		store := storageMocks.NewMockStorage(ctrl)
-		tmdbHttpMock := mhttpMock.NewMockHTTPClient(ctrl)
-
-		// Mock search response with multiple results
-		searchResp := &http.Response{
-			Body: io.NopCloser(strings.NewReader(`{
-				"results": [{
-					"id": 1234,
-					"title": "test movie 1",
-					"overview": "test overview",
-					"poster_path": "/test.jpg"
-				}, {
-					"id": 5678,
-					"title": "test movie 2",
-					"overview": "test overview 2",
-					"poster_path": "/test2.jpg"
-				}]
-			}`)),
-			StatusCode: http.StatusOK,
-		}
-		tmdbHttpMock.EXPECT().Do(gomock.Any()).Return(searchResp, nil).Times(1)
-
-		tClient, err := tmdb.New("https://api.themoviedb.org", "1234", tmdb.WithHTTPClient(tmdbHttpMock))
-		require.NoError(t, err)
-
-		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
-		m.tmdb = tClient
-		m.movieService.tmdb = tClient
-
-		movie := storage.Movie{
-			Movie: model.Movie{
-				ID:   1,
-				Path: func() *string { s := "test movie"; return &s }(),
-			},
-		}
-
-		ctx := context.Background()
-
-		store.EXPECT().GetMovieMetadataByTmdbID(ctx, int64(1234)).Return(&model.MovieMetadata{ID: 120}, nil)
-		store.EXPECT().GetMovieByMetadataID(ctx, 120).Return(nil, storage.ErrNotFound)
-		store.EXPECT().LinkMovieMetadata(ctx, int64(1), int32(120)).Return(nil)
-
-		// Execute reconciliation
-		err = m.reconcileDiscoveredMovie(ctx, &movie)
-		require.NoError(t, err)
-
-		// Verify movie properties
-		require.Equal(t, int32(1), movie.ID, "ID should remain unchanged")
-		require.Equal(t, "test movie", *movie.Path, "Path should remain unchanged")
-
-		// Verify that metadata was linked (ID 120 from the mock response)
-		require.NotNil(t, movie.MovieMetadataID, "MovieMetadataID should be set")
-		require.Equal(t, int32(120), *movie.MovieMetadataID, "MovieMetadataID should be set to the ID from GetMovieMetadata")
-	})
-
-	t.Run("already linked", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
-
-		store := storageMocks.NewMockStorage(ctrl)
-		tmdbHttpMock := mhttpMock.NewMockHTTPClient(ctrl)
-
-		// Mock search response
-		searchResp := &http.Response{
-			Body: io.NopCloser(strings.NewReader(`{
-				"results": [{
-					"id": 1234,
-					"title": "test movie",
-					"overview": "test overview",
-					"poster_path": "/test.jpg"
-				}]
-			}`)),
-			StatusCode: http.StatusOK,
-		}
-		tmdbHttpMock.EXPECT().Do(gomock.Any()).Return(searchResp, nil).Times(1)
-
-		tClient, err := tmdb.New("https://api.themoviedb.org", "1234", tmdb.WithHTTPClient(tmdbHttpMock))
-		require.NoError(t, err)
-
-		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
-		m.tmdb = tClient
-		m.movieService.tmdb = tClient
-
-		movie := storage.Movie{
-			Movie: model.Movie{
-				ID:   2,
-				Path: func() *string { s := "test movie duplicate"; return &s }(),
-			},
-		}
-
-		ctx := context.Background()
-
-		store.EXPECT().GetMovieMetadataByTmdbID(ctx, int64(1234)).Return(&model.MovieMetadata{ID: 120}, nil)
-		// Metadata is already linked to movie ID 1
-		existingMovie := &storage.Movie{Movie: model.Movie{ID: 1}}
-		store.EXPECT().GetMovieByMetadataID(ctx, 120).Return(existingMovie, nil)
-		// LinkMovieMetadata should NOT be called
-
-		// Execute reconciliation
-		err = m.reconcileDiscoveredMovie(ctx, &movie)
-		require.NoError(t, err)
-
-		// Verify movie properties - metadata should NOT be linked
-		require.Equal(t, int32(2), movie.ID, "ID should remain unchanged")
-		require.Equal(t, "test movie duplicate", *movie.Path, "Path should remain unchanged")
-		require.Nil(t, movie.MovieMetadataID, "MovieMetadataID should NOT be set because metadata is already linked to another movie")
-	})
-
-	t.Run("has metadata", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
-
-		store := storageMocks.NewMockStorage(ctrl)
-		tmdbHttpMock := mhttpMock.NewMockHTTPClient(ctrl)
-
-		tClient, err := tmdb.New("https://api.themoviedb.org", "1234", tmdb.WithHTTPClient(tmdbHttpMock))
-		require.NoError(t, err)
-
-		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
-		m.tmdb = tClient
-		m.movieService.tmdb = tClient
-
-		metadataID := int32(120)
-		movie := storage.Movie{
-			Movie: model.Movie{
-				ID:              1,
-				Path:            func() *string { s := "test movie"; return &s }(),
-				MovieMetadataID: &metadataID,
-			},
-		}
-
-		ctx := context.Background()
-
-		// Execute reconciliation
-		err = m.reconcileDiscoveredMovie(ctx, &movie)
-		require.NoError(t, err)
-
-		// Verify movie properties
-		require.Equal(t, int32(1), movie.ID, "ID should remain unchanged")
-		require.Equal(t, "test movie", *movie.Path, "Path should remain unchanged")
-
-		// Verify that metadata was linked (ID 120 from the mock response)
-		require.NotNil(t, movie.MovieMetadataID, "MovieMetadataID should be set")
-		require.Equal(t, int32(120), *movie.MovieMetadataID, "MovieMetadataID should be set to the ID from GetMovieMetadata")
-	})
+	for _, tt := range []struct {
+		name          string
+		results       string
+		path          string
+		hasMetadata   bool
+		alreadyLinked bool
+		wantLink      bool
+	}{
+		{name: "single result", results: `[{"id":1234,"title":"test movie"}]`, path: "test movie", wantLink: true},
+		{name: "no results", results: `[]`, path: "test movie"},
+		{name: "multiple results", results: `[{"id":1234,"title":"test movie 1"},{"id":5678,"title":"test movie 2"}]`, path: "test movie", wantLink: true},
+		{name: "already linked", results: `[{"id":1234,"title":"test movie"}]`, path: "test movie duplicate", alreadyLinked: true},
+		{name: "has metadata", path: "test movie", hasMetadata: true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+			ctrl := gomock.NewController(t)
+			store := storageMocks.NewMockStorage(ctrl)
+			httpClient := mhttpMock.NewMockHTTPClient(ctrl)
+			client, err := tmdb.New("https://api.themoviedb.org", "1234", tmdb.WithHTTPClient(httpClient))
+			require.NoError(t, err)
+			m := New(client, nil, nil, store, nil, config.Manager{}, config.Config{})
+			movie := sqlcdb.ListMoviesByStatesRow{Movie: sqlcdb.Movie{ID: 1 << 40, Path: sql.NullString{String: tt.path, Valid: true}}}
+			if tt.hasMetadata {
+				movie.Movie.MovieMetadataID = sql.NullInt64{Int64: 120, Valid: true}
+			} else {
+				httpClient.EXPECT().Do(gomock.Any()).Return(&http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(`{"results":` + tt.results + `}`))}, nil)
+				if tt.wantLink || tt.alreadyLinked {
+					store.EXPECT().GetMovieMetadataByTmdbID(ctx, int64(1234)).Return(sqlcdb.MovieMetadatum{ID: 120}, nil)
+					if tt.alreadyLinked {
+						store.EXPECT().GetMovieByMetadataID(ctx, int64(120)).Return(sqlcdb.GetMovieByMetadataIDRow{Movie: sqlcdb.Movie{ID: 1}}, nil)
+					} else {
+						store.EXPECT().GetMovieByMetadataID(ctx, int64(120)).Return(sqlcdb.GetMovieByMetadataIDRow{}, storage.ErrNotFound)
+						store.EXPECT().LinkMovieMetadata(ctx, movie.Movie.ID, int64(120)).Return(nil)
+					}
+				}
+			}
+			before := movie
+			require.NoError(t, m.reconcileDiscoveredMovie(ctx, movie))
+			// The generated read row is a value snapshot; linking is verified at the storage seam.
+			assert.Equal(t, before, movie)
+		})
+	}
 }
 
 func Test_Manager_reconcileUnreleasedMovie(t *testing.T) {
-	ctrl := gomock.NewController(t)
-
-	store, err := mediaSqlite.New(context.Background(), ":memory:")
-	require.NoError(t, err)
-
-	schemas, err := storage.ReadSchemaFiles("../storage/sqlite/schema/schema.sql", "../storage/sqlite/schema/defaults.sql")
-	require.NoError(t, err)
-
 	ctx := context.Background()
-	err = store.Init(ctx, schemas...)
+	store := newMovieReconcileStore(t, ctx)
+	metadataID, err := store.CreateMovieMetadata(ctx, sqlcdb.MovieMetadatum{TmdbID: 1234, Title: "test movie", ReleaseDate: sql.NullTime{Time: time.Now().AddDate(0, 0, 5), Valid: true}})
 	require.NoError(t, err)
-
-	indexers := []model.Indexer{{ID: 1, Name: "test", Priority: 1}, {ID: 3, Name: "test2", Priority: 10}}
-
-	indexerFactory := indexerMock.NewMockFactory(ctrl)
-
-	releaseDate := time.Now().AddDate(0, 0, +5).Format(tmdb.ReleaseDateFormat)
-
-	tmdbHttpMock := mhttpMock.NewMockHTTPClient(ctrl)
-	tmdbHttpMock.EXPECT().Do(gomock.Any()).Return(mediaDetailsResponse("test movie", 120, releaseDate), nil).Times(1)
-	tClient, err := tmdb.New("https://api.themoviedb.org", "1234", tmdb.WithHTTPClient(tmdbHttpMock))
+	movieID, err := store.CreateMovie(ctx, sqlcdb.Movie{Monitored: 1, QualityProfileID: 1, MovieMetadataID: sql.NullInt64{Int64: metadataID, Valid: true}}, storage.MovieStateUnreleased)
 	require.NoError(t, err)
-
-	downloadClient := model.DownloadClient{
-		Implementation: "transmission",
-		Type:           "torrent",
-		Port:           8080,
-		Host:           "transmission",
-		Scheme:         "http",
-	}
-
-	downloadClientID, err := store.CreateDownloadClient(ctx, downloadClient)
+	movie, err := store.GetMovie(ctx, movieID)
 	require.NoError(t, err)
-
-	downloadClient.ID = int32(downloadClientID)
-
-	mockFactory := downloadMock.NewMockFactory(ctrl)
-
-	movieFS := fstest.MapFS{}
-	tvFS := fstest.MapFS{}
-	lib := library.New(
-		library.FileSystem{
-			FS: movieFS,
-		},
-		library.FileSystem{
-			FS: tvFS,
-		},
-		&mio.MediaFileSystem{},
-		true,
-	)
-
-	m := New(tClient, indexerFactory, lib, store, mockFactory, config.Manager{}, config.Config{})
-	require.NotNil(t, m)
-
-	req := AddMovieRequest{
-		TMDBID:           1234,
-		QualityProfileID: 1,
-	}
-
-	mov, err := m.AddMovieToLibrary(ctx, req)
+	m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
+	require.NoError(t, m.reconcileUnreleasedMovie(ctx, sqlcdb.ListMoviesByStatesRow(movie), newReconcileSnapshot(nil, nil)))
+	got, err := store.GetMovie(ctx, movieID)
 	require.NoError(t, err)
-	assert.NotNil(t, mov)
-
-	snapshot := newReconcileSnapshot(indexers, []*model.DownloadClient{
-		&downloadClient,
-	})
-
-	err = m.reconcileUnreleasedMovie(ctx, mov, snapshot)
-	require.NoError(t, err)
-
-	mov, err = m.movieStorage.GetMovie(ctx, int64(mov.ID))
-	require.NoError(t, err)
-
-	assert.Equal(t, mov.State, storage.MovieStateUnreleased)
+	assert.Equal(t, movie, got)
 }
 
 func Test_Manager_reconcileDownloadingMovie(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
 	ctx := context.Background()
-
 	t.Run("snapshot is nil", func(t *testing.T) {
 		m := New(nil, nil, nil, nil, nil, config.Manager{}, config.Config{})
-		require.NotNil(t, m)
-
-		movie := &storage.Movie{Movie: model.Movie{ID: 1}}
-		err := m.reconcileDownloadingMovie(ctx, movie, nil)
-		assert.NoError(t, err)
+		require.NoError(t, m.reconcileDownloadingMovie(ctx, sqlcdb.ListMoviesByStatesRow{Movie: sqlcdb.Movie{ID: 1}}, nil))
 	})
-
 	t.Run("movie is not monitored", func(t *testing.T) {
 		m := New(nil, nil, nil, nil, nil, config.Manager{}, config.Config{})
-		require.NotNil(t, m)
-
-		movie := &storage.Movie{Movie: model.Movie{ID: 1, Monitored: 0}}
-		snapshot := newReconcileSnapshot(nil, nil)
-		err := m.reconcileDownloadingMovie(ctx, movie, snapshot)
-		assert.NoError(t, err)
+		require.NoError(t, m.reconcileDownloadingMovie(ctx, sqlcdb.ListMoviesByStatesRow{Movie: sqlcdb.Movie{ID: 1}}, newReconcileSnapshot(nil, nil)))
 	})
-
 	t.Run("movie file is already tracked", func(t *testing.T) {
-		store := newStore(t, ctx)
+		store := newMovieReconcileStore(t, ctx)
+		movieID, err := store.CreateMovie(ctx, sqlcdb.Movie{Monitored: 1, QualityProfileID: 1, Path: sql.NullString{String: "Movie 1", Valid: true}}, storage.MovieStateMissing)
+		require.NoError(t, err)
+		require.NoError(t, store.UpdateMovieState(ctx, movieID, storage.MovieStateDownloading, nil))
+		_, err = store.CreateMovieFile(ctx, sqlcdb.MovieFile{RelativePath: sql.NullString{String: "Movie 1/movie1.mp4", Valid: true}})
+		require.NoError(t, err)
+		movie, err := store.GetMovie(ctx, movieID)
+		require.NoError(t, err)
 		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
-		require.NotNil(t, m)
-
-		movie := storage.Movie{Movie: model.Movie{ID: 1, Monitored: 1, Path: ptr.To("Movie 1")}}
-		_, err := store.CreateMovie(ctx, movie, storage.MovieStateMissing)
+		require.NoError(t, m.reconcileDownloadingMovie(ctx, sqlcdb.ListMoviesByStatesRow(movie), newReconcileSnapshot(nil, nil)))
+		got, err := store.GetMovie(ctx, movieID)
 		require.NoError(t, err)
-
-		err = m.updateMovieState(ctx, &movie, storage.MovieStateDownloading, nil)
-		require.NoError(t, err)
-
-		_, err = store.CreateMovieFile(ctx, model.MovieFile{RelativePath: ptr.To("Movie 1/movie1.mp4")})
-		require.NoError(t, err)
-
-		snapshot := newReconcileSnapshot(nil, nil)
-		err = m.reconcileDownloadingMovie(ctx, &movie, snapshot)
-		assert.NoError(t, err)
-
-		mov, err := store.GetMovie(ctx, 1)
-		require.NoError(t, err)
-		assert.Equal(t, storage.MovieStateDownloaded, mov.State)
+		assert.Equal(t, sqlcdb.GetMovieByIDRow{Movie: movie.Movie, State: string(storage.MovieStateDownloaded)}, got)
 	})
-
 	t.Run("download client not found in snapshot", func(t *testing.T) {
-		store := newStore(t, ctx)
+		store := newMovieReconcileStore(t, ctx)
+		movieID, err := store.CreateMovie(ctx, sqlcdb.Movie{Monitored: 1, QualityProfileID: 1, Path: sql.NullString{String: "Movie 1", Valid: true}}, storage.MovieStateMissing)
+		require.NoError(t, err)
+		require.NoError(t, store.UpdateMovieState(ctx, movieID, storage.MovieStateDownloading, nil))
+		movie, err := store.GetMovie(ctx, movieID)
+		require.NoError(t, err)
 		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
-		require.NotNil(t, m)
-
-		movie := storage.Movie{Movie: model.Movie{ID: 1, Monitored: 1}}
-
-		_, err := store.CreateMovie(ctx, movie, storage.MovieStateMissing)
+		require.NoError(t, m.reconcileDownloadingMovie(ctx, sqlcdb.ListMoviesByStatesRow(movie), newReconcileSnapshot(nil, nil)))
+		got, err := store.GetMovie(ctx, movieID)
 		require.NoError(t, err)
-
-		err = m.updateMovieState(ctx, &movie, storage.MovieStateDownloading, nil)
-		require.NoError(t, err)
-
-		snapshot := newReconcileSnapshot(nil, nil)
-		err = m.reconcileDownloadingMovie(ctx, &movie, snapshot)
-		assert.NoError(t, err)
+		assert.Equal(t, movie, got)
 	})
 
-	t.Run("failed to create download client from model", func(t *testing.T) {
-		store := newStore(t, ctx)
-
-		downloadClientModel := model.DownloadClient{
-			Implementation: "transmission",
-			Type:           "torrent",
-			Port:           8080,
-			Host:           "transmission",
-			Scheme:         "http",
-			APIKey:         nil,
-		}
-
-		downloadClientID, err := store.CreateDownloadClient(ctx, downloadClientModel)
-		require.NoError(t, err)
-
-		downloadClientModel.ID = int32(downloadClientID)
-
-		mockFactory := downloadMock.NewMockFactory(ctrl)
-		mockFactory.EXPECT().NewDownloadClient(downloadClientModel).Return(nil, errors.New("failed to create download client"))
-
-		m := New(nil, nil, nil, store, mockFactory, config.Manager{}, config.Config{})
-		require.NotNil(t, m)
-
-		movieID, err := m.movieStorage.CreateMovie(ctx, storage.Movie{Movie: model.Movie{ID: 1, Monitored: 1, QualityProfileID: 1, Path: ptr.To("Movie 1")}}, storage.MovieStateMissing)
-		require.NoError(t, err)
-
-		movie, err := m.movieStorage.GetMovie(ctx, movieID)
-		require.NoError(t, err)
-
-		downloadID := "123"
-		err = m.updateMovieState(ctx, movie, storage.MovieStateDownloading, &storage.TransitionStateMetadata{
-			DownloadID:       &downloadID,
-			DownloadClientID: &downloadClientModel.ID,
+	for _, tt := range []struct {
+		name         string
+		factoryError error
+		getError     error
+		done         bool
+		libraryError error
+		wantError    string
+		wantState    storage.MovieState
+	}{
+		{name: "failed to create download client from model", factoryError: errors.New("failed to create download client"), wantError: "failed to create download client", wantState: storage.MovieStateDownloading},
+		{name: "failed to get download status", getError: errors.New("failed to get download status"), wantError: "failed to get download status", wantState: storage.MovieStateDownloading},
+		{name: "download not finished", wantState: storage.MovieStateDownloading},
+		{name: "failed to add movie file to library", done: true, libraryError: errors.New("expected testing error"), wantError: "failed to add movie to library: expected testing error", wantState: storage.MovieStateDownloading},
+		{name: "successfully reconciled downloading movie", done: true, wantState: storage.MovieStateDownloaded},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			store := newMovieReconcileStore(t, ctx)
+			metadataID, err := store.CreateMovieMetadata(ctx, sqlcdb.MovieMetadatum{Title: "my-movie", TmdbID: 1234})
+			require.NoError(t, err)
+			client := sqlcdb.DownloadClient{Implementation: "transmission", Type: "torrent", Port: 8080, Host: "transmission", Scheme: "http"}
+			client.ID, err = store.CreateDownloadClient(ctx, client)
+			require.NoError(t, err)
+			movieID, err := store.CreateMovie(ctx, sqlcdb.Movie{Monitored: 1, QualityProfileID: 1, MovieMetadataID: sql.NullInt64{Int64: metadataID, Valid: true}, Path: sql.NullString{String: "my-movie", Valid: true}}, storage.MovieStateMissing)
+			require.NoError(t, err)
+			require.NoError(t, store.UpdateMovieState(ctx, movieID, storage.MovieStateDownloading, &storage.TransitionStateMetadata{DownloadID: ptr.To("123"), DownloadClientID: &client.ID}))
+			movie, err := store.GetMovie(ctx, movieID)
+			require.NoError(t, err)
+			factory := downloadMock.NewMockFactory(ctrl)
+			dc := downloadMock.NewMockDownloadClient(ctrl)
+			if tt.factoryError != nil {
+				factory.EXPECT().NewDownloadClient(client).Return(nil, tt.factoryError)
+			} else {
+				factory.EXPECT().NewDownloadClient(client).Return(dc, nil)
+				dc.EXPECT().Get(ctx, download.GetRequest{ID: "123"}).Return(download.Status{ID: "123", Done: tt.done, FilePaths: []string{"/downloads/movie.mp4"}}, tt.getError)
+			}
+			lib := mockLibrary.NewMockLibrary(ctrl)
+			if tt.done {
+				lib.EXPECT().AddMovie(ctx, "my-movie", "/downloads/movie.mp4").Return(library.MovieFile{Name: "my-movie", RelativePath: "my-movie/movie.mp4", AbsolutePath: "/movies/my-movie/movie.mp4", Size: 1024}, tt.libraryError)
+			}
+			m := New(nil, nil, lib, store, factory, config.Manager{}, config.Config{})
+			err = m.reconcileDownloadingMovie(ctx, sqlcdb.ListMoviesByStatesRow(movie), newReconcileSnapshot(nil, []sqlcdb.DownloadClient{client}))
+			if tt.wantError != "" {
+				require.EqualError(t, err, tt.wantError)
+			} else {
+				require.NoError(t, err)
+			}
+			got, err := store.GetMovie(ctx, movieID)
+			require.NoError(t, err)
+			want := movie
+			if tt.wantState == storage.MovieStateDownloaded {
+				want.State = string(tt.wantState)
+				want.DownloadID = sql.NullString{}
+				want.DownloadClientID = sql.NullInt64{}
+			}
+			assert.Equal(t, want, got)
+			if tt.wantState == storage.MovieStateDownloaded {
+				files, err := store.GetMovieFilesByMovieName(ctx, "my-movie")
+				require.NoError(t, err)
+				require.Len(t, files, 1)
+				assert.Equal(t, sqlcdb.MovieFile{ID: files[0].ID, DateAdded: files[0].DateAdded, RelativePath: sql.NullString{String: "my-movie/movie.mp4", Valid: true}, OriginalFilePath: sql.NullString{String: "/downloads/movie.mp4", Valid: true}, Size: 1024}, files[0])
+			}
 		})
-		require.NoError(t, err)
-
-		movie, err = m.movieStorage.GetMovie(ctx, movieID)
-		require.NoError(t, err)
-
-		snapshot := newReconcileSnapshot(nil, []*model.DownloadClient{&downloadClientModel})
-
-		err = m.reconcileDownloadingMovie(ctx, movie, snapshot)
-		require.Error(t, err)
-		assert.Equal(t, err.Error(), "failed to create download client")
-
-		mov, err := store.GetMovie(ctx, 1)
-		require.NoError(t, err)
-		assert.Equal(t, storage.MovieStateDownloading, mov.State)
-	})
-
-	t.Run("failed to get download status", func(t *testing.T) {
-		store := newStore(t, ctx)
-
-		downloadClientModel := model.DownloadClient{
-			Implementation: "transmission",
-			Type:           "torrent",
-			Port:           8080,
-			Host:           "transmission",
-			Scheme:         "http",
-		}
-
-		downloadClientID, err := store.CreateDownloadClient(ctx, downloadClientModel)
-		require.NoError(t, err)
-
-		downloadClientModel.ID = int32(downloadClientID)
-
-		mockDownloadClient := downloadMock.NewMockDownloadClient(ctrl)
-		mockFactory := downloadMock.NewMockFactory(ctrl)
-		mockFactory.EXPECT().NewDownloadClient(downloadClientModel).Return(mockDownloadClient, nil)
-		mockDownloadClient.EXPECT().Get(ctx, download.GetRequest{ID: "123"}).Return(download.Status{}, errors.New("failed to get download status"))
-
-		m := New(nil, nil, nil, store, mockFactory, config.Manager{}, config.Config{})
-		require.NotNil(t, m)
-
-		movieID, err := m.movieStorage.CreateMovie(ctx, storage.Movie{Movie: model.Movie{ID: 1, Monitored: 1, QualityProfileID: 1, Path: ptr.To("Movie 1")}}, storage.MovieStateMissing)
-		require.NoError(t, err)
-
-		movie, err := m.movieStorage.GetMovie(ctx, movieID)
-		require.NoError(t, err)
-
-		downloadID := "123"
-		err = m.updateMovieState(ctx, movie, storage.MovieStateDownloading, &storage.TransitionStateMetadata{
-			DownloadID:       &downloadID,
-			DownloadClientID: &downloadClientModel.ID,
-		})
-		require.NoError(t, err)
-
-		movie, err = m.movieStorage.GetMovie(ctx, movieID)
-		require.NoError(t, err)
-
-		snapshot := newReconcileSnapshot(nil, []*model.DownloadClient{&downloadClientModel})
-
-		err = m.reconcileDownloadingMovie(ctx, movie, snapshot)
-		assert.Error(t, err)
-		assert.Equal(t, err.Error(), "failed to get download status")
-
-		mov, err := store.GetMovie(ctx, 1)
-		require.NoError(t, err)
-		assert.Equal(t, storage.MovieStateDownloading, mov.State)
-	})
-
-	t.Run("download not finished", func(t *testing.T) {
-		store := newStore(t, ctx)
-		mockDownloadClient := downloadMock.NewMockDownloadClient(ctrl)
-		downloadClientModel := model.DownloadClient{
-			Implementation: "transmission",
-			Type:           "torrent",
-			Port:           8080,
-			Host:           "transmission",
-			Scheme:         "http",
-		}
-
-		downloadClientID, err := store.CreateDownloadClient(ctx, downloadClientModel)
-		require.NoError(t, err)
-
-		downloadClientModel.ID = int32(downloadClientID)
-
-		mockFactory := downloadMock.NewMockFactory(ctrl)
-		mockFactory.EXPECT().NewDownloadClient(downloadClientModel).Return(mockDownloadClient, nil)
-
-		mockDownloadClient.EXPECT().Get(ctx, download.GetRequest{ID: "123"}).Return(download.Status{
-			ID:   "123",
-			Done: false,
-		}, nil)
-
-		m := New(nil, nil, nil, store, mockFactory, config.Manager{}, config.Config{})
-		require.NotNil(t, m)
-
-		movieID, err := m.movieStorage.CreateMovie(ctx, storage.Movie{Movie: model.Movie{ID: 1, Monitored: 1, QualityProfileID: 1, Path: ptr.To("my-movie")}}, storage.MovieStateMissing)
-		require.NoError(t, err)
-
-		movie, err := m.movieStorage.GetMovie(ctx, movieID)
-		require.NoError(t, err)
-
-		downloadID := "123"
-		err = m.updateMovieState(ctx, movie, storage.MovieStateDownloading, &storage.TransitionStateMetadata{
-			DownloadID:       &downloadID,
-			DownloadClientID: &downloadClientModel.ID,
-		})
-		require.NoError(t, err)
-
-		movie, err = m.movieStorage.GetMovie(ctx, movieID)
-		require.NoError(t, err)
-
-		snapshot := newReconcileSnapshot(nil, []*model.DownloadClient{&downloadClientModel})
-		err = m.reconcileDownloadingMovie(ctx, movie, snapshot)
-		assert.NoError(t, err)
-
-		mov, err := store.GetMovie(ctx, 1)
-		require.NoError(t, err)
-		assert.Equal(t, storage.MovieStateDownloading, mov.State)
-	})
+	}
 
 	t.Run("failed to get movie metadata", func(t *testing.T) {
-		store := newStore(t, ctx)
-
-		downloadClientModel := model.DownloadClient{
-			Implementation: "transmission",
-			Type:           "torrent",
-			Port:           8080,
-			Host:           "transmission",
-			Scheme:         "http",
-		}
-
-		downloadClientID, err := store.CreateDownloadClient(ctx, downloadClientModel)
-		require.NoError(t, err)
-
-		downloadClientModel.ID = int32(downloadClientID)
-
-		mockDownloadClient := downloadMock.NewMockDownloadClient(ctrl)
-		mockFactory := downloadMock.NewMockFactory(ctrl)
-		mockFactory.EXPECT().NewDownloadClient(downloadClientModel).Return(mockDownloadClient, nil)
-		mockDownloadClient.EXPECT().Get(ctx, download.GetRequest{ID: "123"}).Return(download.Status{
-			ID:   "123",
-			Done: true,
-		}, nil)
-
-		m := New(nil, nil, nil, store, mockFactory, config.Manager{}, config.Config{})
-		require.NotNil(t, m)
-
-		movieID, err := m.movieStorage.CreateMovie(ctx, storage.Movie{Movie: model.Movie{ID: 1, Monitored: 1, QualityProfileID: 1, MovieMetadataID: ptr.To(int32(1)), Path: ptr.To("Movie 1")}}, storage.MovieStateMissing)
-		require.NoError(t, err)
-
-		movie, err := m.movieStorage.GetMovie(ctx, movieID)
-		require.NoError(t, err)
-
-		downloadID := "123"
-		err = m.updateMovieState(ctx, movie, storage.MovieStateDownloading, &storage.TransitionStateMetadata{
-			DownloadID:       &downloadID,
-			DownloadClientID: &downloadClientModel.ID,
-		})
-		require.NoError(t, err)
-
-		movie, err = m.movieStorage.GetMovie(ctx, movieID)
-		require.NoError(t, err)
-
-		snapshot := newReconcileSnapshot(nil, []*model.DownloadClient{&downloadClientModel})
-
-		err = m.reconcileDownloadingMovie(ctx, movie, snapshot)
-		assert.Error(t, err)
-		assert.Equal(t, "not found in storage", err.Error())
-
-		mov, err := store.GetMovie(ctx, 1)
-		assert.NoError(t, err)
-		assert.Equal(t, storage.MovieStateDownloading, mov.State)
-	})
-
-	t.Run("failed to add movie file to library", func(t *testing.T) {
-		store := newStore(t, ctx)
-		mockLibrary := mockLibrary.NewMockLibrary(ctrl)
-		mockLibrary.EXPECT().AddMovie(gomock.Any(), "my-movie", "test path").Return(library.MovieFile{}, errors.New("expected testing error"))
-
-		downloadClientModel := model.DownloadClient{
-			Implementation: "transmission",
-			Type:           "torrent",
-			Port:           8080,
-			Host:           "transmission",
-			Scheme:         "http",
-		}
-
-		downloadClientID, err := store.CreateDownloadClient(ctx, downloadClientModel)
-		require.NoError(t, err)
-
-		downloadClientModel.ID = int32(downloadClientID)
-
-		mockDownloadClient := downloadMock.NewMockDownloadClient(ctrl)
-		mockFactory := downloadMock.NewMockFactory(ctrl)
-		mockFactory.EXPECT().NewDownloadClient(downloadClientModel).Return(mockDownloadClient, nil)
-		mockDownloadClient.EXPECT().Get(ctx, download.GetRequest{ID: "123"}).Return(download.Status{
-			ID:        "123",
-			Done:      true,
-			FilePaths: []string{"test path"},
-		}, nil)
-
-		m := New(nil, nil, mockLibrary, store, mockFactory, config.Manager{}, config.Config{})
-		require.NotNil(t, m)
-
-		movieID, err := m.movieStorage.CreateMovie(ctx, storage.Movie{Movie: model.Movie{ID: 1, Monitored: 1, QualityProfileID: 1, MovieMetadataID: ptr.To(int32(1)), Path: ptr.To("Movie 1")}}, storage.MovieStateMissing)
-		require.NoError(t, err)
-
-		movie, err := m.movieStorage.GetMovie(ctx, movieID)
-		require.NoError(t, err)
-
-		downloadID := "123"
-		err = m.updateMovieState(ctx, movie, storage.MovieStateDownloading, &storage.TransitionStateMetadata{
-			DownloadID:       &downloadID,
-			DownloadClientID: &downloadClientModel.ID,
-		})
-		require.NoError(t, err)
-
-		movie, err = m.movieStorage.GetMovie(ctx, movieID)
-		require.NoError(t, err)
-
-		movieMetadata := model.MovieMetadata{Title: "my-movie", TmdbID: 1234}
-		_, err = store.CreateMovieMetadata(ctx, movieMetadata)
-		require.NoError(t, err)
-
-		snapshot := newReconcileSnapshot(nil, []*model.DownloadClient{&downloadClientModel})
-
-		err = m.reconcileDownloadingMovie(ctx, movie, snapshot)
-		assert.Error(t, err)
-		assert.Equal(t, "failed to add movie to library: expected testing error", err.Error())
-
-		mov, err := store.GetMovie(ctx, 1)
-		assert.NoError(t, err)
-		assert.Equal(t, storage.MovieStateDownloading, mov.State)
-	})
-
-	t.Run("successfully reconciled downloading movie", func(t *testing.T) {
-		store := newStore(t, ctx)
-		mockLibrary := mockLibrary.NewMockLibrary(ctrl)
-		mockLibrary.EXPECT().AddMovie(gomock.Any(), "my-movie", "/downloads/movie.mp4").Return(library.MovieFile{
-			Name:         "my-movie",
-			RelativePath: "my-movie/movie.mp4",
-			AbsolutePath: "/movies/my-movie/movie.mp4",
-			Size:         1024,
-		}, nil)
-
-		downloadClientModel := model.DownloadClient{
-			Implementation: "transmission",
-			Type:           "torrent",
-			Port:           8080,
-			Host:           "transmission",
-			Scheme:         "http",
-		}
-
-		downloadClientID, err := store.CreateDownloadClient(ctx, downloadClientModel)
-		require.NoError(t, err)
-
-		downloadClientModel.ID = int32(downloadClientID)
-
-		mockDownloadClient := downloadMock.NewMockDownloadClient(ctrl)
-		mockFactory := downloadMock.NewMockFactory(ctrl)
-		mockFactory.EXPECT().NewDownloadClient(downloadClientModel).Return(mockDownloadClient, nil)
-		mockDownloadClient.EXPECT().Get(ctx, download.GetRequest{ID: "123"}).Return(download.Status{
-			ID:        "123",
-			Done:      true,
-			FilePaths: []string{"/downloads/movie.mp4"},
-		}, nil)
-
-		m := New(nil, nil, mockLibrary, store, mockFactory, config.Manager{}, config.Config{})
-		require.NotNil(t, m)
-
-		movieID, err := m.movieStorage.CreateMovie(ctx, storage.Movie{Movie: model.Movie{ID: 1, Monitored: 1, QualityProfileID: 1, MovieMetadataID: ptr.To(int32(1)), Path: ptr.To("my-movie")}}, storage.MovieStateMissing)
-		require.NoError(t, err)
-
-		movie, err := m.movieStorage.GetMovie(ctx, movieID)
-		require.NoError(t, err)
-
-		downloadID := "123"
-		err = m.updateMovieState(ctx, movie, storage.MovieStateDownloading, &storage.TransitionStateMetadata{
-			DownloadID:       &downloadID,
-			DownloadClientID: &downloadClientModel.ID,
-		})
-		require.NoError(t, err)
-
-		movie, err = m.movieStorage.GetMovie(ctx, movieID)
-		require.NoError(t, err)
-
-		movieMetadata := model.MovieMetadata{Title: "my-movie", TmdbID: 1234}
-		_, err = store.CreateMovieMetadata(ctx, movieMetadata)
-		require.NoError(t, err)
-
-		snapshot := newReconcileSnapshot(nil, []*model.DownloadClient{&downloadClientModel})
-
-		err = m.reconcileDownloadingMovie(ctx, movie, snapshot)
-		assert.NoError(t, err)
-
-		mov, err := store.GetMovie(ctx, 1)
-		assert.NoError(t, err)
-		assert.Equal(t, storage.MovieStateDownloaded, mov.State)
-
-		dmfs, err := store.ListMovieFiles(ctx)
-		require.NoError(t, err)
-		require.Len(t, dmfs, 1)
-
-		mfs, err := store.GetMovieFilesByMovieName(ctx, "my-movie")
-		require.NoError(t, err)
-		require.Len(t, mfs, 1)
-		mf := mfs[0]
-		assert.Equal(t, "my-movie/movie.mp4", *mf.RelativePath)
-		assert.Equal(t, "/downloads/movie.mp4", *mf.OriginalFilePath)
-		assert.Equal(t, int64(1024), mf.Size)
+		// A missing referenced metadata row cannot be created with foreign keys on.
+		ctrl := gomock.NewController(t)
+		store := storageMocks.NewMockStorage(ctrl)
+		movie := sqlcdb.ListMoviesByStatesRow{Movie: sqlcdb.Movie{ID: 1, Monitored: 1, Path: sql.NullString{String: "Movie 1", Valid: true}, MovieMetadataID: sql.NullInt64{Int64: 99, Valid: true}}, State: string(storage.MovieStateDownloading), DownloadClientID: sql.NullInt64{Int64: 1, Valid: true}, DownloadID: sql.NullString{String: "123", Valid: true}}
+		store.EXPECT().GetMovieFilesByMovieName(ctx, "Movie 1").Return(nil, storage.ErrNotFound)
+		store.EXPECT().GetMovieMetadataByID(ctx, int64(99)).Return(sqlcdb.MovieMetadatum{}, storage.ErrNotFound)
+		client := sqlcdb.DownloadClient{ID: 1, Implementation: "transmission", Type: "torrent"}
+		factory := downloadMock.NewMockFactory(ctrl)
+		dc := downloadMock.NewMockDownloadClient(ctrl)
+		factory.EXPECT().NewDownloadClient(client).Return(dc, nil)
+		dc.EXPECT().Get(ctx, download.GetRequest{ID: "123"}).Return(download.Status{ID: "123", Done: true}, nil)
+		m := New(nil, nil, nil, store, factory, config.Manager{}, config.Config{})
+		require.ErrorIs(t, m.reconcileDownloadingMovie(ctx, movie, newReconcileSnapshot(nil, []sqlcdb.DownloadClient{client})), storage.ErrNotFound)
 	})
 }
 
 func Test_Manager_reconcileMissingMovie_MovieFileIDAlreadySet(t *testing.T) {
 	ctx := context.Background()
-	store := newStore(t, ctx)
-
-	m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
-	require.NotNil(t, m)
-
-	// Create movie metadata so we can link the movie
-	metaID, err := store.CreateMovieMetadata(ctx, model.MovieMetadata{
-		Title:  "test-movie",
-		TmdbID: 1234,
-	})
+	store := newMovieReconcileStore(t, ctx)
+	metadataID, err := store.CreateMovieMetadata(ctx, sqlcdb.MovieMetadatum{Title: "test-movie", TmdbID: 1234})
 	require.NoError(t, err)
-
-	// Create a movie in Missing state with metadata linked
-	movieID, err := m.movieStorage.CreateMovie(ctx, storage.Movie{
-		Movie: model.Movie{
-			Monitored:        1,
-			QualityProfileID: 1,
-			Path:             ptr.To("test-movie"),
-			MovieMetadataID:  ptr.To(int32(metaID)),
-		},
-	}, storage.MovieStateMissing)
+	movieID, err := store.CreateMovie(ctx, sqlcdb.Movie{Monitored: 1, QualityProfileID: 1, Path: sql.NullString{String: "test-movie", Valid: true}, MovieMetadataID: sql.NullInt64{Int64: metadataID, Valid: true}}, storage.MovieStateMissing)
 	require.NoError(t, err)
-
-	// Create a movie file and link it to the movie
-	fileID, err := store.CreateMovieFile(ctx, model.MovieFile{
-		RelativePath:     ptr.To("test-movie/test-movie.mkv"),
-		Size:             2048,
-		OriginalFilePath: ptr.To("/downloads/test-movie.mkv"),
-	})
+	fileID, err := store.CreateMovieFile(ctx, sqlcdb.MovieFile{RelativePath: sql.NullString{String: "test-movie/test-movie.mkv", Valid: true}, Size: 2048, OriginalFilePath: sql.NullString{String: "/downloads/test-movie.mkv", Valid: true}})
 	require.NoError(t, err)
-
-	err = store.UpdateMovieMovieFileID(ctx, movieID, fileID)
-	require.NoError(t, err)
-
-	// Get the movie with the file ID set
+	require.NoError(t, store.UpdateMovieMovieFileID(ctx, movieID, fileID))
 	movie, err := store.GetMovie(ctx, movieID)
 	require.NoError(t, err)
-	require.NotNil(t, movie.MovieFileID, "MovieFileID should be set")
-	assert.Equal(t, storage.MovieStateMissing, movie.State, "movie should start in missing state")
-
-	// Reconcile the missing movie
-	snapshot := newReconcileSnapshot(nil, nil)
-	err = m.reconcileMissingMovie(ctx, movie, snapshot)
+	m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
+	require.NoError(t, m.reconcileMissingMovie(ctx, sqlcdb.ListMoviesByStatesRow(movie), newReconcileSnapshot(nil, nil)))
+	got, err := store.GetMovie(ctx, movieID)
 	require.NoError(t, err)
-
-	// Verify the movie is now in Downloaded state with all fields preserved
-	mov, err := store.GetMovie(ctx, movieID)
-	require.NoError(t, err)
-	assert.Equal(t, storage.MovieStateDownloaded, mov.State)
-	assert.Equal(t, int32(1), mov.Monitored)
-	assert.Equal(t, int32(1), mov.QualityProfileID)
-	assert.NotNil(t, mov.MovieFileID)
-	assert.Equal(t, int32(fileID), *mov.MovieFileID)
-	assert.NotNil(t, mov.MovieMetadataID)
-	assert.Equal(t, int32(metaID), *mov.MovieMetadataID)
-	assert.NotNil(t, mov.Path)
-	assert.Equal(t, "test-movie", *mov.Path)
+	assert.Equal(t, sqlcdb.GetMovieByIDRow{Movie: movie.Movie, State: string(storage.MovieStateDownloaded)}, got)
 }
 
 func Test_Manager_ReconcileMovies(t *testing.T) {
 	t.Run("returns nil when all sub-reconcilers succeed", func(t *testing.T) {
 		ctx := context.Background()
-		store := newStore(t, ctx)
-
-		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
-		require.NotNil(t, m)
-
-		err := m.ReconcileMovies(ctx)
-		assert.NoError(t, err)
+		m := New(nil, nil, nil, newMovieReconcileStore(t, ctx), nil, config.Manager{}, config.Config{})
+		require.NoError(t, m.ReconcileMovies(ctx))
 	})
-
 	t.Run("returns error when ListDownloadClients fails", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		ctx := context.Background()
-
 		store := storageMocks.NewMockStorage(ctrl)
 		store.EXPECT().ListDownloadClients(ctx).Return(nil, errors.New("download client error"))
-
 		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
-		require.NotNil(t, m)
-
-		err := m.ReconcileMovies(ctx)
-		assert.Error(t, err)
-		assert.Equal(t, "download client error", err.Error())
+		require.EqualError(t, m.ReconcileMovies(ctx), "download client error")
 	})
-
 	t.Run("aggregates errors from multiple sub-reconcilers", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		ctx := context.Background()
-
 		store := storageMocks.NewMockStorage(ctrl)
-
-		// ListDownloadClients succeeds
 		store.EXPECT().ListDownloadClients(ctx).Return(nil, nil)
-
-		// ReconcileMissingMovies: listIndexersInternal calls ListIndexers → fails
-		store.EXPECT().ListIndexers(gomock.Any()).Return(nil, errors.New("indexer error")).AnyTimes()
-
-		// ReconcileUnreleasedMovies: ListMoviesByState for unreleased
-		store.EXPECT().ListMoviesByState(gomock.Any(), storage.MovieStateUnreleased).Return(nil, errors.New("unreleased error")).AnyTimes()
-
-		// ReconcileDownloadingMovies: ListMoviesByState for downloading → succeeds with empty
-		store.EXPECT().ListMoviesByState(gomock.Any(), storage.MovieStateDownloading).Return(nil, nil).AnyTimes()
-
-		// ReconcileDiscoveredMovies: ListMoviesByState for discovered → succeeds with empty
-		store.EXPECT().ListMoviesByState(gomock.Any(), storage.MovieStateDiscovered).Return(nil, nil).AnyTimes()
-
+		store.EXPECT().ListIndexers(gomock.Any()).Return(nil, errors.New("indexer error"))
+		store.EXPECT().ListMoviesByState(gomock.Any(), storage.MovieStateUnreleased).Return(nil, errors.New("unreleased error"))
+		store.EXPECT().ListMoviesByState(gomock.Any(), storage.MovieStateDownloading).Return(nil, nil)
+		store.EXPECT().ListMoviesByState(gomock.Any(), storage.MovieStateDiscovered).Return(nil, nil)
 		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
-		require.NotNil(t, m)
-
 		err := m.ReconcileMovies(ctx)
-		assert.Error(t, err)
-		// errors.Join wraps multiple errors; both messages should be present
+		require.Error(t, err)
 		assert.Contains(t, err.Error(), "indexer error")
 		assert.Contains(t, err.Error(), "unreleased error")
 	})

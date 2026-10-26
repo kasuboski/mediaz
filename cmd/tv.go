@@ -52,7 +52,7 @@ var listTVCmd = &cobra.Command{
 }
 
 var (
-	tmdbID int
+	tmdbID int64
 )
 
 // seriesDetailsCmd searches tmdb for a series and parses the response for all metadata
@@ -93,7 +93,7 @@ var seriesDetailsCmd = &cobra.Command{
 func init() {
 	listCmd.AddCommand(listTVCmd)
 
-	seriesDetailsCmd.Flags().IntVarP(&tmdbID, "id", "i", 0, "tmdb id")
+	seriesDetailsCmd.Flags().Int64VarP(&tmdbID, "id", "i", 0, "tmdb id")
 	seriesDetailsCmd.MarkFlagRequired("id")
 	getCmd.AddCommand(seriesDetailsCmd)
 }

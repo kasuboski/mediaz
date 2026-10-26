@@ -45,7 +45,7 @@ type ActiveJob struct {
 }
 
 type DownloadClientInfo struct {
-	ID   int    `json:"id"`
+	ID   int64  `json:"id"`
 	Host string `json:"host"`
 	Port int    `json:"port"`
 }

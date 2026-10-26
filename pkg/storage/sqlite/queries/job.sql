@@ -1,9 +1,13 @@
+-- Job queries. Entity reads join the most recent job_transition via
+-- embed(j) plus named transition columns. ListJobs paginates with a
+-- stable ORDER BY (created_at DESC, id DESC) so same-second rows never
+-- duplicate/skip across pages (A4). The demote statement stamps updated_at
+-- with CURRENT_TIMESTAMP (UTC) - no application-formatted timestamps (B5).
+
 -- name: GetJobByTypeAndState :one
 SELECT
-    j.id,
-    j.type,
-    j.created_at,
-    jt.to_state,
+    sqlc.embed(j),
+    jt.to_state AS state,
     jt.updated_at,
     jt.error
 FROM job AS j
@@ -19,10 +23,8 @@ RETURNING id;
 
 -- name: GetJobByID :one
 SELECT
-    j.id,
-    j.type,
-    j.created_at,
-    jt.to_state,
+    sqlc.embed(j),
+    jt.to_state AS state,
     jt.updated_at,
     jt.error
 FROM job AS j
@@ -47,11 +49,11 @@ WHERE
     );
 
 -- name: ListJobs :many
+-- Stable pagination: created_at DESC with id DESC tie-break (CURRENT_TIMESTAMP
+-- has 1-second resolution). lim = 0 means unlimited.
 SELECT
-    j.id,
-    j.type,
-    j.created_at,
-    jt.to_state,
+    sqlc.embed(j),
+    jt.to_state AS state,
     jt.updated_at,
     jt.error
 FROM job AS j
@@ -66,14 +68,14 @@ WHERE
         sqlc.narg('state') IS NULL
         OR jt.to_state = sqlc.narg('state')
     )
-ORDER BY j.created_at DESC
+ORDER BY j.created_at DESC, j.id DESC
 LIMIT COALESCE(NULLIF(sqlc.arg('lim'), 0), -1) OFFSET sqlc.arg('offs');
 
 -- name: DeactivateJobTransition :one
 UPDATE job_transition
 SET
     most_recent = 0,
-    updated_at = DATETIME(sqlc.arg('updated_at'))
+    updated_at = CURRENT_TIMESTAMP
 WHERE job_id = sqlc.arg('job_id') AND most_recent = 1
 RETURNING id, job_id, type, to_state, from_state, most_recent, sort_key, error, created_at, updated_at;
 
@@ -86,4 +88,5 @@ INSERT INTO job_transition (
 DELETE FROM job WHERE id = ?;
 
 -- name: DeleteJobsByIDs :execrows
+-- An empty ids slice expands to IN (NULL) and deletes nothing (no-op).
 DELETE FROM job WHERE id IN (sqlc.slice('ids'));

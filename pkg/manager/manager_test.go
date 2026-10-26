@@ -3,6 +3,7 @@ package manager
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"io"
@@ -20,7 +21,7 @@ import (
 	"github.com/kasuboski/mediaz/pkg/ptr"
 	"github.com/kasuboski/mediaz/pkg/storage"
 	storageMocks "github.com/kasuboski/mediaz/pkg/storage/mocks"
-	"github.com/kasuboski/mediaz/pkg/storage/model"
+	"github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 	mediaSqlite "github.com/kasuboski/mediaz/pkg/storage/sqlite"
 	"github.com/kasuboski/mediaz/pkg/tmdb"
 	tmdbMocks "github.com/kasuboski/mediaz/pkg/tmdb/mocks"
@@ -106,15 +107,15 @@ func TestIndexMovieLibrary(t *testing.T) {
 		require.NoError(t, err)
 		assert.Len(t, movieFiles, 2)
 
-		assert.Equal(t, "Movie 1/movie1.mp4", *movieFiles[0].RelativePath)
+		assert.Equal(t, "Movie 1/movie1.mp4", movieFiles[0].RelativePath.String)
 		assert.Equal(t, int64(1024), movieFiles[0].Size)
-		assert.Equal(t, "Movie 2/movie2.mkv", *movieFiles[1].RelativePath)
+		assert.Equal(t, "Movie 2/movie2.mkv", movieFiles[1].RelativePath.String)
 		assert.Equal(t, int64(2048), movieFiles[1].Size)
 
-		assert.Equal(t, int32(1), *movies[0].MovieFileID)
-		assert.Equal(t, "Movie 1", *movies[0].Path)
-		assert.Equal(t, int32(2), *movies[1].MovieFileID)
-		assert.Equal(t, "Movie 2", *movies[1].Path)
+		assert.Equal(t, int64(1), movies[0].Movie.MovieFileID.Int64)
+		assert.Equal(t, "Movie 1", movies[0].Movie.Path.String)
+		assert.Equal(t, int64(2), movies[1].Movie.MovieFileID.Int64)
+		assert.Equal(t, "Movie 2", movies[1].Movie.Path.String)
 	})
 
 	t.Run("create movie for already tracked file", func(t *testing.T) {
@@ -124,10 +125,10 @@ func TestIndexMovieLibrary(t *testing.T) {
 		store := newStore(t, ctx)
 		mockLibrary := mockLibrary.NewMockLibrary(ctrl)
 
-		_, err := store.CreateMovieFile(ctx, model.MovieFile{
+		_, err := store.CreateMovieFile(ctx, sqlcdb.MovieFile{
 			Size:             1024,
-			RelativePath:     ptr.To("Movie 1/movie1.mp4"),
-			OriginalFilePath: ptr.To("/movies/Movie 1/movie1.mp4"),
+			RelativePath:     sql.NullString{String: "Movie 1/movie1.mp4", Valid: true},
+			OriginalFilePath: sql.NullString{String: "/movies/Movie 1/movie1.mp4", Valid: true},
 		})
 		require.NoError(t, err)
 
@@ -151,8 +152,8 @@ func TestIndexMovieLibrary(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, movies, 1)
 
-		assert.Equal(t, int32(1), *movies[0].MovieFileID)
-		assert.Equal(t, "Movie 1", *movies[0].Path)
+		assert.Equal(t, int64(1), movies[0].Movie.MovieFileID.Int64)
+		assert.Equal(t, "Movie 1", movies[0].Movie.Path.String)
 	})
 
 	t.Run("link new movie file to existing movie", func(t *testing.T) {
@@ -162,10 +163,10 @@ func TestIndexMovieLibrary(t *testing.T) {
 		store := newStore(t, ctx)
 		mockLibrary := mockLibrary.NewMockLibrary(ctrl)
 
-		_, err := store.CreateMovieFile(ctx, model.MovieFile{
+		_, err := store.CreateMovieFile(ctx, sqlcdb.MovieFile{
 			Size:             1024,
-			RelativePath:     ptr.To("Movie 1/movie1.mp4"),
-			OriginalFilePath: ptr.To("/movies/Movie 1/movie1.mp4"),
+			RelativePath:     sql.NullString{String: "Movie 1/movie1.mp4", Valid: true},
+			OriginalFilePath: sql.NullString{String: "/movies/Movie 1/movie1.mp4", Valid: true},
 		})
 		require.NoError(t, err)
 
@@ -189,8 +190,8 @@ func TestIndexMovieLibrary(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, movies, 1)
 
-		assert.Equal(t, int32(1), *movies[0].MovieFileID)
-		assert.Equal(t, "Movie 1", *movies[0].Path)
+		assert.Equal(t, int64(1), movies[0].Movie.MovieFileID.Int64)
+		assert.Equal(t, "Movie 1", movies[0].Movie.Path.String)
 
 		discoveredFiles = []library.MovieFile{
 			{RelativePath: "Movie 1/movie1.mp4", AbsolutePath: "/movies/Movie 1/movie1.mp4"},
@@ -218,10 +219,10 @@ func TestIndexMovieLibrary(t *testing.T) {
 		store := newStore(t, ctx)
 		mockLibrary := mockLibrary.NewMockLibrary(ctrl)
 
-		_, err := store.CreateMovieFile(ctx, model.MovieFile{
+		_, err := store.CreateMovieFile(ctx, sqlcdb.MovieFile{
 			Size:             1024,
-			RelativePath:     ptr.To("Movie 1/MOVIE1.MP4"),
-			OriginalFilePath: ptr.To("/movies/Movie 1/MOVIE1.MP4"),
+			RelativePath:     sql.NullString{String: "Movie 1/MOVIE1.MP4", Valid: true},
+			OriginalFilePath: sql.NullString{String: "/movies/Movie 1/MOVIE1.MP4", Valid: true},
 		})
 		require.NoError(t, err)
 
@@ -267,14 +268,14 @@ func TestIndexMovieLibrary(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, movieFiles, 1)
 
-		expected := model.MovieFile{
+		expected := sqlcdb.MovieFile{
 			ID:               movieFiles[0].ID,
 			DateAdded:        movieFiles[0].DateAdded,
-			RelativePath:     ptr.To("Movie 2/movie2.mkv"),
-			OriginalFilePath: ptr.To("Movie 2/movie2.mkv"),
+			RelativePath:     sql.NullString{String: "Movie 2/movie2.mkv", Valid: true},
+			OriginalFilePath: sql.NullString{String: "Movie 2/movie2.mkv", Valid: true},
 			Size:             2048,
 		}
-		assert.Equal(t, expected, *movieFiles[0])
+		assert.Equal(t, expected, movieFiles[0])
 	})
 }
 
@@ -286,7 +287,7 @@ func TestListShowsInLibrary(t *testing.T) {
 		store := storageMocks.NewMockStorage(ctrl)
 		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
 
-		store.EXPECT().ListSeries(ctx, gomock.Any()).Return([]*storage.Series{}, nil)
+		store.EXPECT().ListSeries(ctx, gomock.Any()).Return([]sqlcdb.ListSeriesRow{}, nil)
 
 		shows, err := m.ListShowsInLibrary(ctx)
 		require.NoError(t, err)
@@ -300,25 +301,25 @@ func TestListShowsInLibrary(t *testing.T) {
 
 		metadataID := int32(1)
 		path := "Show 1"
-		series := &storage.Series{
-			Series: model.Series{
-				SeriesMetadataID: &metadataID,
-				Path:             &path,
+		series := sqlcdb.ListSeriesRow{
+			Series: sqlcdb.Series{
+				SeriesMetadataID: sql.NullInt64{Int64: int64(metadataID), Valid: true},
+				Path:             sql.NullString{String: path, Valid: true},
 			},
-			State: storage.SeriesStateDiscovered,
+			State: string(storage.SeriesStateDiscovered),
 		}
 
-		seriesMetadata := &model.SeriesMetadata{
+		seriesMetadata := sqlcdb.SeriesMetadatum{
 			ID:             1,
 			TmdbID:         321,
 			Title:          "Test Series",
 			Status:         "Continuing",
-			PosterPath:     ptr.To("poster.jpg"),
-			ExternalIds:    nil,
-			WatchProviders: nil,
+			PosterPath:     sql.NullString{String: "poster.jpg", Valid: true},
+			ExternalIds:    sql.NullString{},
+			WatchProviders: sql.NullString{},
 		}
 
-		store.EXPECT().ListSeries(ctx, gomock.Any()).Return([]*storage.Series{series}, nil)
+		store.EXPECT().ListSeries(ctx, gomock.Any()).Return([]sqlcdb.ListSeriesRow{series}, nil)
 		store.EXPECT().GetSeriesMetadataByID(ctx, gomock.Any()).Return(seriesMetadata, nil)
 
 		shows, err := m.ListShowsInLibrary(ctx)
@@ -329,7 +330,7 @@ func TestListShowsInLibrary(t *testing.T) {
 			Path:       path,
 			TMDBID:     seriesMetadata.TmdbID,
 			Title:      seriesMetadata.Title,
-			PosterPath: *seriesMetadata.PosterPath,
+			PosterPath: seriesMetadata.PosterPath.String,
 		}
 		assert.Equal(t, expected.Path, shows[0].Path)
 		assert.Equal(t, expected.TMDBID, shows[0].TMDBID)
@@ -343,14 +344,14 @@ func TestListShowsInLibrary(t *testing.T) {
 		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
 
 		path := "Show 1"
-		series := &storage.Series{
-			Series: model.Series{
-				Path: &path,
+		series := sqlcdb.ListSeriesRow{
+			Series: sqlcdb.Series{
+				Path: sql.NullString{String: path, Valid: true},
 			},
-			State: storage.SeriesStateDiscovered,
+			State: string(storage.SeriesStateDiscovered),
 		}
 
-		store.EXPECT().ListSeries(ctx, gomock.Any()).Return([]*storage.Series{series}, nil)
+		store.EXPECT().ListSeries(ctx, gomock.Any()).Return([]sqlcdb.ListSeriesRow{series}, nil)
 
 		shows, err := m.ListShowsInLibrary(ctx)
 		require.NoError(t, err)
@@ -373,20 +374,17 @@ func TestListShowsInLibrary(t *testing.T) {
 func TestMovieRejectRelease(t *testing.T) {
 	t.Run("prefix match only", func(t *testing.T) {
 		ctx := context.Background()
-		det := &model.MovieMetadata{Title: "Brothers", Runtime: 60}
-		profile := storage.QualityProfile{
-			Name: "test",
-			Qualities: []storage.QualityDefinition{{
-				Name:          "WEBDL-1080p",
-				MinSize:       17.0,
-				MaxSize:       2000,
-				PreferredSize: 1999,
-			}},
-		}
+		det := &sqlcdb.MovieMetadatum{Title: "Brothers", Runtime: 60}
+		profile := []sqlcdb.ListQualityProfileRowsRow{{QualityDefinition: sqlcdb.QualityDefinition{
+			Name:          "WEBDL-1080p",
+			MinSize:       17.0,
+			MaxSize:       2000,
+			PreferredSize: 1999,
+		}}}
 		protocols := map[string]struct{}{"usenet": {}, "torrent": {}}
 		params := ReleaseFilterParams{
 			Title:   det.Title,
-			Runtime: det.Runtime,
+			Runtime: int32(det.Runtime),
 		}
 		rejectFunc := RejectMovieReleaseFunc(ctx, params, profile, protocols)
 
@@ -399,19 +397,16 @@ func TestMovieRejectRelease(t *testing.T) {
 
 	t.Run("reject by unavailable protocol", func(t *testing.T) {
 		ctx := context.Background()
-		det := &model.MovieMetadata{Title: "Interstellar"}
-		profile := storage.QualityProfile{
-			Name: "test",
-			Qualities: []storage.QualityDefinition{{
-				MinSize:       0,
-				MaxSize:       1000,
-				PreferredSize: 1999,
-			}},
-		}
+		det := &sqlcdb.MovieMetadatum{Title: "Interstellar"}
+		profile := []sqlcdb.ListQualityProfileRowsRow{{QualityDefinition: sqlcdb.QualityDefinition{
+			MinSize:       0,
+			MaxSize:       1000,
+			PreferredSize: 1999,
+		}}}
 		protocolsAvailable := map[string]struct{}{"torrent": {}, "ftp": {}}
 		params := ReleaseFilterParams{
 			Title:   det.Title,
-			Runtime: det.Runtime,
+			Runtime: int32(det.Runtime),
 		}
 		rejectFunc := RejectMovieReleaseFunc(ctx, params, profile, protocolsAvailable)
 
@@ -424,14 +419,11 @@ func TestMovieRejectRelease(t *testing.T) {
 
 	t.Run("year matching", func(t *testing.T) {
 		ctx := context.Background()
-		profile := storage.QualityProfile{
-			Name: "test",
-			Qualities: []storage.QualityDefinition{{
-				MinSize:       0,
-				MaxSize:       10000,
-				PreferredSize: 1999,
-			}},
-		}
+		profile := []sqlcdb.ListQualityProfileRowsRow{{QualityDefinition: sqlcdb.QualityDefinition{
+			MinSize:       0,
+			MaxSize:       10000,
+			PreferredSize: 1999,
+		}}}
 		protocols := map[string]struct{}{"torrent": {}}
 		year2024 := int32(2024)
 		params := ReleaseFilterParams{
@@ -504,12 +496,6 @@ func newStore(t *testing.T, ctx context.Context) storage.Storage {
 	store, err := mediaSqlite.New(context.Background(), ":memory:")
 	require.NoError(t, err)
 
-	schemas, err := storage.ReadSchemaFiles("../storage/sqlite/schema/schema.sql", "../storage/sqlite/schema/defaults.sql")
-	require.NoError(t, err)
-
-	err = store.Init(ctx, schemas...)
-	require.NoError(t, err)
-
 	return store
 }
 
@@ -519,7 +505,7 @@ func TestMediaManager_AddSeriesToLibrary(t *testing.T) {
 		ctx := context.Background()
 
 		store := storageMocks.NewMockStorage(ctrl)
-		store.EXPECT().GetQualityProfile(gomock.Any(), int64(1)).Return(storage.QualityProfile{}, errors.New("expected testing error"))
+		store.EXPECT().GetQualityProfile(gomock.Any(), int64(1)).Return(sqlcdb.QualityProfile{}, errors.New("expected testing error"))
 
 		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
 		require.NotNil(t, m)
@@ -539,7 +525,7 @@ func TestMediaManager_AddSeriesToLibrary(t *testing.T) {
 		ctrl := gomock.NewController(t)
 
 		store := newStore(t, ctx)
-		store.CreateQualityProfile(ctx, model.QualityProfile{
+		store.CreateQualityProfile(ctx, sqlcdb.QualityProfile{
 			ID:   1,
 			Name: "test-profile",
 		})
@@ -565,32 +551,30 @@ func TestMediaManager_AddSeriesToLibrary(t *testing.T) {
 		ctrl := gomock.NewController(t)
 
 		store := newStore(t, ctx)
-		_, err := store.CreateQualityProfile(ctx, model.QualityProfile{
+		_, err := store.CreateQualityProfile(ctx, sqlcdb.QualityProfile{
 			ID:   1,
 			Name: "test-profile",
 		})
 		require.NoError(t, err)
 
-		metadataID, err := store.CreateSeriesMetadata(ctx, model.SeriesMetadata{
+		metadataID, err := store.CreateSeriesMetadata(ctx, sqlcdb.SeriesMetadatum{
 			ID:             1,
 			TmdbID:         1234,
 			Title:          "Test Series",
 			SeasonCount:    1,
 			EpisodeCount:   1,
 			Status:         "Continuing",
-			ExternalIds:    nil, // Optional field
-			WatchProviders: nil, // Optional field
+			ExternalIds:    sql.NullString{}, // Optional field
+			WatchProviders: sql.NullString{}, // Optional field
 		})
 		require.NoError(t, err)
 
-		seriesID, err := store.CreateSeries(ctx, storage.Series{
-			Series: model.Series{
-				ID:               1,
-				SeriesMetadataID: ptr.To(int32(metadataID)),
-				Monitored:        1,
-				QualityProfileID: 1,
-				Added:            ptr.To(time.Now()),
-			},
+		seriesID, err := store.CreateSeries(ctx, sqlcdb.Series{
+			ID:               1,
+			SeriesMetadataID: sql.NullInt64{Int64: metadataID, Valid: true},
+			Monitored:        1,
+			QualityProfileID: 1,
+			Added:            sql.NullTime{Time: time.Now(), Valid: true},
 		}, storage.SeriesStateMissing)
 		require.NoError(t, err)
 
@@ -607,11 +591,11 @@ func TestMediaManager_AddSeriesToLibrary(t *testing.T) {
 		series, err := m.AddSeriesToLibrary(ctx, req)
 		require.NoError(t, err)
 
-		assert.Equal(t, series.ID, int32(seriesID))
-		assert.Equal(t, series.SeriesMetadataID, ptr.To(int32(metadataID)))
-		assert.Equal(t, series.Monitored, int32(1))
-		assert.Equal(t, series.QualityProfileID, int32(1))
-		assert.Equal(t, storage.SeriesStateMissing, series.State)
+		assert.Equal(t, series.Series.ID, int64(seriesID))
+		assert.Equal(t, sql.NullInt64{Int64: metadataID, Valid: true}, series.Series.SeriesMetadataID)
+		assert.Equal(t, series.Series.Monitored, int64(1))
+		assert.Equal(t, series.Series.QualityProfileID, int64(1))
+		assert.Equal(t, string(storage.SeriesStateMissing), series.State)
 	})
 
 	t.Run("series metadata exists in db - series does not exist - unreleased", func(t *testing.T) {
@@ -619,22 +603,22 @@ func TestMediaManager_AddSeriesToLibrary(t *testing.T) {
 		ctrl := gomock.NewController(t)
 
 		store := newStore(t, ctx)
-		_, err := store.CreateQualityProfile(ctx, model.QualityProfile{
+		_, err := store.CreateQualityProfile(ctx, sqlcdb.QualityProfile{
 			ID:   1,
 			Name: "test-profile",
 		})
 		require.NoError(t, err)
 
-		metadataID, err := store.CreateSeriesMetadata(ctx, model.SeriesMetadata{
+		metadataID, err := store.CreateSeriesMetadata(ctx, sqlcdb.SeriesMetadatum{
 			ID:             1,
 			TmdbID:         1234,
 			Title:          "Test Series",
 			SeasonCount:    1,
 			EpisodeCount:   1,
 			Status:         "Continuing",
-			FirstAirDate:   ptr.To(time.Now().Add(time.Hour * 24 * 7)),
-			ExternalIds:    nil, // Optional field
-			WatchProviders: nil, // Optional field
+			FirstAirDate:   sql.NullTime{Time: time.Now().Add(time.Hour * 24 * 7), Valid: true},
+			ExternalIds:    sql.NullString{}, // Optional field
+			WatchProviders: sql.NullString{}, // Optional field
 		})
 		require.NoError(t, err)
 
@@ -651,11 +635,11 @@ func TestMediaManager_AddSeriesToLibrary(t *testing.T) {
 		series, err := m.AddSeriesToLibrary(ctx, req)
 		require.NoError(t, err)
 
-		assert.Equal(t, series.ID, int32(1))
-		assert.Equal(t, series.SeriesMetadataID, ptr.To(int32(metadataID)))
-		assert.Equal(t, series.Monitored, int32(1))
-		assert.Equal(t, series.QualityProfileID, int32(1))
-		assert.Equal(t, storage.SeriesStateUnreleased, series.State)
+		assert.Equal(t, series.Series.ID, int64(1))
+		assert.Equal(t, sql.NullInt64{Int64: metadataID, Valid: true}, series.Series.SeriesMetadataID)
+		assert.Equal(t, series.Series.Monitored, int64(1))
+		assert.Equal(t, series.Series.QualityProfileID, int64(1))
+		assert.Equal(t, string(storage.SeriesStateUnreleased), series.State)
 	})
 
 	t.Run("series metadata exists in db - series does not exist - released", func(t *testing.T) {
@@ -663,7 +647,7 @@ func TestMediaManager_AddSeriesToLibrary(t *testing.T) {
 		ctrl := gomock.NewController(t)
 
 		store := newStore(t, ctx)
-		_, err := store.CreateQualityProfile(ctx, model.QualityProfile{
+		_, err := store.CreateQualityProfile(ctx, sqlcdb.QualityProfile{
 			ID:   1,
 			Name: "test-profile",
 		})
@@ -711,24 +695,24 @@ func TestMediaManager_AddSeriesToLibrary(t *testing.T) {
 		series, err := m.AddSeriesToLibrary(ctx, req)
 		require.NoError(t, err)
 
-		assert.Equal(t, int32(1), series.ID)
-		assert.Equal(t, ptr.To(int32(1)), series.SeriesMetadataID)
-		assert.Equal(t, int32(1), series.Monitored)
-		assert.Equal(t, int32(1), series.QualityProfileID)
-		assert.Equal(t, storage.SeriesStateMissing, series.State)
+		assert.Equal(t, int64(1), series.Series.ID)
+		assert.Equal(t, sql.NullInt64{Int64: 1, Valid: true}, series.Series.SeriesMetadataID)
+		assert.Equal(t, int64(1), series.Series.Monitored)
+		assert.Equal(t, int64(1), series.Series.QualityProfileID)
+		assert.Equal(t, string(storage.SeriesStateMissing), series.State)
 
-		seasons, err := m.seriesStorage.ListSeasons(ctx, storage.SeasonFilter{SeriesID: ptr.To(int64(series.ID))})
+		seasons, err := m.seriesStorage.ListSeasons(ctx, storage.SeasonFilter{SeriesID: ptr.To(int64(series.Series.ID))})
 		assert.Nil(t, err)
 		require.Len(t, seasons, 1)
-		assert.Equal(t, int32(series.ID), seasons[0].SeriesID)
-		assert.Equal(t, seasons[0].State, storage.SeasonStateMissing)
-		assert.Equal(t, int32(1), seasons[0].Monitored)
+		assert.Equal(t, int64(series.Series.ID), seasons[0].Season.SeriesID)
+		assert.Equal(t, string(storage.SeasonStateMissing), seasons[0].State)
+		assert.Equal(t, int64(1), seasons[0].Season.Monitored)
 
-		episodes, err := m.seriesStorage.ListEpisodes(ctx, storage.EpisodeFilter{SeasonID: ptr.To(int64(seasons[0].ID))})
+		episodes, err := m.seriesStorage.ListEpisodes(ctx, storage.EpisodeFilter{SeasonID: ptr.To(int64(seasons[0].Season.ID))})
 		assert.Nil(t, err)
 		require.Len(t, episodes, 1)
-		assert.Equal(t, int32(1), episodes[0].EpisodeNumber)
-		assert.Equal(t, int32(1), episodes[0].Monitored)
-		assert.Equal(t, storage.EpisodeStateMissing, episodes[0].State)
+		assert.Equal(t, int64(1), episodes[0].Episode.EpisodeNumber)
+		assert.Equal(t, int64(1), episodes[0].Episode.Monitored)
+		assert.Equal(t, string(storage.EpisodeStateMissing), episodes[0].State)
 	})
 }

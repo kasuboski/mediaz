@@ -3,6 +3,7 @@ package manager
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"errors"
 	"io"
 	"net/http"
@@ -12,7 +13,7 @@ import (
 
 	"github.com/kasuboski/mediaz/pkg/ptr"
 	storeMocks "github.com/kasuboski/mediaz/pkg/storage/mocks"
-	"github.com/kasuboski/mediaz/pkg/storage/model"
+	sqlcdb "github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 	"github.com/kasuboski/mediaz/pkg/tmdb"
 	tmdbMocks "github.com/kasuboski/mediaz/pkg/tmdb/mocks"
 	"github.com/stretchr/testify/assert"
@@ -26,13 +27,13 @@ func TestMetadataService_GetMovieMetadata(t *testing.T) {
 		store := newStore(t, ctx)
 
 		releaseDate, _ := time.Parse(tmdb.ReleaseDateFormat, "2020-06-01")
-		year := int32(2020)
-		_, err := store.CreateMovieMetadata(ctx, model.MovieMetadata{
+		year := int64(2020)
+		_, err := store.CreateMovieMetadata(ctx, sqlcdb.MovieMetadatum{
 			TmdbID:      100,
 			Title:       "Stored Movie",
 			Runtime:     120,
-			ReleaseDate: &releaseDate,
-			Year:        &year,
+			ReleaseDate: sql.NullTime{Time: releaseDate, Valid: true},
+			Year:        sql.NullInt64{Int64: year, Valid: true},
 		})
 		require.NoError(t, err)
 
@@ -40,13 +41,13 @@ func TestMetadataService_GetMovieMetadata(t *testing.T) {
 		got, err := svc.GetMovieMetadata(ctx, 100)
 		require.NoError(t, err)
 
-		assert.Equal(t, model.MovieMetadata{
+		assert.Equal(t, sqlcdb.MovieMetadatum{
 			ID:          1,
 			TmdbID:      100,
 			Title:       "Stored Movie",
 			Runtime:     120,
-			ReleaseDate: &releaseDate,
-			Year:        &year,
+			ReleaseDate: sql.NullTime{Time: releaseDate, Valid: true},
+			Year:        sql.NullInt64{Int64: year, Valid: true},
 		}, *got)
 	})
 
@@ -67,12 +68,12 @@ func TestMetadataService_GetMovieMetadata(t *testing.T) {
 		got, err := svc.GetMovieMetadata(ctx, 200)
 		require.NoError(t, err)
 
-		assert.Equal(t, model.MovieMetadata{
+		assert.Equal(t, sqlcdb.MovieMetadatum{
 			ID:       1,
 			TmdbID:   200,
 			Title:    "TMDB Movie",
 			Runtime:  90,
-			Overview: ptr.To("A great film"),
+			Overview: sql.NullString{String: "A great film", Valid: true},
 		}, *got)
 	})
 
@@ -81,7 +82,7 @@ func TestMetadataService_GetMovieMetadata(t *testing.T) {
 		ctrl := gomock.NewController(t)
 
 		store := storeMocks.NewMockStorage(ctrl)
-		store.EXPECT().GetMovieMetadataByTmdbID(ctx, gomock.Any()).Return(nil, errors.New("db error"))
+		store.EXPECT().GetMovieMetadataByTmdbID(ctx, gomock.Any()).Return(sqlcdb.MovieMetadatum{}, errors.New("db error"))
 
 		svc := NewMetadataService(nil, store, nil)
 		_, err := svc.GetMovieMetadata(ctx, 1)
@@ -109,7 +110,7 @@ func TestMetadataService_GetMovieMetadataByID(t *testing.T) {
 		ctx := context.Background()
 		store := newStore(t, ctx)
 
-		id, err := store.CreateMovieMetadata(ctx, model.MovieMetadata{
+		id, err := store.CreateMovieMetadata(ctx, sqlcdb.MovieMetadatum{
 			TmdbID:  42,
 			Title:   "By ID Movie",
 			Runtime: 95,
@@ -117,11 +118,11 @@ func TestMetadataService_GetMovieMetadataByID(t *testing.T) {
 		require.NoError(t, err)
 
 		svc := NewMetadataService(nil, store, nil)
-		got, err := svc.GetMovieMetadataByID(ctx, int32(id))
+		got, err := svc.GetMovieMetadataByID(ctx, id)
 		require.NoError(t, err)
 
-		assert.Equal(t, model.MovieMetadata{
-			ID:      int32(id),
+		assert.Equal(t, sqlcdb.MovieMetadatum{
+			ID:      int64(id),
 			TmdbID:  42,
 			Title:   "By ID Movie",
 			Runtime: 95,
@@ -144,7 +145,7 @@ func TestMetadataService_UpdateMovieMetadataFromTMDB(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		store := newStore(t, ctx)
 
-		id, err := store.CreateMovieMetadata(ctx, model.MovieMetadata{
+		id, err := store.CreateMovieMetadata(ctx, sqlcdb.MovieMetadatum{
 			TmdbID:  50,
 			Title:   "Old Title",
 			Runtime: 80,
@@ -163,22 +164,25 @@ func TestMetadataService_UpdateMovieMetadataFromTMDB(t *testing.T) {
 		got, err := svc.UpdateMovieMetadataFromTMDB(ctx, 50)
 		require.NoError(t, err)
 
-		assert.Equal(t, model.MovieMetadata{
-			ID:       int32(id),
+		assert.Equal(t, sqlcdb.MovieMetadatum{
+			ID:       int64(id),
 			TmdbID:   50,
 			Title:    "Updated Title",
 			Runtime:  85,
-			Overview: ptr.To("New overview"),
+			Overview: sql.NullString{String: "New overview", Valid: true},
 		}, *got)
 
-		fromStore, err := svc.GetMovieMetadataByID(ctx, int32(id))
+		fromStore, err := svc.GetMovieMetadataByID(ctx, id)
 		require.NoError(t, err)
-		assert.Equal(t, model.MovieMetadata{
-			ID:       int32(id),
-			TmdbID:   50,
-			Title:    "Updated Title",
-			Runtime:  85,
-			Overview: ptr.To("New overview"),
+		require.True(t, fromStore.LastInfoSync.Valid)
+		require.WithinDuration(t, time.Now().UTC(), fromStore.LastInfoSync.Time, 5*time.Second)
+		assert.Equal(t, sqlcdb.MovieMetadatum{
+			LastInfoSync: fromStore.LastInfoSync,
+			ID:           int64(id),
+			TmdbID:       50,
+			Title:        "Updated Title",
+			Runtime:      85,
+			Overview:     sql.NullString{String: "New overview", Valid: true},
 		}, *fromStore)
 	})
 
@@ -220,12 +224,12 @@ func TestMetadataService_GetSeriesMetadata(t *testing.T) {
 		store := newStore(t, ctx)
 
 		airDate, _ := time.Parse(tmdb.ReleaseDateFormat, "2021-03-15")
-		_, err := store.CreateSeriesMetadata(ctx, model.SeriesMetadata{
+		_, err := store.CreateSeriesMetadata(ctx, sqlcdb.SeriesMetadatum{
 			TmdbID:       500,
 			Title:        "Stored Series",
 			SeasonCount:  3,
 			EpisodeCount: 30,
-			FirstAirDate: &airDate,
+			FirstAirDate: sql.NullTime{Time: airDate, Valid: true},
 			Status:       "Ended",
 		})
 		require.NoError(t, err)
@@ -234,13 +238,13 @@ func TestMetadataService_GetSeriesMetadata(t *testing.T) {
 		got, err := svc.GetSeriesMetadata(ctx, 500)
 		require.NoError(t, err)
 
-		assert.Equal(t, model.SeriesMetadata{
+		assert.Equal(t, sqlcdb.SeriesMetadatum{
 			ID:           1,
 			TmdbID:       500,
 			Title:        "Stored Series",
 			SeasonCount:  3,
 			EpisodeCount: 30,
-			FirstAirDate: &airDate,
+			FirstAirDate: sql.NullTime{Time: airDate, Valid: true},
 			Status:       "Ended",
 		}, *got)
 	})
@@ -251,7 +255,7 @@ func TestMetadataService_GetSeriesMetadata(t *testing.T) {
 		store := newStore(t, ctx)
 
 		airDate, _ := time.Parse(tmdb.ReleaseDateFormat, "2022-01-10")
-		epRuntime := int32(44)
+		epRuntime := int64(44)
 
 		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
 		tmdbMock.EXPECT().GetSeriesDetails(ctx, 501).Return(&tmdb.SeriesDetails{
@@ -290,26 +294,26 @@ func TestMetadataService_GetSeriesMetadata(t *testing.T) {
 		series, err := svc.GetSeriesMetadata(ctx, 501)
 		require.NoError(t, err)
 
-		assert.Equal(t, model.SeriesMetadata{
+		assert.Equal(t, sqlcdb.SeriesMetadatum{
 			ID:           1,
 			TmdbID:       501,
 			Title:        "New Series",
 			SeasonCount:  1,
-			FirstAirDate: &airDate,
+			FirstAirDate: sql.NullTime{Time: airDate, Valid: true},
 			Status:       "Continuing",
-			Overview:     ptr.To(""),
+			Overview:     sql.NullString{String: "", Valid: true},
 		}, *series)
 
 		seasons, err := store.ListSeasonMetadataBySeriesMetadataID(ctx, 1)
 		require.NoError(t, err)
-		assert.Equal(t, []*model.SeasonMetadata{
-			{ID: 1, SeriesMetadataID: 1, TmdbID: 10, Title: "Season 1", Number: 1, AirDate: &airDate, Overview: ptr.To("")},
+		assert.Equal(t, []sqlcdb.SeasonMetadatum{
+			{ID: 1, SeriesMetadataID: 1, TmdbID: 10, Title: "Season 1", Number: 1, AirDate: sql.NullTime{Time: airDate, Valid: true}, Overview: sql.NullString{String: "", Valid: true}},
 		}, seasons)
 
 		episodes, err := store.ListEpisodeMetadataBySeasonMetadataID(ctx, 1)
 		require.NoError(t, err)
-		assert.Equal(t, []*model.EpisodeMetadata{
-			{ID: 1, SeasonMetadataID: 1, TmdbID: 100, Title: "Pilot", Number: 1, AirDate: &airDate, Runtime: &epRuntime, Overview: ptr.To("Episode overview")},
+		assert.Equal(t, []sqlcdb.EpisodeMetadatum{
+			{ID: 1, SeasonMetadataID: 1, TmdbID: 100, Title: "Pilot", Number: 1, AirDate: sql.NullTime{Time: airDate, Valid: true}, Runtime: sql.NullInt64{Int64: epRuntime, Valid: true}, Overview: sql.NullString{String: "Episode overview", Valid: true}},
 		}, episodes)
 	})
 
@@ -318,7 +322,7 @@ func TestMetadataService_GetSeriesMetadata(t *testing.T) {
 		ctrl := gomock.NewController(t)
 
 		store := storeMocks.NewMockStorage(ctrl)
-		store.EXPECT().GetSeriesMetadataByTmdbID(ctx, gomock.Any()).Return(nil, errors.New("storage down"))
+		store.EXPECT().GetSeriesMetadataByTmdbID(ctx, gomock.Any()).Return(sqlcdb.SeriesMetadatum{}, errors.New("storage down"))
 
 		svc := NewMetadataService(nil, nil, store)
 		_, err := svc.GetSeriesMetadata(ctx, 502)
@@ -334,12 +338,12 @@ func TestMetadataService_UpdateSeriesMetadataFromTMDB(t *testing.T) {
 		store := newStore(t, ctx)
 
 		airDate, _ := time.Parse(tmdb.ReleaseDateFormat, "2019-04-14")
-		_, err := store.CreateSeriesMetadata(ctx, model.SeriesMetadata{
+		_, err := store.CreateSeriesMetadata(ctx, sqlcdb.SeriesMetadatum{
 			TmdbID:       600,
 			Title:        "Old Title",
 			SeasonCount:  7,
 			EpisodeCount: 73,
-			FirstAirDate: &airDate,
+			FirstAirDate: sql.NullTime{Time: airDate, Valid: true},
 			Status:       "",
 		})
 		require.NoError(t, err)
@@ -363,14 +367,14 @@ func TestMetadataService_UpdateSeriesMetadataFromTMDB(t *testing.T) {
 		got, err := svc.UpdateSeriesMetadataFromTMDB(ctx, 600)
 		require.NoError(t, err)
 
-		assert.Equal(t, model.SeriesMetadata{
+		assert.Equal(t, sqlcdb.SeriesMetadatum{
 			ID:           1,
 			TmdbID:       600,
 			Title:        "Updated Series",
 			SeasonCount:  8,
-			FirstAirDate: &airDate,
+			FirstAirDate: sql.NullTime{Time: airDate, Valid: true},
 			Status:       "Ended",
-			Overview:     ptr.To(""),
+			Overview:     sql.NullString{String: "", Valid: true},
 		}, *got)
 	})
 
@@ -412,9 +416,9 @@ func TestMetadataService_RefreshMovieMetadata(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		store := newStore(t, ctx)
 
-		_, err := store.CreateMovieMetadata(ctx, model.MovieMetadata{TmdbID: 10, Title: "Movie A", Runtime: 90})
+		_, err := store.CreateMovieMetadata(ctx, sqlcdb.MovieMetadatum{TmdbID: 10, Title: "Movie A", Runtime: 90})
 		require.NoError(t, err)
-		_, err = store.CreateMovieMetadata(ctx, model.MovieMetadata{TmdbID: 11, Title: "Movie B", Runtime: 100})
+		_, err = store.CreateMovieMetadata(ctx, sqlcdb.MovieMetadatum{TmdbID: 11, Title: "Movie B", Runtime: 100})
 		require.NoError(t, err)
 
 		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
@@ -431,11 +435,15 @@ func TestMetadataService_RefreshMovieMetadata(t *testing.T) {
 
 		a, err := svc.GetMovieMetadata(ctx, 10)
 		require.NoError(t, err)
-		assert.Equal(t, model.MovieMetadata{ID: 1, TmdbID: 10, Title: "Movie A Updated", Runtime: 91}, *a)
+		require.True(t, a.LastInfoSync.Valid)
+		require.WithinDuration(t, time.Now().UTC(), a.LastInfoSync.Time, 5*time.Second)
+		assert.Equal(t, sqlcdb.MovieMetadatum{ID: 1, TmdbID: 10, Title: "Movie A Updated", Runtime: 91, LastInfoSync: a.LastInfoSync}, *a)
 
 		b, err := svc.GetMovieMetadata(ctx, 11)
 		require.NoError(t, err)
-		assert.Equal(t, model.MovieMetadata{ID: 2, TmdbID: 11, Title: "Movie B Updated", Runtime: 101}, *b)
+		require.True(t, b.LastInfoSync.Valid)
+		require.WithinDuration(t, time.Now().UTC(), b.LastInfoSync.Time, 5*time.Second)
+		assert.Equal(t, sqlcdb.MovieMetadatum{ID: 2, TmdbID: 11, Title: "Movie B Updated", Runtime: 101, LastInfoSync: b.LastInfoSync}, *b)
 	})
 
 	t.Run("refreshes specific movie IDs", func(t *testing.T) {
@@ -443,7 +451,7 @@ func TestMetadataService_RefreshMovieMetadata(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		store := newStore(t, ctx)
 
-		_, err := store.CreateMovieMetadata(ctx, model.MovieMetadata{TmdbID: 20, Title: "Movie C", Runtime: 110})
+		_, err := store.CreateMovieMetadata(ctx, sqlcdb.MovieMetadatum{TmdbID: 20, Title: "Movie C", Runtime: 110})
 		require.NoError(t, err)
 
 		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
@@ -457,7 +465,9 @@ func TestMetadataService_RefreshMovieMetadata(t *testing.T) {
 
 		got, err := svc.GetMovieMetadata(ctx, 20)
 		require.NoError(t, err)
-		assert.Equal(t, model.MovieMetadata{ID: 1, TmdbID: 20, Title: "Movie C Refreshed", Runtime: 112}, *got)
+		require.True(t, got.LastInfoSync.Valid)
+		require.WithinDuration(t, time.Now().UTC(), got.LastInfoSync.Time, 5*time.Second)
+		assert.Equal(t, sqlcdb.MovieMetadatum{ID: 1, TmdbID: 20, Title: "Movie C Refreshed", Runtime: 112, LastInfoSync: got.LastInfoSync}, *got)
 	})
 
 	t.Run("returns aggregated error when UpdateMovieMetadataFromTMDB fails for explicit IDs", func(t *testing.T) {
@@ -480,7 +490,7 @@ func TestMetadataService_RefreshMovieMetadata(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		store := newStore(t, ctx)
 
-		_, err := store.CreateMovieMetadata(ctx, model.MovieMetadata{TmdbID: 40, Title: "Failing Movie", Runtime: 90})
+		_, err := store.CreateMovieMetadata(ctx, sqlcdb.MovieMetadatum{TmdbID: 40, Title: "Failing Movie", Runtime: 90})
 		require.NoError(t, err)
 
 		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
@@ -512,10 +522,10 @@ func TestMetadataService_RefreshSeriesMetadata(t *testing.T) {
 		store := newStore(t, ctx)
 
 		airDate, _ := time.Parse(tmdb.ReleaseDateFormat, "2020-01-01")
-		_, err := store.CreateSeriesMetadata(ctx, model.SeriesMetadata{
+		_, err := store.CreateSeriesMetadata(ctx, sqlcdb.SeriesMetadatum{
 			TmdbID:       700,
 			Title:        "Ongoing Show",
-			FirstAirDate: &airDate,
+			FirstAirDate: sql.NullTime{Time: airDate, Valid: true},
 			Status:       "",
 		})
 		require.NoError(t, err)
@@ -540,14 +550,16 @@ func TestMetadataService_RefreshSeriesMetadata(t *testing.T) {
 
 		got, err := svc.GetSeriesMetadata(ctx, 700)
 		require.NoError(t, err)
-		got.LastInfoSync = nil
-		assert.Equal(t, model.SeriesMetadata{
+		require.True(t, got.LastInfoSync.Valid)
+		require.WithinDuration(t, time.Now().UTC(), got.LastInfoSync.Time, 5*time.Second)
+		assert.Equal(t, sqlcdb.SeriesMetadatum{
+			LastInfoSync: got.LastInfoSync,
 			ID:           1,
 			TmdbID:       700,
 			Title:        "Ongoing Show Refreshed",
-			FirstAirDate: &airDate,
+			FirstAirDate: sql.NullTime{Time: airDate, Valid: true},
 			Status:       "Continuing",
-			Overview:     ptr.To(""),
+			Overview:     sql.NullString{String: "", Valid: true},
 		}, *got)
 	})
 
@@ -557,10 +569,10 @@ func TestMetadataService_RefreshSeriesMetadata(t *testing.T) {
 		store := newStore(t, ctx)
 
 		airDate, _ := time.Parse(tmdb.ReleaseDateFormat, "2018-06-01")
-		_, err := store.CreateSeriesMetadata(ctx, model.SeriesMetadata{
+		_, err := store.CreateSeriesMetadata(ctx, sqlcdb.SeriesMetadatum{
 			TmdbID:       800,
 			Title:        "Show To Refresh",
-			FirstAirDate: &airDate,
+			FirstAirDate: sql.NullTime{Time: airDate, Valid: true},
 			Status:       "Ended",
 		})
 		require.NoError(t, err)
@@ -585,14 +597,16 @@ func TestMetadataService_RefreshSeriesMetadata(t *testing.T) {
 
 		got, err := svc.GetSeriesMetadata(ctx, 800)
 		require.NoError(t, err)
-		got.LastInfoSync = nil
-		assert.Equal(t, model.SeriesMetadata{
+		require.True(t, got.LastInfoSync.Valid)
+		require.WithinDuration(t, time.Now().UTC(), got.LastInfoSync.Time, 5*time.Second)
+		assert.Equal(t, sqlcdb.SeriesMetadatum{
+			LastInfoSync: got.LastInfoSync,
 			ID:           1,
 			TmdbID:       800,
 			Title:        "Show Refreshed",
-			FirstAirDate: &airDate,
+			FirstAirDate: sql.NullTime{Time: airDate, Valid: true},
 			Status:       "Ended",
-			Overview:     ptr.To(""),
+			Overview:     sql.NullString{String: "", Valid: true},
 		}, *got)
 	})
 
@@ -617,10 +631,10 @@ func TestMetadataService_RefreshSeriesMetadata(t *testing.T) {
 		store := newStore(t, ctx)
 
 		airDate, _ := time.Parse(tmdb.ReleaseDateFormat, "2021-03-01")
-		_, err := store.CreateSeriesMetadata(ctx, model.SeriesMetadata{
+		_, err := store.CreateSeriesMetadata(ctx, sqlcdb.SeriesMetadatum{
 			TmdbID:       903,
 			Title:        "Failing Show",
-			FirstAirDate: &airDate,
+			FirstAirDate: sql.NullTime{Time: airDate, Valid: true},
 			Status:       "",
 		})
 		require.NoError(t, err)
@@ -760,7 +774,7 @@ func TestMetadataService_RefreshSeriesMetadataFromTMDB(t *testing.T) {
 		store := newStore(t, ctx)
 
 		airDate, _ := time.Parse(tmdb.ReleaseDateFormat, "2015-04-12")
-		epRuntime := int32(60)
+		epRuntime := int64(60)
 
 		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
 		tmdbMock.EXPECT().GetSeriesDetails(ctx, 900).Return(&tmdb.SeriesDetails{
@@ -792,26 +806,26 @@ func TestMetadataService_RefreshSeriesMetadataFromTMDB(t *testing.T) {
 		series, err := svc.RefreshSeriesMetadataFromTMDB(ctx, 900)
 		require.NoError(t, err)
 
-		assert.Equal(t, model.SeriesMetadata{
+		assert.Equal(t, sqlcdb.SeriesMetadatum{
 			ID:           1,
 			TmdbID:       900,
 			Title:        "Fresh Series",
 			SeasonCount:  1,
-			FirstAirDate: &airDate,
+			FirstAirDate: sql.NullTime{Time: airDate, Valid: true},
 			Status:       "Ended",
-			Overview:     ptr.To(""),
+			Overview:     sql.NullString{String: "", Valid: true},
 		}, *series)
 
 		seasons, err := store.ListSeasonMetadataBySeriesMetadataID(ctx, 1)
 		require.NoError(t, err)
-		assert.Equal(t, []*model.SeasonMetadata{
-			{ID: 1, SeriesMetadataID: 1, TmdbID: 20, Title: "Season 1", Number: 1, AirDate: &airDate, Overview: ptr.To("")},
+		assert.Equal(t, []sqlcdb.SeasonMetadatum{
+			{ID: 1, SeriesMetadataID: 1, TmdbID: 20, Title: "Season 1", Number: 1, AirDate: sql.NullTime{Time: airDate, Valid: true}, Overview: sql.NullString{String: "", Valid: true}},
 		}, seasons)
 
 		episodes, err := store.ListEpisodeMetadataBySeasonMetadataID(ctx, 1)
 		require.NoError(t, err)
-		assert.Equal(t, []*model.EpisodeMetadata{
-			{ID: 1, SeasonMetadataID: 1, TmdbID: 200, Title: "Episode One", Number: 1, AirDate: &airDate, Runtime: &epRuntime, Overview: ptr.To("")},
+		assert.Equal(t, []sqlcdb.EpisodeMetadatum{
+			{ID: 1, SeasonMetadataID: 1, TmdbID: 200, Title: "Episode One", Number: 1, AirDate: sql.NullTime{Time: airDate, Valid: true}, Runtime: sql.NullInt64{Int64: epRuntime, Valid: true}, Overview: sql.NullString{String: "", Valid: true}},
 		}, episodes)
 	})
 }
@@ -823,7 +837,7 @@ func TestFromMediaDetails(t *testing.T) {
 			Title:   ptr.To("Test Movie"),
 			Runtime: ptr.To(110),
 		})
-		assert.Equal(t, model.MovieMetadata{TmdbID: 42, Title: "Test Movie", Runtime: 110}, got)
+		assert.Equal(t, sqlcdb.MovieMetadatum{TmdbID: 42, Title: "Test Movie", Runtime: 110}, got)
 	})
 
 	t.Run("maps poster path to images", func(t *testing.T) {
@@ -833,7 +847,7 @@ func TestFromMediaDetails(t *testing.T) {
 			Runtime:    ptr.To(90),
 			PosterPath: ptr.To("/poster.jpg"),
 		})
-		assert.Equal(t, model.MovieMetadata{TmdbID: 1, Title: "Movie", Runtime: 90, Images: "/poster.jpg"}, got)
+		assert.Equal(t, sqlcdb.MovieMetadatum{TmdbID: 1, Title: "Movie", Runtime: 90, Images: "/poster.jpg"}, got)
 	})
 
 	t.Run("maps genres as comma-separated string", func(t *testing.T) {
@@ -844,7 +858,7 @@ func TestFromMediaDetails(t *testing.T) {
 			Runtime: ptr.To(100),
 			Genres:  &genres,
 		})
-		assert.Equal(t, model.MovieMetadata{TmdbID: 1, Title: "Movie", Runtime: 100, Genres: ptr.To("Action,Drama")}, got)
+		assert.Equal(t, sqlcdb.MovieMetadatum{TmdbID: 1, Title: "Movie", Runtime: 100, Genres: sql.NullString{String: "Action,Drama", Valid: true}}, got)
 	})
 
 	t.Run("maps first production company to studio", func(t *testing.T) {
@@ -855,7 +869,7 @@ func TestFromMediaDetails(t *testing.T) {
 			Runtime:             ptr.To(100),
 			ProductionCompanies: &companies,
 		})
-		assert.Equal(t, model.MovieMetadata{TmdbID: 1, Title: "Movie", Runtime: 100, Studio: ptr.To("Studio A")}, got)
+		assert.Equal(t, sqlcdb.MovieMetadatum{TmdbID: 1, Title: "Movie", Runtime: 100, Studio: sql.NullString{String: "Studio A", Valid: true}}, got)
 	})
 
 	t.Run("maps collection info", func(t *testing.T) {
@@ -866,25 +880,25 @@ func TestFromMediaDetails(t *testing.T) {
 			Runtime:             ptr.To(100),
 			BelongsToCollection: &coll,
 		})
-		assert.Equal(t, model.MovieMetadata{
+		assert.Equal(t, sqlcdb.MovieMetadatum{
 			TmdbID:           1,
 			Title:            "Movie",
 			Runtime:          100,
-			CollectionTmdbID: ptr.To(int32(99)),
-			CollectionTitle:  ptr.To("The Collection"),
+			CollectionTmdbID: sql.NullInt64{Int64: 99, Valid: true},
+			CollectionTitle:  sql.NullString{String: "The Collection", Valid: true},
 		}, got)
 	})
 
 	t.Run("maps release date and year", func(t *testing.T) {
 		releaseDate, _ := time.Parse(tmdb.ReleaseDateFormat, "2021-07-15")
-		year := int32(2021)
+		year := int64(2021)
 		got := FromMediaDetails(tmdb.MediaDetails{
 			ID:          1,
 			Title:       ptr.To("Movie"),
 			Runtime:     ptr.To(100),
 			ReleaseDate: ptr.To("2021-07-15"),
 		})
-		assert.Equal(t, model.MovieMetadata{TmdbID: 1, Title: "Movie", Runtime: 100, ReleaseDate: &releaseDate, Year: &year}, got)
+		assert.Equal(t, sqlcdb.MovieMetadatum{TmdbID: 1, Title: "Movie", Runtime: 100, ReleaseDate: sql.NullTime{Time: releaseDate, Valid: true}, Year: sql.NullInt64{Int64: year, Valid: true}}, got)
 	})
 
 	t.Run("ignores invalid release date", func(t *testing.T) {
@@ -894,7 +908,7 @@ func TestFromMediaDetails(t *testing.T) {
 			Runtime:     ptr.To(100),
 			ReleaseDate: ptr.To("not-a-date"),
 		})
-		assert.Equal(t, model.MovieMetadata{TmdbID: 1, Title: "Movie", Runtime: 100}, got)
+		assert.Equal(t, sqlcdb.MovieMetadatum{TmdbID: 1, Title: "Movie", Runtime: 100}, got)
 	})
 }
 
@@ -911,14 +925,14 @@ func TestFromSeriesDetails(t *testing.T) {
 			Overview:         "A cool show",
 		})
 		require.NoError(t, err)
-		assert.Equal(t, model.SeriesMetadata{
+		assert.Equal(t, sqlcdb.SeriesMetadatum{
 			TmdbID:       10,
 			Title:        "My Show",
 			SeasonCount:  3,
 			EpisodeCount: 30,
 			Status:       "Continuing",
-			FirstAirDate: &airDate,
-			Overview:     ptr.To("A cool show"),
+			FirstAirDate: sql.NullTime{Time: airDate, Valid: true},
+			Overview:     sql.NullString{String: "A cool show", Valid: true},
 		}, got)
 	})
 
@@ -931,13 +945,13 @@ func TestFromSeriesDetails(t *testing.T) {
 			PosterPath:   "/poster.jpg",
 		})
 		require.NoError(t, err)
-		assert.Equal(t, model.SeriesMetadata{TmdbID: 1, Title: "Show", FirstAirDate: &airDate, Overview: ptr.To(""), PosterPath: ptr.To("/poster.jpg")}, got)
+		assert.Equal(t, sqlcdb.SeriesMetadatum{TmdbID: 1, Title: "Show", FirstAirDate: sql.NullTime{Time: airDate, Valid: true}, Overview: sql.NullString{String: "", Valid: true}, PosterPath: sql.NullString{String: "/poster.jpg", Valid: true}}, got)
 	})
 
 	t.Run("nil poster and air date when empty", func(t *testing.T) {
 		got, err := FromSeriesDetails(tmdb.SeriesDetails{ID: 1, Name: "Show"})
 		require.NoError(t, err)
-		assert.Equal(t, model.SeriesMetadata{TmdbID: 1, Title: "Show", Overview: ptr.To("")}, got)
+		assert.Equal(t, sqlcdb.SeriesMetadatum{TmdbID: 1, Title: "Show", Overview: sql.NullString{String: "", Valid: true}}, got)
 	})
 
 	t.Run("returns error on invalid first air date", func(t *testing.T) {
@@ -956,24 +970,24 @@ func TestFromSeriesSeasons(t *testing.T) {
 			AirDate:      "2022-05-10",
 			Overview:     "Second season",
 		})
-		assert.Equal(t, model.SeasonMetadata{TmdbID: 55, Title: "Season 2", Number: 2, AirDate: &airDate, Overview: ptr.To("Second season")}, got)
+		assert.Equal(t, sqlcdb.SeasonMetadatum{TmdbID: 55, Title: "Season 2", Number: 2, AirDate: sql.NullTime{Time: airDate, Valid: true}, Overview: sql.NullString{String: "Second season", Valid: true}}, got)
 	})
 
 	t.Run("nil air date when empty", func(t *testing.T) {
 		got := FromSeriesSeasons(tmdb.Season{ID: 1, Name: "Season 1", SeasonNumber: 1})
-		assert.Equal(t, model.SeasonMetadata{TmdbID: 1, Title: "Season 1", Number: 1, Overview: ptr.To("")}, got)
+		assert.Equal(t, sqlcdb.SeasonMetadatum{TmdbID: 1, Title: "Season 1", Number: 1, Overview: sql.NullString{String: "", Valid: true}}, got)
 	})
 
 	t.Run("nil air date on invalid date", func(t *testing.T) {
 		got := FromSeriesSeasons(tmdb.Season{ID: 1, Name: "Season 1", SeasonNumber: 1, AirDate: "not-a-date"})
-		assert.Equal(t, model.SeasonMetadata{TmdbID: 1, Title: "Season 1", Number: 1, Overview: ptr.To("")}, got)
+		assert.Equal(t, sqlcdb.SeasonMetadatum{TmdbID: 1, Title: "Season 1", Number: 1, Overview: sql.NullString{String: "", Valid: true}}, got)
 	})
 }
 
 func TestFromSeriesEpisodes(t *testing.T) {
 	t.Run("maps basic episode fields", func(t *testing.T) {
 		airDate, _ := time.Parse(tmdb.ReleaseDateFormat, "2022-05-17")
-		runtime := int32(45)
+		runtime := int64(45)
 		got := FromSeriesEpisodes(tmdb.Episode{
 			ID:            77,
 			Name:          "The Pilot",
@@ -982,25 +996,25 @@ func TestFromSeriesEpisodes(t *testing.T) {
 			Runtime:       45,
 			Overview:      "First episode",
 		})
-		assert.Equal(t, model.EpisodeMetadata{TmdbID: 77, Title: "The Pilot", Number: 1, AirDate: &airDate, Runtime: &runtime, Overview: ptr.To("First episode")}, got)
+		assert.Equal(t, sqlcdb.EpisodeMetadatum{TmdbID: 77, Title: "The Pilot", Number: 1, AirDate: sql.NullTime{Time: airDate, Valid: true}, Runtime: sql.NullInt64{Int64: runtime, Valid: true}, Overview: sql.NullString{String: "First episode", Valid: true}}, got)
 	})
 
 	t.Run("maps still path when non-empty", func(t *testing.T) {
-		runtime := int32(0)
+		runtime := int64(0)
 		got := FromSeriesEpisodes(tmdb.Episode{ID: 1, Name: "Ep", EpisodeNumber: 1, StillPath: "/still.jpg"})
-		assert.Equal(t, model.EpisodeMetadata{TmdbID: 1, Title: "Ep", Number: 1, Runtime: &runtime, Overview: ptr.To(""), StillPath: ptr.To("/still.jpg")}, got)
+		assert.Equal(t, sqlcdb.EpisodeMetadatum{TmdbID: 1, Title: "Ep", Number: 1, Runtime: sql.NullInt64{Int64: runtime, Valid: true}, Overview: sql.NullString{String: "", Valid: true}, StillPath: sql.NullString{String: "/still.jpg", Valid: true}}, got)
 	})
 
 	t.Run("nil still path and air date when empty", func(t *testing.T) {
-		runtime := int32(0)
+		runtime := int64(0)
 		got := FromSeriesEpisodes(tmdb.Episode{ID: 1, Name: "Ep", EpisodeNumber: 1})
-		assert.Equal(t, model.EpisodeMetadata{TmdbID: 1, Title: "Ep", Number: 1, Runtime: &runtime, Overview: ptr.To("")}, got)
+		assert.Equal(t, sqlcdb.EpisodeMetadatum{TmdbID: 1, Title: "Ep", Number: 1, Runtime: sql.NullInt64{Int64: runtime, Valid: true}, Overview: sql.NullString{String: "", Valid: true}}, got)
 	})
 
 	t.Run("nil air date on invalid date", func(t *testing.T) {
-		runtime := int32(30)
+		runtime := int64(30)
 		got := FromSeriesEpisodes(tmdb.Episode{ID: 1, Name: "Ep", EpisodeNumber: 1, AirDate: "bad", Runtime: 30})
-		assert.Equal(t, model.EpisodeMetadata{TmdbID: 1, Title: "Ep", Number: 1, Runtime: &runtime, Overview: ptr.To("")}, got)
+		assert.Equal(t, sqlcdb.EpisodeMetadatum{TmdbID: 1, Title: "Ep", Number: 1, Runtime: sql.NullInt64{Int64: runtime, Valid: true}, Overview: sql.NullString{String: "", Valid: true}}, got)
 	})
 }
 

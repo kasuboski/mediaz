@@ -118,3 +118,35 @@ Configuration uses Viper with this priority order:
 4. Default values
 
 See `--help` on any command for specific configuration options.
+
+## Database Reset (Breaking Change)
+
+This release ships a single squashed baseline migration. Databases created by
+earlier mediaz releases (old migration versions 1-7, or databases from before
+the migration system existed) are **not** supported and are **not** upgraded
+automatically.
+
+Startup refuses databases with migration versions above the new baseline (for
+example, version 7) and nonempty databases without migration history, with an
+error that includes the database file path and reset instructions. An old
+version-1 database cannot be distinguished by its version number alone: reset
+all databases created by earlier releases, even if startup does not refuse them.
+To upgrade:
+
+1. Stop mediaz.
+2. Back up the database if needed, then delete it yourself (the path from
+   `storage.filePath` / `MEDIAZ_STORAGE_FILEPATH`, default `mediaz.sqlite`).
+   With mediaz stopped, also remove any matching `-wal` and `-shm` sidecars;
+   do not restore old sidecars alongside the recreated database.
+3. Restart mediaz — the database is recreated at the baseline schema version
+   with default quality profiles and definitions.
+
+Media files in the configured library directories are **never** touched; only
+the database index is recreated. This discards database-only settings and
+history (including configured indexers, download clients, monitoring choices,
+and custom quality profiles); configure them again after the reset. mediaz
+never deletes the database file itself.
+
+The legacy `storage.schemas` and `storage.tableValueSchemas` configuration
+options have been removed; the schema now comes solely from the embedded
+baseline migration.

@@ -3,6 +3,7 @@ package manager
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"io"
@@ -22,7 +23,7 @@ import (
 	"github.com/kasuboski/mediaz/pkg/ptr"
 	"github.com/kasuboski/mediaz/pkg/storage"
 	storageMocks "github.com/kasuboski/mediaz/pkg/storage/mocks"
-	"github.com/kasuboski/mediaz/pkg/storage/model"
+	sqlcdb "github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 	mediaSqlite "github.com/kasuboski/mediaz/pkg/storage/sqlite"
 	"github.com/kasuboski/mediaz/pkg/tmdb"
 	tmdbMocks "github.com/kasuboski/mediaz/pkg/tmdb/mocks"
@@ -35,49 +36,38 @@ import (
 func TestMediaManager_updateEpisodeState(t *testing.T) {
 	t.Run("update episode state", func(t *testing.T) {
 		ctx := context.Background()
-		store, err := mediaSqlite.New(context.Background(), ":memory:")
+		store, err := mediaSqlite.New(ctx, ":memory:")
 		require.NoError(t, err)
 
-		schemas, err := storage.ReadSchemaFiles("../storage/sqlite/schema/schema.sql", "../storage/sqlite/schema/defaults.sql")
+		seriesMetadataID, err := store.CreateSeriesMetadata(ctx, sqlcdb.SeriesMetadatum{TmdbID: 1, Title: "Series"})
 		require.NoError(t, err)
-		require.NotNil(t, store)
-
-		err = store.Init(ctx, schemas...)
+		seriesID, err := store.CreateSeries(ctx, sqlcdb.Series{QualityProfileID: 1, SeriesMetadataID: sql.NullInt64{Int64: seriesMetadataID, Valid: true}}, storage.SeriesStateMissing)
+		require.NoError(t, err)
+		seasonMetadataID, err := store.CreateSeasonMetadata(ctx, sqlcdb.SeasonMetadatum{SeriesMetadataID: seriesMetadataID, Title: "Season 1", Number: 1})
+		require.NoError(t, err)
+		seasonID, err := store.CreateSeason(ctx, sqlcdb.Season{SeriesID: seriesID, SeasonNumber: 1, SeasonMetadataID: sql.NullInt64{Int64: seasonMetadataID, Valid: true}}, storage.SeasonStateMissing)
+		require.NoError(t, err)
+		downloadClientID, err := store.CreateDownloadClient(ctx, sqlcdb.DownloadClient{Implementation: "transmission", Type: "torrent", Host: "localhost", Port: 9091, Scheme: "http"})
+		require.NoError(t, err)
+		episodeMetadataID, err := store.CreateEpisodeMetadata(ctx, sqlcdb.EpisodeMetadatum{TmdbID: 1, Title: "Episode 1", Number: 1, SeasonMetadataID: seasonMetadataID})
+		require.NoError(t, err)
+		episode := sqlcdb.Episode{SeasonID: seasonID, EpisodeNumber: 1, EpisodeMetadataID: sql.NullInt64{Int64: episodeMetadataID, Valid: true}}
+		episodeID, err := store.CreateEpisode(ctx, episode, storage.EpisodeStateMissing)
 		require.NoError(t, err)
 
-		manager := MediaManager{
-			seriesStorage: store,
-		}
-
-		episode := storage.Episode{
-			Episode: model.Episode{
-				SeasonID:          1,
-				EpisodeNumber:     1,
-				EpisodeMetadataID: ptr.To(int32(1)),
-			},
-		}
-
-		episodeID, err := manager.seriesStorage.CreateEpisode(ctx, episode, storage.EpisodeStateMissing)
-		require.NoError(t, err)
-		assert.Equal(t, int64(1), episodeID)
-
-		episode.ID = int32(episodeID)
-		err = manager.updateEpisodeState(ctx, episode, storage.EpisodeStateDownloading, &storage.TransitionStateMetadata{
-			DownloadID:             ptr.To("123"),
-			DownloadClientID:       ptr.To(int32(2)),
-			IsEntireSeasonDownload: ptr.To(true),
+		manager := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
+		err = manager.updateEpisodeState(ctx, sqlcdb.ListEpisodesRow{Episode: sqlcdb.Episode{ID: episodeID, SeasonID: seasonID, EpisodeNumber: 1}, State: string(storage.EpisodeStateMissing)}, storage.EpisodeStateDownloading, &storage.TransitionStateMetadata{
+			DownloadID: ptr.To("123"), DownloadClientID: ptr.To(downloadClientID), IsEntireSeasonDownload: ptr.To(true),
 		})
 		require.NoError(t, err)
 
-		foundEpisode, err := store.GetEpisodeByID(ctx, int64(episode.ID))
+		foundEpisode, err := store.GetEpisodeByID(ctx, episodeID)
 		require.NoError(t, err)
-		require.NotNil(t, foundEpisode)
-
-		assert.Equal(t, storage.EpisodeStateDownloading, foundEpisode.State)
-		assert.Equal(t, int32(2), foundEpisode.DownloadClientID)
-		assert.Equal(t, "123", foundEpisode.DownloadID)
-		assert.Equal(t, int32(1), foundEpisode.SeasonID)
-		assert.Equal(t, int32(1), foundEpisode.EpisodeNumber)
+		assert.Equal(t, sql.NullString{String: string(storage.EpisodeStateDownloading), Valid: true}, foundEpisode.State)
+		assert.Equal(t, sql.NullInt64{Int64: downloadClientID, Valid: true}, foundEpisode.DownloadClientID)
+		assert.Equal(t, sql.NullString{String: "123", Valid: true}, foundEpisode.DownloadID)
+		assert.Equal(t, seasonID, foundEpisode.Episode.SeasonID)
+		assert.Equal(t, int64(1), foundEpisode.Episode.EpisodeNumber)
 	})
 }
 
@@ -87,11 +77,11 @@ func TestMediaManager_reconcileMissingEpisodes(t *testing.T) {
 		defer ctrl.Finish()
 
 		ctx := context.Background()
-		store := newStore(t, ctx)
+		store := newTVReconcileStore(t, ctx, true)
 
 		mockDownloadClient := downloadMock.NewMockDownloadClient(ctrl)
 		mockFactory := downloadMock.NewMockFactory(ctrl)
-		downloadClientModel := model.DownloadClient{
+		downloadClientModel := sqlcdb.DownloadClient{
 			ID:             2,
 			Implementation: "transmission",
 			Type:           "torrent",
@@ -99,8 +89,12 @@ func TestMediaManager_reconcileMissingEpisodes(t *testing.T) {
 			Host:           "transmission",
 			Scheme:         "http",
 		}
+		_, errClient := store.CreateDownloadClient(ctx, downloadClientModel)
+		require.NoError(t, errClient)
+		_, errClient = store.CreateDownloadClient(ctx, downloadClientModel)
+		require.NoError(t, errClient)
 
-		snapshot := newReconcileSnapshot([]model.Indexer{{ID: 1}}, []*model.DownloadClient{&downloadClientModel})
+		snapshot := newReconcileSnapshot([]sqlcdb.Indexer{{ID: 1}}, []sqlcdb.DownloadClient{downloadClientModel})
 
 		mockFactory.EXPECT().NewDownloadClient(downloadClientModel).Return(mockDownloadClient, nil)
 		mockFactory.EXPECT().NewDownloadClient(downloadClientModel).Return(mockDownloadClient, nil)
@@ -113,72 +107,72 @@ func TestMediaManager_reconcileMissingEpisodes(t *testing.T) {
 			Name: "test download",
 		}, nil)
 
-		episodeMetadata := model.EpisodeMetadata{
+		episodeMetadata := sqlcdb.EpisodeMetadatum{SeasonMetadataID: 1,
 			TmdbID: 1,
 			Title:  "Test Episode",
 			Number: 1,
 			// time in the past
-			AirDate: ptr.To(snapshot.time.Add(time.Hour * -2)),
-			Runtime: ptr.To(int32(42)),
+			AirDate: sql.NullTime{Time: snapshot.time.Add(time.Hour * -2), Valid: true},
+			Runtime: sql.NullInt64{Int64: 42, Valid: true},
 		}
 
 		metadataID1, err := store.CreateEpisodeMetadata(ctx, episodeMetadata)
 		require.NoError(t, err)
 
-		episode1 := storage.Episode{
-			Episode: model.Episode{
+		episode1 := sqlcdb.ListEpisodesRow{
+			Episode: sqlcdb.Episode{
 				SeasonID:          1,
 				EpisodeNumber:     1,
-				EpisodeMetadataID: ptr.To(int32(metadataID1)),
+				EpisodeMetadataID: sql.NullInt64{Int64: metadataID1, Valid: true},
 			},
 		}
 
-		_, err = store.CreateEpisode(ctx, episode1, storage.EpisodeStateMissing)
+		_, err = store.CreateEpisode(ctx, episode1.Episode, storage.EpisodeStateMissing)
 		require.NoError(t, err)
 
-		episodeMetadata = model.EpisodeMetadata{
+		episodeMetadata = sqlcdb.EpisodeMetadatum{SeasonMetadataID: 1,
 			TmdbID: 2,
 			Title:  "Test Episode 2",
 			Number: 2,
 			// time in the past
-			AirDate: ptr.To(snapshot.time.Add(time.Hour * -2)),
-			Runtime: ptr.To(int32(42)),
+			AirDate: sql.NullTime{Time: snapshot.time.Add(time.Hour * -2), Valid: true},
+			Runtime: sql.NullInt64{Int64: 42, Valid: true},
 		}
 
 		metadataID2, err := store.CreateEpisodeMetadata(ctx, episodeMetadata)
 		require.NoError(t, err)
 
-		episode2 := storage.Episode{
-			Episode: model.Episode{
+		episode2 := sqlcdb.ListEpisodesRow{
+			Episode: sqlcdb.Episode{
 				SeasonID:          1,
 				EpisodeNumber:     2,
-				EpisodeMetadataID: ptr.To(int32(metadataID2)),
+				EpisodeMetadataID: sql.NullInt64{Int64: metadataID2, Valid: true},
 			},
 		}
-		_, err = store.CreateEpisode(ctx, episode2, storage.EpisodeStateMissing)
+		_, err = store.CreateEpisode(ctx, episode2.Episode, storage.EpisodeStateMissing)
 		require.NoError(t, err)
 
-		episodeMetadata = model.EpisodeMetadata{
+		episodeMetadata = sqlcdb.EpisodeMetadatum{SeasonMetadataID: 1,
 			TmdbID: 3,
 			Title:  "Test Episode 3",
 			Number: 3,
 			// future time
-			AirDate: ptr.To(snapshot.time.Add(time.Hour * 2)),
-			Runtime: ptr.To(int32(42)),
+			AirDate: sql.NullTime{Time: snapshot.time.Add(time.Hour * 2), Valid: true},
+			Runtime: sql.NullInt64{Int64: 42, Valid: true},
 		}
 
 		metadataID3, err := store.CreateEpisodeMetadata(ctx, episodeMetadata)
 		require.NoError(t, err)
 
-		episode3 := storage.Episode{
-			Episode: model.Episode{
+		episode3 := sqlcdb.ListEpisodesRow{
+			Episode: sqlcdb.Episode{
 				SeasonID:          1,
 				EpisodeNumber:     3,
-				EpisodeMetadataID: ptr.To(int32(metadataID3)),
+				EpisodeMetadataID: sql.NullInt64{Int64: metadataID3, Valid: true},
 			},
 		}
 
-		_, err = store.CreateEpisode(ctx, episode3, storage.EpisodeStateMissing)
+		_, err = store.CreateEpisode(ctx, episode3.Episode, storage.EpisodeStateMissing)
 		require.NoError(t, err)
 
 		releases := []*prowlarr.ReleaseResource{
@@ -196,18 +190,13 @@ func TestMediaManager_reconcileMissingEpisodes(t *testing.T) {
 			},
 		}
 
-		qualityProfile := storage.QualityProfile{
-			Name: "Default",
-			Qualities: []storage.QualityDefinition{
-				{
-					Name:          "HD",
-					MinSize:       0,
-					MaxSize:       2000,
-					PreferredSize: 1000,
-					MediaType:     "tv",
-				},
-			},
-		}
+		qualityProfile := []sqlcdb.ListQualityProfileRowsRow{{QualityDefinition: sqlcdb.QualityDefinition{
+			Name:          "HD",
+			MinSize:       0,
+			MaxSize:       2000,
+			PreferredSize: 1000,
+			MediaType:     "tv",
+		}}}
 
 		episodes, err := store.ListEpisodes(ctx, storage.EpisodeFilter{})
 		require.NoError(t, err)
@@ -222,27 +211,27 @@ func TestMediaManager_reconcileMissingEpisodes(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, episodes, 3)
 
-		slices.SortFunc(episodes, func(a, b *storage.Episode) int {
-			if a.ID < b.ID {
+		slices.SortFunc(episodes, func(a, b sqlcdb.ListEpisodesRow) int {
+			if a.Episode.ID < b.Episode.ID {
 				return -1
 			}
-			if a.ID > b.ID {
+			if a.Episode.ID > b.Episode.ID {
 				return 1
 			}
 			return 0
 		})
 
-		assert.Equal(t, storage.EpisodeStateDownloading, episodes[0].State)
-		assert.Equal(t, "123", episodes[0].DownloadID)
-		assert.Equal(t, int32(2), episodes[0].DownloadClientID)
+		assert.Equal(t, string(storage.EpisodeStateDownloading), episodes[0].State)
+		assert.Equal(t, sql.NullString{String: "123", Valid: true}, episodes[0].DownloadID)
+		assert.Equal(t, sql.NullInt64{Int64: 2, Valid: true}, episodes[0].DownloadClientID)
 
-		assert.Equal(t, storage.EpisodeStateDownloading, episodes[1].State)
-		assert.Equal(t, "124", episodes[1].DownloadID)
-		assert.Equal(t, int32(2), episodes[1].DownloadClientID)
+		assert.Equal(t, string(storage.EpisodeStateDownloading), episodes[1].State)
+		assert.Equal(t, sql.NullString{String: "124", Valid: true}, episodes[1].DownloadID)
+		assert.Equal(t, sql.NullInt64{Int64: 2, Valid: true}, episodes[1].DownloadClientID)
 
-		assert.Equal(t, storage.EpisodeStateMissing, episodes[2].State)
-		assert.Equal(t, "", episodes[2].DownloadID)
-		assert.Equal(t, int32(0), episodes[2].DownloadClientID)
+		assert.Equal(t, string(storage.EpisodeStateMissing), episodes[2].State)
+		assert.Equal(t, sql.NullString{}, episodes[2].DownloadID)
+		assert.Equal(t, sql.NullInt64{Int64: 0, Valid: false}, episodes[2].DownloadClientID)
 	})
 
 	t.Run("reconcile missing episodes - all released", func(t *testing.T) {
@@ -250,11 +239,11 @@ func TestMediaManager_reconcileMissingEpisodes(t *testing.T) {
 		defer ctrl.Finish()
 
 		ctx := context.Background()
-		store := newStore(t, ctx)
+		store := newTVReconcileStore(t, ctx, false)
 
 		mockDownloadClient := downloadMock.NewMockDownloadClient(ctrl)
 		mockFactory := downloadMock.NewMockFactory(ctrl)
-		downloadClientModel := model.DownloadClient{
+		downloadClientModel := sqlcdb.DownloadClient{
 			ID:             2,
 			Implementation: "transmission",
 			Type:           "torrent",
@@ -262,8 +251,12 @@ func TestMediaManager_reconcileMissingEpisodes(t *testing.T) {
 			Host:           "transmission",
 			Scheme:         "http",
 		}
+		_, errClient := store.CreateDownloadClient(ctx, downloadClientModel)
+		require.NoError(t, errClient)
+		_, errClient = store.CreateDownloadClient(ctx, downloadClientModel)
+		require.NoError(t, errClient)
 
-		snapshot := newReconcileSnapshot([]model.Indexer{{ID: 1}}, []*model.DownloadClient{&downloadClientModel})
+		snapshot := newReconcileSnapshot([]sqlcdb.Indexer{{ID: 1}}, []sqlcdb.DownloadClient{downloadClientModel})
 
 		mockFactory.EXPECT().NewDownloadClient(downloadClientModel).Return(mockDownloadClient, nil)
 		mockFactory.EXPECT().NewDownloadClient(downloadClientModel).Return(mockDownloadClient, nil)
@@ -276,58 +269,56 @@ func TestMediaManager_reconcileMissingEpisodes(t *testing.T) {
 			Name: "test download",
 		}, nil)
 
-		seasonID, err := store.CreateSeason(ctx, storage.Season{
-			Season: model.Season{
-				SeriesID:         1,
-				SeasonMetadataID: ptr.To(int32(1)),
-				Monitored:        1,
-			},
+		seasonID, err := store.CreateSeason(ctx, sqlcdb.Season{
+			SeriesID:         1,
+			SeasonMetadataID: sql.NullInt64{Int64: 1, Valid: true},
+			Monitored:        1,
 		}, storage.SeasonStateMissing)
 		require.NoError(t, err)
 
-		episodeMetadata := model.EpisodeMetadata{
+		episodeMetadata := sqlcdb.EpisodeMetadatum{SeasonMetadataID: 1,
 			TmdbID: 1,
 			Title:  "Test Episode",
 			Number: 1,
 			// time in the past
-			AirDate: ptr.To(snapshot.time.Add(time.Hour * -2)),
-			Runtime: ptr.To(int32(42)),
+			AirDate: sql.NullTime{Time: snapshot.time.Add(time.Hour * -2), Valid: true},
+			Runtime: sql.NullInt64{Int64: 42, Valid: true},
 		}
 
 		metadataID1, err := store.CreateEpisodeMetadata(ctx, episodeMetadata)
 		require.NoError(t, err)
 
-		episode1 := storage.Episode{
-			Episode: model.Episode{
-				SeasonID:          int32(seasonID),
+		episode1 := sqlcdb.ListEpisodesRow{
+			Episode: sqlcdb.Episode{
+				SeasonID:          seasonID,
 				EpisodeNumber:     1,
-				EpisodeMetadataID: ptr.To(int32(metadataID1)),
+				EpisodeMetadataID: sql.NullInt64{Int64: metadataID1, Valid: true},
 			},
 		}
 
-		_, err = store.CreateEpisode(ctx, episode1, storage.EpisodeStateMissing)
+		_, err = store.CreateEpisode(ctx, episode1.Episode, storage.EpisodeStateMissing)
 		require.NoError(t, err)
 
-		episodeMetadata = model.EpisodeMetadata{
+		episodeMetadata = sqlcdb.EpisodeMetadatum{SeasonMetadataID: 1,
 			TmdbID: 2,
 			Title:  "Test Episode 2",
 			Number: 2,
 			// time in the past
-			AirDate: ptr.To(snapshot.time.Add(time.Hour * -2)),
-			Runtime: ptr.To(int32(42)),
+			AirDate: sql.NullTime{Time: snapshot.time.Add(time.Hour * -2), Valid: true},
+			Runtime: sql.NullInt64{Int64: 42, Valid: true},
 		}
 
 		metadataID2, err := store.CreateEpisodeMetadata(ctx, episodeMetadata)
 		require.NoError(t, err)
 
-		episode2 := storage.Episode{
-			Episode: model.Episode{
-				SeasonID:          int32(seasonID),
+		episode2 := sqlcdb.ListEpisodesRow{
+			Episode: sqlcdb.Episode{
+				SeasonID:          seasonID,
 				EpisodeNumber:     2,
-				EpisodeMetadataID: ptr.To(int32(metadataID2)),
+				EpisodeMetadataID: sql.NullInt64{Int64: metadataID2, Valid: true},
 			},
 		}
-		_, err = store.CreateEpisode(ctx, episode2, storage.EpisodeStateMissing)
+		_, err = store.CreateEpisode(ctx, episode2.Episode, storage.EpisodeStateMissing)
 		require.NoError(t, err)
 
 		releases := []*prowlarr.ReleaseResource{
@@ -345,18 +336,13 @@ func TestMediaManager_reconcileMissingEpisodes(t *testing.T) {
 			},
 		}
 
-		qualityProfile := storage.QualityProfile{
-			Name: "Default",
-			Qualities: []storage.QualityDefinition{
-				{
-					Name:          "HD",
-					MinSize:       0,
-					MaxSize:       2000,
-					PreferredSize: 1000,
-					MediaType:     "tv",
-				},
-			},
-		}
+		qualityProfile := []sqlcdb.ListQualityProfileRowsRow{{QualityDefinition: sqlcdb.QualityDefinition{
+			Name:          "HD",
+			MinSize:       0,
+			MaxSize:       2000,
+			PreferredSize: 1000,
+			MediaType:     "tv",
+		}}}
 
 		episodes, err := store.ListEpisodes(ctx, storage.EpisodeFilter{})
 		require.NoError(t, err)
@@ -364,80 +350,80 @@ func TestMediaManager_reconcileMissingEpisodes(t *testing.T) {
 
 		m := New(nil, nil, nil, store, mockFactory, config.Manager{}, config.Config{})
 
-		err = m.reconcileMissingEpisodes(ctx, "Series", int32(seasonID), 1, episodes, snapshot, qualityProfile, releases)
+		err = m.reconcileMissingEpisodes(ctx, "Series", seasonID, 1, episodes, snapshot, qualityProfile, releases)
 		require.NoError(t, err)
 
 		episodes, err = store.ListEpisodes(ctx, storage.EpisodeFilter{})
 		require.NoError(t, err)
 		require.Len(t, episodes, 2)
 
-		slices.SortFunc(episodes, func(a, b *storage.Episode) int {
-			if a.ID < b.ID {
+		slices.SortFunc(episodes, func(a, b sqlcdb.ListEpisodesRow) int {
+			if a.Episode.ID < b.Episode.ID {
 				return -1
 			}
-			if a.ID > b.ID {
+			if a.Episode.ID > b.Episode.ID {
 				return 1
 			}
 			return 0
 		})
 
-		assert.Equal(t, storage.EpisodeStateDownloading, episodes[0].State)
-		assert.Equal(t, "123", episodes[0].DownloadID)
-		assert.Equal(t, int32(2), episodes[0].DownloadClientID)
+		assert.Equal(t, string(storage.EpisodeStateDownloading), episodes[0].State)
+		assert.Equal(t, sql.NullString{String: "123", Valid: true}, episodes[0].DownloadID)
+		assert.Equal(t, sql.NullInt64{Int64: 2, Valid: true}, episodes[0].DownloadClientID)
 
-		assert.Equal(t, storage.EpisodeStateDownloading, episodes[1].State)
-		assert.Equal(t, "124", episodes[1].DownloadID)
-		assert.Equal(t, int32(2), episodes[1].DownloadClientID)
+		assert.Equal(t, string(storage.EpisodeStateDownloading), episodes[1].State)
+		assert.Equal(t, sql.NullString{String: "124", Valid: true}, episodes[1].DownloadID)
+		assert.Equal(t, sql.NullInt64{Int64: 2, Valid: true}, episodes[1].DownloadClientID)
 
 		seasons, err := store.ListSeasons(ctx, storage.SeasonFilter{})
 		require.NoError(t, err)
 		require.Len(t, seasons, 1)
-		assert.Equal(t, storage.SeasonStateDownloading, seasons[0].State)
+		assert.Equal(t, string(storage.SeasonStateDownloading), seasons[0].State)
 	})
 
-	t.Run("nil episode", func(t *testing.T) {
+	t.Run("empty episode with nil snapshot", func(t *testing.T) {
 		m := New(nil, nil, nil, nil, nil, config.Manager{}, config.Config{})
-		err := m.reconcileMissingEpisodes(context.Background(), "Series", 1, 1, []*storage.Episode{nil}, nil, storage.QualityProfile{}, nil)
+		err := m.reconcileMissingEpisodes(context.Background(), "Series", 1, 1, []sqlcdb.ListEpisodesRow{{}}, nil, nil, nil)
 		require.NoError(t, err)
 	})
 
 	t.Run("nil snapshot", func(t *testing.T) {
 		m := New(nil, nil, nil, nil, nil, config.Manager{}, config.Config{})
-		episode := &storage.Episode{}
-		err := m.reconcileMissingEpisodes(context.Background(), "Series", 1, 1, []*storage.Episode{episode}, nil, storage.QualityProfile{}, nil)
+		episode := sqlcdb.ListEpisodesRow{}
+		err := m.reconcileMissingEpisodes(context.Background(), "Series", 1, 1, []sqlcdb.ListEpisodesRow{episode}, nil, nil, nil)
 		require.NoError(t, err)
 	})
 
 	t.Run("nil runtime", func(t *testing.T) {
 		ctx := context.Background()
-		store := newStore(t, ctx)
+		store := newTVReconcileStore(t, ctx, true)
 
-		episodeMetadata := model.EpisodeMetadata{
+		episodeMetadata := sqlcdb.EpisodeMetadatum{SeasonMetadataID: 1,
 			ID:      1,
 			Title:   "Test Episode",
 			Number:  1,
-			Runtime: nil,
+			Runtime: sql.NullInt64{},
 		}
 
 		_, err := store.CreateEpisodeMetadata(ctx, episodeMetadata)
 		require.NoError(t, err)
 
-		episode := storage.Episode{
-			Episode: model.Episode{
-				EpisodeMetadataID: ptr.To(int32(1)),
+		episode := sqlcdb.ListEpisodesRow{
+			Episode: sqlcdb.Episode{
+				EpisodeMetadataID: sql.NullInt64{Int64: 1, Valid: true},
 			},
 		}
 
 		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
-		err = m.reconcileMissingEpisodes(ctx, "Series", 1, 1, []*storage.Episode{&episode}, &ReconcileSnapshot{}, storage.QualityProfile{}, nil)
+		err = m.reconcileMissingEpisodes(ctx, "Series", 1, 1, []sqlcdb.ListEpisodesRow{episode}, &ReconcileSnapshot{}, nil, nil)
 		require.NoError(t, err)
 	})
 
 	t.Run("no matching releases", func(t *testing.T) {
 		ctx := context.Background()
-		store := newStore(t, ctx)
+		store := newTVReconcileStore(t, ctx, true)
 
-		episodeMetadata := model.EpisodeMetadata{
+		episodeMetadata := sqlcdb.EpisodeMetadatum{SeasonMetadataID: 1,
 			ID:     1,
 			Title:  "Test Episode",
 			Number: 1,
@@ -446,65 +432,58 @@ func TestMediaManager_reconcileMissingEpisodes(t *testing.T) {
 		_, err := store.CreateEpisodeMetadata(ctx, episodeMetadata)
 		require.NoError(t, err)
 
-		episode := storage.Episode{
-			Episode: model.Episode{
-				EpisodeMetadataID: ptr.To(int32(1)),
+		episode := sqlcdb.ListEpisodesRow{
+			Episode: sqlcdb.Episode{
+				EpisodeMetadataID: sql.NullInt64{Int64: 1, Valid: true},
 			},
 		}
 
 		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
-		err = m.reconcileMissingEpisodes(ctx, "Series", 1, 1, []*storage.Episode{&episode}, &ReconcileSnapshot{}, storage.QualityProfile{}, nil)
+		err = m.reconcileMissingEpisodes(ctx, "Series", 1, 1, []sqlcdb.ListEpisodesRow{episode}, &ReconcileSnapshot{}, nil, nil)
 		require.NoError(t, err)
 	})
 }
 func TestMediaManager_reconcileMissingSeason(t *testing.T) {
-	t.Run("nil season", func(t *testing.T) {
-		m := New(nil, nil, nil, nil, nil, config.Manager{}, config.Config{})
-		err := m.reconcileMissingSeason(context.Background(), "Series", nil, nil, storage.QualityProfile{}, nil)
-		require.Error(t, err)
-		assert.Equal(t, "season is nil", err.Error())
+	t.Run("season without metadata", func(t *testing.T) {
+		ctx := context.Background()
+		store := newStore(t, ctx)
+		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
+		err := m.reconcileMissingSeason(ctx, "Series", sqlcdb.ListSeasonsRow{}, nil, nil, nil)
+		require.ErrorIs(t, err, storage.ErrNotFound)
 	})
 
 	t.Run("missing season metadata", func(t *testing.T) {
 		ctx := context.Background()
 		store := newStore(t, ctx)
 
-		season := &storage.Season{
-			Season: model.Season{
+		season := sqlcdb.ListSeasonsRow{
+			Season: sqlcdb.Season{
 				ID:               1,
 				SeriesID:         1,
-				SeasonMetadataID: ptr.To(int32(999)), // Non-existent metadata ID
+				SeasonMetadataID: sql.NullInt64{Int64: 999, Valid: true}, // Non-existent metadata ID
 			},
 		}
 
 		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
-		err := m.reconcileMissingSeason(ctx, "Series", season, nil, storage.QualityProfile{}, nil)
+		err := m.reconcileMissingSeason(ctx, "Series", season, nil, nil, nil)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "not found in storage")
 	})
 
 	t.Run("no episodes", func(t *testing.T) {
 		ctx := context.Background()
-		store := newStore(t, ctx)
+		store := newTVReconcileStore(t, ctx, false)
 
-		seasonMetadata := model.SeasonMetadata{
-			ID:     1,
-			Title:  "Test Season",
-			Number: 1,
-		}
-		_, err := store.CreateSeasonMetadata(ctx, seasonMetadata)
-		require.NoError(t, err)
-
-		season := &storage.Season{
-			Season: model.Season{
+		season := sqlcdb.ListSeasonsRow{
+			Season: sqlcdb.Season{
 				ID:               1,
 				SeriesID:         1,
-				SeasonMetadataID: ptr.To(int32(1)),
+				SeasonMetadataID: sql.NullInt64{Int64: 1, Valid: true},
 			},
 		}
 
 		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
-		err = m.reconcileMissingSeason(ctx, "Series", season, nil, storage.QualityProfile{}, nil)
+		err := m.reconcileMissingSeason(ctx, "Series", season, nil, nil, nil)
 		require.NoError(t, err)
 	})
 
@@ -518,7 +497,7 @@ func TestMediaManager_reconcileMissingSeason(t *testing.T) {
 		mockDownloadClient := downloadMock.NewMockDownloadClient(ctrl)
 		mockFactory := downloadMock.NewMockFactory(ctrl)
 
-		downloadClientModel := model.DownloadClient{
+		downloadClientModel := sqlcdb.DownloadClient{
 			ID:             2,
 			Implementation: "transmission",
 			Type:           "torrent",
@@ -526,6 +505,10 @@ func TestMediaManager_reconcileMissingSeason(t *testing.T) {
 			Host:           "transmission",
 			Scheme:         "http",
 		}
+		_, errClient := store.CreateDownloadClient(ctx, downloadClientModel)
+		require.NoError(t, errClient)
+		_, errClient = store.CreateDownloadClient(ctx, downloadClientModel)
+		require.NoError(t, errClient)
 
 		mockFactory.EXPECT().NewDownloadClient(downloadClientModel).Return(mockDownloadClient, nil)
 		mockDownloadClient.EXPECT().Add(ctx, gomock.Any()).Return(download.Status{
@@ -533,85 +516,77 @@ func TestMediaManager_reconcileMissingSeason(t *testing.T) {
 			Name: "test download",
 		}, nil)
 
-		seriesMetadataID, err := store.CreateSeriesMetadata(ctx, model.SeriesMetadata{
+		seriesMetadataID, err := store.CreateSeriesMetadata(ctx, sqlcdb.SeriesMetadatum{
 			TmdbID:         1,
 			Title:          "Series",
 			Status:         "Continuing",
 			EpisodeCount:   10,
-			ExternalIds:    nil,
-			WatchProviders: nil,
+			ExternalIds:    sql.NullString{},
+			WatchProviders: sql.NullString{},
 		})
 		require.NoError(t, err)
 
-		seriesID, err := store.CreateSeries(ctx, storage.Series{
-			Series: model.Series{
-				ID:               1,
-				SeriesMetadataID: ptr.To(int32(seriesMetadataID)),
-			},
+		seriesID, err := store.CreateSeries(ctx, sqlcdb.Series{QualityProfileID: 1,
+			ID:               1,
+			SeriesMetadataID: sql.NullInt64{Int64: seriesMetadataID, Valid: true},
 		}, storage.SeriesStateMissing)
 		require.NoError(t, err)
 
 		_, err = store.GetSeriesByID(ctx, seriesID)
 		require.NoError(t, err)
 
-		seasonID, err := store.CreateSeason(ctx, storage.Season{
-			Season: model.Season{
-				SeriesID:         1,
-				SeasonMetadataID: ptr.To(int32(1)),
-			},
-		}, storage.SeasonStateMissing)
-		require.NoError(t, err)
-
-		season, err := store.GetSeasonByID(ctx, seasonID)
-		require.NoError(t, err)
-		assert.Equal(t, int32(1), season.SeriesID)
-		assert.Equal(t, ptr.To(int32(1)), season.SeasonMetadataID)
-
-		seasonMetadataID, err := store.CreateSeasonMetadata(ctx, model.SeasonMetadata{
-			SeriesMetadataID: int32(seriesID),
+		seasonMetadataID, err := store.CreateSeasonMetadata(ctx, sqlcdb.SeasonMetadatum{
+			SeriesMetadataID: seriesMetadataID,
 			Title:            "Season 1",
 			Number:           1,
 		})
 		require.NoError(t, err)
 
+		seasonID, err := store.CreateSeason(ctx, sqlcdb.Season{
+			SeriesID:         1,
+			SeasonMetadataID: sql.NullInt64{Int64: 1, Valid: true},
+		}, storage.SeasonStateMissing)
+		require.NoError(t, err)
+
+		season, err := store.GetSeasonByID(ctx, seasonID)
+		require.NoError(t, err)
+		assert.Equal(t, int64(1), season.Season.SeriesID)
+		assert.Equal(t, sql.NullInt64{Int64: 1, Valid: true}, season.Season.SeasonMetadataID)
+
 		_, err = store.GetSeasonMetadataByID(ctx, int64(seasonMetadataID))
 		require.NoError(t, err)
 
-		episodeMetadataID1, err := store.CreateEpisodeMetadata(ctx, model.EpisodeMetadata{
+		episodeMetadataID1, err := store.CreateEpisodeMetadata(ctx, sqlcdb.EpisodeMetadatum{
 			TmdbID:           1,
 			Title:            "Hello",
 			Number:           1,
-			SeasonMetadataID: int32(seasonID),
-			AirDate:          ptr.To(time.Now().Add(time.Hour * -2)),
-			Runtime:          ptr.To(int32(42)),
+			SeasonMetadataID: seasonMetadataID,
+			AirDate:          sql.NullTime{Time: time.Now().Add(time.Hour * -2), Valid: true},
+			Runtime:          sql.NullInt64{Int64: 42, Valid: true},
 		})
 		require.NoError(t, err)
 
-		_, err = store.CreateEpisode(ctx, storage.Episode{
-			Episode: model.Episode{
-				SeasonID:          int32(seasonID),
-				EpisodeNumber:     1,
-				EpisodeMetadataID: ptr.To(int32(episodeMetadataID1)),
-			},
+		_, err = store.CreateEpisode(ctx, sqlcdb.Episode{
+			SeasonID:          seasonID,
+			EpisodeNumber:     1,
+			EpisodeMetadataID: sql.NullInt64{Int64: episodeMetadataID1, Valid: true},
 		}, storage.EpisodeStateMissing)
 		require.NoError(t, err)
 
-		episodeMetadataID2, err := store.CreateEpisodeMetadata(ctx, model.EpisodeMetadata{
+		episodeMetadataID2, err := store.CreateEpisodeMetadata(ctx, sqlcdb.EpisodeMetadatum{
 			TmdbID:           2,
 			Title:            "There",
 			Number:           2,
-			SeasonMetadataID: int32(seasonID),
-			AirDate:          ptr.To(time.Now().Add(time.Hour * -2)),
-			Runtime:          ptr.To(int32(42)),
+			SeasonMetadataID: seasonMetadataID,
+			AirDate:          sql.NullTime{Time: time.Now().Add(time.Hour * -2), Valid: true},
+			Runtime:          sql.NullInt64{Int64: 42, Valid: true},
 		})
 		require.NoError(t, err)
 
-		_, err = store.CreateEpisode(ctx, storage.Episode{
-			Episode: model.Episode{
-				SeasonID:          int32(seasonID),
-				EpisodeNumber:     2,
-				EpisodeMetadataID: ptr.To(int32(episodeMetadataID2)),
-			},
+		_, err = store.CreateEpisode(ctx, sqlcdb.Episode{
+			SeasonID:          seasonID,
+			EpisodeNumber:     2,
+			EpisodeMetadataID: sql.NullInt64{Int64: episodeMetadataID2, Valid: true},
 		}, storage.EpisodeStateMissing)
 		require.NoError(t, err)
 
@@ -624,37 +599,32 @@ func TestMediaManager_reconcileMissingSeason(t *testing.T) {
 			},
 		}
 
-		qualityProfile := storage.QualityProfile{
-			Name: "Default",
-			Qualities: []storage.QualityDefinition{
-				{
-					Name:          "HD",
-					MinSize:       15,
-					MaxSize:       1000,
-					PreferredSize: 995,
-					MediaType:     "tv",
-				},
-			},
-		}
+		qualityProfile := []sqlcdb.ListQualityProfileRowsRow{{QualityDefinition: sqlcdb.QualityDefinition{
+			Name:          "HD",
+			MinSize:       15,
+			MaxSize:       1000,
+			PreferredSize: 995,
+			MediaType:     "tv",
+		}}}
 
-		snapshot := newReconcileSnapshot([]model.Indexer{{ID: 1}}, []*model.DownloadClient{&downloadClientModel})
+		snapshot := newReconcileSnapshot([]sqlcdb.Indexer{{ID: 1}}, []sqlcdb.DownloadClient{downloadClientModel})
 
 		m := New(nil, nil, nil, store, mockFactory, config.Manager{}, config.Config{})
 
-		err = m.reconcileMissingSeason(ctx, "Series", season, snapshot, qualityProfile, releases)
+		err = m.reconcileMissingSeason(ctx, "Series", seasonListRow(season), snapshot, qualityProfile, releases)
 		require.NoError(t, err)
 
 		episodes, err := store.ListEpisodes(ctx, storage.EpisodeFilter{})
 		require.NoError(t, err)
 		require.Len(t, episodes, 2)
 
-		assert.Equal(t, storage.EpisodeStateDownloading, episodes[0].State)
-		assert.Equal(t, "123", episodes[0].DownloadID)
-		assert.Equal(t, int32(2), episodes[0].DownloadClientID)
+		assert.Equal(t, string(storage.EpisodeStateDownloading), episodes[0].State)
+		assert.Equal(t, sql.NullString{String: "123", Valid: true}, episodes[0].DownloadID)
+		assert.Equal(t, sql.NullInt64{Int64: 2, Valid: true}, episodes[0].DownloadClientID)
 
-		assert.Equal(t, storage.EpisodeStateDownloading, episodes[1].State)
-		assert.Equal(t, "123", episodes[1].DownloadID)
-		assert.Equal(t, int32(2), episodes[1].DownloadClientID)
+		assert.Equal(t, string(storage.EpisodeStateDownloading), episodes[1].State)
+		assert.Equal(t, sql.NullString{String: "123", Valid: true}, episodes[1].DownloadID)
+		assert.Equal(t, sql.NullInt64{Int64: 2, Valid: true}, episodes[1].DownloadClientID)
 	})
 
 	t.Run("successful individual episode reconciliation", func(t *testing.T) {
@@ -667,7 +637,7 @@ func TestMediaManager_reconcileMissingSeason(t *testing.T) {
 		mockDownloadClient := downloadMock.NewMockDownloadClient(ctrl)
 		mockFactory := downloadMock.NewMockFactory(ctrl)
 
-		downloadClientModel := model.DownloadClient{
+		downloadClientModel := sqlcdb.DownloadClient{
 			ID:             2,
 			Implementation: "transmission",
 			Type:           "torrent",
@@ -675,8 +645,12 @@ func TestMediaManager_reconcileMissingSeason(t *testing.T) {
 			Host:           "transmission",
 			Scheme:         "http",
 		}
+		_, errClient := store.CreateDownloadClient(ctx, downloadClientModel)
+		require.NoError(t, errClient)
+		_, errClient = store.CreateDownloadClient(ctx, downloadClientModel)
+		require.NoError(t, errClient)
 
-		snapshot := newReconcileSnapshot([]model.Indexer{{ID: 1}}, []*model.DownloadClient{&downloadClientModel})
+		snapshot := newReconcileSnapshot([]sqlcdb.Indexer{{ID: 1}}, []sqlcdb.DownloadClient{downloadClientModel})
 
 		mockFactory.EXPECT().NewDownloadClient(downloadClientModel).Return(mockDownloadClient, nil)
 		mockFactory.EXPECT().NewDownloadClient(downloadClientModel).Return(mockDownloadClient, nil)
@@ -689,85 +663,77 @@ func TestMediaManager_reconcileMissingSeason(t *testing.T) {
 			Name: "test download 2",
 		}, nil)
 
-		seriesMetadataID, err := store.CreateSeriesMetadata(ctx, model.SeriesMetadata{
+		seriesMetadataID, err := store.CreateSeriesMetadata(ctx, sqlcdb.SeriesMetadatum{
 			TmdbID:         1,
 			Title:          "Series",
 			Status:         "Continuing",
 			EpisodeCount:   10,
-			ExternalIds:    nil,
-			WatchProviders: nil,
+			ExternalIds:    sql.NullString{},
+			WatchProviders: sql.NullString{},
 		})
 		require.NoError(t, err)
 
-		seriesID, err := store.CreateSeries(ctx, storage.Series{
-			Series: model.Series{
-				ID:               1,
-				SeriesMetadataID: ptr.To(int32(seriesMetadataID)),
-			},
+		seriesID, err := store.CreateSeries(ctx, sqlcdb.Series{QualityProfileID: 1,
+			ID:               1,
+			SeriesMetadataID: sql.NullInt64{Int64: seriesMetadataID, Valid: true},
 		}, storage.SeriesStateMissing)
 		require.NoError(t, err)
 
 		_, err = store.GetSeriesByID(ctx, seriesID)
 		require.NoError(t, err)
 
-		seasonID, err := store.CreateSeason(ctx, storage.Season{
-			Season: model.Season{
-				SeriesID:         1,
-				SeasonMetadataID: ptr.To(int32(1)),
-			},
-		}, storage.SeasonStateMissing)
-		require.NoError(t, err)
-
-		season, err := store.GetSeasonByID(ctx, seasonID)
-		require.NoError(t, err)
-		assert.Equal(t, int32(1), season.SeriesID)
-		assert.Equal(t, ptr.To(int32(1)), season.SeasonMetadataID)
-
-		seasonMetadataID, err := store.CreateSeasonMetadata(ctx, model.SeasonMetadata{
-			SeriesMetadataID: int32(seriesID),
+		seasonMetadataID, err := store.CreateSeasonMetadata(ctx, sqlcdb.SeasonMetadatum{
+			SeriesMetadataID: seriesMetadataID,
 			Title:            "Season 1",
 			Number:           1,
 		})
 		require.NoError(t, err)
 
+		seasonID, err := store.CreateSeason(ctx, sqlcdb.Season{
+			SeriesID:         1,
+			SeasonMetadataID: sql.NullInt64{Int64: 1, Valid: true},
+		}, storage.SeasonStateMissing)
+		require.NoError(t, err)
+
+		season, err := store.GetSeasonByID(ctx, seasonID)
+		require.NoError(t, err)
+		assert.Equal(t, int64(1), season.Season.SeriesID)
+		assert.Equal(t, sql.NullInt64{Int64: 1, Valid: true}, season.Season.SeasonMetadataID)
+
 		_, err = store.GetSeasonMetadataByID(ctx, int64(seasonMetadataID))
 		require.NoError(t, err)
 
-		episodeMetadataID1, err := store.CreateEpisodeMetadata(ctx, model.EpisodeMetadata{
+		episodeMetadataID1, err := store.CreateEpisodeMetadata(ctx, sqlcdb.EpisodeMetadatum{
 			TmdbID:           1,
 			Title:            "Test",
 			Number:           1,
-			SeasonMetadataID: int32(seasonID),
-			AirDate:          ptr.To(snapshot.time.Add(time.Hour * -2)),
-			Runtime:          ptr.To(int32(42)),
+			SeasonMetadataID: seasonMetadataID,
+			AirDate:          sql.NullTime{Time: snapshot.time.Add(time.Hour * -2), Valid: true},
+			Runtime:          sql.NullInt64{Int64: 42, Valid: true},
 		})
 		require.NoError(t, err)
 
-		_, err = store.CreateEpisode(ctx, storage.Episode{
-			Episode: model.Episode{
-				SeasonID:          int32(seasonID),
-				EpisodeNumber:     1,
-				EpisodeMetadataID: ptr.To(int32(episodeMetadataID1)),
-			},
+		_, err = store.CreateEpisode(ctx, sqlcdb.Episode{
+			SeasonID:          seasonID,
+			EpisodeNumber:     1,
+			EpisodeMetadataID: sql.NullInt64{Int64: episodeMetadataID1, Valid: true},
 		}, storage.EpisodeStateMissing)
 		require.NoError(t, err)
 
-		episodeMetadataID2, err := store.CreateEpisodeMetadata(ctx, model.EpisodeMetadata{
+		episodeMetadataID2, err := store.CreateEpisodeMetadata(ctx, sqlcdb.EpisodeMetadatum{
 			TmdbID:           2,
 			Title:            "Testing",
 			Number:           2,
-			SeasonMetadataID: int32(seasonID),
-			AirDate:          ptr.To(snapshot.time.Add(time.Hour * -2)),
-			Runtime:          ptr.To(int32(42)),
+			SeasonMetadataID: seasonMetadataID,
+			AirDate:          sql.NullTime{Time: snapshot.time.Add(time.Hour * -2), Valid: true},
+			Runtime:          sql.NullInt64{Int64: 42, Valid: true},
 		})
 		require.NoError(t, err)
 
-		_, err = store.CreateEpisode(ctx, storage.Episode{
-			Episode: model.Episode{
-				SeasonID:          int32(seasonID),
-				EpisodeNumber:     2,
-				EpisodeMetadataID: ptr.To(int32(episodeMetadataID2)),
-			},
+		_, err = store.CreateEpisode(ctx, sqlcdb.Episode{
+			SeasonID:          seasonID,
+			EpisodeNumber:     2,
+			EpisodeMetadataID: sql.NullInt64{Int64: episodeMetadataID2, Valid: true},
 		}, storage.EpisodeStateMissing)
 		require.NoError(t, err)
 
@@ -786,35 +752,30 @@ func TestMediaManager_reconcileMissingSeason(t *testing.T) {
 			},
 		}
 
-		qualityProfile := storage.QualityProfile{
-			Name: "Default",
-			Qualities: []storage.QualityDefinition{
-				{
-					Name:          "HD",
-					MinSize:       15,
-					MaxSize:       1000,
-					PreferredSize: 995,
-					MediaType:     "tv",
-				},
-			},
-		}
+		qualityProfile := []sqlcdb.ListQualityProfileRowsRow{{QualityDefinition: sqlcdb.QualityDefinition{
+			Name:          "HD",
+			MinSize:       15,
+			MaxSize:       1000,
+			PreferredSize: 995,
+			MediaType:     "tv",
+		}}}
 
 		m := New(nil, nil, nil, store, mockFactory, config.Manager{}, config.Config{})
 
-		err = m.reconcileMissingSeason(ctx, "Series", season, snapshot, qualityProfile, releases)
+		err = m.reconcileMissingSeason(ctx, "Series", seasonListRow(season), snapshot, qualityProfile, releases)
 		require.NoError(t, err)
 
 		episodes, err := store.ListEpisodes(ctx, storage.EpisodeFilter{})
 		require.NoError(t, err)
 		require.Len(t, episodes, 2)
 
-		assert.Equal(t, storage.EpisodeStateDownloading, episodes[0].State)
-		assert.Equal(t, "123", episodes[0].DownloadID)
-		assert.Equal(t, int32(2), episodes[0].DownloadClientID)
+		assert.Equal(t, string(storage.EpisodeStateDownloading), episodes[0].State)
+		assert.Equal(t, sql.NullString{String: "123", Valid: true}, episodes[0].DownloadID)
+		assert.Equal(t, sql.NullInt64{Int64: 2, Valid: true}, episodes[0].DownloadClientID)
 
-		assert.Equal(t, storage.EpisodeStateDownloading, episodes[1].State)
-		assert.Equal(t, "124", episodes[1].DownloadID)
-		assert.Equal(t, int32(2), episodes[1].DownloadClientID)
+		assert.Equal(t, string(storage.EpisodeStateDownloading), episodes[1].State)
+		assert.Equal(t, sql.NullString{String: "124", Valid: true}, episodes[1].DownloadID)
+		assert.Equal(t, sql.NullInt64{Int64: 2, Valid: true}, episodes[1].DownloadClientID)
 	})
 }
 func TestMediaManager_ReconcileMissingSeries(t *testing.T) {
@@ -831,12 +792,12 @@ func TestMediaManager_ReconcileMissingSeries(t *testing.T) {
 		ctx := context.Background()
 		store := storageMocks.NewMockStorage(ctrl)
 
-		store.EXPECT().ListIndexers(ctx).Return([]*model.Indexer{}, nil)
+		store.EXPECT().ListIndexers(ctx).Return([]sqlcdb.Indexer{}, nil)
 
 		indexerFactory := indexerMock.NewMockFactory(ctrl)
 
 		m := New(nil, indexerFactory, nil, store, nil, config.Manager{}, config.Config{})
-		snapshot := newReconcileSnapshot([]model.Indexer{}, nil)
+		snapshot := newReconcileSnapshot([]sqlcdb.Indexer{}, nil)
 		err := m.ReconcileMissingSeries(ctx, snapshot)
 		require.NoError(t, err)
 	})
@@ -854,8 +815,8 @@ func TestMediaManager_ReconcileMissingSeries(t *testing.T) {
 			Monitored: &monitored,
 		}
 
-		indexer := &model.Indexer{ID: 1, Name: "test", Priority: 1}
-		store.EXPECT().ListIndexers(ctx).Return([]*model.Indexer{indexer}, nil)
+		indexer := &sqlcdb.Indexer{ID: 1, Name: "test", Priority: 1}
+		store.EXPECT().ListIndexers(ctx).Return([]sqlcdb.Indexer{*indexer}, nil)
 
 		expectedErr := errors.New("database error")
 		store.EXPECT().ListSeries(ctx, seriesFilter).Return(nil, expectedErr)
@@ -863,7 +824,7 @@ func TestMediaManager_ReconcileMissingSeries(t *testing.T) {
 		indexerFactory := indexerMock.NewMockFactory(ctrl)
 
 		m := New(nil, indexerFactory, nil, store, nil, config.Manager{}, config.Config{})
-		snapshot := newReconcileSnapshot([]model.Indexer{}, nil)
+		snapshot := newReconcileSnapshot([]sqlcdb.Indexer{}, nil)
 		err := m.ReconcileMissingSeries(ctx, snapshot)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "couldn't list missing series")
@@ -879,7 +840,7 @@ func TestMediaManager_ReconcileMissingSeries(t *testing.T) {
 		mockDownloadClient := downloadMock.NewMockDownloadClient(ctrl)
 		mockFactory := downloadMock.NewMockFactory(ctrl)
 
-		downloadClientModel := model.DownloadClient{
+		downloadClientModel := sqlcdb.DownloadClient{
 			ID:             2,
 			Implementation: "transmission",
 			Type:           "torrent",
@@ -887,8 +848,12 @@ func TestMediaManager_ReconcileMissingSeries(t *testing.T) {
 			Host:           "transmission",
 			Scheme:         "http",
 		}
+		_, errClient := store.CreateDownloadClient(ctx, downloadClientModel)
+		require.NoError(t, errClient)
+		_, errClient = store.CreateDownloadClient(ctx, downloadClientModel)
+		require.NoError(t, errClient)
 
-		snapshot := newReconcileSnapshot([]model.Indexer{{ID: 1}}, []*model.DownloadClient{&downloadClientModel})
+		snapshot := newReconcileSnapshot([]sqlcdb.Indexer{{ID: 1}}, []sqlcdb.DownloadClient{downloadClientModel})
 
 		mockFactory.EXPECT().NewDownloadClient(downloadClientModel).Return(mockDownloadClient, nil)
 		mockFactory.EXPECT().NewDownloadClient(downloadClientModel).Return(mockDownloadClient, nil)
@@ -901,83 +866,75 @@ func TestMediaManager_ReconcileMissingSeries(t *testing.T) {
 			Name: "test download",
 		}, nil)
 
-		seriesMetadataID, err := store.CreateSeriesMetadata(ctx, model.SeriesMetadata{
+		seriesMetadataID, err := store.CreateSeriesMetadata(ctx, sqlcdb.SeriesMetadatum{
 			TmdbID:       1,
 			Title:        "Series",
 			EpisodeCount: 10,
 		})
 		require.NoError(t, err)
 
-		seriesID, err := store.CreateSeries(ctx, storage.Series{
-			Series: model.Series{
-				ID:               1,
-				SeriesMetadataID: ptr.To(int32(seriesMetadataID)),
-				Monitored:        1,
-				QualityProfileID: 4,
-			},
+		seriesID, err := store.CreateSeries(ctx, sqlcdb.Series{
+			ID:               1,
+			SeriesMetadataID: sql.NullInt64{Int64: seriesMetadataID, Valid: true},
+			Monitored:        1,
+			QualityProfileID: 4,
 		}, storage.SeriesStateMissing)
 		require.NoError(t, err)
 
 		_, err = store.GetSeriesByID(ctx, seriesID)
 		require.NoError(t, err)
 
-		seasonID, err := store.CreateSeason(ctx, storage.Season{
-			Season: model.Season{
-				SeriesID:         1,
-				SeasonMetadataID: ptr.To(int32(1)),
-				Monitored:        1,
-			},
-		}, storage.SeasonStateMissing)
-		require.NoError(t, err)
-
-		season, err := store.GetSeasonByID(ctx, seasonID)
-		require.NoError(t, err)
-		assert.Equal(t, int32(1), season.SeriesID)
-		assert.Equal(t, ptr.To(int32(1)), season.SeasonMetadataID)
-
-		_, err = store.CreateSeasonMetadata(ctx, model.SeasonMetadata{
-			SeriesMetadataID: int32(seriesID),
+		seasonMetadataID, err := store.CreateSeasonMetadata(ctx, sqlcdb.SeasonMetadatum{
+			SeriesMetadataID: seriesMetadataID,
 			Title:            "Season 1",
 			Number:           1,
 		})
 		require.NoError(t, err)
 
-		episodeMetadataID1, err := store.CreateEpisodeMetadata(ctx, model.EpisodeMetadata{
+		seasonID, err := store.CreateSeason(ctx, sqlcdb.Season{
+			SeriesID:         1,
+			SeasonMetadataID: sql.NullInt64{Int64: 1, Valid: true},
+			Monitored:        1,
+		}, storage.SeasonStateMissing)
+		require.NoError(t, err)
+
+		season, err := store.GetSeasonByID(ctx, seasonID)
+		require.NoError(t, err)
+		assert.Equal(t, int64(1), season.Season.SeriesID)
+		assert.Equal(t, sql.NullInt64{Int64: 1, Valid: true}, season.Season.SeasonMetadataID)
+
+		episodeMetadataID1, err := store.CreateEpisodeMetadata(ctx, sqlcdb.EpisodeMetadatum{
 			TmdbID:           1,
 			Title:            "Hello",
 			Number:           1,
-			SeasonMetadataID: int32(seasonID),
-			AirDate:          ptr.To(snapshot.time.Add(time.Hour * -2)),
-			Runtime:          ptr.To(int32(42)),
+			SeasonMetadataID: seasonMetadataID,
+			AirDate:          sql.NullTime{Time: snapshot.time.Add(time.Hour * -2), Valid: true},
+			Runtime:          sql.NullInt64{Int64: 42, Valid: true},
 		})
 		require.NoError(t, err)
 
-		_, err = store.CreateEpisode(ctx, storage.Episode{
-			Episode: model.Episode{
-				SeasonID:          int32(seasonID),
-				EpisodeNumber:     1,
-				EpisodeMetadataID: ptr.To(int32(episodeMetadataID1)),
-				Monitored:         1,
-			},
+		_, err = store.CreateEpisode(ctx, sqlcdb.Episode{
+			SeasonID:          seasonID,
+			EpisodeNumber:     1,
+			EpisodeMetadataID: sql.NullInt64{Int64: episodeMetadataID1, Valid: true},
+			Monitored:         1,
 		}, storage.EpisodeStateMissing)
 		require.NoError(t, err)
 
-		episodeMetadataID2, err := store.CreateEpisodeMetadata(ctx, model.EpisodeMetadata{
+		episodeMetadataID2, err := store.CreateEpisodeMetadata(ctx, sqlcdb.EpisodeMetadatum{
 			TmdbID:           2,
 			Title:            "There",
 			Number:           2,
-			SeasonMetadataID: int32(seasonID),
-			AirDate:          ptr.To(snapshot.time.Add(time.Hour * -2)),
-			Runtime:          ptr.To(int32(42)),
+			SeasonMetadataID: seasonMetadataID,
+			AirDate:          sql.NullTime{Time: snapshot.time.Add(time.Hour * -2), Valid: true},
+			Runtime:          sql.NullInt64{Int64: 42, Valid: true},
 		})
 		require.NoError(t, err)
 
-		_, err = store.CreateEpisode(ctx, storage.Episode{
-			Episode: model.Episode{
-				SeasonID:          int32(seasonID),
-				EpisodeNumber:     2,
-				EpisodeMetadataID: ptr.To(int32(episodeMetadataID2)),
-			},
+		_, err = store.CreateEpisode(ctx, sqlcdb.Episode{
+			SeasonID:          seasonID,
+			EpisodeNumber:     2,
+			EpisodeMetadataID: sql.NullInt64{Int64: episodeMetadataID2, Valid: true},
 		}, storage.EpisodeStateMissing)
 		require.NoError(t, err)
 
@@ -1003,7 +960,7 @@ func TestMediaManager_ReconcileMissingSeries(t *testing.T) {
 		indexerFactory.EXPECT().NewIndexerSource(gomock.Any()).Return(mockIndexerSource, nil).AnyTimes()
 
 		// Create an indexer source in the database
-		sourceID, err := store.CreateIndexerSource(ctx, model.IndexerSource{
+		sourceID, err := store.CreateIndexerSource(ctx, sqlcdb.IndexerSource{
 			Name:           "test-source",
 			Implementation: "prowlarr",
 			Scheme:         "http",
@@ -1013,11 +970,11 @@ func TestMediaManager_ReconcileMissingSeries(t *testing.T) {
 		require.NoError(t, err)
 
 		// Create indexers linked to the source
-		_, err = store.CreateIndexer(ctx, model.Indexer{
-			IndexerSourceID: ptr.To(int32(sourceID)),
+		_, err = store.CreateIndexer(ctx, sqlcdb.Indexer{
+			IndexerSourceID: sql.NullInt64{Int64: sourceID, Valid: true},
 			Name:            "test",
 			Priority:        1,
-			URI:             "http://test/indexer1",
+			Uri:             "http://test/indexer1",
 		})
 		require.NoError(t, err)
 
@@ -1036,13 +993,13 @@ func TestMediaManager_ReconcileMissingSeries(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, episodes, 2)
 
-		assert.Equal(t, storage.EpisodeStateDownloading, episodes[0].State)
-		assert.Equal(t, "123", episodes[0].DownloadID)
-		assert.Equal(t, int32(2), episodes[0].DownloadClientID)
+		assert.Equal(t, string(storage.EpisodeStateDownloading), episodes[0].State)
+		assert.Equal(t, sql.NullString{String: "123", Valid: true}, episodes[0].DownloadID)
+		assert.Equal(t, sql.NullInt64{Int64: 2, Valid: true}, episodes[0].DownloadClientID)
 
-		assert.Equal(t, storage.EpisodeStateDownloading, episodes[1].State)
-		assert.Equal(t, "124", episodes[1].DownloadID)
-		assert.Equal(t, int32(2), episodes[1].DownloadClientID)
+		assert.Equal(t, string(storage.EpisodeStateDownloading), episodes[1].State)
+		assert.Equal(t, sql.NullString{String: "124", Valid: true}, episodes[1].DownloadID)
+		assert.Equal(t, sql.NullInt64{Int64: 2, Valid: true}, episodes[1].DownloadClientID)
 	})
 }
 
@@ -1114,7 +1071,7 @@ func TestMediaManager_ReconcileContinuingSeries(t *testing.T) {
 		mockDownloadClient := downloadMock.NewMockDownloadClient(ctrl)
 		mockFactory := downloadMock.NewMockFactory(ctrl)
 
-		downloadClientModel := model.DownloadClient{
+		downloadClientModel := sqlcdb.DownloadClient{
 			ID:             1,
 			Implementation: "transmission",
 			Type:           "torrent",
@@ -1122,8 +1079,12 @@ func TestMediaManager_ReconcileContinuingSeries(t *testing.T) {
 			Host:           "transmission",
 			Scheme:         "http",
 		}
+		_, errClient := store.CreateDownloadClient(ctx, downloadClientModel)
+		require.NoError(t, errClient)
+		_, errClient = store.CreateDownloadClient(ctx, downloadClientModel)
+		require.NoError(t, errClient)
 
-		snapshot := newReconcileSnapshot([]model.Indexer{{ID: 1}}, []*model.DownloadClient{&downloadClientModel})
+		snapshot := newReconcileSnapshot([]sqlcdb.Indexer{{ID: 1}}, []sqlcdb.DownloadClient{downloadClientModel})
 
 		mockFactory.EXPECT().NewDownloadClient(gomock.Any()).Return(mockDownloadClient, nil).AnyTimes()
 		mockDownloadClient.EXPECT().Add(ctx, gomock.Any()).Return(download.Status{
@@ -1131,22 +1092,20 @@ func TestMediaManager_ReconcileContinuingSeries(t *testing.T) {
 			Name: "test download continuing",
 		}, nil).AnyTimes()
 
-		seriesMetadataID, err := store.CreateSeriesMetadata(ctx, model.SeriesMetadata{
+		seriesMetadataID, err := store.CreateSeriesMetadata(ctx, sqlcdb.SeriesMetadatum{
 			TmdbID:         1,
 			Title:          "Continuing Series",
 			Status:         "Continuing",
 			EpisodeCount:   10,
-			ExternalIds:    nil,
-			WatchProviders: nil,
+			ExternalIds:    sql.NullString{},
+			WatchProviders: sql.NullString{},
 		})
 		require.NoError(t, err)
 
-		seriesID, err := store.CreateSeries(ctx, storage.Series{
-			Series: model.Series{
-				SeriesMetadataID: ptr.To(int32(seriesMetadataID)),
-				Monitored:        1,
-				QualityProfileID: 4, // Episode profile from defaults.sql
-			},
+		seriesID, err := store.CreateSeries(ctx, sqlcdb.Series{
+			SeriesMetadataID: sql.NullInt64{Int64: seriesMetadataID, Valid: true},
+			Monitored:        1,
+			QualityProfileID: 4, // Episode profile from defaults.sql
 		}, storage.SeriesStateMissing)
 		require.NoError(t, err)
 
@@ -1154,19 +1113,17 @@ func TestMediaManager_ReconcileContinuingSeries(t *testing.T) {
 		err = store.UpdateSeriesState(ctx, seriesID, storage.SeriesStateDownloading, nil)
 		require.NoError(t, err)
 
-		seasonMetadataID, err := store.CreateSeasonMetadata(ctx, model.SeasonMetadata{
-			SeriesMetadataID: int32(seriesID),
+		seasonMetadataID, err := store.CreateSeasonMetadata(ctx, sqlcdb.SeasonMetadatum{
+			SeriesMetadataID: seriesMetadataID,
 			Title:            "Season 1",
 			Number:           1,
 		})
 		require.NoError(t, err)
 
-		seasonID, err := store.CreateSeason(ctx, storage.Season{
-			Season: model.Season{
-				SeriesID:         int32(seriesID),
-				SeasonMetadataID: ptr.To(int32(seasonMetadataID)),
-				Monitored:        1,
-			},
+		seasonID, err := store.CreateSeason(ctx, sqlcdb.Season{
+			SeriesID:         seriesID,
+			SeasonMetadataID: sql.NullInt64{Int64: seasonMetadataID, Valid: true},
+			Monitored:        1,
 		}, storage.SeasonStateMissing)
 		require.NoError(t, err)
 
@@ -1174,23 +1131,21 @@ func TestMediaManager_ReconcileContinuingSeries(t *testing.T) {
 		err = store.UpdateSeasonState(ctx, seasonID, storage.SeasonStateDownloading, nil)
 		require.NoError(t, err)
 
-		episodeMetadataID, err := store.CreateEpisodeMetadata(ctx, model.EpisodeMetadata{
+		episodeMetadataID, err := store.CreateEpisodeMetadata(ctx, sqlcdb.EpisodeMetadatum{
 			TmdbID:           1,
 			Title:            "New Episode",
 			Number:           3,
-			SeasonMetadataID: int32(seasonID),
-			AirDate:          ptr.To(snapshot.time.Add(time.Hour * -2)),
-			Runtime:          ptr.To(int32(42)),
+			SeasonMetadataID: seasonMetadataID,
+			AirDate:          sql.NullTime{Time: snapshot.time.Add(time.Hour * -2), Valid: true},
+			Runtime:          sql.NullInt64{Int64: 42, Valid: true},
 		})
 		require.NoError(t, err)
 
-		_, err = store.CreateEpisode(ctx, storage.Episode{
-			Episode: model.Episode{
-				SeasonID:          int32(seasonID),
-				EpisodeNumber:     3,
-				EpisodeMetadataID: ptr.To(int32(episodeMetadataID)),
-				Monitored:         1,
-			},
+		_, err = store.CreateEpisode(ctx, sqlcdb.Episode{
+			SeasonID:          seasonID,
+			EpisodeNumber:     3,
+			EpisodeMetadataID: sql.NullInt64{Int64: episodeMetadataID, Valid: true},
+			Monitored:         1,
 		}, storage.EpisodeStateMissing)
 		require.NoError(t, err)
 
@@ -1220,7 +1175,7 @@ func TestMediaManager_ReconcileContinuingSeries(t *testing.T) {
 		ctx := context.Background()
 		store := newStore(t, ctx)
 
-		snapshot := newReconcileSnapshot([]model.Indexer{{ID: 1}}, []*model.DownloadClient{})
+		snapshot := newReconcileSnapshot([]sqlcdb.Indexer{{ID: 1}}, []sqlcdb.DownloadClient{})
 
 		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
 
@@ -1236,23 +1191,21 @@ func TestMediaManager_ReconcileContinuingSeries(t *testing.T) {
 		store := newStore(t, ctx)
 
 		// Set up series and season data
-		seriesMetadataID, err := store.CreateSeriesMetadata(ctx, model.SeriesMetadata{
+		seriesMetadataID, err := store.CreateSeriesMetadata(ctx, sqlcdb.SeriesMetadatum{
 			TmdbID:         100,
 			Title:          "Weekly Series",
 			SeasonCount:    1,
 			EpisodeCount:   3,
 			Status:         "Returning Series",
-			ExternalIds:    nil,
-			WatchProviders: nil,
+			ExternalIds:    sql.NullString{},
+			WatchProviders: sql.NullString{},
 		})
 		require.NoError(t, err)
 
-		seriesID, err := store.CreateSeries(ctx, storage.Series{
-			Series: model.Series{
-				SeriesMetadataID: ptr.To(int32(seriesMetadataID)),
-				Monitored:        1,
-				QualityProfileID: 4, // Episode profile from defaults.sql
-			},
+		seriesID, err := store.CreateSeries(ctx, sqlcdb.Series{
+			SeriesMetadataID: sql.NullInt64{Int64: seriesMetadataID, Valid: true},
+			Monitored:        1,
+			QualityProfileID: 4, // Episode profile from defaults.sql
 		}, storage.SeriesStateMissing)
 		require.NoError(t, err)
 
@@ -1264,20 +1217,18 @@ func TestMediaManager_ReconcileContinuingSeries(t *testing.T) {
 		err = store.UpdateSeriesState(ctx, seriesID, storage.SeriesStateContinuing, nil)
 		require.NoError(t, err)
 
-		seasonMetadataID, err := store.CreateSeasonMetadata(ctx, model.SeasonMetadata{
-			SeriesMetadataID: int32(seriesMetadataID), // Should reference the series metadata ID, not storage series ID
+		seasonMetadataID, err := store.CreateSeasonMetadata(ctx, sqlcdb.SeasonMetadatum{
+			SeriesMetadataID: seriesMetadataID, // Should reference the series metadata ID, not storage series ID
 			Title:            "Season 1",
 			Number:           1,
 			TmdbID:           1001, // Match the TMDB ID from our mock
 		})
 		require.NoError(t, err)
 
-		seasonID, err := store.CreateSeason(ctx, storage.Season{
-			Season: model.Season{
-				SeriesID:         int32(seriesID),
-				SeasonMetadataID: ptr.To(int32(seasonMetadataID)),
-				Monitored:        1,
-			},
+		seasonID, err := store.CreateSeason(ctx, sqlcdb.Season{
+			SeriesID:         seriesID,
+			SeasonMetadataID: sql.NullInt64{Int64: seasonMetadataID, Valid: true},
+			Monitored:        1,
 		}, storage.SeasonStateMissing)
 		require.NoError(t, err)
 
@@ -1295,23 +1246,21 @@ func TestMediaManager_ReconcileContinuingSeries(t *testing.T) {
 			pastDate := time.Now().Add(-time.Hour * 24 * time.Duration(i))
 			airDate := &pastDate
 
-			episodeMetadataID, err := store.CreateEpisodeMetadata(ctx, model.EpisodeMetadata{
-				TmdbID:           int32(1001000 + i), // Match the TMDB IDs from our mock (1001001, 1001002)
+			episodeMetadataID, err := store.CreateEpisodeMetadata(ctx, sqlcdb.EpisodeMetadatum{
+				TmdbID:           int64(1001000 + i), // Match the TMDB IDs from our mock (1001001, 1001002)
 				Title:            fmt.Sprintf("Episode %d", i),
-				Number:           int32(i),
-				SeasonMetadataID: int32(seasonMetadataID), // This should be the season metadata ID
-				AirDate:          airDate,
+				Number:           int64(i),
+				SeasonMetadataID: seasonMetadataID, // This should be the season metadata ID
+				AirDate:          sql.NullTime{Time: *airDate, Valid: true},
 			})
 			require.NoError(t, err)
 
 			// Create episode records for episodes 1-2
-			episodeID, err := store.CreateEpisode(ctx, storage.Episode{
-				Episode: model.Episode{
-					SeasonID:          int32(seasonID),
-					EpisodeNumber:     int32(i),
-					EpisodeMetadataID: ptr.To(int32(episodeMetadataID)),
-					Monitored:         1,
-				},
+			episodeID, err := store.CreateEpisode(ctx, sqlcdb.Episode{
+				SeasonID:          seasonID,
+				EpisodeNumber:     int64(i),
+				EpisodeMetadataID: sql.NullInt64{Int64: episodeMetadataID, Valid: true},
+				Monitored:         1,
 			}, storage.EpisodeStateMissing)
 			require.NoError(t, err)
 
@@ -1322,7 +1271,7 @@ func TestMediaManager_ReconcileContinuingSeries(t *testing.T) {
 			require.NoError(t, err)
 		}
 
-		snapshot := newReconcileSnapshot([]model.Indexer{{ID: 1}}, []*model.DownloadClient{})
+		snapshot := newReconcileSnapshot([]sqlcdb.Indexer{{ID: 1}}, []sqlcdb.DownloadClient{})
 
 		// Set up TMDB mock for metadata refresh
 		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
@@ -1374,15 +1323,15 @@ func TestMediaManager_ReconcileContinuingSeries(t *testing.T) {
 		assert.Len(t, episodesAfter, 3, "Should have 3 episodes after reconciliation (episode 3 should be discovered)")
 
 		// Check that episode 3 was created with correct state
-		var episode3 *storage.Episode
+		var episode3 *sqlcdb.ListEpisodesRow
 		for _, ep := range episodesAfter {
-			if ep.EpisodeNumber == 3 {
-				episode3 = ep
+			if ep.Episode.EpisodeNumber == 3 {
+				episode3 = &ep
 				break
 			}
 		}
 		require.NotNil(t, episode3, "Episode 3 should have been created")
-		assert.Equal(t, storage.EpisodeStateUnreleased, episode3.State, "Episode 3 should be in unreleased state")
+		assert.Equal(t, string(storage.EpisodeStateUnreleased), episode3.State, "Episode 3 should be in unreleased state")
 	})
 
 }
@@ -1446,7 +1395,7 @@ func TestMediaManager_ReconcileDiscoveredEpisodes(t *testing.T) {
 		}
 
 		// Create series metadata for TMDB search functionality
-		seriesMetadataID, err := store.CreateSeriesMetadata(ctx, model.SeriesMetadata{
+		seriesMetadataID, err := store.CreateSeriesMetadata(ctx, sqlcdb.SeriesMetadatum{
 			TmdbID:       1,
 			Title:        "Test Series",
 			EpisodeCount: 5,
@@ -1454,50 +1403,44 @@ func TestMediaManager_ReconcileDiscoveredEpisodes(t *testing.T) {
 		require.NoError(t, err)
 
 		// Create a series with path and linked metadata
-		seriesID, err := store.CreateSeries(ctx, storage.Series{
-			Series: model.Series{
-				SeriesMetadataID: ptr.To(int32(seriesMetadataID)),
-				Path:             ptr.To("test-series"),
-				Monitored:        1,
-			},
+		seriesID, err := store.CreateSeries(ctx, sqlcdb.Series{QualityProfileID: 1,
+			SeriesMetadataID: sql.NullInt64{Int64: seriesMetadataID, Valid: true},
+			Path:             sql.NullString{String: "test-series", Valid: true},
+			Monitored:        1,
 		}, storage.SeriesStateMissing)
 		require.NoError(t, err)
 
 		// Create season metadata
-		seasonMetadataID, err := store.CreateSeasonMetadata(ctx, model.SeasonMetadata{
-			SeriesMetadataID: int32(seriesMetadataID),
+		seasonMetadataID, err := store.CreateSeasonMetadata(ctx, sqlcdb.SeasonMetadatum{
+			SeriesMetadataID: seriesMetadataID,
 			Title:            "Season 1",
 			Number:           1,
 		})
 		require.NoError(t, err)
 
 		// Create season with metadata linked
-		seasonID, err := store.CreateSeason(ctx, storage.Season{
-			Season: model.Season{
-				SeriesID:         int32(seriesID),
-				SeasonNumber:     1,
-				SeasonMetadataID: ptr.To(int32(seasonMetadataID)),
-				Monitored:        1,
-			},
+		seasonID, err := store.CreateSeason(ctx, sqlcdb.Season{
+			SeriesID:         seriesID,
+			SeasonNumber:     1,
+			SeasonMetadataID: sql.NullInt64{Int64: seasonMetadataID, Valid: true},
+			Monitored:        1,
 		}, storage.SeasonStateMissing)
 		require.NoError(t, err)
 
 		// Create episode metadata
-		episodeMetadataID, err := store.CreateEpisodeMetadata(ctx, model.EpisodeMetadata{
-			SeasonMetadataID: int32(seasonMetadataID),
+		episodeMetadataID, err := store.CreateEpisodeMetadata(ctx, sqlcdb.EpisodeMetadatum{
+			SeasonMetadataID: seasonMetadataID,
 			Title:            "Episode 1",
 			Number:           1,
 		})
 		require.NoError(t, err)
 
 		// Create a discovered episode with metadata linked
-		episodeID, err := store.CreateEpisode(ctx, storage.Episode{
-			Episode: model.Episode{
-				SeasonID:          int32(seasonID),
-				EpisodeNumber:     1,
-				EpisodeMetadataID: ptr.To(int32(episodeMetadataID)),
-				Monitored:         1,
-			},
+		episodeID, err := store.CreateEpisode(ctx, sqlcdb.Episode{
+			SeasonID:          seasonID,
+			EpisodeNumber:     1,
+			EpisodeMetadataID: sql.NullInt64{Int64: episodeMetadataID, Valid: true},
+			Monitored:         1,
 		}, storage.EpisodeStateDiscovered)
 		require.NoError(t, err)
 
@@ -1522,7 +1465,7 @@ func TestMediaManager_ReconcileDiscoveredEpisodes(t *testing.T) {
 		// Verify episode was transitioned to completed state
 		episode, err := store.GetEpisodeByID(ctx, episodeID)
 		require.NoError(t, err)
-		assert.Equal(t, storage.EpisodeStateCompleted, episode.State)
+		assert.Equal(t, sql.NullString{String: string(storage.EpisodeStateCompleted), Valid: true}, episode.State)
 	})
 
 	t.Run("error during reconcile individual episode", func(t *testing.T) {
@@ -1537,28 +1480,22 @@ func TestMediaManager_ReconcileDiscoveredEpisodes(t *testing.T) {
 		}
 
 		// Create series without path (will cause error in reconcileDiscoveredEpisode)
-		seriesID, err := store.CreateSeries(ctx, storage.Series{
-			Series: model.Series{
-				Path:      nil, // This will cause the reconcile to skip
-				Monitored: 1,
-			},
+		seriesID, err := store.CreateSeries(ctx, sqlcdb.Series{QualityProfileID: 1,
+			Path:      sql.NullString{}, // This will cause the reconcile to skip
+			Monitored: 1,
 		}, storage.SeriesStateMissing)
 		require.NoError(t, err)
 
-		seasonID, err := store.CreateSeason(ctx, storage.Season{
-			Season: model.Season{
-				SeriesID:  int32(seriesID),
-				Monitored: 1,
-			},
+		seasonID, err := store.CreateSeason(ctx, sqlcdb.Season{
+			SeriesID:  seriesID,
+			Monitored: 1,
 		}, storage.SeasonStateMissing)
 		require.NoError(t, err)
 
-		_, err = store.CreateEpisode(ctx, storage.Episode{
-			Episode: model.Episode{
-				SeasonID:      int32(seasonID),
-				EpisodeNumber: 1,
-				Monitored:     1,
-			},
+		_, err = store.CreateEpisode(ctx, sqlcdb.Episode{
+			SeasonID:      seasonID,
+			EpisodeNumber: 1,
+			Monitored:     1,
 		}, storage.EpisodeStateDiscovered)
 		require.NoError(t, err)
 
@@ -1571,68 +1508,62 @@ func TestMediaManager_ReconcileDiscoveredEpisodes(t *testing.T) {
 func TestMediaManager_matchEpisodeFileToEpisode(t *testing.T) {
 	t.Run("matches S01E03 format", func(t *testing.T) {
 		ctx := context.Background()
-		store := newStore(t, ctx)
+		store := newTVReconcileStore(t, ctx, true)
 
 		// Create season metadata first
-		seasonMetadataID, err := store.CreateSeasonMetadata(ctx, model.SeasonMetadata{
-			TmdbID: 1,
-			Title:  "Season 1",
-			Number: 1,
-		})
-		require.NoError(t, err)
+		seasonMetadataID := int64(1)
 
 		// Create episode metadata for episodes 1,2,3
-		episodeMetadataID1, err := store.CreateEpisodeMetadata(ctx, model.EpisodeMetadata{TmdbID: 1, Title: "Episode 1", Number: 1, SeasonMetadataID: int32(seasonMetadataID)})
+		episodeMetadataID1, err := store.CreateEpisodeMetadata(ctx, sqlcdb.EpisodeMetadatum{TmdbID: 1, Title: "Episode 1", Number: 1, SeasonMetadataID: seasonMetadataID})
 		require.NoError(t, err)
-		episodeMetadataID2, err := store.CreateEpisodeMetadata(ctx, model.EpisodeMetadata{TmdbID: 2, Title: "Episode 2", Number: 2, SeasonMetadataID: int32(seasonMetadataID)})
+		episodeMetadataID2, err := store.CreateEpisodeMetadata(ctx, sqlcdb.EpisodeMetadatum{TmdbID: 2, Title: "Episode 2", Number: 2, SeasonMetadataID: seasonMetadataID})
 		require.NoError(t, err)
-		episodeMetadataID3, err := store.CreateEpisodeMetadata(ctx, model.EpisodeMetadata{TmdbID: 3, Title: "Episode 3", Number: 3, SeasonMetadataID: int32(seasonMetadataID)})
+		episodeMetadataID3, err := store.CreateEpisodeMetadata(ctx, sqlcdb.EpisodeMetadatum{TmdbID: 3, Title: "Episode 3", Number: 3, SeasonMetadataID: seasonMetadataID})
 		require.NoError(t, err)
 
 		// Create episodes
-		episodes := []*storage.Episode{
-			{Episode: model.Episode{ID: 1, EpisodeMetadataID: ptr.To(int32(episodeMetadataID1))}},
-			{Episode: model.Episode{ID: 2, EpisodeMetadataID: ptr.To(int32(episodeMetadataID2))}},
-			{Episode: model.Episode{ID: 3, EpisodeMetadataID: ptr.To(int32(episodeMetadataID3))}},
+		episodes := []sqlcdb.ListEpisodesRow{
+			{Episode: sqlcdb.Episode{ID: 1, EpisodeMetadataID: sql.NullInt64{Int64: episodeMetadataID1, Valid: true}}},
+			{Episode: sqlcdb.Episode{ID: 2, EpisodeMetadataID: sql.NullInt64{Int64: episodeMetadataID2, Valid: true}}},
+			{Episode: sqlcdb.Episode{ID: 3, EpisodeMetadataID: sql.NullInt64{Int64: episodeMetadataID3, Valid: true}}},
 		}
 
 		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
 		result := m.matchEpisodeFileToEpisode(ctx, "/downloads/Series.Name.S01E03.1080p.WEB-DL.x264-GROUP.mkv", episodes)
 		require.NotNil(t, result)
-		assert.Equal(t, int32(3), result.ID)
+		assert.Equal(t, int64(3), result.Episode.ID)
 	})
 
 	t.Run("matches 1x05 format", func(t *testing.T) {
 		ctx := context.Background()
-		store := newStore(t, ctx)
+		store := newTVReconcileStore(t, ctx, true)
 
-		seasonMetadataID, err := store.CreateSeasonMetadata(ctx, model.SeasonMetadata{TmdbID: 2, Title: "Season 1", Number: 1})
+		seasonMetadataID := int64(1)
+
+		episodeMetadataID4, err := store.CreateEpisodeMetadata(ctx, sqlcdb.EpisodeMetadatum{TmdbID: 4, Title: "Episode 4", Number: 4, SeasonMetadataID: seasonMetadataID})
+		require.NoError(t, err)
+		episodeMetadataID5, err := store.CreateEpisodeMetadata(ctx, sqlcdb.EpisodeMetadatum{TmdbID: 5, Title: "Episode 5", Number: 5, SeasonMetadataID: seasonMetadataID})
 		require.NoError(t, err)
 
-		episodeMetadataID4, err := store.CreateEpisodeMetadata(ctx, model.EpisodeMetadata{TmdbID: 4, Title: "Episode 4", Number: 4, SeasonMetadataID: int32(seasonMetadataID)})
-		require.NoError(t, err)
-		episodeMetadataID5, err := store.CreateEpisodeMetadata(ctx, model.EpisodeMetadata{TmdbID: 5, Title: "Episode 5", Number: 5, SeasonMetadataID: int32(seasonMetadataID)})
-		require.NoError(t, err)
-
-		episodes := []*storage.Episode{
-			{Episode: model.Episode{ID: 4, EpisodeMetadataID: ptr.To(int32(episodeMetadataID4))}},
-			{Episode: model.Episode{ID: 5, EpisodeMetadataID: ptr.To(int32(episodeMetadataID5))}},
+		episodes := []sqlcdb.ListEpisodesRow{
+			{Episode: sqlcdb.Episode{ID: 4, EpisodeMetadataID: sql.NullInt64{Int64: episodeMetadataID4, Valid: true}}},
+			{Episode: sqlcdb.Episode{ID: 5, EpisodeMetadataID: sql.NullInt64{Int64: episodeMetadataID5, Valid: true}}},
 		}
 
 		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
 		result := m.matchEpisodeFileToEpisode(ctx, "/downloads/Series.Name.1x05.720p.HDTV.x264-GROUP.mkv", episodes)
 		require.NotNil(t, result)
-		assert.Equal(t, int32(5), result.ID)
+		assert.Equal(t, int64(5), result.Episode.ID)
 	})
 
 	t.Run("no match when episode number not found", func(t *testing.T) {
 		ctx := context.Background()
-		store := newStore(t, ctx)
+		store := newTVReconcileStore(t, ctx, true)
 
-		episodeMetadataID6, err := store.CreateEpisodeMetadata(ctx, model.EpisodeMetadata{TmdbID: 6, Title: "Episode 1", Number: 1, SeasonMetadataID: 1})
+		episodeMetadataID6, err := store.CreateEpisodeMetadata(ctx, sqlcdb.EpisodeMetadatum{TmdbID: 6, Title: "Episode 1", Number: 1, SeasonMetadataID: 1})
 		require.NoError(t, err)
 
-		episodes := []*storage.Episode{{Episode: model.Episode{ID: 6, EpisodeMetadataID: ptr.To(int32(episodeMetadataID6))}}}
+		episodes := []sqlcdb.ListEpisodesRow{{Episode: sqlcdb.Episode{ID: 6, EpisodeMetadataID: sql.NullInt64{Int64: episodeMetadataID6, Valid: true}}}}
 
 		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
 		result := m.matchEpisodeFileToEpisode(ctx, "/downloads/Series.Name.Some.Random.File.mkv", episodes)
@@ -1641,16 +1572,16 @@ func TestMediaManager_matchEpisodeFileToEpisode(t *testing.T) {
 
 	t.Run("no match when episode number doesn't exist in episodes", func(t *testing.T) {
 		ctx := context.Background()
-		store := newStore(t, ctx)
+		store := newTVReconcileStore(t, ctx, true)
 
-		episodeMetadataID7, err := store.CreateEpisodeMetadata(ctx, model.EpisodeMetadata{TmdbID: 7, Title: "Episode 1", Number: 1, SeasonMetadataID: 1})
+		episodeMetadataID7, err := store.CreateEpisodeMetadata(ctx, sqlcdb.EpisodeMetadatum{TmdbID: 7, Title: "Episode 1", Number: 1, SeasonMetadataID: 1})
 		require.NoError(t, err)
-		episodeMetadataID8, err := store.CreateEpisodeMetadata(ctx, model.EpisodeMetadata{TmdbID: 8, Title: "Episode 2", Number: 2, SeasonMetadataID: 1})
+		episodeMetadataID8, err := store.CreateEpisodeMetadata(ctx, sqlcdb.EpisodeMetadatum{TmdbID: 8, Title: "Episode 2", Number: 2, SeasonMetadataID: 1})
 		require.NoError(t, err)
 
-		episodes := []*storage.Episode{
-			{Episode: model.Episode{ID: 7, EpisodeMetadataID: ptr.To(int32(episodeMetadataID7))}},
-			{Episode: model.Episode{ID: 8, EpisodeMetadataID: ptr.To(int32(episodeMetadataID8))}},
+		episodes := []sqlcdb.ListEpisodesRow{
+			{Episode: sqlcdb.Episode{ID: 7, EpisodeMetadataID: sql.NullInt64{Int64: episodeMetadataID7, Valid: true}}},
+			{Episode: sqlcdb.Episode{ID: 8, EpisodeMetadataID: sql.NullInt64{Int64: episodeMetadataID8, Valid: true}}},
 		}
 
 		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
@@ -1717,4 +1648,20 @@ func Test_Manager_ReconcileSeries(t *testing.T) {
 		assert.Contains(t, errStr, "indexer error")
 		assert.Contains(t, errStr, "episodes error")
 	})
+}
+
+func newTVReconcileStore(t *testing.T, ctx context.Context, withSeason bool) storage.Storage {
+	t.Helper()
+	store := newStore(t, ctx)
+	metadataID, err := store.CreateSeriesMetadata(ctx, sqlcdb.SeriesMetadatum{TmdbID: 999999, Title: "Series", Status: "Continuing"})
+	require.NoError(t, err)
+	seasonMetadataID, err := store.CreateSeasonMetadata(ctx, sqlcdb.SeasonMetadatum{SeriesMetadataID: metadataID, TmdbID: 999999, Number: 1, Title: "Season 1"})
+	require.NoError(t, err)
+	seriesID, err := store.CreateSeries(ctx, sqlcdb.Series{SeriesMetadataID: sql.NullInt64{Int64: metadataID, Valid: true}, QualityProfileID: 1, Monitored: 1}, storage.SeriesStateMissing)
+	require.NoError(t, err)
+	if withSeason {
+		_, err = store.CreateSeason(ctx, sqlcdb.Season{SeriesID: seriesID, SeasonMetadataID: sql.NullInt64{Int64: seasonMetadataID, Valid: true}, SeasonNumber: 1, Monitored: 1}, storage.SeasonStateMissing)
+		require.NoError(t, err)
+	}
+	return store
 }

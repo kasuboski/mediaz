@@ -1,6 +1,7 @@
 package server
 
 import (
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -12,10 +13,9 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/kasuboski/mediaz/config"
 	"github.com/kasuboski/mediaz/pkg/manager"
-	"github.com/kasuboski/mediaz/pkg/ptr"
 	"github.com/kasuboski/mediaz/pkg/storage"
 	storeMocks "github.com/kasuboski/mediaz/pkg/storage/mocks"
-	"github.com/kasuboski/mediaz/pkg/storage/model"
+	"github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 	tmdbMocks "github.com/kasuboski/mediaz/pkg/tmdb/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -34,39 +34,36 @@ func TestServer_GetMovieDetailByTMDBID(t *testing.T) {
 		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
 
 		// Setup expectations for GetMovieMetadata call
-		expectedMetadata := &model.MovieMetadata{
+		expectedMetadata := sqlcdb.MovieMetadatum{
 			ID:               1,
 			TmdbID:           12345,
 			Title:            "Test Movie",
-			OriginalTitle:    ptr.To("Original Test Movie"),
-			Overview:         ptr.To("A test movie overview"),
+			OriginalTitle:    sql.NullString{String: "Original Test Movie", Valid: true},
+			Overview:         sql.NullString{String: "A test movie overview", Valid: true},
 			Images:           "/test-poster.jpg",
 			Runtime:          120,
-			Year:             ptr.To(int32(2023)),
-			ReleaseDate:      ptr.To(time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC)),
-			Genres:           ptr.To("Action,Adventure"),
-			Studio:           ptr.To("Test Studio"),
-			Website:          ptr.To("https://testmovie.com"),
-			Popularity:       ptr.To(85.5),
-			CollectionTmdbID: ptr.To(int32(5000)),
-			CollectionTitle:  ptr.To("Test Collection"),
+			Year:             sql.NullInt64{Int64: 2023, Valid: true},
+			ReleaseDate:      sql.NullTime{Time: time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC), Valid: true},
+			Genres:           sql.NullString{String: "Action,Adventure", Valid: true},
+			Studio:           sql.NullString{String: "Test Studio", Valid: true},
+			Website:          sql.NullString{String: "https://testmovie.com", Valid: true},
+			Popularity:       sql.NullFloat64{Float64: 85.5, Valid: true},
+			CollectionTmdbID: sql.NullInt64{Int64: 5000, Valid: true},
+			CollectionTitle:  sql.NullString{String: "Test Collection", Valid: true},
 		}
 
 		store.EXPECT().GetMovieMetadataByTmdbID(gomock.Any(), gomock.Any()).Return(expectedMetadata, nil)
 
 		// Setup expectations for GetMovieByMetadataID call
-		expectedMovie := &storage.Movie{
-			Movie: model.Movie{
-				ID:               1,
-				MovieMetadataID:  ptr.To(int32(1)),
-				QualityProfileID: 1,
-				Monitored:        1,
-				Path:             ptr.To("/movies/Test Movie (2023)"),
-			},
-			State: storage.MovieStateDownloaded,
-		}
+		expectedMovie := sqlcdb.GetMovieByMetadataIDRow{Movie: sqlcdb.Movie{
+			ID:               1,
+			MovieMetadataID:  sql.NullInt64{Int64: 1, Valid: true},
+			QualityProfileID: 1,
+			Monitored:        1,
+			Path:             sql.NullString{String: "/movies/Test Movie (2023)", Valid: true},
+		}, State: string(storage.MovieStateDownloaded)}
 
-		store.EXPECT().GetMovieByMetadataID(gomock.Any(), 1).Return(expectedMovie, nil)
+		store.EXPECT().GetMovieByMetadataID(gomock.Any(), int64(1)).Return(expectedMovie, nil)
 
 		// Create manager with mocked dependencies
 		mgr := manager.New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
@@ -112,7 +109,7 @@ func TestServer_GetMovieDetailByTMDBID(t *testing.T) {
 		store := storeMocks.NewMockStorage(ctrl)
 		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
 
-		expectedMetadata := &model.MovieMetadata{
+		expectedMetadata := sqlcdb.MovieMetadatum{
 			ID:      1,
 			TmdbID:  12345,
 			Title:   "Test Movie",
@@ -121,7 +118,7 @@ func TestServer_GetMovieDetailByTMDBID(t *testing.T) {
 		}
 
 		store.EXPECT().GetMovieMetadataByTmdbID(gomock.Any(), gomock.Any()).Return(expectedMetadata, nil)
-		store.EXPECT().GetMovieByMetadataID(gomock.Any(), 1).Return(nil, storage.ErrNotFound)
+		store.EXPECT().GetMovieByMetadataID(gomock.Any(), int64(1)).Return(sqlcdb.GetMovieByMetadataIDRow{}, storage.ErrNotFound)
 
 		mgr := manager.New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
 
@@ -173,7 +170,7 @@ func TestServer_GetMovieDetailByTMDBID(t *testing.T) {
 		store := storeMocks.NewMockStorage(ctrl)
 		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
 
-		store.EXPECT().GetMovieMetadataByTmdbID(gomock.Any(), gomock.Any()).Return(nil, errors.New("metadata not found"))
+		store.EXPECT().GetMovieMetadataByTmdbID(gomock.Any(), gomock.Any()).Return(sqlcdb.MovieMetadatum{}, errors.New("metadata not found"))
 
 		mgr := manager.New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
 
@@ -207,27 +204,24 @@ func TestServer_AddMovieToLibrary(t *testing.T) {
 		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
 
 		releaseDate := time.Now().AddDate(0, 0, -1)
-		metadata := &model.MovieMetadata{
+		metadata := sqlcdb.MovieMetadatum{
 			ID:          1,
 			TmdbID:      1234,
 			Title:       "Test Movie",
-			ReleaseDate: &releaseDate,
+			ReleaseDate: sql.NullTime{Time: releaseDate, Valid: true},
 		}
 
-		store.EXPECT().GetQualityProfile(gomock.Any(), int64(1)).Return(storage.QualityProfile{ID: 1}, nil)
+		store.EXPECT().GetQualityProfile(gomock.Any(), int64(1)).Return(sqlcdb.QualityProfile{ID: 1}, nil)
 		store.EXPECT().GetMovieMetadataByTmdbID(gomock.Any(), gomock.Any()).Return(metadata, nil)
-		store.EXPECT().GetMovieByMetadataID(gomock.Any(), 1).Return(nil, storage.ErrNotFound)
+		store.EXPECT().GetMovieByMetadataID(gomock.Any(), int64(1)).Return(sqlcdb.GetMovieByMetadataIDRow{}, storage.ErrNotFound)
 		store.EXPECT().CreateMovie(gomock.Any(), gomock.Any(), storage.MovieStateMissing).Return(int64(1), nil)
-		store.EXPECT().GetMovie(gomock.Any(), int64(1)).Return(&storage.Movie{
-			Movie: model.Movie{
-				ID:               1,
-				Monitored:        1,
-				QualityProfileID: 1,
-				MovieMetadataID:  ptr.To(int32(1)),
-				Path:             ptr.To("Test Movie"),
-			},
-			State: storage.MovieStateMissing,
-		}, nil)
+		store.EXPECT().GetMovie(gomock.Any(), int64(1)).Return(sqlcdb.GetMovieByIDRow{Movie: sqlcdb.Movie{
+			ID:               1,
+			Monitored:        1,
+			QualityProfileID: 1,
+			MovieMetadataID:  sql.NullInt64{Int64: 1, Valid: true},
+			Path:             sql.NullString{String: "Test Movie", Valid: true},
+		}, State: string(storage.MovieStateMissing)}, nil)
 
 		mgr := manager.New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
 		s := newTestServer(withManager(mgr))
@@ -263,23 +257,20 @@ func TestServer_AddMovieToLibrary(t *testing.T) {
 		store := storeMocks.NewMockStorage(ctrl)
 		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
 
-		metadata := &model.MovieMetadata{
+		metadata := sqlcdb.MovieMetadatum{
 			ID:     1,
 			TmdbID: 1234,
 			Title:  "Existing Movie",
 		}
 
-		store.EXPECT().GetQualityProfile(gomock.Any(), int64(1)).Return(storage.QualityProfile{ID: 1}, nil)
+		store.EXPECT().GetQualityProfile(gomock.Any(), int64(1)).Return(sqlcdb.QualityProfile{ID: 1}, nil)
 		store.EXPECT().GetMovieMetadataByTmdbID(gomock.Any(), gomock.Any()).Return(metadata, nil)
-		store.EXPECT().GetMovieByMetadataID(gomock.Any(), 1).Return(&storage.Movie{
-			Movie: model.Movie{
-				ID:               5,
-				MovieMetadataID:  ptr.To(int32(1)),
-				Monitored:        1,
-				QualityProfileID: 1,
-			},
-			State: storage.MovieStateDownloaded,
-		}, nil)
+		store.EXPECT().GetMovieByMetadataID(gomock.Any(), int64(1)).Return(sqlcdb.GetMovieByMetadataIDRow{Movie: sqlcdb.Movie{
+			ID:               5,
+			MovieMetadataID:  sql.NullInt64{Int64: 1, Valid: true},
+			Monitored:        1,
+			QualityProfileID: 1,
+		}, State: string(storage.MovieStateDownloaded)}, nil)
 
 		mgr := manager.New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
 		s := newTestServer(withManager(mgr))
@@ -315,23 +306,20 @@ func TestServer_AddMovieToLibrary(t *testing.T) {
 		store := storeMocks.NewMockStorage(ctrl)
 		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
 
-		metadata := &model.MovieMetadata{
+		metadata := sqlcdb.MovieMetadatum{
 			ID:     1,
 			TmdbID: 1234,
 			Title:  "Downloading Movie",
 		}
 
-		store.EXPECT().GetQualityProfile(gomock.Any(), int64(1)).Return(storage.QualityProfile{ID: 1}, nil)
+		store.EXPECT().GetQualityProfile(gomock.Any(), int64(1)).Return(sqlcdb.QualityProfile{ID: 1}, nil)
 		store.EXPECT().GetMovieMetadataByTmdbID(gomock.Any(), gomock.Any()).Return(metadata, nil)
-		store.EXPECT().GetMovieByMetadataID(gomock.Any(), 1).Return(&storage.Movie{
-			Movie: model.Movie{
-				ID:               6,
-				MovieMetadataID:  ptr.To(int32(1)),
-				Monitored:        1,
-				QualityProfileID: 1,
-			},
-			State: storage.MovieStateDownloading,
-		}, nil)
+		store.EXPECT().GetMovieByMetadataID(gomock.Any(), int64(1)).Return(sqlcdb.GetMovieByMetadataIDRow{Movie: sqlcdb.Movie{
+			ID:               6,
+			MovieMetadataID:  sql.NullInt64{Int64: 1, Valid: true},
+			Monitored:        1,
+			QualityProfileID: 1,
+		}, State: string(storage.MovieStateDownloading)}, nil)
 
 		mgr := manager.New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
 		s := newTestServer(withManager(mgr))
@@ -367,23 +355,20 @@ func TestServer_AddMovieToLibrary(t *testing.T) {
 		store := storeMocks.NewMockStorage(ctrl)
 		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
 
-		metadata := &model.MovieMetadata{
+		metadata := sqlcdb.MovieMetadatum{
 			ID:     1,
 			TmdbID: 1234,
 			Title:  "Discovered Movie",
 		}
 
-		store.EXPECT().GetQualityProfile(gomock.Any(), int64(1)).Return(storage.QualityProfile{ID: 1}, nil)
+		store.EXPECT().GetQualityProfile(gomock.Any(), int64(1)).Return(sqlcdb.QualityProfile{ID: 1}, nil)
 		store.EXPECT().GetMovieMetadataByTmdbID(gomock.Any(), gomock.Any()).Return(metadata, nil)
-		store.EXPECT().GetMovieByMetadataID(gomock.Any(), 1).Return(&storage.Movie{
-			Movie: model.Movie{
-				ID:               7,
-				MovieMetadataID:  ptr.To(int32(1)),
-				Monitored:        1,
-				QualityProfileID: 1,
-			},
-			State: storage.MovieStateDiscovered,
-		}, nil)
+		store.EXPECT().GetMovieByMetadataID(gomock.Any(), int64(1)).Return(sqlcdb.GetMovieByMetadataIDRow{Movie: sqlcdb.Movie{
+			ID:               7,
+			MovieMetadataID:  sql.NullInt64{Int64: 1, Valid: true},
+			Monitored:        1,
+			QualityProfileID: 1,
+		}, State: string(storage.MovieStateDiscovered)}, nil)
 
 		mgr := manager.New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
 		s := newTestServer(withManager(mgr))
@@ -435,7 +420,7 @@ func TestServer_AddMovieToLibrary(t *testing.T) {
 		store := storeMocks.NewMockStorage(ctrl)
 		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
 
-		store.EXPECT().GetQualityProfile(gomock.Any(), int64(99)).Return(storage.QualityProfile{}, errors.New("not found"))
+		store.EXPECT().GetQualityProfile(gomock.Any(), int64(99)).Return(sqlcdb.QualityProfile{}, errors.New("not found"))
 
 		mgr := manager.New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
 		s := newTestServer(withManager(mgr))

@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/kasuboski/mediaz/pkg/storage/model"
+	"github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 )
 
 type IndexerSourceFactory struct{}
@@ -13,7 +13,7 @@ func NewIndexerSourceFactory() Factory {
 	return &IndexerSourceFactory{}
 }
 
-func (f *IndexerSourceFactory) NewIndexerSource(config model.IndexerSource) (IndexerSource, error) {
+func (f *IndexerSourceFactory) NewIndexerSource(config sqlcdb.IndexerSource) (IndexerSource, error) {
 	if !config.Enabled {
 		return nil, errors.New("indexer source is disabled")
 	}

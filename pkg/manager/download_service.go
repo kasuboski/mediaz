@@ -6,7 +6,7 @@ import (
 	"github.com/kasuboski/mediaz/pkg/download"
 	"github.com/kasuboski/mediaz/pkg/prowlarr"
 	"github.com/kasuboski/mediaz/pkg/storage"
-	"github.com/kasuboski/mediaz/pkg/storage/model"
+	sqlcdb "github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 )
 
 type DownloadClientService struct {
@@ -21,19 +21,19 @@ func NewDownloadClientService(downloadStorage storage.DownloadClientStorage, fac
 	}
 }
 
-func (ds DownloadClientService) buildRuntimeDownloadClient(ctx context.Context, client model.DownloadClient) (download.DownloadClient, error) {
+func (ds DownloadClientService) buildRuntimeDownloadClient(ctx context.Context, client sqlcdb.DownloadClient) (download.DownloadClient, error) {
 	return ds.factory.NewDownloadClient(client)
 }
 
 type AddDownloadClientRequest struct {
-	model.DownloadClient
+	sqlcdb.DownloadClient
 }
 
 type UpdateDownloadClientRequest struct {
-	model.DownloadClient
+	sqlcdb.DownloadClient
 }
 
-func (ds DownloadClientService) CreateDownloadClient(ctx context.Context, request AddDownloadClientRequest) (model.DownloadClient, error) {
+func (ds DownloadClientService) CreateDownloadClient(ctx context.Context, request AddDownloadClientRequest) (sqlcdb.DownloadClient, error) {
 	downloadClient := request.DownloadClient
 
 	id, err := ds.downloadStorage.CreateDownloadClient(ctx, request.DownloadClient)
@@ -41,25 +41,25 @@ func (ds DownloadClientService) CreateDownloadClient(ctx context.Context, reques
 		return downloadClient, err
 	}
 
-	downloadClient.ID = int32(id)
+	downloadClient.ID = id
 	return downloadClient, nil
 }
 
-func (ds DownloadClientService) UpdateDownloadClient(ctx context.Context, id int64, request UpdateDownloadClientRequest) (model.DownloadClient, error) {
-	if request.APIKey == nil || (request.APIKey != nil && *request.APIKey == "") {
+func (ds DownloadClientService) UpdateDownloadClient(ctx context.Context, id int64, request UpdateDownloadClientRequest) (sqlcdb.DownloadClient, error) {
+	if !request.ApiKey.Valid || request.ApiKey.String == "" {
 		existing, err := ds.downloadStorage.GetDownloadClient(ctx, id)
 		if err != nil {
-			return model.DownloadClient{}, err
+			return sqlcdb.DownloadClient{}, err
 		}
-		request.APIKey = existing.APIKey
+		request.ApiKey = existing.ApiKey
 	}
 
 	downloadClient := request.DownloadClient
-	downloadClient.ID = int32(id)
+	downloadClient.ID = id
 
 	err := ds.downloadStorage.UpdateDownloadClient(ctx, id, downloadClient)
 	if err != nil {
-		return model.DownloadClient{}, err
+		return sqlcdb.DownloadClient{}, err
 	}
 
 	return downloadClient, nil
@@ -75,11 +75,11 @@ func (ds DownloadClientService) TestDownloadClient(ctx context.Context, request 
 	return err
 }
 
-func (ds DownloadClientService) GetDownloadClient(ctx context.Context, id int64) (model.DownloadClient, error) {
+func (ds DownloadClientService) GetDownloadClient(ctx context.Context, id int64) (sqlcdb.DownloadClient, error) {
 	return ds.downloadStorage.GetDownloadClient(ctx, id)
 }
 
-func (ds DownloadClientService) ListDownloadClients(ctx context.Context) ([]*model.DownloadClient, error) {
+func (ds DownloadClientService) ListDownloadClients(ctx context.Context) ([]sqlcdb.DownloadClient, error) {
 	return ds.downloadStorage.ListDownloadClients(ctx)
 }
 
@@ -87,7 +87,7 @@ func (ds DownloadClientService) DeleteDownloadClient(ctx context.Context, id int
 	return ds.downloadStorage.DeleteDownloadClient(ctx, id)
 }
 
-func availableProtocols(clients []*model.DownloadClient) map[string]struct{} {
+func availableProtocols(clients []sqlcdb.DownloadClient) map[string]struct{} {
 	ret := make(map[string]struct{})
 	for _, c := range clients {
 		ret[c.Type] = struct{}{}
@@ -96,10 +96,10 @@ func availableProtocols(clients []*model.DownloadClient) map[string]struct{} {
 	return ret
 }
 
-func clientForProtocol(clients []*model.DownloadClient, proto prowlarr.DownloadProtocol) *model.DownloadClient {
-	for _, c := range clients {
-		if c.Type == string(proto) {
-			return c
+func clientForProtocol(clients []sqlcdb.DownloadClient, proto prowlarr.DownloadProtocol) *sqlcdb.DownloadClient {
+	for i := range clients {
+		if clients[i].Type == string(proto) {
+			return &clients[i]
 		}
 	}
 

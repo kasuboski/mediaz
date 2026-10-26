@@ -1,22 +1,12 @@
--- TV season queries. Mirrors the legacy Jet statements that used to live in
--- season.go:
---   - CreateSeason inserted the id column only when it was non-zero. A NULL id
---     makes SQLite AUTOINCREMENT assign a fresh rowid; a non-NULL id lands in
---     the ON CONFLICT (id) DO UPDATE branch, matching the two legacy branches
---     without conditional SQL.
---   - GetSeason used a LEFT JOIN on the most recent season_transition (a
---     season without transitions is still returned) while ListSeasons used an
---     INNER JOIN; preserved exactly.
---   - Transition inserts omit created_at/updated_at so the column defaults
---     (CURRENT_TIMESTAMP) apply.
---   - Filter params are nullable (sqlc narg) so zero-value filters mean "no
---     constraint". States uses fixed nullable slots standing in for an IN
---     list; the first slot doubles as the "any state" guard. Nullable params
---     are wrapped in typed casts so sqlc emits sql.Null types instead of
---     interface; the casts are identity no-ops for the bound values. Never
---     cast to datetime types: SQLite affinity would truncate timestamps.
+-- TV season queries. Entity reads join the most recent season_transition via
+-- embed(s) plus named transition columns. Get-by-id keeps the legacy LEFT
+-- JOIN (a season without transitions is still returned) while ListSeasons uses
+-- an INNER JOIN. ListSeasons supports any-length state filters through
+-- slice guarded by a nullable param (A3).
 
 -- name: CreateSeason :one
+-- A NULL id lets SQLite assign a fresh AUTOINCREMENT rowid; a non-NULL id
+-- inserts explicitly or lands in the ON CONFLICT branch (upsert by id).
 INSERT INTO
     season (
         "id",
@@ -39,44 +29,43 @@ ON CONFLICT ("id") DO UPDATE SET
     "monitored" = excluded."monitored"
 RETURNING "id";
 
--- name: GetSeason :one
+-- name: GetSeasonByID :one
 SELECT
-    s.id,
-    s.series_id,
-    s.season_number,
-    s.season_metadata_id,
-    s.monitored,
-    st.to_state,
+    sqlc.embed(s),
+    st.to_state AS state,
     st.download_id,
-    st.download_client_id
+    st.download_client_id,
+    st.is_entire_season_download
+FROM
+    season AS s
+    LEFT JOIN season_transition AS st ON s.id = st.season_id
+    AND st.most_recent = 1
+WHERE s.id = sqlc.arg('id');
+
+-- name: GetSeasonBySeriesIDAndNumber :one
+SELECT
+    sqlc.embed(s),
+    st.to_state AS state,
+    st.download_id,
+    st.download_client_id,
+    st.is_entire_season_download
 FROM
     season AS s
     LEFT JOIN season_transition AS st ON s.id = st.season_id
     AND st.most_recent = 1
 WHERE
-    (
-        CAST(sqlc.narg('id') AS INTEGER) IS NULL
-        OR s.id = CAST(sqlc.narg('id') AS INTEGER)
-    )
-    AND (
-        CAST(sqlc.narg('series_id') AS INTEGER) IS NULL
-        OR s.series_id = CAST(sqlc.narg('series_id') AS INTEGER)
-    )
-    AND (
-        CAST(sqlc.narg('season_number') AS INTEGER) IS NULL
-        OR s.season_number = CAST(sqlc.narg('season_number') AS INTEGER)
-    );
+    s.series_id = sqlc.arg('series_id')
+    AND s.season_number = sqlc.arg('season_number');
 
 -- name: ListSeasons :many
+-- states_any is a NULL guard: when NULL no state constraint applies; when set,
+-- the states slice constrains the current transition state (any length).
 SELECT
-    s.id,
-    s.series_id,
-    s.season_number,
-    s.season_metadata_id,
-    s.monitored,
-    st.to_state,
+    sqlc.embed(s),
+    st.to_state AS state,
     st.download_id,
-    st.download_client_id
+    st.download_client_id,
+    st.is_entire_season_download
 FROM
     season AS s
     INNER JOIN season_transition AS st ON s.id = st.season_id
@@ -88,13 +77,9 @@ WHERE
     )
     AND (
         CAST(sqlc.narg('states_any') AS TEXT) IS NULL
-        OR st.to_state IN (
-            CAST(sqlc.narg('states_any') AS TEXT),
-            CAST(sqlc.narg('state_2') AS TEXT),
-            CAST(sqlc.narg('state_3') AS TEXT),
-            CAST(sqlc.narg('state_4') AS TEXT)
-        )
-    );
+        OR st.to_state IN (sqlc.slice('states'))
+    )
+ORDER BY s.series_id ASC, s.season_number ASC, s.id ASC;
 
 -- name: DeleteSeason :exec
 DELETE FROM season

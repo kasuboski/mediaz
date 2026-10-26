@@ -2,6 +2,7 @@ package manager
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"math"
@@ -12,9 +13,8 @@ import (
 	"github.com/kasuboski/mediaz/pkg/indexer"
 	"github.com/kasuboski/mediaz/pkg/logger"
 	"github.com/kasuboski/mediaz/pkg/prowlarr"
-	"github.com/kasuboski/mediaz/pkg/ptr"
 	"github.com/kasuboski/mediaz/pkg/storage"
-	"github.com/kasuboski/mediaz/pkg/storage/model"
+	sqlcdb "github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 	"go.uber.org/zap"
 )
 
@@ -45,7 +45,7 @@ type UpdateIndexerSourceRequest struct {
 }
 
 type IndexerSourceResponse struct {
-	ID             int32  `json:"id"`
+	ID             int64  `json:"id"`
 	Name           string `json:"name"`
 	Implementation string `json:"implementation"`
 	Scheme         string `json:"scheme"`
@@ -74,8 +74,8 @@ func NewIndexerService(
 	}
 }
 
-func (is IndexerService) listIndexersInternal(ctx context.Context) ([]model.Indexer, error) {
-	var all []model.Indexer
+func (is IndexerService) listIndexersInternal(ctx context.Context) ([]sqlcdb.Indexer, error) {
+	var all []sqlcdb.Indexer
 
 	keys := is.indexerCache.Keys()
 	for _, sourceID := range keys {
@@ -85,13 +85,13 @@ func (is IndexerService) listIndexersInternal(ctx context.Context) ([]model.Inde
 		}
 
 		for _, idx := range cached.Indexers {
-			all = append(all, model.Indexer{
-				ID:              idx.ID,
-				IndexerSourceID: ptr.To(int32(sourceID)),
+			all = append(all, sqlcdb.Indexer{
+				ID:              int64(idx.ID),
+				IndexerSourceID: sql.NullInt64{Int64: sourceID, Valid: true},
 				Name:            idx.Name,
-				Priority:        idx.Priority,
-				URI:             idx.URI,
-				APIKey:          nil,
+				Priority:        int64(idx.Priority),
+				Uri:             idx.URI,
+				ApiKey:          sql.NullString{},
 			})
 		}
 	}
@@ -102,8 +102,8 @@ func (is IndexerService) listIndexersInternal(ctx context.Context) ([]model.Inde
 	}
 
 	for _, idx := range dbIndexers {
-		if idx.IndexerSourceID == nil {
-			all = append(all, *idx)
+		if !idx.IndexerSourceID.Valid {
+			all = append(all, idx)
 		}
 	}
 
@@ -122,10 +122,10 @@ func (is IndexerService) ListIndexers(ctx context.Context) ([]IndexerResponse, e
 
 		for _, idx := range cached.Indexers {
 			all = append(all, IndexerResponse{
-				ID:       idx.ID,
+				ID:       int64(idx.ID),
 				Name:     idx.Name,
 				Source:   cached.SourceName,
-				Priority: idx.Priority,
+				Priority: int64(idx.Priority),
 				URI:      idx.URI,
 			})
 		}
@@ -137,13 +137,13 @@ func (is IndexerService) ListIndexers(ctx context.Context) ([]IndexerResponse, e
 	}
 
 	for _, idx := range dbIndexers {
-		if idx.IndexerSourceID == nil {
+		if !idx.IndexerSourceID.Valid {
 			all = append(all, IndexerResponse{
 				ID:       idx.ID,
 				Name:     idx.Name,
 				Source:   "Internal",
 				Priority: idx.Priority,
-				URI:      idx.URI,
+				URI:      idx.Uri,
 			})
 		}
 	}
@@ -163,22 +163,22 @@ func (is IndexerService) AddIndexer(ctx context.Context, request AddIndexerReque
 		return IndexerResponse{}, err
 	}
 
-	idx.ID = int32(id)
+	idx.ID = id
 
 	return toIndexerResponse(idx), nil
 }
 
-func (is IndexerService) UpdateIndexer(ctx context.Context, id int32, request UpdateIndexerRequest) (IndexerResponse, error) {
+func (is IndexerService) UpdateIndexer(ctx context.Context, id int64, request UpdateIndexerRequest) (IndexerResponse, error) {
 	if request.Name == "" {
 		return IndexerResponse{}, fmt.Errorf("%w: indexer name is required", ErrValidation)
 	}
 
-	idx := model.Indexer{
-		ID:       id,
+	idx := sqlcdb.Indexer{
+		ID:       int64(id),
 		Name:     request.Name,
-		Priority: request.Priority,
-		URI:      request.URI,
-		APIKey:   request.APIKey,
+		Priority: int64(request.Priority),
+		Uri:      request.URI,
+		ApiKey:   nullStrIn(request.APIKey),
 	}
 
 	if err := is.indexerStorage.UpdateIndexer(ctx, int64(id), idx); err != nil {
@@ -197,13 +197,13 @@ func (is IndexerService) DeleteIndexer(ctx context.Context, request DeleteIndexe
 }
 
 func (is IndexerService) CreateIndexerSource(ctx context.Context, req AddIndexerSourceRequest) (IndexerSourceResponse, error) {
-	source := model.IndexerSource{
+	source := sqlcdb.IndexerSource{
 		Name:           req.Name,
 		Implementation: req.Implementation,
 		Scheme:         req.Scheme,
 		Host:           req.Host,
-		Port:           req.Port,
-		APIKey:         req.APIKey,
+		Port:           nullI64In(req.Port),
+		ApiKey:         nullStrIn(req.APIKey),
 		Enabled:        req.Enabled,
 	}
 
@@ -212,7 +212,7 @@ func (is IndexerService) CreateIndexerSource(ctx context.Context, req AddIndexer
 		return IndexerSourceResponse{}, err
 	}
 
-	source.ID = int32(id)
+	source.ID = id
 
 	if !source.Enabled {
 		is.indexerCache.Delete(id)
@@ -234,7 +234,7 @@ func (is IndexerService) ListIndexerSources(ctx context.Context) ([]IndexerSourc
 
 	responses := make([]IndexerSourceResponse, len(sources))
 	for i, src := range sources {
-		responses[i] = toIndexerSourceResponse(*src)
+		responses[i] = toIndexerSourceResponse(src)
 	}
 
 	return responses, nil
@@ -250,28 +250,24 @@ func (is IndexerService) GetIndexerSource(ctx context.Context, id int64) (Indexe
 }
 
 func (is IndexerService) UpdateIndexerSource(ctx context.Context, id int64, req UpdateIndexerSourceRequest) (IndexerSourceResponse, error) {
-	if id < math.MinInt32 || id > math.MaxInt32 {
-		return IndexerSourceResponse{}, fmt.Errorf("indexer source id %d out of range", id)
-	}
-
 	existing, err := is.indexerSrcStorage.GetIndexerSource(ctx, id)
 	if err != nil {
 		return IndexerSourceResponse{}, err
 	}
 
-	apiKey := req.APIKey
-	if apiKey == nil || *apiKey == "" {
-		apiKey = existing.APIKey
+	apiKey := nullStrIn(req.APIKey)
+	if !apiKey.Valid || apiKey.String == "" {
+		apiKey = existing.ApiKey
 	}
 
-	source := model.IndexerSource{
-		ID:             int32(id),
+	source := sqlcdb.IndexerSource{
+		ID:             id,
 		Name:           req.Name,
 		Implementation: req.Implementation,
 		Scheme:         req.Scheme,
 		Host:           req.Host,
-		Port:           req.Port,
-		APIKey:         apiKey,
+		Port:           nullI64In(req.Port),
+		ApiKey:         apiKey,
 		Enabled:        req.Enabled,
 	}
 
@@ -301,13 +297,13 @@ func (is IndexerService) DeleteIndexerSource(ctx context.Context, id int64) erro
 }
 
 func (is IndexerService) TestIndexerSource(ctx context.Context, req AddIndexerSourceRequest) error {
-	source := model.IndexerSource{
+	source := sqlcdb.IndexerSource{
 		Name:           req.Name,
 		Implementation: req.Implementation,
 		Scheme:         req.Scheme,
 		Host:           req.Host,
-		Port:           req.Port,
-		APIKey:         req.APIKey,
+		Port:           nullI64In(req.Port),
+		ApiKey:         nullStrIn(req.APIKey),
 		Enabled:        true,
 	}
 
@@ -368,7 +364,7 @@ func (is IndexerService) RefreshAllIndexerSources(ctx context.Context) error {
 	var allErrors error
 	for _, src := range sources {
 		if err := is.RefreshIndexerSource(ctx, int64(src.ID)); err != nil {
-			log.Error("failed to refresh source", zap.Int32("sourceID", src.ID), zap.Error(err))
+			log.Error("failed to refresh source", zap.Int64("sourceID", src.ID), zap.Error(err))
 			allErrors = errors.Join(allErrors, err)
 		}
 	}
@@ -382,10 +378,10 @@ func (is IndexerService) RefreshAllIndexerSources(ctx context.Context) error {
 // slow or unresponsive source from hanging the entire SearchIndexers call.
 const sourceSearchTimeout = 30 * time.Second
 
-func (is IndexerService) SearchIndexers(ctx context.Context, indexers, categories []int32, opts indexer.SearchOptions) ([]*prowlarr.ReleaseResource, error) {
+func (is IndexerService) SearchIndexers(ctx context.Context, indexers []int64, categories []int32, opts indexer.SearchOptions) ([]*prowlarr.ReleaseResource, error) {
 	log := logger.FromCtx(ctx)
 
-	sourceIndexers := make(map[int64][]int32)
+	sourceIndexers := make(map[int64][]int64)
 
 	keys := is.indexerCache.Keys()
 	for _, sourceID := range keys {
@@ -396,7 +392,7 @@ func (is IndexerService) SearchIndexers(ctx context.Context, indexers, categorie
 
 		for _, idx := range cached.Indexers {
 			for _, id := range indexers {
-				if idx.ID == id {
+				if int64(idx.ID) == id {
 					sourceIndexers[sourceID] = append(sourceIndexers[sourceID], id)
 				}
 			}
@@ -417,7 +413,7 @@ func (is IndexerService) SearchIndexers(ctx context.Context, indexers, categorie
 
 	for sourceID, idxIDs := range sourceIndexers {
 		wg.Add(1)
-		go func(srcID int64, indexerIDs []int32) {
+		go func(srcID int64, indexerIDs []int64) {
 			defer wg.Done()
 			ctxWithTimeout, cancel := context.WithTimeout(ctx, sourceSearchTimeout)
 			defer cancel()
@@ -450,7 +446,7 @@ func (is IndexerService) SearchIndexers(ctx context.Context, indexers, categorie
 	return allReleases, searchErr
 }
 
-func (is IndexerService) searchIndexerSource(ctx context.Context, sourceID int64, indexerIDs, categories []int32, opts indexer.SearchOptions) ([]*prowlarr.ReleaseResource, error) {
+func (is IndexerService) searchIndexerSource(ctx context.Context, sourceID int64, indexerIDs []int64, categories []int32, opts indexer.SearchOptions) ([]*prowlarr.ReleaseResource, error) {
 	log := logger.FromCtx(ctx)
 
 	sourceConfig, err := is.indexerSrcStorage.GetIndexerSource(ctx, sourceID)
@@ -465,10 +461,13 @@ func (is IndexerService) searchIndexerSource(ctx context.Context, sourceID int64
 
 	var sourceReleases []*prowlarr.ReleaseResource
 	for _, indexerID := range indexerIDs {
-		releases, err := source.Search(ctx, indexerID, categories, opts)
+		if indexerID < 0 || indexerID > math.MaxInt32 {
+			return nil, fmt.Errorf("indexer ID %d exceeds the Prowlarr API range", indexerID)
+		}
+		releases, err := source.Search(ctx, int32(indexerID), categories, opts)
 		if err != nil {
 			log.Error("indexer search failed",
-				zap.Int32("indexerID", indexerID),
+				zap.Int64("indexerID", indexerID),
 				zap.Error(err))
 			continue
 		}
@@ -478,23 +477,61 @@ func (is IndexerService) searchIndexerSource(ctx context.Context, sourceID int64
 	return sourceReleases, nil
 }
 
-func toIndexerResponse(idx model.Indexer) IndexerResponse {
+func toIndexerResponse(idx sqlcdb.Indexer) IndexerResponse {
 	return IndexerResponse{
 		ID:       idx.ID,
 		Name:     idx.Name,
 		Priority: idx.Priority,
-		URI:      idx.URI,
+		URI:      idx.Uri,
 	}
 }
 
-func toIndexerSourceResponse(src model.IndexerSource) IndexerSourceResponse {
+func toIndexerSourceResponse(src sqlcdb.IndexerSource) IndexerSourceResponse {
+	var port *int32
+	if src.Port.Valid {
+		value := int32(src.Port.Int64)
+		port = &value
+	}
 	return IndexerSourceResponse{
 		ID:             src.ID,
 		Name:           src.Name,
 		Implementation: src.Implementation,
 		Scheme:         src.Scheme,
 		Host:           src.Host,
-		Port:           src.Port,
+		Port:           port,
 		Enabled:        src.Enabled,
 	}
+}
+
+// nullStrIn converts an optional string to a nullable string column value.
+func nullStrIn(v *string) sql.NullString {
+	if v == nil {
+		return sql.NullString{}
+	}
+	return sql.NullString{String: *v, Valid: true}
+}
+
+// nullI64In converts an optional int32 to a nullable int64 column value.
+func nullI64In(v *int32) sql.NullInt64 {
+	if v == nil {
+		return sql.NullInt64{}
+	}
+	return sql.NullInt64{Int64: int64(*v), Valid: true}
+}
+
+// nullTimeIn converts an optional time to a nullable time column value.
+func nullTimeIn(v *time.Time) sql.NullTime {
+	if v == nil {
+		return sql.NullTime{}
+	}
+	return sql.NullTime{Time: *v, Valid: true}
+}
+
+// nullTimeOut converts a nullable time column value to an optional time.
+func nullTimeOut(v sql.NullTime) *time.Time {
+	if !v.Valid {
+		return nil
+	}
+	t := v.Time
+	return &t
 }

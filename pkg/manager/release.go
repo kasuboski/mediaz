@@ -11,7 +11,7 @@ import (
 	"github.com/kasuboski/mediaz/pkg/logger"
 	"github.com/kasuboski/mediaz/pkg/prowlarr"
 	"github.com/kasuboski/mediaz/pkg/size"
-	"github.com/kasuboski/mediaz/pkg/storage"
+	"github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 	"go.uber.org/zap"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
@@ -50,7 +50,7 @@ type SeriesReleaseFilterParams struct {
 	Runtime       int32
 }
 
-func RejectMovieReleaseFunc(ctx context.Context, params ReleaseFilterParams, profile storage.QualityProfile, protocolsAvailable map[string]struct{}) func(*prowlarr.ReleaseResource) bool {
+func RejectMovieReleaseFunc(ctx context.Context, params ReleaseFilterParams, profile []sqlcdb.ListQualityProfileRowsRow, protocolsAvailable map[string]struct{}) func(*prowlarr.ReleaseResource) bool {
 	return func(r *prowlarr.ReleaseResource) bool {
 		if r == nil {
 			return true
@@ -126,7 +126,7 @@ func extractYear(title string) *int32 {
 	return findYear(normalizeSeparators(title))
 }
 
-func RejectSeasonReleaseFunc(ctx context.Context, params SeriesReleaseFilterParams, profile storage.QualityProfile, protocolsAvailable map[string]struct{}) func(*prowlarr.ReleaseResource) bool {
+func RejectSeasonReleaseFunc(ctx context.Context, params SeriesReleaseFilterParams, profile []sqlcdb.ListQualityProfileRowsRow, protocolsAvailable map[string]struct{}) func(*prowlarr.ReleaseResource) bool {
 	return func(r *prowlarr.ReleaseResource) bool {
 		if rejectSeasonReleaseFunc(params.Title, params.SeasonNumber, r) {
 			return true
@@ -171,7 +171,7 @@ func rejectSeasonReleaseFunc(seriesTitle string, seasonNumber int32, r *prowlarr
 	return true
 }
 
-func RejectEpisodeReleaseFunc(ctx context.Context, params SeriesReleaseFilterParams, profile storage.QualityProfile, protocolsAvailable map[string]struct{}) func(*prowlarr.ReleaseResource) bool {
+func RejectEpisodeReleaseFunc(ctx context.Context, params SeriesReleaseFilterParams, profile []sqlcdb.ListQualityProfileRowsRow, protocolsAvailable map[string]struct{}) func(*prowlarr.ReleaseResource) bool {
 	return func(r *prowlarr.ReleaseResource) bool {
 		if rejectEpisodeReleaseFunc(params.Title, params.SeasonNumber, params.EpisodeNumber, r) {
 			return true
@@ -218,7 +218,7 @@ func rejectEpisodeReleaseFunc(seriesTitle string, seasonNumber, episodeNumber in
 }
 
 // rejectReleaseFunc returns a function that returns true if the given release should be rejected
-func rejectReleaseFunc(ctx context.Context, runtime int32, profile storage.QualityProfile, protocolsAvailable map[string]struct{}) func(*prowlarr.ReleaseResource) bool {
+func rejectReleaseFunc(ctx context.Context, runtime int32, profile []sqlcdb.ListQualityProfileRowsRow, protocolsAvailable map[string]struct{}) func(*prowlarr.ReleaseResource) bool {
 	log := logger.FromCtx(ctx)
 
 	return func(r *prowlarr.ReleaseResource) bool {
@@ -243,7 +243,8 @@ func rejectReleaseFunc(ctx context.Context, runtime int32, profile storage.Quali
 		sizeMB := size.BytesToMB(*r.Size)
 
 		// items are assumed to be sorted quality so the highest media quality available is selected
-		for _, quality := range profile.Qualities {
+		for _, row := range profile {
+			quality := row.QualityDefinition
 
 			metQuality := MeetsQualitySize(quality, uint64(sizeMB), uint64(runtime))
 			if metQuality {

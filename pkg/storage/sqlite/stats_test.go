@@ -2,10 +2,11 @@ package sqlite
 
 import (
 	"context"
+	"database/sql"
 	"testing"
 
 	"github.com/kasuboski/mediaz/pkg/storage"
-	"github.com/kasuboski/mediaz/pkg/storage/model"
+	"github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -30,12 +31,12 @@ func TestGetLibraryStats(t *testing.T) {
 
 		p1, p2, p3 := "path/1", "path/2", "path/3"
 
-		_, err := store.CreateMovie(ctx, storage.Movie{Movie: model.Movie{Path: &p1, Monitored: 1}}, storage.MovieStateMissing)
+		_, err := store.CreateMovie(ctx, sqlcdb.Movie{Path: sql.NullString{String: p1, Valid: true}, Monitored: 1, QualityProfileID: 1}, storage.MovieStateMissing)
 		require.NoError(t, err)
-		_, err = store.CreateMovie(ctx, storage.Movie{Movie: model.Movie{Path: &p2, Monitored: 1}}, storage.MovieStateMissing)
+		_, err = store.CreateMovie(ctx, sqlcdb.Movie{Path: sql.NullString{String: p2, Valid: true}, Monitored: 1, QualityProfileID: 1}, storage.MovieStateMissing)
 		require.NoError(t, err)
 
-		id3, err := store.CreateMovie(ctx, storage.Movie{Movie: model.Movie{Path: &p3, Monitored: 1}}, storage.MovieStateMissing)
+		id3, err := store.CreateMovie(ctx, sqlcdb.Movie{Path: sql.NullString{String: p3, Valid: true}, Monitored: 1, QualityProfileID: 1}, storage.MovieStateMissing)
 		require.NoError(t, err)
 		require.NoError(t, store.UpdateMovieState(ctx, id3, storage.MovieStateDiscovered, nil))
 
@@ -60,14 +61,14 @@ func TestGetLibraryStats(t *testing.T) {
 
 		p1, p2, p3 := "path/1", "path/2", "path/3"
 
-		_, err := store.CreateSeries(ctx, storage.Series{Series: model.Series{Path: &p1, Monitored: 1, QualityProfileID: 1}}, storage.SeriesStateMissing)
+		_, err := store.CreateSeries(ctx, sqlcdb.Series{Path: sql.NullString{String: p1, Valid: true}, Monitored: 1, QualityProfileID: 1}, storage.SeriesStateMissing)
 		require.NoError(t, err)
 
-		id2, err := store.CreateSeries(ctx, storage.Series{Series: model.Series{Path: &p2, Monitored: 1, QualityProfileID: 1}}, storage.SeriesStateMissing)
+		id2, err := store.CreateSeries(ctx, sqlcdb.Series{Path: sql.NullString{String: p2, Valid: true}, Monitored: 1, QualityProfileID: 1}, storage.SeriesStateMissing)
 		require.NoError(t, err)
 		require.NoError(t, store.UpdateSeriesState(ctx, id2, storage.SeriesStateDiscovered, nil))
 
-		id3, err := store.CreateSeries(ctx, storage.Series{Series: model.Series{Path: &p3, Monitored: 1, QualityProfileID: 1}}, storage.SeriesStateMissing)
+		id3, err := store.CreateSeries(ctx, sqlcdb.Series{Path: sql.NullString{String: p3, Valid: true}, Monitored: 1, QualityProfileID: 1}, storage.SeriesStateMissing)
 		require.NoError(t, err)
 		require.NoError(t, store.UpdateSeriesState(ctx, id3, storage.SeriesStateDiscovered, nil))
 
@@ -93,17 +94,17 @@ func TestGetLibraryStats(t *testing.T) {
 		mp1, mp2 := "movie/1", "movie/2"
 		sp1, sp2 := "series/1", "series/2"
 
-		_, err := store.CreateMovie(ctx, storage.Movie{Movie: model.Movie{Path: &mp1, Monitored: 1}}, storage.MovieStateMissing)
+		_, err := store.CreateMovie(ctx, sqlcdb.Movie{Path: sql.NullString{String: mp1, Valid: true}, Monitored: 1, QualityProfileID: 1}, storage.MovieStateMissing)
 		require.NoError(t, err)
 
-		id2, err := store.CreateMovie(ctx, storage.Movie{Movie: model.Movie{Path: &mp2, Monitored: 1}}, storage.MovieStateMissing)
+		id2, err := store.CreateMovie(ctx, sqlcdb.Movie{Path: sql.NullString{String: mp2, Valid: true}, Monitored: 1, QualityProfileID: 1}, storage.MovieStateMissing)
 		require.NoError(t, err)
 		require.NoError(t, store.UpdateMovieState(ctx, id2, storage.MovieStateDiscovered, nil))
 
-		_, err = store.CreateSeries(ctx, storage.Series{Series: model.Series{Path: &sp1, Monitored: 1, QualityProfileID: 1}}, storage.SeriesStateMissing)
+		_, err = store.CreateSeries(ctx, sqlcdb.Series{Path: sql.NullString{String: sp1, Valid: true}, Monitored: 1, QualityProfileID: 1}, storage.SeriesStateMissing)
 		require.NoError(t, err)
 
-		id4, err := store.CreateSeries(ctx, storage.Series{Series: model.Series{Path: &sp2, Monitored: 1, QualityProfileID: 1}}, storage.SeriesStateMissing)
+		id4, err := store.CreateSeries(ctx, sqlcdb.Series{Path: sql.NullString{String: sp2, Valid: true}, Monitored: 1, QualityProfileID: 1}, storage.SeriesStateMissing)
 		require.NoError(t, err)
 		require.NoError(t, store.UpdateSeriesState(ctx, id4, storage.SeriesStateDownloading, nil))
 

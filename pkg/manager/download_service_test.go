@@ -2,20 +2,21 @@ package manager
 
 import (
 	"context"
+	"database/sql"
 	"testing"
 
 	"github.com/kasuboski/mediaz/pkg/download"
 	downloadMocks "github.com/kasuboski/mediaz/pkg/download/mocks"
 	"github.com/kasuboski/mediaz/pkg/prowlarr"
 	"github.com/kasuboski/mediaz/pkg/storage/mocks"
-	"github.com/kasuboski/mediaz/pkg/storage/model"
+	"github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
 
 func TestAvailableProtocols(t *testing.T) {
-	clients := []*model.DownloadClient{
+	clients := []sqlcdb.DownloadClient{
 		{Type: "usenet"},
 		{Type: "torrent"},
 		{Type: "usenet"},
@@ -27,12 +28,12 @@ func TestAvailableProtocols(t *testing.T) {
 	assert.NotEmpty(t, actual)
 	assert.Len(t, actual, 2)
 
-	actual = availableProtocols([]*model.DownloadClient{})
+	actual = availableProtocols([]sqlcdb.DownloadClient{})
 	assert.Empty(t, actual)
 }
 
 func TestClientForProtocol(t *testing.T) {
-	clients := []*model.DownloadClient{
+	clients := []sqlcdb.DownloadClient{
 		{ID: 1, Type: "usenet"},
 		{ID: 2, Type: "torrent"},
 		{ID: 3, Type: "usenet"},
@@ -43,21 +44,21 @@ func TestClientForProtocol(t *testing.T) {
 	t.Run("find torrent", func(t *testing.T) {
 		actual := clientForProtocol(clients, prowlarr.DownloadProtocolTorrent)
 		assert.NotNil(t, actual)
-		assert.Equal(t, int32(2), actual.ID)
+		assert.Equal(t, int64(2), actual.ID)
 	})
 	t.Run("find usenet", func(t *testing.T) {
 		actual := clientForProtocol(clients, prowlarr.DownloadProtocolUsenet)
 		assert.NotNil(t, actual)
-		assert.Equal(t, int32(1), actual.ID)
+		assert.Equal(t, int64(1), actual.ID)
 	})
 
 	t.Run("not found", func(t *testing.T) {
-		actual := clientForProtocol([]*model.DownloadClient{{ID: 1, Type: "usenet"}}, prowlarr.DownloadProtocolTorrent)
+		actual := clientForProtocol([]sqlcdb.DownloadClient{{ID: 1, Type: "usenet"}}, prowlarr.DownloadProtocolTorrent)
 		assert.Nil(t, actual)
 	})
 
 	t.Run("empty", func(t *testing.T) {
-		actual := clientForProtocol([]*model.DownloadClient{}, prowlarr.DownloadProtocolTorrent)
+		actual := clientForProtocol([]sqlcdb.DownloadClient{}, prowlarr.DownloadProtocolTorrent)
 		assert.Nil(t, actual)
 	})
 }
@@ -73,13 +74,13 @@ func TestUpdateDownloadClient(t *testing.T) {
 	t.Run("update with new API key", func(t *testing.T) {
 		newApiKey := "new-api-key"
 		request := UpdateDownloadClientRequest{
-			DownloadClient: model.DownloadClient{
+			DownloadClient: sqlcdb.DownloadClient{
 				Type:           "usenet",
 				Implementation: "sabnzbd",
 				Scheme:         "https",
 				Host:           "sabnzbd.example.com",
 				Port:           443,
-				APIKey:         &newApiKey,
+				ApiKey:         sql.NullString{String: newApiKey, Valid: true},
 			},
 		}
 
@@ -87,82 +88,82 @@ func TestUpdateDownloadClient(t *testing.T) {
 
 		result, err := ds.UpdateDownloadClient(ctx, 1, request)
 		require.NoError(t, err)
-		assert.Equal(t, int32(1), result.ID)
+		assert.Equal(t, int64(1), result.ID)
 		assert.Equal(t, "usenet", result.Type)
-		assert.Equal(t, &newApiKey, result.APIKey)
+		assert.Equal(t, sql.NullString{String: newApiKey, Valid: true}, result.ApiKey)
 	})
 
 	t.Run("update preserves existing API key when not provided", func(t *testing.T) {
 		existingApiKey := "existing-key"
-		existingClient := model.DownloadClient{
+		existingClient := sqlcdb.DownloadClient{
 			ID:             1,
 			Type:           "usenet",
 			Implementation: "sabnzbd",
 			Scheme:         "http",
 			Host:           "localhost",
 			Port:           8080,
-			APIKey:         &existingApiKey,
+			ApiKey:         sql.NullString{String: existingApiKey, Valid: true},
 		}
 
 		emptyKey := ""
 		request := UpdateDownloadClientRequest{
-			DownloadClient: model.DownloadClient{
+			DownloadClient: sqlcdb.DownloadClient{
 				Type:           "usenet",
 				Implementation: "sabnzbd",
 				Scheme:         "https",
 				Host:           "sabnzbd.example.com",
 				Port:           443,
-				APIKey:         &emptyKey,
+				ApiKey:         sql.NullString{String: emptyKey, Valid: true},
 			},
 		}
 
 		store.EXPECT().GetDownloadClient(ctx, int64(1)).Return(existingClient, nil)
 		store.EXPECT().UpdateDownloadClient(ctx, int64(1), gomock.Any()).DoAndReturn(
-			func(ctx context.Context, id int64, client model.DownloadClient) error {
-				assert.Equal(t, &existingApiKey, client.APIKey)
+			func(ctx context.Context, id int64, client sqlcdb.DownloadClient) error {
+				assert.Equal(t, sql.NullString{String: existingApiKey, Valid: true}, client.ApiKey)
 				return nil
 			},
 		)
 
 		result, err := ds.UpdateDownloadClient(ctx, 1, request)
 		require.NoError(t, err)
-		assert.Equal(t, &existingApiKey, result.APIKey)
+		assert.Equal(t, sql.NullString{String: existingApiKey, Valid: true}, result.ApiKey)
 	})
 
 	t.Run("update preserves API key when nil", func(t *testing.T) {
 		existingApiKey := "existing-key"
-		existingClient := model.DownloadClient{
+		existingClient := sqlcdb.DownloadClient{
 			ID:             1,
 			Type:           "usenet",
 			Implementation: "sabnzbd",
 			Scheme:         "http",
 			Host:           "localhost",
 			Port:           8080,
-			APIKey:         &existingApiKey,
+			ApiKey:         sql.NullString{String: existingApiKey, Valid: true},
 		}
 
 		request := UpdateDownloadClientRequest{
-			DownloadClient: model.DownloadClient{
+			DownloadClient: sqlcdb.DownloadClient{
 				Type:           "usenet",
 				Implementation: "sabnzbd",
 				Scheme:         "https",
 				Host:           "sabnzbd.example.com",
 				Port:           443,
-				APIKey:         nil,
+				ApiKey:         sql.NullString{},
 			},
 		}
 
 		store.EXPECT().GetDownloadClient(ctx, int64(1)).Return(existingClient, nil)
 		store.EXPECT().UpdateDownloadClient(ctx, int64(1), gomock.Any()).DoAndReturn(
-			func(ctx context.Context, id int64, client model.DownloadClient) error {
-				assert.Equal(t, &existingApiKey, client.APIKey)
+			func(ctx context.Context, id int64, client sqlcdb.DownloadClient) error {
+				assert.Equal(t, sql.NullString{String: existingApiKey, Valid: true}, client.ApiKey)
 				return nil
 			},
 		)
 
 		result, err := ds.UpdateDownloadClient(ctx, 1, request)
 		require.NoError(t, err)
-		assert.Equal(t, &existingApiKey, result.APIKey)
+		assert.Equal(t, sql.NullString{String: existingApiKey, Valid: true}, result.ApiKey)
 	})
 }
 
@@ -177,13 +178,13 @@ func TestTestDownloadClient(t *testing.T) {
 	t.Run("successful connection test", func(t *testing.T) {
 		client := downloadMocks.NewMockDownloadClient(ctrl)
 		request := AddDownloadClientRequest{
-			DownloadClient: model.DownloadClient{
+			DownloadClient: sqlcdb.DownloadClient{
 				Type:           "torrent",
 				Implementation: "transmission",
 				Scheme:         "http",
 				Host:           "localhost",
 				Port:           9091,
-				APIKey:         nil,
+				ApiKey:         sql.NullString{},
 			},
 		}
 
@@ -197,13 +198,13 @@ func TestTestDownloadClient(t *testing.T) {
 	t.Run("failed connection test", func(t *testing.T) {
 		client := downloadMocks.NewMockDownloadClient(ctrl)
 		request := AddDownloadClientRequest{
-			DownloadClient: model.DownloadClient{
+			DownloadClient: sqlcdb.DownloadClient{
 				Type:           "torrent",
 				Implementation: "transmission",
 				Scheme:         "http",
 				Host:           "invalid-host",
 				Port:           9091,
-				APIKey:         nil,
+				ApiKey:         sql.NullString{},
 			},
 		}
 

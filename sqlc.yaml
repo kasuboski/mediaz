@@ -2,7 +2,10 @@ version: "2"
 sql:
   - engine: "sqlite"
     queries: "pkg/storage/sqlite/queries/"
-    schema: "pkg/storage/sqlite/schema/schema.sql"
+    # Single DDL source: the golang-migrate baseline directory. sqlc reads the
+    # up migration(s) (down migrations are inert DROP ... IF EXISTS statements)
+    # and the migration runner applies the same files to fresh databases.
+    schema: "pkg/storage/sqlite/migrations/"
     gen:
       go:
         package: "sqlcdb"

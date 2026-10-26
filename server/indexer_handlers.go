@@ -22,12 +22,12 @@ func (s Server) ListIndexers() http.HandlerFunc {
 // CreateIndexer creates an indexer
 func (s Server) CreateIndexer() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var req manager.AddIndexerRequest
+		var req indexerRequest
 		if !s.decodeJSON(w, r, &req) {
 			return
 		}
 
-		indexer, err := s.manager.AddIndexer(r.Context(), req)
+		indexer, err := s.manager.AddIndexer(r.Context(), manager.AddIndexerRequest{Indexer: req.row()})
 		if err != nil {
 			if errors.Is(err, manager.ErrValidation) {
 				s.respondError(r, w, http.StatusBadRequest, err)
@@ -48,8 +48,7 @@ func (s Server) DeleteIndexer() http.HandlerFunc {
 			return
 		}
 
-		idInt := int(id)
-		if err := s.manager.DeleteIndexer(r.Context(), manager.DeleteIndexerRequest{ID: &idInt}); err != nil {
+		if err := s.manager.DeleteIndexer(r.Context(), manager.DeleteIndexerRequest{ID: &id}); err != nil {
 			s.respondError(r, w, http.StatusInternalServerError, err)
 			return
 		}
@@ -70,7 +69,7 @@ func (s Server) UpdateIndexer() http.HandlerFunc {
 			return
 		}
 
-		indexer, err := s.manager.UpdateIndexer(r.Context(), int32(id), req)
+		indexer, err := s.manager.UpdateIndexer(r.Context(), id, req)
 		if err != nil {
 			if errors.Is(err, manager.ErrValidation) {
 				s.respondError(r, w, http.StatusBadRequest, err)

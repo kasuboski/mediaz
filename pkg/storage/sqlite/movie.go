@@ -5,210 +5,15 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/kasuboski/mediaz/pkg/storage"
-	"github.com/kasuboski/mediaz/pkg/storage/model"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 )
 
-// movieJoinRow mirrors the shared movie+movie_transition select shape used by
-// the movie lookup and list queries so one conversion covers them all.
-type movieJoinRow struct {
-	ID                  int64
-	Path                sql.NullString
-	Monitored           int64
-	QualityProfileID    int64
-	Added               sql.NullTime
-	Tags                sql.NullString
-	AddOptions          sql.NullString
-	MovieFileID         sql.NullInt64
-	MinimumAvailability int64
-	MovieMetadataID     sql.NullInt64
-	LastSearchTime      sql.NullTime
-	ToState             string
-	DownloadClientID    sql.NullInt64
-	DownloadID          sql.NullString
-}
-
-// movieMetaJoinRow is the movie+movie_transition shape used when download
-// client details are not selected (see GetMovieByMetadataID).
-type movieMetaJoinRow struct {
-	ID                  int64
-	Path                sql.NullString
-	Monitored           int64
-	QualityProfileID    int64
-	Added               sql.NullTime
-	Tags                sql.NullString
-	AddOptions          sql.NullString
-	MovieFileID         sql.NullInt64
-	MinimumAvailability int64
-	MovieMetadataID     sql.NullInt64
-	LastSearchTime      sql.NullTime
-	ToState             string
-}
-
-// movieNullStr converts a nullable string pointer to a driver NullString.
-func movieNullStr(v *string) sql.NullString {
-	if v == nil {
-		return sql.NullString{}
-	}
-	return sql.NullString{String: *v, Valid: true}
-}
-
-// movieNullI64 converts a nullable int32 pointer to a driver NullInt64.
-func movieNullI64(v *int32) sql.NullInt64 {
-	if v == nil {
-		return sql.NullInt64{}
-	}
-	return sql.NullInt64{Int64: int64(*v), Valid: true}
-}
-
-// movieNullTime converts a nullable time pointer to a driver NullTime.
-func movieNullTime(v *time.Time) sql.NullTime {
-	if v == nil {
-		return sql.NullTime{}
-	}
-	return sql.NullTime{Time: *v, Valid: true}
-}
-
-func movieStrPtr(v sql.NullString) *string {
-	if !v.Valid {
-		return nil
-	}
-	s := v.String
-	return &s
-}
-
-func movieI32Ptr(v sql.NullInt64) *int32 {
-	if !v.Valid {
-		return nil
-	}
-	i := int32(v.Int64)
-	return &i
-}
-
-func movieTimePtr(v sql.NullTime) *time.Time {
-	if !v.Valid {
-		return nil
-	}
-	t := v.Time
-	return &t
-}
-
-func movieNullF64(v *float64) sql.NullFloat64 {
-	if v == nil {
-		return sql.NullFloat64{}
-	}
-	return sql.NullFloat64{Float64: *v, Valid: true}
-}
-
-func movieF64Ptr(v sql.NullFloat64) *float64 {
-	if !v.Valid {
-		return nil
-	}
-	f := v.Float64
-	return &f
-}
-
-func movieCreateParams(m model.Movie) sqlcdb.CreateMovieParams {
-	return sqlcdb.CreateMovieParams{
-		Path:                movieNullStr(m.Path),
-		Monitored:           int64(m.Monitored),
-		QualityProfileID:    int64(m.QualityProfileID),
-		Tags:                movieNullStr(m.Tags),
-		AddOptions:          movieNullStr(m.AddOptions),
-		MovieFileID:         movieNullI64(m.MovieFileID),
-		MinimumAvailability: int64(m.MinimumAvailability),
-		MovieMetadataID:     movieNullI64(m.MovieMetadataID),
-		LastSearchTime:      movieNullTime(m.LastSearchTime),
-	}
-}
-
-func movieCreateWithAddedParams(m model.Movie) sqlcdb.CreateMovieWithAddedParams {
-	return sqlcdb.CreateMovieWithAddedParams{
-		Added:               movieNullTime(m.Added),
-		Path:                movieNullStr(m.Path),
-		Monitored:           int64(m.Monitored),
-		QualityProfileID:    int64(m.QualityProfileID),
-		Tags:                movieNullStr(m.Tags),
-		AddOptions:          movieNullStr(m.AddOptions),
-		MovieFileID:         movieNullI64(m.MovieFileID),
-		MinimumAvailability: int64(m.MinimumAvailability),
-		MovieMetadataID:     movieNullI64(m.MovieMetadataID),
-		LastSearchTime:      movieNullTime(m.LastSearchTime),
-	}
-}
-
-func movieTransitionParams(t storage.MovieTransition) sqlcdb.CreateMovieTransitionParams {
-	return sqlcdb.CreateMovieTransitionParams{
-		MovieID:          int64(t.MovieID),
-		ToState:          t.ToState,
-		FromState:        movieNullStr(t.FromState),
-		MostRecent:       t.MostRecent,
-		SortKey:          int64(t.SortKey),
-		DownloadClientID: movieNullI64(t.DownloadClientID),
-		DownloadID:       movieNullStr(t.DownloadID),
-	}
-}
-
-func movieFromJoinRow(r movieJoinRow) storage.Movie {
-	return storage.Movie{
-		Movie: model.Movie{
-			ID:                  int32(r.ID),
-			Path:                movieStrPtr(r.Path),
-			Monitored:           int32(r.Monitored),
-			QualityProfileID:    int32(r.QualityProfileID),
-			Added:               movieTimePtr(r.Added),
-			Tags:                movieStrPtr(r.Tags),
-			AddOptions:          movieStrPtr(r.AddOptions),
-			MovieFileID:         movieI32Ptr(r.MovieFileID),
-			MinimumAvailability: int32(r.MinimumAvailability),
-			MovieMetadataID:     movieI32Ptr(r.MovieMetadataID),
-			LastSearchTime:      movieTimePtr(r.LastSearchTime),
-		},
-		State:            storage.MovieState(r.ToState),
-		DownloadID:       r.DownloadID.String,
-		DownloadClientID: int32(r.DownloadClientID.Int64),
-	}
-}
-
-func movieFromMetaJoinRow(r movieMetaJoinRow) storage.Movie {
-	return storage.Movie{
-		Movie: model.Movie{
-			ID:                  int32(r.ID),
-			Path:                movieStrPtr(r.Path),
-			Monitored:           int32(r.Monitored),
-			QualityProfileID:    int32(r.QualityProfileID),
-			Added:               movieTimePtr(r.Added),
-			Tags:                movieStrPtr(r.Tags),
-			AddOptions:          movieStrPtr(r.AddOptions),
-			MovieFileID:         movieI32Ptr(r.MovieFileID),
-			MinimumAvailability: int32(r.MinimumAvailability),
-			MovieMetadataID:     movieI32Ptr(r.MovieMetadataID),
-			LastSearchTime:      movieTimePtr(r.LastSearchTime),
-		},
-		State: storage.MovieState(r.ToState),
-	}
-}
-
-// createMovieRow inserts the movie row, leaving the added column out so the
-// database default timestamp applies when the caller did not provide one.
-func (s *SQLite) createMovieRow(ctx context.Context, q *sqlcdb.Queries, m model.Movie) (int64, error) {
-	if m.Added == nil || m.Added.IsZero() {
-		return q.CreateMovie(ctx, movieCreateParams(m))
-	}
-	return q.CreateMovieWithAdded(ctx, movieCreateWithAddedParams(m))
-}
-
-// CreateMovie stores a movie and creates an initial transition state
-func (s *SQLite) CreateMovie(ctx context.Context, movie storage.Movie, initialState storage.MovieState) (int64, error) {
-	if movie.State == "" {
-		movie.State = storage.MovieStateNew
-	}
-
-	err := movie.Machine().ToState(initialState)
-	if err != nil {
+// CreateMovie stores a movie and creates an initial transition state. When
+// movie.Added is zero the column default (CURRENT_TIMESTAMP, UTC) applies.
+func (s *SQLite) CreateMovie(ctx context.Context, movie sqlcdb.Movie, initialState storage.MovieState) (int64, error) {
+	if err := storage.MovieStateNew.Machine().ToState(initialState); err != nil {
 		return 0, err
 	}
 
@@ -218,20 +23,47 @@ func (s *SQLite) CreateMovie(ctx context.Context, movie storage.Movie, initialSt
 	}
 	q := s.txQueries(tx)
 
-	inserted, err := s.createMovieRow(ctx, q, movie.Movie)
+	params := sqlcdb.CreateMovieParams{
+		Path:                movie.Path,
+		Monitored:           movie.Monitored,
+		QualityProfileID:    movie.QualityProfileID,
+		Tags:                movie.Tags,
+		AddOptions:          movie.AddOptions,
+		MovieFileID:         movie.MovieFileID,
+		MinimumAvailability: movie.MinimumAvailability,
+		MovieMetadataID:     movie.MovieMetadataID,
+		LastSearchTime:      movie.LastSearchTime,
+	}
+
+	var inserted int64
+	if movie.Added.Valid && !movie.Added.Time.IsZero() {
+		withAdded := sqlcdb.CreateMovieWithAddedParams{
+			Added:               movie.Added,
+			Path:                params.Path,
+			Monitored:           params.Monitored,
+			QualityProfileID:    params.QualityProfileID,
+			Tags:                params.Tags,
+			AddOptions:          params.AddOptions,
+			MovieFileID:         params.MovieFileID,
+			MinimumAvailability: params.MinimumAvailability,
+			MovieMetadataID:     params.MovieMetadataID,
+			LastSearchTime:      params.LastSearchTime,
+		}
+		inserted, err = q.CreateMovieWithAdded(ctx, withAdded)
+	} else {
+		inserted, err = q.CreateMovie(ctx, params)
+	}
 	if err != nil {
 		tx.Rollback()
 		return 0, err
 	}
 
-	state := storage.MovieTransition{
-		MovieID:    int32(inserted),
+	if err := q.CreateMovieTransition(ctx, sqlcdb.CreateMovieTransitionParams{
+		MovieID:    inserted,
 		ToState:    string(initialState),
 		MostRecent: true,
 		SortKey:    1,
-	}
-
-	if err := q.CreateMovieTransition(ctx, movieTransitionParams(state)); err != nil {
+	}); err != nil {
 		tx.Rollback()
 		return 0, err
 	}
@@ -244,55 +76,53 @@ func (s *SQLite) CreateMovie(ctx context.Context, movie storage.Movie, initialSt
 	return inserted, nil
 }
 
-func (s *SQLite) GetMovie(ctx context.Context, id int64) (*storage.Movie, error) {
+func (s *SQLite) GetMovie(ctx context.Context, id int64) (sqlcdb.GetMovieByIDRow, error) {
 	row, err := s.Queries.GetMovieByID(ctx, id)
 	if err != nil {
-		return nil, err
+		return sqlcdb.GetMovieByIDRow{}, mapQueryErr(err, "failed to get movie")
 	}
-
-	movie := movieFromJoinRow(movieJoinRow(row))
-	return &movie, nil
+	return row, nil
 }
 
-func (s *SQLite) GetMovieByMovieFileID(ctx context.Context, fileID int64) (*storage.Movie, error) {
+func (s *SQLite) GetMovieByMovieFileID(ctx context.Context, fileID int64) (sqlcdb.GetMovieByFileIDRow, error) {
 	row, err := s.Queries.GetMovieByFileID(ctx, sql.NullInt64{Int64: fileID, Valid: true})
 	if err != nil {
-		return nil, err
+		return sqlcdb.GetMovieByFileIDRow{}, mapQueryErr(err, "failed to get movie by file id")
 	}
-
-	movie := movieFromJoinRow(movieJoinRow(row))
-	return &movie, nil
+	return row, nil
 }
 
-// ListMovies lists the stored movies
-func (s *SQLite) ListMovies(ctx context.Context) ([]*storage.Movie, error) {
+// ListMovies lists the stored movies ordered by metadata title.
+func (s *SQLite) ListMovies(ctx context.Context) ([]sqlcdb.ListMoviesRow, error) {
 	rows, err := s.Queries.ListMovies(ctx)
 	if err != nil {
 		return nil, err
 	}
-
-	movies := make([]*storage.Movie, 0, len(rows))
-	for _, r := range rows {
-		movie := movieFromJoinRow(movieJoinRow(r))
-		movies = append(movies, &movie)
-	}
-
-	return movies, nil
+	return rows, nil
 }
 
-func (s *SQLite) ListMoviesByState(ctx context.Context, state storage.MovieState) ([]*storage.Movie, error) {
-	rows, err := s.Queries.ListMoviesByState(ctx, string(state))
+// ListMoviesByState lists movies whose current state is one of the given
+// states. Calling it with no states applies no state filter.
+func (s *SQLite) ListMoviesByState(ctx context.Context, states ...storage.MovieState) ([]sqlcdb.ListMoviesByStatesRow, error) {
+	params := sqlcdb.ListMoviesByStatesParams{
+		States: make([]string, 0, len(states)),
+	}
+	for _, state := range states {
+		if state == storage.MovieStateNew {
+			params.States = nil
+			break
+		}
+		params.States = append(params.States, string(state))
+	}
+	if len(params.States) > 0 {
+		params.StatesAny = sql.NullString{String: params.States[0], Valid: true}
+	}
+
+	rows, err := s.Queries.ListMoviesByStates(ctx, params)
 	if err != nil {
 		return nil, err
 	}
-
-	movies := make([]*storage.Movie, 0, len(rows))
-	for _, r := range rows {
-		movie := movieFromJoinRow(movieJoinRow(r))
-		movies = append(movies, &movie)
-	}
-
-	return movies, nil
+	return rows, nil
 }
 
 // DeleteMovie removes a movie by id
@@ -302,72 +132,70 @@ func (s *SQLite) DeleteMovie(ctx context.Context, id int64) error {
 
 // UpdateMovieMovieFileID updates the movie file id for a movie
 func (s *SQLite) UpdateMovieMovieFileID(ctx context.Context, id int64, fileID int64) error {
-	return s.Queries.UpdateMovieMovieFileIDQuery(ctx, sqlcdb.UpdateMovieMovieFileIDQueryParams{
+	return s.Queries.UpdateMovieMovieFileID(ctx, sqlcdb.UpdateMovieMovieFileIDParams{
 		MovieFileID: sql.NullInt64{Int64: fileID, Valid: true},
 		ID:          id,
 	})
 }
 
 // UpdateMovieByID updates fields on a movie identified by id.
-// Legacy parity: the jet-era implementation only ever wrote the monitored
-// column, so only monitored is persisted here as well.
-func (s *SQLite) UpdateMovieByID(ctx context.Context, id int64, movie model.Movie) error {
+// Legacy parity: only the monitored column is persisted.
+func (s *SQLite) UpdateMovieByID(ctx context.Context, id int64, movie sqlcdb.Movie) error {
 	return s.Queries.UpdateMovieMonitored(ctx, sqlcdb.UpdateMovieMonitoredParams{
-		Monitored: int64(movie.Monitored),
+		Monitored: movie.Monitored,
 		ID:        id,
 	})
 }
 
 // UpdateMovieQualityProfile updates only the quality profile id for a movie
-func (s *SQLite) UpdateMovieQualityProfile(ctx context.Context, id int64, qualityProfileID int32) error {
+func (s *SQLite) UpdateMovieQualityProfile(ctx context.Context, id int64, qualityProfileID int64) error {
 	return s.Queries.UpdateMovieQualityProfileID(ctx, sqlcdb.UpdateMovieQualityProfileIDParams{
-		QualityProfileID: int64(qualityProfileID),
+		QualityProfileID: qualityProfileID,
 		ID:               id,
 	})
 }
 
-// UpdateMovieState updates the transition state of a movie. Metadata is optional and can be nil
+// UpdateMovieState updates the transition state of a movie. Metadata is
+// optional and can be nil. The demote+insert pair runs in one transaction; on
+// any failure nothing is written.
 func (s *SQLite) UpdateMovieState(ctx context.Context, id int64, state storage.MovieState, metadata *storage.TransitionStateMetadata) error {
-	movie, err := s.GetMovie(ctx, id)
-	if err != nil {
-		return err
-	}
-
-	err = movie.Machine().ToState(state)
-	if err != nil {
-		return err
-	}
-
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
+	defer tx.Rollback()
 	q := s.txQueries(tx)
+	movie, err := q.GetMovieByID(ctx, id)
+	if err != nil {
+		return mapQueryErr(err, "failed to get movie")
+	}
+	if err := storage.MovieState(movie.State).Machine().ToState(state); err != nil {
+		return err
+	}
 
-	previous, err := q.DeactivateMovieTransition(ctx, sqlcdb.DeactivateMovieTransitionParams{
-		UpdatedAt: time.Now().Format(timestampFormat),
-		MovieID:   id,
-	})
+	previousSortKey, err := q.DeactivateMovieTransition(ctx, id)
 	if err != nil {
 		tx.Rollback()
 		return err
 	}
 
-	transition := storage.MovieTransition{
-		MovieID:    int32(id),
+	transition := sqlcdb.CreateMovieTransitionParams{
+		MovieID:    id,
+		FromState:  sql.NullString{String: movie.State, Valid: true},
 		ToState:    string(state),
 		MostRecent: true,
-		SortKey:    int32(previous.SortKey) + 1,
+		SortKey:    previousSortKey + 1,
 	}
-
 	if metadata != nil {
-		if metadata.DownloadClientID != nil && metadata.DownloadID != nil {
-			transition.DownloadClientID = metadata.DownloadClientID
-			transition.DownloadID = metadata.DownloadID
+		if metadata.DownloadClientID != nil {
+			transition.DownloadClientID = sql.NullInt64{Int64: *metadata.DownloadClientID, Valid: true}
+		}
+		if metadata.DownloadID != nil {
+			transition.DownloadID = sql.NullString{String: *metadata.DownloadID, Valid: true}
 		}
 	}
 
-	if err := q.CreateMovieTransition(ctx, movieTransitionParams(transition)); err != nil {
+	if err := q.CreateMovieTransition(ctx, transition); err != nil {
 		tx.Rollback()
 		return err
 	}
@@ -376,37 +204,36 @@ func (s *SQLite) UpdateMovieState(ctx context.Context, id int64, state storage.M
 }
 
 // GetMovieByMetadataID checks if there's a movie already associated with the given metadata id
-func (s *SQLite) GetMovieByMetadataID(ctx context.Context, metadataID int) (*storage.Movie, error) {
-	row, err := s.Queries.GetMovieByMetadataIDQuery(ctx, sql.NullInt64{Int64: int64(metadataID), Valid: true})
+func (s *SQLite) GetMovieByMetadataID(ctx context.Context, metadataID int64) (sqlcdb.GetMovieByMetadataIDRow, error) {
+	row, err := s.Queries.GetMovieByMetadataID(ctx, sql.NullInt64{Int64: metadataID, Valid: true})
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, storage.ErrNotFound
-		}
-		return nil, fmt.Errorf("failed to lookup movie: %w", err)
+		return sqlcdb.GetMovieByMetadataIDRow{}, mapQueryErr(err, "failed to lookup movie")
 	}
-
-	movie := movieFromMetaJoinRow(movieMetaJoinRow(row))
-	return &movie, nil
+	return row, nil
 }
 
 // GetMovieByPath gets a movie by path
-func (s *SQLite) GetMovieByPath(ctx context.Context, path string) (*storage.Movie, error) {
-	row, err := s.Queries.GetMovieByPathQuery(ctx, sql.NullString{String: path, Valid: true})
+func (s *SQLite) GetMovieByPath(ctx context.Context, path string) (sqlcdb.GetMovieByPathRow, error) {
+	row, err := s.Queries.GetMovieByPath(ctx, sql.NullString{String: path, Valid: true})
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, storage.ErrNotFound
-		}
-		return nil, err
+		return sqlcdb.GetMovieByPathRow{}, mapQueryErr(err, "failed to lookup movie by path")
 	}
-
-	movie := movieFromJoinRow(movieJoinRow(row))
-	return &movie, nil
+	return row, nil
 }
 
 // LinkMovieMetadata links a movie with its metadata
-func (s *SQLite) LinkMovieMetadata(ctx context.Context, movieID int64, metadataID int32) error {
+func (s *SQLite) LinkMovieMetadata(ctx context.Context, movieID int64, metadataID int64) error {
 	return s.Queries.LinkMovieMetadata(ctx, sqlcdb.LinkMovieMetadataParams{
-		MovieMetadataID: sql.NullInt64{Int64: int64(metadataID), Valid: true},
+		MovieMetadataID: sql.NullInt64{Int64: metadataID, Valid: true},
 		ID:              movieID,
 	})
+}
+
+// mapQueryErr converts sql.ErrNoRows to storage.ErrNotFound at the query
+// boundary, wrapping everything else with the calling context.
+func mapQueryErr(err error, msg string) error {
+	if errors.Is(err, sql.ErrNoRows) {
+		return storage.ErrNotFound
+	}
+	return fmt.Errorf("%s: %w", msg, err)
 }

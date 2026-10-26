@@ -2,10 +2,11 @@ package sqlite
 
 import (
 	"context"
+	"database/sql"
 	"testing"
 
 	"github.com/kasuboski/mediaz/pkg/storage"
-	"github.com/kasuboski/mediaz/pkg/storage/model"
+	"github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -18,13 +19,13 @@ func TestIndexerSourceStorage(t *testing.T) {
 	require.NoError(t, err)
 	assert.Empty(t, sources)
 
-	source := model.IndexerSource{
+	source := sqlcdb.IndexerSource{
 		Name:           "prowlarr",
 		Implementation: "prowlarr",
 		Scheme:         "http",
 		Host:           "localhost",
-		Port:           cfgTestInt32(9696),
-		APIKey:         cfgTestString("secret"),
+		Port:           sql.NullInt64{Int64: 9696, Valid: true},
+		ApiKey:         sql.NullString{String: "secret", Valid: true},
 		Enabled:        true,
 	}
 
@@ -40,11 +41,11 @@ func TestIndexerSourceStorage(t *testing.T) {
 	assert.Equal(t, source.Scheme, stored.Scheme)
 	assert.Equal(t, source.Host, stored.Host)
 	assert.Equal(t, source.Port, stored.Port)
-	assert.Equal(t, source.APIKey, stored.APIKey)
+	assert.Equal(t, source.ApiKey, stored.ApiKey)
 	assert.True(t, stored.Enabled)
 	// Schema defaults apply for timestamps on new rows.
-	assert.NotNil(t, stored.CreatedAt)
-	assert.NotNil(t, stored.UpdatedAt)
+	assert.True(t, stored.CreatedAt.Valid)
+	assert.True(t, stored.UpdatedAt.Valid)
 
 	err = store.DeleteIndexerSource(ctx, id)
 	require.NoError(t, err)
@@ -67,7 +68,7 @@ func TestListIndexerSourcesOrderByName(t *testing.T) {
 	store := initSqlite(t, ctx)
 
 	for _, name := range []string{"zeus", "alpha", "mike"} {
-		_, err := store.CreateIndexerSource(ctx, model.IndexerSource{
+		_, err := store.CreateIndexerSource(ctx, sqlcdb.IndexerSource{
 			Name:           name,
 			Implementation: "prowlarr",
 			Scheme:         "http",
@@ -89,7 +90,7 @@ func TestListEnabledIndexerSources(t *testing.T) {
 	ctx := context.Background()
 	store := initSqlite(t, ctx)
 
-	enabledID, err := store.CreateIndexerSource(ctx, model.IndexerSource{
+	enabledID, err := store.CreateIndexerSource(ctx, sqlcdb.IndexerSource{
 		Name:           "enabled",
 		Implementation: "prowlarr",
 		Scheme:         "http",
@@ -98,7 +99,7 @@ func TestListEnabledIndexerSources(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	_, err = store.CreateIndexerSource(ctx, model.IndexerSource{
+	_, err = store.CreateIndexerSource(ctx, sqlcdb.IndexerSource{
 		Name:           "disabled",
 		Implementation: "prowlarr",
 		Scheme:         "http",
@@ -119,25 +120,25 @@ func TestUpdateIndexerSource(t *testing.T) {
 	store := initSqlite(t, ctx)
 
 	apiKey := "original-key"
-	port := int32(9696)
-	id, err := store.CreateIndexerSource(ctx, model.IndexerSource{
+	port := int64(9696)
+	id, err := store.CreateIndexerSource(ctx, sqlcdb.IndexerSource{
 		Name:           "prowlarr",
 		Implementation: "prowlarr",
 		Scheme:         "http",
 		Host:           "localhost",
-		Port:           &port,
-		APIKey:         &apiKey,
+		Port:           sql.NullInt64{Int64: port, Valid: true},
+		ApiKey:         sql.NullString{String: apiKey, Valid: true},
 		Enabled:        true,
 	})
 	require.NoError(t, err)
 
 	// Updating without an API key preserves the stored key.
-	err = store.UpdateIndexerSource(ctx, id, model.IndexerSource{
+	err = store.UpdateIndexerSource(ctx, id, sqlcdb.IndexerSource{
 		Name:           "prowlarr-2",
 		Implementation: "prowlarr",
 		Scheme:         "https",
 		Host:           "prowlarr.local",
-		Port:           nil,
+		Port:           sql.NullInt64{},
 		Enabled:        false,
 	})
 	require.NoError(t, err)
@@ -147,34 +148,34 @@ func TestUpdateIndexerSource(t *testing.T) {
 	assert.Equal(t, "prowlarr-2", stored.Name)
 	assert.Equal(t, "https", stored.Scheme)
 	assert.Equal(t, "prowlarr.local", stored.Host)
-	assert.Nil(t, stored.Port)
+	assert.False(t, stored.Port.Valid)
 	assert.False(t, stored.Enabled)
-	require.NotNil(t, stored.APIKey)
-	assert.Equal(t, "original-key", *stored.APIKey)
+	require.True(t, stored.ApiKey.Valid)
+	assert.Equal(t, "original-key", stored.ApiKey.String)
 
 	// Updating with an API key replaces it.
 	newKey := "new-key"
-	err = store.UpdateIndexerSource(ctx, id, model.IndexerSource{
+	err = store.UpdateIndexerSource(ctx, id, sqlcdb.IndexerSource{
 		Name:           "prowlarr-2",
 		Implementation: "prowlarr",
 		Scheme:         "https",
 		Host:           "prowlarr.local",
-		APIKey:         &newKey,
+		ApiKey:         sql.NullString{String: newKey, Valid: true},
 		Enabled:        true,
 	})
 	require.NoError(t, err)
 
 	stored, err = store.GetIndexerSource(ctx, id)
 	require.NoError(t, err)
-	require.NotNil(t, stored.APIKey)
-	assert.Equal(t, "new-key", *stored.APIKey)
+	require.True(t, stored.ApiKey.Valid)
+	assert.Equal(t, "new-key", stored.ApiKey.String)
 }
 
 func TestDeleteIndexerSourceCascade(t *testing.T) {
 	ctx := context.Background()
 	store := initSqlite(t, ctx)
 
-	sourceA, err := store.CreateIndexerSource(ctx, model.IndexerSource{
+	sourceA, err := store.CreateIndexerSource(ctx, sqlcdb.IndexerSource{
 		Name:           "source-a",
 		Implementation: "prowlarr",
 		Scheme:         "http",
@@ -183,7 +184,7 @@ func TestDeleteIndexerSourceCascade(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	sourceB, err := store.CreateIndexerSource(ctx, model.IndexerSource{
+	sourceB, err := store.CreateIndexerSource(ctx, sqlcdb.IndexerSource{
 		Name:           "source-b",
 		Implementation: "prowlarr",
 		Scheme:         "http",
@@ -200,12 +201,12 @@ func TestDeleteIndexerSourceCascade(t *testing.T) {
 		{"a-2", sourceA},
 		{"b-1", sourceB},
 	} {
-		sourceID := int32(idx.source)
-		_, err := store.CreateIndexer(ctx, model.Indexer{
+		sourceID := int64(idx.source)
+		_, err := store.CreateIndexer(ctx, sqlcdb.Indexer{
 			Name:            idx.name,
 			Priority:        25,
-			URI:             "http://" + idx.name,
-			IndexerSourceID: &sourceID,
+			Uri:             "http://" + idx.name,
+			IndexerSourceID: sql.NullInt64{Int64: sourceID, Valid: true},
 		})
 		require.NoError(t, err)
 	}
@@ -222,14 +223,4 @@ func TestDeleteIndexerSourceCascade(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, indexers, 1)
 	assert.Equal(t, "b-1", indexers[0].Name)
-}
-
-// cfgTestInt32 and cfgTestString are small pointer helpers for expected model
-// values; prefixed to avoid collisions with other test groups' helpers.
-func cfgTestInt32(v int32) *int32 {
-	return &v
-}
-
-func cfgTestString(v string) *string {
-	return &v
 }

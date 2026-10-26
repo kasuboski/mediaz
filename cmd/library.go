@@ -278,22 +278,22 @@ func generateMoviesWithGeneratedNames(ctx context.Context, store storage.Storage
 		var title string
 		var year int
 
-		if movie.MovieMetadataID != nil {
-			metadata, err := store.GetMovieMetadataByID(ctx, int64(*movie.MovieMetadataID))
+		if movie.Movie.MovieMetadataID.Valid {
+			metadata, err := store.GetMovieMetadataByID(ctx, movie.Movie.MovieMetadataID.Int64)
 			if err == nil {
 				title = metadata.Title
-				if metadata.ReleaseDate != nil {
-					year = metadata.ReleaseDate.Year()
+				if metadata.ReleaseDate.Valid {
+					year = metadata.ReleaseDate.Time.Year()
 				}
 			}
 		}
 
 		// Fallback to movie path if no metadata
 		if title == "" {
-			if movie.Path != nil {
-				title = extractTitleFromPath(*movie.Path)
+			if movie.Movie.Path.Valid {
+				title = extractTitleFromPath(movie.Movie.Path.String)
 			} else {
-				title = fmt.Sprintf("Movie %d", movie.ID)
+				title = fmt.Sprintf("Movie %d", movie.Movie.ID)
 			}
 		}
 
@@ -358,8 +358,8 @@ func generateTVFromDB(ctx context.Context, store storage.Storage, outputDir stri
 	for _, series := range allSeries {
 		// Get series title
 		var seriesTitle string
-		if series.SeriesMetadataID != nil {
-			metadata, err := store.GetSeriesMetadataByID(ctx, int64(*series.SeriesMetadataID))
+		if series.Series.SeriesMetadataID.Valid {
+			metadata, err := store.GetSeriesMetadataByID(ctx, series.Series.SeriesMetadataID.Int64)
 			if err == nil {
 				seriesTitle = metadata.Title
 			}
@@ -367,16 +367,16 @@ func generateTVFromDB(ctx context.Context, store storage.Storage, outputDir stri
 
 		// Fallback to path-based title
 		if seriesTitle == "" {
-			if series.Path != nil {
-				seriesTitle = extractTitleFromPath(*series.Path)
+			if series.Series.Path.Valid {
+				seriesTitle = extractTitleFromPath(series.Series.Path.String)
 			} else {
-				seriesTitle = fmt.Sprintf("Series %d", series.ID)
+				seriesTitle = fmt.Sprintf("Series %d", series.Series.ID)
 			}
 		}
 
 		// Get seasons for this series
-		seriesIDInt := int64(series.ID)
-		seasons, err := store.ListSeasons(ctx, storage.SeasonFilter{SeriesID: &seriesIDInt})
+		seriesID := series.Series.ID
+		seasons, err := store.ListSeasons(ctx, storage.SeasonFilter{SeriesID: &seriesID})
 		if err != nil && err != storage.ErrNotFound {
 			log.Warnf("failed to list seasons for series %s: %v", seriesTitle, err)
 			continue
@@ -391,17 +391,17 @@ func generateTVFromDB(ctx context.Context, store storage.Storage, outputDir stri
 
 		for _, season := range seasons {
 			// Create season directory
-			seasonDir := filepath.Join(outputDir, cleanFilename(seriesTitle), fmt.Sprintf("Season %d", season.SeasonNumber))
+			seasonDir := filepath.Join(outputDir, cleanFilename(seriesTitle), fmt.Sprintf("Season %d", season.Season.SeasonNumber))
 			if err := os.MkdirAll(seasonDir, 0755); err != nil {
 				log.Warnf("failed to create season directory %s: %v", seasonDir, err)
 				continue
 			}
 
 			// Get episodes for this season
-			seasonIDInt := int64(season.ID)
-			episodes, err := store.ListEpisodes(ctx, storage.EpisodeFilter{SeasonID: &seasonIDInt})
+			seasonID := season.Season.ID
+			episodes, err := store.ListEpisodes(ctx, storage.EpisodeFilter{SeasonID: &seasonID})
 			if err != nil && err != storage.ErrNotFound {
-				log.Warnf("failed to list episodes for season %s S%d: %v", seriesTitle, season.SeasonNumber, err)
+				log.Warnf("failed to list episodes for season %s S%d: %v", seriesTitle, season.Season.SeasonNumber, err)
 				continue
 			}
 
@@ -411,15 +411,15 @@ func generateTVFromDB(ctx context.Context, store storage.Storage, outputDir stri
 			for _, episode := range episodes {
 				// Get episode title from metadata if available
 				var episodeTitle string
-				if episode.EpisodeMetadataID != nil {
-					metadata, err := store.GetEpisodeMetadataByID(ctx, int64(*episode.EpisodeMetadataID))
+				if episode.Episode.EpisodeMetadataID.Valid {
+					metadata, err := store.GetEpisodeMetadataByID(ctx, episode.Episode.EpisodeMetadataID.Int64)
 					if err == nil {
 						episodeTitle = metadata.Title
 					}
 				}
 
 				if episodeTitle == "" {
-					episodeTitle = fmt.Sprintf("Episode %d", episode.EpisodeNumber)
+					episodeTitle = fmt.Sprintf("Episode %d", episode.Episode.EpisodeNumber)
 				}
 
 				// Generate episode filename with different patterns
@@ -427,13 +427,13 @@ func generateTVFromDB(ctx context.Context, store storage.Storage, outputDir stri
 				switch seriesCount % 3 {
 				case 0:
 					filename = fmt.Sprintf("%s S%02dE%02d - %s.mp4",
-						seriesTitle, season.SeasonNumber, episode.EpisodeNumber, episodeTitle)
+						seriesTitle, season.Season.SeasonNumber, episode.Episode.EpisodeNumber, episodeTitle)
 				case 1:
 					filename = fmt.Sprintf("%s.S%02dE%02d.1080p.WEBRip.x264.mp4",
-						strings.ReplaceAll(seriesTitle, " ", "."), season.SeasonNumber, episode.EpisodeNumber)
+						strings.ReplaceAll(seriesTitle, " ", "."), season.Season.SeasonNumber, episode.Episode.EpisodeNumber)
 				case 2:
 					filename = fmt.Sprintf("%s S%02dE%02d (%dp).mkv",
-						seriesTitle, season.SeasonNumber, episode.EpisodeNumber, 1080)
+						seriesTitle, season.Season.SeasonNumber, episode.Episode.EpisodeNumber, 1080)
 				}
 
 				filename = cleanFilename(filename)

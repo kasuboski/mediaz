@@ -2,10 +2,11 @@ package manager
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 
 	"github.com/kasuboski/mediaz/pkg/storage"
-	"github.com/kasuboski/mediaz/pkg/storage/model"
+	sqlcdb "github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 )
 
 type QualityService struct {
@@ -35,21 +36,21 @@ type UpdateQualityDefinitionRequest struct {
 }
 
 type DeleteQualityDefinitionRequest struct {
-	ID *int `json:"id" yaml:"id" validate:"required,gt=0"`
+	ID *int64 `json:"id" yaml:"id" validate:"required,gt=0"`
 }
 
-func (qs QualityService) AddQualityDefinition(ctx context.Context, request AddQualityDefinitionRequest) (model.QualityDefinition, error) {
+func (qs QualityService) AddQualityDefinition(ctx context.Context, request AddQualityDefinitionRequest) (sqlcdb.QualityDefinition, error) {
 	if request.Name == "" {
-		return model.QualityDefinition{}, fmt.Errorf("name is required")
+		return sqlcdb.QualityDefinition{}, fmt.Errorf("name is required")
 	}
 	if request.Type == "" {
-		return model.QualityDefinition{}, fmt.Errorf("type is required")
+		return sqlcdb.QualityDefinition{}, fmt.Errorf("type is required")
 	}
 	if request.MinSize >= request.MaxSize {
-		return model.QualityDefinition{}, fmt.Errorf("min size must be less than max size")
+		return sqlcdb.QualityDefinition{}, fmt.Errorf("min size must be less than max size")
 	}
 
-	definition := model.QualityDefinition{
+	definition := sqlcdb.QualityDefinition{
 		Name:          request.Name,
 		MediaType:     request.Type,
 		PreferredSize: request.PreferredSize,
@@ -62,7 +63,7 @@ func (qs QualityService) AddQualityDefinition(ctx context.Context, request AddQu
 		return definition, err
 	}
 
-	definition.ID = int32(id)
+	definition.ID = id
 	return definition, nil
 }
 
@@ -74,27 +75,27 @@ func (qs QualityService) DeleteQualityDefinition(ctx context.Context, request De
 	return qs.qualityStorage.DeleteQualityDefinition(ctx, int64(*request.ID))
 }
 
-func (qs QualityService) ListQualityDefinitions(ctx context.Context) ([]*model.QualityDefinition, error) {
+func (qs QualityService) ListQualityDefinitions(ctx context.Context) ([]sqlcdb.QualityDefinition, error) {
 	return qs.qualityStorage.ListQualityDefinitions(ctx)
 }
 
-func (qs QualityService) GetQualityDefinition(ctx context.Context, id int64) (model.QualityDefinition, error) {
+func (qs QualityService) GetQualityDefinition(ctx context.Context, id int64) (sqlcdb.QualityDefinition, error) {
 	return qs.qualityStorage.GetQualityDefinition(ctx, id)
 }
 
-func (qs QualityService) UpdateQualityDefinition(ctx context.Context, id int64, request UpdateQualityDefinitionRequest) (model.QualityDefinition, error) {
+func (qs QualityService) UpdateQualityDefinition(ctx context.Context, id int64, request UpdateQualityDefinitionRequest) (sqlcdb.QualityDefinition, error) {
 	if request.Name == "" {
-		return model.QualityDefinition{}, fmt.Errorf("name is required")
+		return sqlcdb.QualityDefinition{}, fmt.Errorf("name is required")
 	}
 	if request.Type == "" {
-		return model.QualityDefinition{}, fmt.Errorf("type is required")
+		return sqlcdb.QualityDefinition{}, fmt.Errorf("type is required")
 	}
 	if request.MinSize >= request.MaxSize {
-		return model.QualityDefinition{}, fmt.Errorf("min size must be less than max size")
+		return sqlcdb.QualityDefinition{}, fmt.Errorf("min size must be less than max size")
 	}
 
-	definition := model.QualityDefinition{
-		ID:            int32(id),
+	definition := sqlcdb.QualityDefinition{
+		ID:            id,
 		Name:          request.Name,
 		MediaType:     request.Type,
 		PreferredSize: request.PreferredSize,
@@ -104,46 +105,50 @@ func (qs QualityService) UpdateQualityDefinition(ctx context.Context, id int64, 
 
 	err := qs.qualityStorage.UpdateQualityDefinition(ctx, id, definition)
 	if err != nil {
-		return model.QualityDefinition{}, err
+		return sqlcdb.QualityDefinition{}, err
 	}
 	return qs.qualityStorage.GetQualityDefinition(ctx, id)
 }
 
 type AddQualityProfileRequest struct {
 	Name            string  `json:"name" validate:"required"`
-	CutoffQualityID *int32  `json:"cutoffQualityId,omitempty"`
+	CutoffQualityID *int64  `json:"cutoffQualityId,omitempty"`
 	UpgradeAllowed  bool    `json:"upgradeAllowed"`
-	QualityIDs      []int32 `json:"qualityIds" validate:"required,min=1,dive,gt=0"`
+	QualityIDs      []int64 `json:"qualityIds" validate:"required,min=1,dive,gt=0"`
 }
 
 type UpdateQualityProfileRequest struct {
 	Name            string  `json:"name" validate:"required"`
-	CutoffQualityID *int32  `json:"cutoffQualityId,omitempty"`
+	CutoffQualityID *int64  `json:"cutoffQualityId,omitempty"`
 	UpgradeAllowed  bool    `json:"upgradeAllowed"`
-	QualityIDs      []int32 `json:"qualityIds" validate:"required,min=1,dive,gt=0"`
+	QualityIDs      []int64 `json:"qualityIds" validate:"required,min=1,dive,gt=0"`
 }
 
 type DeleteQualityProfileRequest struct {
-	ID *int `json:"id" validate:"required,gt=0"`
+	ID *int64 `json:"id" validate:"required,gt=0"`
 }
 
-func (qs QualityService) GetQualityProfile(ctx context.Context, id int64) (storage.QualityProfile, error) {
+func (qs QualityService) GetQualityProfile(ctx context.Context, id int64) (sqlcdb.QualityProfile, error) {
 	return qs.qualityStorage.GetQualityProfile(ctx, id)
 }
 
-func (qs QualityService) ListEpisodeQualityProfiles(ctx context.Context) ([]*storage.QualityProfile, error) {
+func (qs QualityService) ListEpisodeQualityProfiles(ctx context.Context) ([]sqlcdb.QualityProfile, error) {
 	return qs.qualityStorage.ListQualityProfilesByMediaType(ctx, "episode")
 }
 
-func (qs QualityService) ListMovieQualityProfiles(ctx context.Context) ([]*storage.QualityProfile, error) {
+func (qs QualityService) ListMovieQualityProfiles(ctx context.Context) ([]sqlcdb.QualityProfile, error) {
 	return qs.qualityStorage.ListQualityProfilesByMediaType(ctx, "movie")
 }
 
-func (qs QualityService) ListQualityProfiles(ctx context.Context) ([]*storage.QualityProfile, error) {
+func (qs QualityService) ListQualityProfileRows(ctx context.Context, profileID int64) ([]sqlcdb.ListQualityProfileRowsRow, error) {
+	return qs.qualityStorage.ListQualityProfileRows(ctx, profileID)
+}
+
+func (qs QualityService) ListQualityProfiles(ctx context.Context) ([]sqlcdb.QualityProfile, error) {
 	return qs.qualityStorage.ListQualityProfiles(ctx)
 }
 
-func validateQualityProfileCutoff(cutoffQualityID *int32, upgradeAllowed bool, qualityIDs []int32) error {
+func validateQualityProfileCutoff(cutoffQualityID *int64, upgradeAllowed bool, qualityIDs []int64) error {
 	if upgradeAllowed && cutoffQualityID == nil {
 		return fmt.Errorf("cutoff quality must be specified when upgrades are allowed")
 	}
@@ -161,86 +166,94 @@ func validateQualityProfileCutoff(cutoffQualityID *int32, upgradeAllowed bool, q
 	return fmt.Errorf("cutoff quality must be one of the selected qualities")
 }
 
-func (qs QualityService) AddQualityProfile(ctx context.Context, request AddQualityProfileRequest) (storage.QualityProfile, error) {
+func (qs QualityService) AddQualityProfile(ctx context.Context, request AddQualityProfileRequest) (sqlcdb.QualityProfile, error) {
 	if request.Name == "" {
-		return storage.QualityProfile{}, fmt.Errorf("name is required")
+		return sqlcdb.QualityProfile{}, fmt.Errorf("name is required")
 	}
 	if len(request.QualityIDs) == 0 {
-		return storage.QualityProfile{}, fmt.Errorf("at least one quality must be selected")
+		return sqlcdb.QualityProfile{}, fmt.Errorf("at least one quality must be selected")
 	}
 
 	if err := validateQualityProfileCutoff(request.CutoffQualityID, request.UpgradeAllowed, request.QualityIDs); err != nil {
-		return storage.QualityProfile{}, err
+		return sqlcdb.QualityProfile{}, err
 	}
 
-	profile := model.QualityProfile{
+	var cutoff sql.NullInt64
+	if request.CutoffQualityID != nil {
+		cutoff = sql.NullInt64{Int64: *request.CutoffQualityID, Valid: true}
+	}
+	profile := sqlcdb.QualityProfile{
 		Name:            request.Name,
-		CutoffQualityID: request.CutoffQualityID,
+		CutoffQualityID: cutoff,
 		UpgradeAllowed:  request.UpgradeAllowed,
 	}
 
 	id, err := qs.qualityStorage.CreateQualityProfile(ctx, profile)
 	if err != nil {
-		return storage.QualityProfile{}, err
+		return sqlcdb.QualityProfile{}, err
 	}
 
-	items := make([]model.QualityProfileItem, len(request.QualityIDs))
+	items := make([]sqlcdb.QualityProfileItem, len(request.QualityIDs))
 	for i, qualityID := range request.QualityIDs {
-		items[i] = model.QualityProfileItem{
-			ProfileID: int32(id),
-			QualityID: qualityID,
+		items[i] = sqlcdb.QualityProfileItem{
+			ProfileID: id,
+			QualityID: int64(qualityID),
 		}
 	}
 	err = qs.qualityStorage.CreateQualityProfileItems(ctx, items)
 	if err != nil {
-		return storage.QualityProfile{}, err
+		return sqlcdb.QualityProfile{}, err
 	}
 
 	return qs.qualityStorage.GetQualityProfile(ctx, id)
 }
 
-func (qs QualityService) UpdateQualityProfile(ctx context.Context, id int64, request UpdateQualityProfileRequest) (storage.QualityProfile, error) {
+func (qs QualityService) UpdateQualityProfile(ctx context.Context, id int64, request UpdateQualityProfileRequest) (sqlcdb.QualityProfile, error) {
 	if request.Name == "" {
-		return storage.QualityProfile{}, fmt.Errorf("name is required")
+		return sqlcdb.QualityProfile{}, fmt.Errorf("name is required")
 	}
 	if len(request.QualityIDs) == 0 {
-		return storage.QualityProfile{}, fmt.Errorf("at least one quality must be selected")
+		return sqlcdb.QualityProfile{}, fmt.Errorf("at least one quality must be selected")
 	}
 
 	if err := validateQualityProfileCutoff(request.CutoffQualityID, request.UpgradeAllowed, request.QualityIDs); err != nil {
-		return storage.QualityProfile{}, err
+		return sqlcdb.QualityProfile{}, err
 	}
 
 	if _, err := qs.qualityStorage.GetQualityProfile(ctx, id); err != nil {
-		return storage.QualityProfile{}, err
+		return sqlcdb.QualityProfile{}, err
 	}
 
-	profile := storage.QualityProfile{
+	var cutoff sql.NullInt64
+	if request.CutoffQualityID != nil {
+		cutoff = sql.NullInt64{Int64: *request.CutoffQualityID, Valid: true}
+	}
+	profile := sqlcdb.QualityProfile{
 		Name:            request.Name,
-		CutoffQualityID: request.CutoffQualityID,
+		CutoffQualityID: cutoff,
 		UpgradeAllowed:  request.UpgradeAllowed,
 	}
 
 	err := qs.qualityStorage.UpdateQualityProfile(ctx, id, profile)
 	if err != nil {
-		return storage.QualityProfile{}, err
+		return sqlcdb.QualityProfile{}, err
 	}
 
 	err = qs.qualityStorage.DeleteQualityProfileItemsByProfileID(ctx, id)
 	if err != nil {
-		return storage.QualityProfile{}, err
+		return sqlcdb.QualityProfile{}, err
 	}
 
-	items := make([]model.QualityProfileItem, len(request.QualityIDs))
+	items := make([]sqlcdb.QualityProfileItem, len(request.QualityIDs))
 	for i, qualityID := range request.QualityIDs {
-		items[i] = model.QualityProfileItem{
-			ProfileID: int32(id),
-			QualityID: qualityID,
+		items[i] = sqlcdb.QualityProfileItem{
+			ProfileID: id,
+			QualityID: int64(qualityID),
 		}
 	}
 	err = qs.qualityStorage.CreateQualityProfileItems(ctx, items)
 	if err != nil {
-		return storage.QualityProfile{}, err
+		return sqlcdb.QualityProfile{}, err
 	}
 
 	return qs.qualityStorage.GetQualityProfile(ctx, id)
@@ -253,7 +266,7 @@ func (qs QualityService) DeleteQualityProfile(ctx context.Context, request Delet
 	return qs.qualityStorage.DeleteQualityProfile(ctx, int64(*request.ID))
 }
 
-func MeetsQualitySize(qs storage.QualityDefinition, fileSize uint64, runtime uint64) bool {
+func MeetsQualitySize(qs sqlcdb.QualityDefinition, fileSize uint64, runtime uint64) bool {
 	if runtime == 0 {
 		return false
 	}

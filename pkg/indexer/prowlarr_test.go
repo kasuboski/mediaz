@@ -3,6 +3,7 @@ package indexer_test
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -12,7 +13,7 @@ import (
 	"github.com/kasuboski/mediaz/pkg/indexer/mocks"
 	"github.com/kasuboski/mediaz/pkg/prowlarr"
 	"github.com/kasuboski/mediaz/pkg/ptr"
-	"github.com/kasuboski/mediaz/pkg/storage/model"
+	"github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 	"github.com/oapi-codegen/nullable"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -27,12 +28,12 @@ func TestNewIndexerSourceFactory(t *testing.T) {
 func TestIndexerSourceFactory_NewIndexerSource(t *testing.T) {
 	t.Run("returns error for disabled source", func(t *testing.T) {
 		f := indexer.NewIndexerSourceFactory()
-		_, err := f.NewIndexerSource(model.IndexerSource{
+		_, err := f.NewIndexerSource(sqlcdb.IndexerSource{
 			Enabled:        false,
 			Implementation: "prowlarr",
 			Scheme:         "http",
 			Host:           "localhost",
-			APIKey:         ptr.To("key"),
+			ApiKey:         sql.NullString{String: "key", Valid: true},
 		})
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "disabled")
@@ -40,12 +41,12 @@ func TestIndexerSourceFactory_NewIndexerSource(t *testing.T) {
 
 	t.Run("returns error for unsupported implementation", func(t *testing.T) {
 		f := indexer.NewIndexerSourceFactory()
-		_, err := f.NewIndexerSource(model.IndexerSource{
+		_, err := f.NewIndexerSource(sqlcdb.IndexerSource{
 			Enabled:        true,
 			Implementation: "unsupported",
 			Scheme:         "http",
 			Host:           "localhost",
-			APIKey:         ptr.To("key"),
+			ApiKey:         sql.NullString{String: "key", Valid: true},
 		})
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "unsupported indexer source implementation")
@@ -53,12 +54,12 @@ func TestIndexerSourceFactory_NewIndexerSource(t *testing.T) {
 
 	t.Run("creates prowlarr source", func(t *testing.T) {
 		f := indexer.NewIndexerSourceFactory()
-		src, err := f.NewIndexerSource(model.IndexerSource{
+		src, err := f.NewIndexerSource(sqlcdb.IndexerSource{
 			Enabled:        true,
 			Implementation: "prowlarr",
 			Scheme:         "http",
 			Host:           "localhost",
-			APIKey:         ptr.To("my-key"),
+			ApiKey:         sql.NullString{String: "my-key", Valid: true},
 		})
 		require.NoError(t, err)
 		assert.NotNil(t, src)
@@ -67,20 +68,20 @@ func TestIndexerSourceFactory_NewIndexerSource(t *testing.T) {
 
 func TestNewProwlarrSource(t *testing.T) {
 	t.Run("returns error when api_key is nil", func(t *testing.T) {
-		_, err := indexer.NewProwlarrSource(model.IndexerSource{
+		_, err := indexer.NewProwlarrSource(sqlcdb.IndexerSource{
 			Scheme: "http",
 			Host:   "localhost",
-			APIKey: nil,
+			ApiKey: sql.NullString{},
 		})
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "api_key")
 	})
 
 	t.Run("creates source without port", func(t *testing.T) {
-		src, err := indexer.NewProwlarrSource(model.IndexerSource{
+		src, err := indexer.NewProwlarrSource(sqlcdb.IndexerSource{
 			Scheme: "http",
 			Host:   "localhost",
-			APIKey: ptr.To("my-key"),
+			ApiKey: sql.NullString{String: "my-key", Valid: true},
 		})
 		require.NoError(t, err)
 		assert.NotNil(t, src)
@@ -89,11 +90,11 @@ func TestNewProwlarrSource(t *testing.T) {
 	})
 
 	t.Run("creates source with custom port", func(t *testing.T) {
-		src, err := indexer.NewProwlarrSource(model.IndexerSource{
+		src, err := indexer.NewProwlarrSource(sqlcdb.IndexerSource{
 			Scheme: "http",
 			Host:   "localhost",
-			Port:   ptr.To(int32(9696)),
-			APIKey: ptr.To("my-key"),
+			Port:   sql.NullInt64{Int64: 9696, Valid: true},
+			ApiKey: sql.NullString{String: "my-key", Valid: true},
 		})
 		require.NoError(t, err)
 		assert.NotNil(t, src)
@@ -101,11 +102,11 @@ func TestNewProwlarrSource(t *testing.T) {
 	})
 
 	t.Run("omits standard port 80", func(t *testing.T) {
-		src, err := indexer.NewProwlarrSource(model.IndexerSource{
+		src, err := indexer.NewProwlarrSource(sqlcdb.IndexerSource{
 			Scheme: "http",
 			Host:   "localhost",
-			Port:   ptr.To(int32(80)),
-			APIKey: ptr.To("my-key"),
+			Port:   sql.NullInt64{Int64: 80, Valid: true},
+			ApiKey: sql.NullString{String: "my-key", Valid: true},
 		})
 		require.NoError(t, err)
 		assert.NotNil(t, src)
@@ -113,11 +114,11 @@ func TestNewProwlarrSource(t *testing.T) {
 	})
 
 	t.Run("omits standard port 443", func(t *testing.T) {
-		src, err := indexer.NewProwlarrSource(model.IndexerSource{
+		src, err := indexer.NewProwlarrSource(sqlcdb.IndexerSource{
 			Scheme: "https",
 			Host:   "localhost",
-			Port:   ptr.To(int32(443)),
-			APIKey: ptr.To("my-key"),
+			Port:   sql.NullInt64{Int64: 443, Valid: true},
+			ApiKey: sql.NullString{String: "my-key", Valid: true},
 		})
 		require.NoError(t, err)
 		assert.NotNil(t, src)
@@ -127,7 +128,7 @@ func TestNewProwlarrSource(t *testing.T) {
 
 func newSourceWithMock(ctrl *gomock.Controller) (*indexer.ProwlarrIndexerSource, *mocks.MockProwlarrClient) {
 	mockClient := mocks.NewMockProwlarrClient(ctrl)
-	return indexer.NewProwlarrIndexerSourceWithClient(mockClient, model.IndexerSource{}), mockClient
+	return indexer.NewProwlarrIndexerSourceWithClient(mockClient, sqlcdb.IndexerSource{}), mockClient
 }
 
 func TestProwlarrIndexerSource_ListIndexers(t *testing.T) {
