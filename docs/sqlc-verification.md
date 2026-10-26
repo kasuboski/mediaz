@@ -1,5 +1,57 @@
 # Fresh sqlc migration — verification evidence
 
+## Final TV discovery error-contract closure — 2026-10-26
+
+**Verified implementation: `6bccb66652cce45c91a7c2fb485d07b687612550`**, based on `d1fdbcc29e283f37610890f1bf6092240df8b5f2`. This section supersedes earlier current-source counts/fingerprints and corrects the earlier blanket claim that TV discovery errors already propagated. The accompanying evidence commit changes documentation only; exact pushed-head CI is recorded separately on PR #183.
+
+### Classification and bounded fix
+
+The late discovery audit identified a **real false-success bug**, not an intentional successful-job policy. `New` registers `SeriesIndex` to return `IndexSeriesLibrary` directly; `Scheduler.executeJob` persists `done` for nil and `error` for a returned error. The scanner logged file/profile/series/season/episode failures but returned nil. TV reconciliation already aggregates independent failures with `errors.Join`.
+
+The minimal fix preserves best-effort scan continuation and earlier successful writes, but returns contextual joined errors. It also checks the actual episode-file association lookup error rather than the unrelated outer error. A failed refreshed-file-list lookup retains any preceding write failures. No schema, generated rows, FK/profile selection, HTTP shapes, job state machine, frontend or unrelated orchestration changes.
+
+- **Executed red run before the fix:** `nix develop -c go test -count=1 ./pkg/manager -run 'TestSeriesDiscovery'` exited 1. Missing-TV-profile job was **done**, expected **error**; injected persistence failures returned nil; episode lookup failure incorrectly proceeded into series lookup. The same cases pass after the fix.
+- `TestSeriesDiscoveryMissingProfileIsPublicError`: fresh FK-enabled SQLite, remove only TV profiles while retaining movie profiles; run the actual registered executor through the scheduler, verify persisted error state/diagnostic, no series/season/episode rows, and retained successful file write.
+- `TestSeriesDiscoveryPropagatesPersistenceErrors`: public method, seven strict gomock cases (file write, episode lookup, series lookup, profile lookup, series/season/episode create); `errors.Is` preserves injected identities and strict expectations prohibit downstream writes after failed lookups.
+- `TestSeriesDiscoveryContinuesAfterPersistenceFailure`: four real SQLite trigger faults at file/series/season/episode insert. Independent healthy file still produces complete expected native series/season/episode/file rows with a valid TV profile; a repeated scan reports the remaining failure and preserves the entire snapshot without duplicating successful rows.
+- `TestSeriesDiscoveryJoinsFailuresBeforeRefreshError`: both write errors and later refresh error remain discoverable via `errors.Is`, with file path context.
+- Independent GPT6.1-sol focused read-only review: **zero blockers**; independently reran all four new test functions uncached. It confirmed the actual executor/job regression, stale-error fix, continuation and retained-success policy; it did not claim to independently repeat the broader gates.
+
+**Explicit limitations:** scan-wide rollback/transactionality, filesystem compensation, arbitrary repair and universal retry/idempotence are not promised. Earlier committed file/parent records may remain after a later failure; independent files continue. Existing empty/unparseable series-name warn/skip behavior is unchanged. Joined diagnostics reach job storage/API through the existing error path; no job/API redesign. Earlier movie discovery and indexer int64 fixes are unchanged.
+
+### Frozen-source verification
+
+Executed **20:28:31–20:29:11 UTC**, locked Nix **Go 1.26.10 / sqlc 1.31.1**, after source/test edits froze:
+
+```sh
+nix develop -c go fmt ./...
+nix develop -c go vet ./...
+nix develop -c go build ./...
+nix develop -c go mod tidy
+nix develop -c go test -count=1 -json ./...
+nix develop -c go test -race -count=1 ./...
+nix develop -c go test -count=1 ./pkg/manager -run 'SeriesDiscovery|IndexSeriesLibrary|IndexListEpisodeFiles'
+nix develop -c go test -count=1 ./server -run 'Wire|HTTPDatabase'
+# Two rounds; compare both to each other and to the prior cutoff-release manifest:
+nix develop -c sqlc generate
+nix develop -c go generate ./pkg/storage ./pkg/download ./pkg/indexer ./pkg/library
+nix develop -c go build -o /tmp/mediaz-series-discovery/mediaz .
+LIVE_BINARY=/tmp/mediaz-series-discovery/mediaz \
+LIVE_DIST=/tmp/mediaz-followup/frontend/dist \
+LIVE_EVIDENCE=/tmp/mediaz-series-discovery/live-smoke.md \
+nix develop -c node /tmp/mediaz-validation/live-smoke.mjs
+```
+
+All PASS. **407 top-level + 855 subtests = 1,262 passing events**, 15 tested packages, zero failing/skipped tests; full race has no reports. All **61 unchanged wire fixtures** rerun. Formatting settled only the new test file before fingerprinting; tidy leaves `go.mod`/`go.sum` unchanged; `git diff --check` passes. Both generation rounds preserve all **25 generated files**, byte-identical to the prior release; sorted manifest SHA-256 remains **`d46315584c8366603c6ba5331fb8474d50c9a999cebd9ad62acdce81cdab14c3`**.
+
+Portable implementation fingerprint (algorithm below): **`96e25c84286d9f16f1621b21320026a041e8a656c32f621cd6537eaac68a61db`**, identical before gates, after generation/race and after rebuilt smoke. Binary SHA-256: **`568b50f7810243f95b21573d1a18c8bc4714fdee86774264ae65f43b38a91a10`**. Smoke started **20:28:59 UTC** and completed before **20:29:11 UTC**: **51 HTTP checks, zero failures**, all five scheduler types done with proper latest/history, temporary sentinel unchanged, server stopped; fresh isolated DB/config `/tmp/mediaz-live-MMUDnj/`. The empty-library smoke checks general compatibility; the new regressions prove failure reporting.
+
+Frontend source unchanged: reuse the previously verified identical-source dist; no needless new install/build/typecheck/test claim. **14 existing TypeScript errors, 26 vulnerabilities, no test script** remain explicit exceptions. Fresh-start reset requirements, optional-link SET NULL, bootstrap concurrency/repair limits, and preexisting non-atomic multi-step profile/item behavior remain unchanged. No actual user DB/media deletion, force-push or merge; human approval required.
+
+Supplemental artifacts: `/tmp/mediaz-series-discovery/{before.log,gates.log,test.json,counts.json,race.log,targeted.log,wire.log,generated-A.sha256,generated-B.sha256,fingerprint-before,fingerprint-after,fingerprint-after-smoke,binary.sha256,live-smoke.md}`. Commands/scenarios/counts/hashes above are durable evidence, not dependent on access to those temporary paths.
+
+---
+
 ## Final cutoff FK hardening — 2026-10-26
 
 **Verified implementation: `52de428e6f21eeba514eeff5f3411dc3171aa487`**, parent `cf7c88af548c0762afb34697ce837c30f383f1b3`. This section supersedes earlier counts/fingerprints for the current implementation; the accompanying evidence commit changes documentation only. Exact final pushed-head test/Docker CI is recorded on PR #183, not inferred from old green runs.
