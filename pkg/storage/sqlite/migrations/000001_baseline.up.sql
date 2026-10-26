@@ -48,7 +48,7 @@ CREATE TABLE IF NOT EXISTS "quality_definition" (
 CREATE TABLE IF NOT EXISTS "quality_profile" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     "name" TEXT NOT NULL,
-    "cutoff_quality_id" INTEGER,
+    "cutoff_quality_id" INTEGER REFERENCES "quality_definition"("id") ON DELETE RESTRICT,
     "upgrade_allowed" BOOLEAN NOT NULL
 );
 
