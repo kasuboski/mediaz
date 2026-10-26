@@ -130,6 +130,7 @@ func (s SeriesService) AddSeriesToLibrary(ctx context.Context, request AddSeries
 	for _, sm := range seasonMetadata {
 		season := sqlcdb.Season{
 			SeriesID:         seriesID,
+			SeasonNumber:     sm.Number,
 			SeasonMetadataID: sql.NullInt64{Int64: sm.ID, Valid: true},
 			Monitored:        1,
 		}
@@ -463,7 +464,7 @@ func (s SeriesService) ListSeasonsForSeries(ctx context.Context, tmdbID int64) (
 
 		result := SeasonResult{
 			SeriesID:     season.Season.SeriesID,
-			Number:       int32(seasonMeta.Number),
+			Number:       seasonMeta.Number,
 			Title:        seasonMeta.Title,
 			TMDBID:       seasonMeta.TmdbID,
 			Monitored:    season.Season.Monitored == 1,
@@ -576,9 +577,9 @@ func (s SeriesService) ListEpisodesForSeason(ctx context.Context, tmdbID int64, 
 	}
 
 	// Determine season number for response
-	seasonNum := int32(seasonNumber)
+	seasonNum := int64(seasonNumber)
 	if seasonMeta != nil {
-		seasonNum = int32(seasonMeta.Number)
+		seasonNum = seasonMeta.Number
 	}
 
 	results := make([]EpisodeResult, 0, len(episodes))
@@ -786,7 +787,7 @@ func (s SeriesService) getSeasonsWithEpisodes(ctx context.Context, seriesID int6
 		}
 
 		// Get episodes for this season
-		episodes, err := s.getEpisodesForSeason(ctx, season.Season.ID, season.Season.SeriesID, int32(seasonMeta.Number))
+		episodes, err := s.getEpisodesForSeason(ctx, season.Season.ID, season.Season.SeriesID, seasonMeta.Number)
 		if err != nil {
 			log.Debug("failed to get episodes for season", zap.Error(err), zap.Int64("seasonID", season.Season.ID))
 			// Continue with empty episodes array
@@ -795,7 +796,7 @@ func (s SeriesService) getSeasonsWithEpisodes(ctx context.Context, seriesID int6
 
 		result := SeasonResult{
 			SeriesID:     season.Season.SeriesID,
-			Number:       int32(seasonMeta.Number),
+			Number:       seasonMeta.Number,
 			Title:        seasonMeta.Title,
 			TMDBID:       seasonMeta.TmdbID,
 			Monitored:    season.Season.Monitored == 1,
@@ -846,7 +847,7 @@ func (s SeriesService) preloadEpisodeMetadata(ctx context.Context, episodes []sq
 }
 
 // getEpisodesForSeason retrieves episodes for a specific season.
-func (s SeriesService) getEpisodesForSeason(ctx context.Context, seasonID int64, seriesID int64, seasonNumber int32) ([]EpisodeResult, error) {
+func (s SeriesService) getEpisodesForSeason(ctx context.Context, seasonID int64, seriesID int64, seasonNumber int64) ([]EpisodeResult, error) {
 	log := logger.FromCtx(ctx)
 
 	// Query episodes for this season

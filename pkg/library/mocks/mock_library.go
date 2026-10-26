@@ -41,7 +41,7 @@ func (m *MockLibrary) EXPECT() *MockLibraryMockRecorder {
 }
 
 // AddEpisode mocks base method.
-func (m *MockLibrary) AddEpisode(arg0 context.Context, arg1 string, arg2 int32, arg3 string) (library.EpisodeFile, error) {
+func (m *MockLibrary) AddEpisode(arg0 context.Context, arg1 string, arg2 int64, arg3 string) (library.EpisodeFile, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "AddEpisode", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(library.EpisodeFile)

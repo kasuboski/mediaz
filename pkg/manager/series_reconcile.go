@@ -505,8 +505,8 @@ func (m MediaManager) reconcileMissingSeason(ctx context.Context, seriesTitle st
 	var chosenSeasonPackRelease *prowlarr.ReleaseResource
 	seasonParams := SeriesReleaseFilterParams{
 		Title:        seriesTitle,
-		SeasonNumber: int32(metadata.Number),
-		Runtime:      int32(runtime),
+		SeasonNumber: metadata.Number,
+		Runtime:      runtime,
 	}
 	for _, r := range releases {
 		if RejectSeasonReleaseFunc(ctx, seasonParams, qualityProfile, snapshot.GetProtocols())(r) {
@@ -606,9 +606,9 @@ func (m MediaManager) reconcileMissingEpisode(ctx context.Context, seriesTitle s
 	var chosenRelease *prowlarr.ReleaseResource
 	episodeParams := SeriesReleaseFilterParams{
 		Title:         seriesTitle,
-		SeasonNumber:  int32(seasonNumber),
-		EpisodeNumber: int32(episodeMetadata.Number),
-		Runtime:       int32(episodeMetadata.Runtime.Int64),
+		SeasonNumber:  seasonNumber,
+		EpisodeNumber: episodeMetadata.Number,
+		Runtime:       episodeMetadata.Runtime.Int64,
 	}
 	for _, r := range releases {
 		if RejectEpisodeReleaseFunc(ctx, episodeParams, qualityProfile, snapshot.GetProtocols())(r) {
@@ -1454,7 +1454,7 @@ func (m MediaManager) addEpisodeFileToLibrary(ctx context.Context, seriesTitle s
 		return nil
 	}
 
-	ef, err := m.library.AddEpisode(ctx, seriesTitle, int32(seasonNumber), filePath)
+	ef, err := m.library.AddEpisode(ctx, seriesTitle, seasonNumber, filePath)
 	if err != nil {
 		if !errors.Is(err, io.ErrFileExists) {
 			log.Error("failed to add episode to library", zap.Error(err))

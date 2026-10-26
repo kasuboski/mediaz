@@ -28,8 +28,8 @@ type SourceIndexer struct {
 
 type SearchOptions struct {
 	Query   string
-	Season  *int32
-	Episode *int32
+	Season  *int64
+	Episode *int64
 	Type    *string
 	TmdbID  *int32
 }

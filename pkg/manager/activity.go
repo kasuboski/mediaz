@@ -408,7 +408,7 @@ func (js *JobService) getEntityTransitionsMovie(ctx context.Context, entityID in
 			}
 		}
 		entry := &HistoryEntry{
-			SortKey: int(r.SortKey),
+			SortKey: r.SortKey,
 			ToState: r.ToState,
 		}
 		if r.FromState.Valid {
@@ -451,7 +451,7 @@ func (js *JobService) getEntityTransitionsSeries(ctx context.Context, entityID i
 			}
 		}
 		entry := &HistoryEntry{
-			SortKey: int(r.SortKey),
+			SortKey: r.SortKey,
 			ToState: r.ToState,
 		}
 		if r.FromState.Valid {
@@ -488,7 +488,7 @@ func (js *JobService) getEntityTransitionsSeason(ctx context.Context, entityID i
 			}
 		}
 		entry := &HistoryEntry{
-			SortKey: int(r.SortKey),
+			SortKey: r.SortKey,
 			ToState: r.ToState,
 		}
 		if r.FromState.Valid {
@@ -531,7 +531,7 @@ func (js *JobService) getEntityTransitionsEpisode(ctx context.Context, entityID 
 			}
 		}
 		entry := &HistoryEntry{
-			SortKey: int(r.SortKey),
+			SortKey: r.SortKey,
 			ToState: r.ToState,
 		}
 		if r.FromState.Valid {
@@ -567,7 +567,7 @@ func (js *JobService) getEntityTransitionsJob(ctx context.Context, entityID int6
 			}
 		}
 		entry := &HistoryEntry{
-			SortKey: int(r.SortKey),
+			SortKey: r.SortKey,
 			ToState: r.ToState,
 		}
 		if r.FromState.Valid {

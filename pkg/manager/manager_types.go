@@ -196,7 +196,7 @@ type DeleteIndexerRequest struct {
 type SeasonResult struct {
 	TMDBID       int64           `json:"tmdbID"`
 	SeriesID     int64           `json:"seriesID"`
-	Number       int32           `json:"seasonNumber"`
+	Number       int64           `json:"seasonNumber"`
 	Title        string          `json:"title"`
 	Overview     *string         `json:"overview,omitempty"`
 	AirDate      *string         `json:"airDate,omitempty"`
@@ -211,8 +211,8 @@ type SeasonResult struct {
 type EpisodeResult struct {
 	TMDBID       int64    `json:"tmdbID"`
 	SeriesID     int64    `json:"seriesID"`
-	SeasonNumber int32    `json:"seasonNumber"`
-	Number       int32    `json:"episodeNumber"`
+	SeasonNumber int64    `json:"seasonNumber"`
+	Number       int64    `json:"episodeNumber"`
 	Title        string   `json:"title"`
 	Overview     *string  `json:"overview,omitempty"`
 	AirDate      *string  `json:"airDate,omitempty"`

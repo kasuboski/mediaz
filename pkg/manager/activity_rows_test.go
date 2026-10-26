@@ -60,10 +60,10 @@ func TestActivityEmptyPublicCollections(t *testing.T) {
 }
 
 func TestActivityActiveRowsUseTransitionTimestamps(t *testing.T) {
-	stamp := time.Now().Add(-2 * time.Hour).Truncate(time.Second)
+	stamp := time.Date(2020, 2, 3, 4, 5, 6, 0, time.UTC)
 	rows := []sqlcdb.ListDownloadingMoviesRow{{
 		ID: 10, TmdbID: 20, Title: "Movie", Year: sql.NullInt64{Int64: 2025, Valid: true}, Images: `{"poster_path":"/poster.jpg"}`,
-		ToState: "downloading", SortKey: 2, CreatedAt: sql.NullTime{Time: stamp, Valid: true}, DownloadID: sql.NullString{String: "download", Valid: true},
+		ToState: "downloading", SortKey: 1, CreatedAt: sql.NullTime{Time: stamp, Valid: true}, DownloadID: sql.NullString{String: "download", Valid: true},
 		DcID: sql.NullInt64{Int64: 30, Valid: true}, DcHost: sql.NullString{String: "localhost", Valid: true}, DcPort: sql.NullInt64{Int64: 8080, Valid: true},
 	}}
 	movies := transformActiveMovies(rows)
@@ -71,7 +71,7 @@ func TestActivityActiveRowsUseTransitionTimestamps(t *testing.T) {
 	assert.Equal(t, []*ActiveMovie{{ID: 10, TMDBID: 20, Title: "Movie", Year: 2025, PosterPath: "/poster.jpg", State: "downloading", StateSince: stamp,
 		Duration: formatDuration(time.Since(stamp)), DownloadID: "download", DownloadClient: &DownloadClientInfo{ID: 30, Host: "localhost", Port: 8080}}}, movies)
 	series := transformActiveSeries([]sqlcdb.ListDownloadingSeriesRow{{ID: 40, TmdbID: sql.NullInt64{Int64: 50, Valid: true}, Title: sql.NullString{String: "Series", Valid: true},
-		PosterPath: sql.NullString{String: "/series.jpg", Valid: true}, ToState: "downloading", SortKey: 2, CreatedAt: sql.NullTime{Time: stamp, Valid: true}, SeasonNumber: 3}})
+		PosterPath: sql.NullString{String: "/series.jpg", Valid: true}, ToState: "downloading", SortKey: 1, CreatedAt: sql.NullTime{Time: stamp, Valid: true}, SeasonNumber: 3}})
 	assert.Equal(t, []*ActiveSeries{{ID: 40, TMDBID: 50, Title: "Series", PosterPath: "/series.jpg", State: "downloading", StateSince: stamp, Duration: formatDuration(time.Since(stamp))}}, series)
 }
 

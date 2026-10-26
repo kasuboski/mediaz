@@ -384,7 +384,7 @@ func TestMovieRejectRelease(t *testing.T) {
 		protocols := map[string]struct{}{"usenet": {}, "torrent": {}}
 		params := ReleaseFilterParams{
 			Title:   det.Title,
-			Runtime: int32(det.Runtime),
+			Runtime: det.Runtime,
 		}
 		rejectFunc := RejectMovieReleaseFunc(ctx, params, profile, protocols)
 
@@ -406,7 +406,7 @@ func TestMovieRejectRelease(t *testing.T) {
 		protocolsAvailable := map[string]struct{}{"torrent": {}, "ftp": {}}
 		params := ReleaseFilterParams{
 			Title:   det.Title,
-			Runtime: int32(det.Runtime),
+			Runtime: det.Runtime,
 		}
 		rejectFunc := RejectMovieReleaseFunc(ctx, params, profile, protocolsAvailable)
 
@@ -657,7 +657,7 @@ func TestMediaManager_AddSeriesToLibrary(t *testing.T) {
 		details := &tmdb.SeriesDetails{
 			ID:               1,
 			Name:             "test series",
-			FirstAirDate:     time.Now().Add(-time.Hour * 2).Format(tmdb.ReleaseDateFormat),
+			FirstAirDate:     time.Now().UTC().AddDate(0, 0, -1).Format(tmdb.ReleaseDateFormat),
 			NumberOfSeasons:  1,
 			NumberOfEpisodes: 1,
 			Seasons: []tmdb.Season{

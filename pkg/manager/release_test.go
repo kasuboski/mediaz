@@ -367,7 +367,7 @@ func TestRejectSeasonReleaseFunc(t *testing.T) {
 	tests := []struct {
 		name         string
 		seriesTitle  string
-		seasonNumber int32
+		seasonNumber int64
 		release      *prowlarr.ReleaseResource
 		want         bool
 	}{
@@ -461,8 +461,8 @@ func TestRejectEpisodeReleaseFunc(t *testing.T) {
 	tests := []struct {
 		name          string
 		episodeTitle  string
-		seasonNumber  int32
-		episodeNumber int32
+		seasonNumber  int64
+		episodeNumber int64
 		release       *prowlarr.ReleaseResource
 		want          bool
 	}{

@@ -121,6 +121,17 @@ func TestSQLite_UpdateSeasonState(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, sqlcdb.GetSeasonByIDRow{Season: got.Season, State: sql.NullString{String: string(storage.SeasonStateContinuing), Valid: true}}, got)
 	require.NoError(t, store.UpdateSeasonState(ctx, id, storage.SeasonStateCompleted, nil))
+	beforeRejected, err := store.GetSeasonByID(ctx, id)
+	require.NoError(t, err)
+	historyBeforeRejected := seasonTransitionRows(t, store.(*SQLite))
+	require.Len(t, historyBeforeRejected, 5)
+	for i, transition := range historyBeforeRejected {
+		assert.Equal(t, i == len(historyBeforeRejected)-1, transition.MostRecent)
+	}
 	require.Error(t, store.UpdateSeasonState(ctx, id, storage.SeasonStateMissing, nil))
+	afterRejected, err := store.GetSeasonByID(ctx, id)
+	require.NoError(t, err)
+	assert.Equal(t, beforeRejected, afterRejected, "rejected update must preserve the complete season row")
+	assert.Equal(t, historyBeforeRejected, seasonTransitionRows(t, store.(*SQLite)), "rejected update must preserve all history and latest markers")
 	assert.ErrorIs(t, store.UpdateSeasonState(ctx, 999999, storage.SeasonStateMissing, nil), storage.ErrNotFound)
 }

@@ -274,7 +274,7 @@ func (m MediaManager) reconcileMissingMovie(ctx context.Context, movie sqlcdb.Li
 		OriginalTitle: nullStrOut(det.OriginalTitle),
 		CleanTitle:    nullStrOut(det.CleanTitle),
 		Year:          nullI32Out(det.Year),
-		Runtime:       int32(det.Runtime),
+		Runtime:       det.Runtime,
 		Certification: nullStrOut(det.Certification),
 		Studio:        nullStrOut(det.Studio),
 	}

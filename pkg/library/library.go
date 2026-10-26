@@ -157,7 +157,7 @@ func (l *MediaLibrary) copyFile(ctx context.Context, sourcePath, targetPath stri
 // AddEpisode adds an episode file from an absolute path to the TV library.
 // The episode will be organized into the proper series/season directory structure.
 // This assumes the source path is not already relative to the library.
-func (l *MediaLibrary) AddEpisode(ctx context.Context, seriesTitle string, seasonNumber int32, sourcePath string) (EpisodeFile, error) {
+func (l *MediaLibrary) AddEpisode(ctx context.Context, seriesTitle string, seasonNumber int64, sourcePath string) (EpisodeFile, error) {
 	log := logger.FromCtx(ctx)
 	log = log.With("source path", sourcePath, "tv library path", l.tv.Path, "series", seriesTitle, "season", seasonNumber)
 
@@ -187,7 +187,7 @@ func (l *MediaLibrary) AddEpisode(ctx context.Context, seriesTitle string, seaso
 }
 
 // formatSeasonDirectory formats season number as "Season XX"
-func formatSeasonDirectory(seasonNumber int32) string {
+func formatSeasonDirectory(seasonNumber int64) string {
 	return fmt.Sprintf("Season %02d", seasonNumber)
 }
 

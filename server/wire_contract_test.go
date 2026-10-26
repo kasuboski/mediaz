@@ -235,11 +235,23 @@ func newWireAppWithStore(t *testing.T, store storage.Storage) *wireApp {
 	srv.registerRoutes(router)
 
 	return &wireApp{
-		t:       t,
-		router:  router,
-		store:   store,
-		tmdb:    tmdbMock,
-		secrets: map[string]string{},
+		t:      t,
+		router: router,
+		store:  store,
+		tmdb:   tmdbMock,
+		// Register the complete suite catalog before ANY response is scanned,
+		// including secrets supplied by later POST/PUT requests. A leak into
+		// an earlier list/get or an unrelated endpoint must fail as well.
+		secrets: map[string]string{
+			"wire-dc-secret-alpha":        "download_client.api_key",
+			"wire-dc-secret-beta":         "download_client.api_key (via POST)",
+			"wire-source-secret-gamma":    "indexer_source.api_key",
+			"wire-indexer-secret-delta":   "indexer.api_key",
+			"wire-indexer-secret-epsilon": "indexer.api_key (source-bound)",
+			"wire-indexer-secret-zeta":    "indexer.api_key (via POST)",
+			"wire-indexer-secret-eta":     "indexer.api_key (via PUT)",
+			"wire-source-secret-theta":    "indexer_source.api_key (via POST)",
+		},
 	}
 }
 
@@ -636,11 +648,8 @@ func TestWireContract_IndexersAndSources(t *testing.T) {
 
 	// List omits source-bound indexers that are not cached.
 	app.capture("indexers_list", "GET", "/api/v1/indexers", "", http.StatusOK, secretMustBeAbsent)
-	// Register incoming secrets before the request, so create/update responses
-	// themselves are audited (not only subsequent list/get responses).
-	app.secrets["wire-indexer-secret-zeta"] = "indexer.api_key (via POST)"
-	app.secrets["wire-indexer-secret-eta"] = "indexer.api_key (via PUT)"
-	app.secrets["wire-source-secret-theta"] = "indexer_source.api_key (via POST)"
+	// Incoming secrets were registered at app construction, before even the
+	// initial list response (not merely before their create/update responses).
 	app.capture("indexer_create", "POST", "/api/v1/indexers",
 		`{"Name":"Manual Indexer","Priority":50,"URI":"http://manual/","APIKey":"wire-indexer-secret-zeta"}`,
 		http.StatusCreated, secretMustBeAbsent)
@@ -684,7 +693,6 @@ func TestWireContract_DownloadClients(t *testing.T) {
 	app.capture("download_clients_list", "GET", "/api/v1/download/clients", "", http.StatusOK, secretMustBeAbsent)
 	app.capture("download_client_get", "GET", "/api/v1/download/clients/1", "", http.StatusOK, secretMustBeAbsent)
 	// Create/Update request bodies use PascalCase keys, captured as-is.
-	app.secrets["wire-dc-secret-beta"] = "download_client.api_key (via POST)"
 	app.capture("download_client_create", "POST", "/api/v1/download/clients",
 		`{"Type":"sabnzbd","Implementation":"SABNZBD","Scheme":"https","Host":"sab.local","Port":8080,"APIKey":"wire-dc-secret-beta"}`,
 		http.StatusCreated, secretMustBeAbsent)
@@ -947,6 +955,24 @@ func TestWireContract_Search(t *testing.T) {
 // ---------------------------------------------------------------------------
 // Secrets audit
 // ---------------------------------------------------------------------------
+
+// TestWireContract_SecretCatalogReadyBeforeResponses pins registration timing:
+// even a fresh app, before seeding or issuing any request, must know every
+// seeded and incoming credential used by the suite. Registering a credential
+// only immediately before its POST/PUT would leave earlier responses unaudited.
+func TestWireContract_SecretCatalogReadyBeforeResponses(t *testing.T) {
+	app := newWireAppWithStore(t, newWireStore(t))
+	for _, secret := range []string{
+		"wire-dc-secret-alpha", "wire-dc-secret-beta",
+		"wire-source-secret-gamma", "wire-indexer-secret-delta",
+		"wire-indexer-secret-epsilon", "wire-indexer-secret-zeta",
+		"wire-indexer-secret-eta", "wire-source-secret-theta",
+	} {
+		require.Contains(t, app.secrets, secret, "credential must be registered before the first response")
+		require.NotEmpty(t, app.secrets[secret], "credential must identify its origin")
+	}
+	app.capture("healthz", "GET", "/healthz", "", http.StatusOK, secretMustBeAbsent)
+}
 
 // TestWireContract_SecretsAudit ensures secret values are absent from
 // download-client, indexer, and indexer-source responses.

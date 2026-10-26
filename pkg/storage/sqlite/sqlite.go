@@ -113,8 +113,9 @@ func (s *SQLite) migrateAndReport() (bool, error) {
 // seed initializes defaults in one immediate transaction. Unlike profiles and
 // profile items, quality definitions have no unique seed key. Use their presence
 // as the population guard instead of blindly repeating INSERT OR IGNORE. The
-// transaction makes this safe for simultaneous New calls and rolls back all
-// defaults on failure, allowing the next New to retry after migration succeeded.
+// transaction serializes simultaneous seed attempts after migration and rolls
+// back all defaults on failure, allowing the next New to retry. It does not make
+// simultaneous first-ever migrations safe or repair arbitrary partial defaults.
 // Existing defaults (including operator customizations) are left untouched.
 func (s *SQLite) seed(ctx context.Context) error {
 	tx, err := s.db.BeginTx(ctx, nil)

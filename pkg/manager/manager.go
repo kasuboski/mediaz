@@ -119,7 +119,7 @@ func (m MediaManager) preloadEpisodeMetadata(ctx context.Context, episodes []sql
 }
 
 // buildEpisodeResult constructs an EpisodeResult from a storage episode and optional metadata.
-func buildEpisodeResult(episode sqlcdb.ListEpisodesRow, episodeMeta *sqlcdb.EpisodeMetadatum, seriesID int64, seasonNumber int32) EpisodeResult {
+func buildEpisodeResult(episode sqlcdb.ListEpisodesRow, episodeMeta *sqlcdb.EpisodeMetadatum, seriesID int64, seasonNumber int64) EpisodeResult {
 	result := EpisodeResult{
 		SeriesID:     int64(seriesID),
 		SeasonNumber: seasonNumber,
@@ -129,7 +129,7 @@ func buildEpisodeResult(episode sqlcdb.ListEpisodesRow, episodeMeta *sqlcdb.Epis
 
 	if episodeMeta != nil {
 		result.TMDBID = episodeMeta.TmdbID
-		result.Number = int32(episodeMeta.Number)
+		result.Number = episodeMeta.Number
 		result.Title = episodeMeta.Title
 
 		if episodeMeta.Overview.Valid {
@@ -150,7 +150,7 @@ func buildEpisodeResult(episode sqlcdb.ListEpisodesRow, episodeMeta *sqlcdb.Epis
 		}
 	} else {
 		result.TMDBID = 0
-		result.Number = int32(episode.Episode.EpisodeNumber)
+		result.Number = episode.Episode.EpisodeNumber
 		result.Title = fmt.Sprintf("Episode %d", episode.Episode.EpisodeNumber)
 	}
 
@@ -158,7 +158,7 @@ func buildEpisodeResult(episode sqlcdb.ListEpisodesRow, episodeMeta *sqlcdb.Epis
 }
 
 // getEpisodesForSeason retrieves episodes for a specific season
-func (m MediaManager) getEpisodesForSeason(ctx context.Context, seasonID int64, seriesID int64, seasonNumber int32) ([]EpisodeResult, error) {
+func (m MediaManager) getEpisodesForSeason(ctx context.Context, seasonID int64, seriesID int64, seasonNumber int64) ([]EpisodeResult, error) {
 	return m.seriesService.getEpisodesForSeason(ctx, seasonID, seriesID, seasonNumber)
 }
 

@@ -283,8 +283,8 @@ func TestProwlarrIndexerSource_Search(t *testing.T) {
 		body, err := json.Marshal([]*prowlarr.ReleaseResource{})
 		require.NoError(t, err)
 
-		season := int32(3)
-		episode := int32(7)
+		season := int64(3)
+		episode := int64(7)
 		mockClient.EXPECT().GetAPIV1Search(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
 			func(_ context.Context, params *prowlarr.GetAPIV1SearchParams, _ ...interface{}) (*http.Response, error) {
 				assert.Equal(t, "Show S03E07", *params.Query)
@@ -310,7 +310,7 @@ func TestProwlarrIndexerSource_Search(t *testing.T) {
 		body, err := json.Marshal([]*prowlarr.ReleaseResource{})
 		require.NoError(t, err)
 
-		season := int32(2)
+		season := int64(2)
 		mockClient.EXPECT().GetAPIV1Search(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
 			func(_ context.Context, params *prowlarr.GetAPIV1SearchParams, _ ...interface{}) (*http.Response, error) {
 				assert.Equal(t, "Show S02", *params.Query)
@@ -326,6 +326,21 @@ func TestProwlarrIndexerSource_Search(t *testing.T) {
 			Season: &season,
 		})
 		require.NoError(t, err)
+	})
+
+	t.Run("formats int64 season and episode without narrowing", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		src, mockClient := newSourceWithMock(ctrl)
+		season, episode := int64(2147483648), int64(2147483649)
+		mockClient.EXPECT().GetAPIV1Search(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+			func(_ context.Context, params *prowlarr.GetAPIV1SearchParams, _ ...interface{}) (*http.Response, error) {
+				assert.Equal(t, "Show S2147483648E2147483649", *params.Query)
+				return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(bytes.NewReader([]byte("[]")))}, nil
+			},
+		)
+		got, err := src.Search(ctx, 1, nil, indexer.SearchOptions{Query: "Show", Season: &season, Episode: &episode})
+		require.NoError(t, err)
+		assert.Empty(t, got)
 	})
 
 	t.Run("returns error on non-200 status", func(t *testing.T) {

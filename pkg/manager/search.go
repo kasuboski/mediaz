@@ -205,7 +205,7 @@ func (m MediaManager) SearchForSeason(ctx context.Context, seasonID int64) error
 		return fmt.Errorf("series has no title")
 	}
 
-	seasonNumber := int32(season.Season.SeasonNumber)
+	seasonNumber := season.Season.SeasonNumber
 	searchType := indexer.TypeTV
 	releases, err := m.executeSearch(ctx, snapshot, TVCategories, indexer.SearchOptions{
 		Query:  seriesMetadata.Title,
@@ -285,8 +285,8 @@ func (m MediaManager) SearchForEpisode(ctx context.Context, episodeID int64) err
 		return fmt.Errorf("series has no title")
 	}
 
-	seasonNumber := int32(season.Season.SeasonNumber)
-	episodeNumber := int32(episode.Episode.EpisodeNumber)
+	seasonNumber := season.Season.SeasonNumber
+	episodeNumber := episode.Episode.EpisodeNumber
 	searchType := indexer.TypeTV
 	releases, err := m.executeSearch(ctx, snapshot, TVCategories, indexer.SearchOptions{
 		Query:   seriesMetadata.Title,
@@ -298,7 +298,7 @@ func (m MediaManager) SearchForEpisode(ctx context.Context, episodeID int64) err
 		return err
 	}
 
-	_, err = m.reconcileMissingEpisode(ctx, seriesMetadata.Title, int64(seasonNumber), episodeListRow(episode), snapshot, qualityProfile, releases)
+	_, err = m.reconcileMissingEpisode(ctx, seriesMetadata.Title, seasonNumber, episodeListRow(episode), snapshot, qualityProfile, releases)
 	if err != nil {
 		log.Error("failed to reconcile episode", zap.Error(err))
 		return err

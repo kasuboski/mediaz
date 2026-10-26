@@ -18,10 +18,10 @@ import (
 )
 
 var (
-	seasonPackPattern    = regexp.MustCompile(`(?i)(?:S(?:eason)?[\s._-]?\d{1,2}|[\s._]Complete[\s._])`)
-	episodePattern       = regexp.MustCompile(`(?i)\b(S\d{1,2}E\d{2,})|\b(\d{1,2}x\d{2,})`)
-	episodeNumberPattern = regexp.MustCompile(`(?i)S?(\d{1,2})(?:E|x)(\d{1,2})`)
-	seasonNumberPattern  = regexp.MustCompile(`(?i)(?:S(?:eason)?[\s._-]?(\d{1,2}))`)
+	seasonPackPattern    = regexp.MustCompile(`(?i)(?:S(?:eason)?[\s._-]?\d+|[\s._]Complete[\s._])`)
+	episodeNumberPattern = regexp.MustCompile(`(?i)(?:^|[^a-z0-9])S(\d+)E(\d+)`)
+	episodeCrossPattern  = regexp.MustCompile(`(?i)(?:^|[^a-z0-9])(\d+)x(\d+)`)
+	seasonNumberPattern  = regexp.MustCompile(`(?i)(?:S(?:eason)?[\s._-]?(\d+))`)
 
 	releaseGroupRegex   = regexp.MustCompile(`(?:\s|-)[A-Z0-9]+\[[^\]]+\]`)
 	bracketedYearRegex  = regexp.MustCompile(`[\(\[\{]((?:19|20)\d{2})[\)\]\}]`)
@@ -38,16 +38,16 @@ type ReleaseFilterParams struct {
 	OriginalTitle *string
 	CleanTitle    *string
 	Year          *int32
-	Runtime       int32
+	Runtime       int64
 	Certification *string
 	Studio        *string
 }
 
 type SeriesReleaseFilterParams struct {
 	Title         string
-	SeasonNumber  int32
-	EpisodeNumber int32
-	Runtime       int32
+	SeasonNumber  int64
+	EpisodeNumber int64
+	Runtime       int64
 }
 
 func RejectMovieReleaseFunc(ctx context.Context, params ReleaseFilterParams, profile []sqlcdb.ListQualityProfileRowsRow, protocolsAvailable map[string]struct{}) func(*prowlarr.ReleaseResource) bool {
@@ -135,7 +135,7 @@ func RejectSeasonReleaseFunc(ctx context.Context, params SeriesReleaseFilterPara
 	}
 }
 
-func rejectSeasonReleaseFunc(seriesTitle string, seasonNumber int32, r *prowlarr.ReleaseResource) bool {
+func rejectSeasonReleaseFunc(seriesTitle string, seasonNumber int64, r *prowlarr.ReleaseResource) bool {
 	if r == nil {
 		return true
 	}
@@ -150,7 +150,7 @@ func rejectSeasonReleaseFunc(seriesTitle string, seasonNumber int32, r *prowlarr
 	}
 
 	// we dont want individual episodes here
-	if episodePattern.MatchString(foundTitle) {
+	if len(findEpisodeNumbers(foundTitle)) == 3 {
 		return true
 	}
 
@@ -162,10 +162,9 @@ func rejectSeasonReleaseFunc(seriesTitle string, seasonNumber int32, r *prowlarr
 	}
 
 	matches := seasonNumberPattern.FindStringSubmatch(normalizedReleaseTitle)
-	for _, m := range matches {
-		if strings.Contains(m, fmt.Sprintf("%d", seasonNumber)) {
-			return false
-		}
+	if len(matches) == 2 {
+		season, err := strconv.ParseInt(matches[1], 10, 64)
+		return err != nil || season != seasonNumber
 	}
 
 	return true
@@ -181,7 +180,39 @@ func RejectEpisodeReleaseFunc(ctx context.Context, params SeriesReleaseFilterPar
 	}
 }
 
-func rejectEpisodeReleaseFunc(seriesTitle string, seasonNumber, episodeNumber int32, r *prowlarr.ReleaseResource) bool {
+// findEpisodeNumbers is shared by episode parsing and season-pack detection.
+// Explicit S/E markers take precedence. Bare NxM is ambiguous with video
+// dimensions, so standard resolutions are skipped; use S1920E1080 to explicitly
+// request ordinals that would otherwise look like a resolution. Neither form
+// limits ordinal width, and callers still validate the int64 range.
+func findEpisodeNumbers(title string) []string {
+	if matches := episodeNumberPattern.FindStringSubmatch(title); len(matches) == 3 {
+		return matches
+	}
+	for _, matches := range episodeCrossPattern.FindAllStringSubmatch(title, -1) {
+		width, widthErr := strconv.ParseInt(matches[1], 10, 64)
+		height, heightErr := strconv.ParseInt(matches[2], 10, 64)
+		if widthErr == nil && heightErr == nil && isVideoResolution(width, height) {
+			continue
+		}
+		return matches
+	}
+	return nil
+}
+
+func isVideoResolution(width, height int64) bool {
+	switch [2]int64{width, height} {
+	case [2]int64{640, 360}, [2]int64{640, 480}, [2]int64{720, 480},
+		[2]int64{720, 576}, [2]int64{854, 480}, [2]int64{1024, 576},
+		[2]int64{1280, 720}, [2]int64{1920, 1080}, [2]int64{2560, 1440},
+		[2]int64{3840, 2160}, [2]int64{4096, 2160}, [2]int64{7680, 4320}:
+		return true
+	default:
+		return false
+	}
+}
+
+func rejectEpisodeReleaseFunc(seriesTitle string, seasonNumber, episodeNumber int64, r *prowlarr.ReleaseResource) bool {
 	if r == nil {
 		return true
 	}
@@ -198,27 +229,27 @@ func rejectEpisodeReleaseFunc(seriesTitle string, seasonNumber, episodeNumber in
 		return true
 	}
 
-	matches := episodeNumberPattern.FindStringSubmatch(normalizedReleaseTitle)
+	matches := findEpisodeNumbers(normalizedReleaseTitle)
 	if len(matches) != 3 {
 		return true
 	}
 
-	season, err := strconv.ParseInt(matches[1], 10, 32)
+	season, err := strconv.ParseInt(matches[1], 10, 64)
 	if err != nil {
 		return true
 	}
 
-	episode, err := strconv.ParseInt(matches[2], 10, 32)
+	episode, err := strconv.ParseInt(matches[2], 10, 64)
 	if err != nil {
 		return true
 	}
 
-	match := !(int32(season) == seasonNumber && int32(episode) == episodeNumber)
+	match := !(season == seasonNumber && episode == episodeNumber)
 	return match
 }
 
 // rejectReleaseFunc returns a function that returns true if the given release should be rejected
-func rejectReleaseFunc(ctx context.Context, runtime int32, profile []sqlcdb.ListQualityProfileRowsRow, protocolsAvailable map[string]struct{}) func(*prowlarr.ReleaseResource) bool {
+func rejectReleaseFunc(ctx context.Context, runtime int64, profile []sqlcdb.ListQualityProfileRowsRow, protocolsAvailable map[string]struct{}) func(*prowlarr.ReleaseResource) bool {
 	log := logger.FromCtx(ctx)
 
 	return func(r *prowlarr.ReleaseResource) bool {
@@ -248,12 +279,12 @@ func rejectReleaseFunc(ctx context.Context, runtime int32, profile []sqlcdb.List
 
 			metQuality := MeetsQualitySize(quality, uint64(sizeMB), uint64(runtime))
 			if metQuality {
-				log.Debug("accepting release", zap.Any("release", r.Title), zap.Bool("metQuality", metQuality), zap.Any("size", r.Size), zap.Int32("runtime", runtime))
+				log.Debug("accepting release", zap.Any("release", r.Title), zap.Bool("metQuality", metQuality), zap.Any("size", r.Size), zap.Int64("runtime", runtime))
 				return false
 			}
 
 			// try again with the next item
-			log.Debug("rejecting release", zap.Any("release", r.Title), zap.Bool("metQuality", metQuality), zap.Any("size", r.Size), zap.Int32("runtime", runtime))
+			log.Debug("rejecting release", zap.Any("release", r.Title), zap.Bool("metQuality", metQuality), zap.Any("size", r.Size), zap.Int64("runtime", runtime))
 		}
 
 		return true

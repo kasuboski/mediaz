@@ -44,7 +44,7 @@ func TestIndexSeriesLibrary(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	t.Run("error listing episode files from storage", func(t *testing.T) {
+	t.Run("indexes episode files with empty storage", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		ctx := context.Background()
 
