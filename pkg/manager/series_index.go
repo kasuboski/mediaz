@@ -15,6 +15,8 @@ import (
 )
 
 // IndexSeriesLibrary indexes the tv library directory for new files that are not yet monitored. The episodes are then stored with a state of discovered.
+// Independent files continue after persistence failures, but joined errors report
+// a failed scan to callers/jobs. Earlier successful writes are not rolled back.
 func (m MediaManager) IndexSeriesLibrary(ctx context.Context) error {
 	log := logger.FromCtx(ctx).With("indexer", "series")
 
@@ -33,17 +35,19 @@ func (m MediaManager) IndexSeriesLibrary(ctx context.Context) error {
 		return err
 	}
 
+	var scanErrors error
 	for _, discoveredFile := range discoveredFiles {
 		matchedID, matchedPath := matchEpisodeFile(discoveredFile, episodeFiles, log)
 		if err := m.upsertEpisodeFile(ctx, discoveredFile, matchedID, matchedPath); err != nil {
 			log.Error("failed to upsert episode file", zap.Error(err))
+			scanErrors = errors.Join(scanErrors, fmt.Errorf("upsert episode file %q: %w", discoveredFile.RelativePath, err))
 		}
 	}
 
 	// pull the updated episode file list in case we added anything above
 	episodeFiles, err = m.seriesStorage.ListEpisodeFiles(ctx)
 	if err != nil {
-		return err
+		return errors.Join(scanErrors, fmt.Errorf("refresh episode files: %w", err))
 	}
 
 	for _, f := range episodeFiles {
@@ -64,24 +68,28 @@ func (m MediaManager) IndexSeriesLibrary(ctx context.Context) error {
 		}
 
 		// Check if this specific episode file already has an associated episode
-		if _, err := m.seriesStorage.GetEpisodeByEpisodeFileID(ctx, f.ID); err == nil {
+		_, err := m.seriesStorage.GetEpisodeByEpisodeFileID(ctx, f.ID)
+		if err == nil {
 			log.Debug("episode file already has associated episode", zap.Int64("file_id", f.ID))
 			continue
 		}
 		if err != nil && !errors.Is(err, storage.ErrNotFound) {
 			log.Debug("error checking existing episode for file", zap.Error(err))
+			scanErrors = errors.Join(scanErrors, fmt.Errorf("lookup episode for file %q: %w", f.RelativePath.String, err))
 			continue
 		}
 
 		seriesID, err := m.ensureSeries(ctx, df.SeriesName)
 		if err != nil {
 			log.Error("couldn't ensure series for discovered file", zap.Error(err))
+			scanErrors = errors.Join(scanErrors, fmt.Errorf("ensure series for file %q: %w", f.RelativePath.String, err))
 			continue
 		}
 
 		seasonID, err := m.getOrCreateSeason(ctx, seriesID, int64(df.SeasonNumber), nil, storage.SeasonStateDiscovered)
 		if err != nil {
 			log.Error("couldn't ensure season for discovered file", zap.Error(err))
+			scanErrors = errors.Join(scanErrors, fmt.Errorf("ensure season for file %q: %w", f.RelativePath.String, err))
 			continue
 		}
 
@@ -96,13 +104,14 @@ func (m MediaManager) IndexSeriesLibrary(ctx context.Context) error {
 		episodeID, err := m.seriesStorage.CreateEpisode(ctx, episode, storage.EpisodeStateDiscovered)
 		if err != nil {
 			log.Warn("failed to create new episode", zap.Error(err))
+			scanErrors = errors.Join(scanErrors, fmt.Errorf("create episode for file %q: %w", f.RelativePath.String, err))
 			continue
 		}
 
 		log.Debug("successfully indexed new episode", zap.Int64("ID", episodeID), zap.Int("number", df.EpisodeNumber), zap.Int64("Season ID", seasonID))
 	}
 
-	return nil
+	return scanErrors
 }
 
 func (m MediaManager) ensureSeries(ctx context.Context, seriesName string) (int64, error) {
