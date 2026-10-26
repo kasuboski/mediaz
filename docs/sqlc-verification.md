@@ -1,5 +1,57 @@
 # Fresh sqlc migration — verification evidence
 
+## Final cutoff FK hardening — 2026-10-26
+
+**Verified implementation: `52de428e6f21eeba514eeff5f3411dc3171aa487`**, parent `cf7c88af548c0762afb34697ce837c30f383f1b3`. This section supersedes earlier counts/fingerprints for the current implementation; the accompanying evidence commit changes documentation only. Exact final pushed-head test/Docker CI is recorded on PR #183, not inferred from old green runs.
+
+### Minimal policy and regression evidence
+
+The sole production change is nullable `quality_profile.cutoff_quality_id REFERENCES quality_definition(id) ON DELETE RESTRICT` in the canonical fresh-start baseline. Cutoffs select **local definition primary keys**, not the non-unique quality-domain enum (`quality_definition.quality_id`). Existing defaults seed definitions before profiles with valid cutoff IDs; all existing fixtures remain valid without edits. Generated Go, queries, manager behavior, profile items, state features and HTTP shapes are unchanged.
+
+- `TestQualityProfileCutoffReferencesDefinitionID`: real SQLite rejects nonexistent cutoff create/update; rejected create leaves the complete profile list unchanged and rejected update preserves the complete profile. A custom definition with a deliberately different enum proves the target is its primary key. Deleting a definition referenced **only by a cutoff** is refused and preserves the full definition. Clearing the cutoff permits deletion; NULL create/update remain legal and preserve profiles.
+- `TestQualityServiceMissingCutoffDefinitionPreservesProfilesAndItems/{add,update}`: missing cutoff included among selections passes membership validation but fails at the profile write, preserving full profile/item snapshots. No manager redesign is needed for this early-rejection case.
+- **Executed negative control:** copied these tests into a separate detached worktree at `cf7c88a` and ran `nix develop -c go test -count=1 ./pkg/storage/sqlite ./pkg/manager -run 'TestQualityProfileCutoffReferencesDefinitionID|TestQualityServiceMissingCutoffDefinitionPreservesProfilesAndItems'`. Exit **1**: direct invalid create returned nil error, manager failed add retained a dangling profile, and failed update changed profile/items. The same tests pass with the FK.
+- Independent GPT reviewer found **zero blockers**, confirmed definition-ID/null/RESTRICT semantics and seed/HTTP/state compatibility, and independently ran uncached full SQLite/manager/server tests successfully. No competing fixture writes.
+
+Existing policies remain unchanged: mandatory movie/series profiles RESTRICT; optional metadata/file pointers **SET NULL**; owned library subtrees/history CASCADE; metadata ancestry restrictive. SET NULL is the explicit chosen optional-link policy, superseding older audit wording suggesting only refusal/cascade. Retained metadata/file rows are intentional shared-cache/file lifecycle, not dangling parent pointers. Job latest/sort-key indexes and SQLite column-name UNIQUE error mapping were already correct and were not reimplemented.
+
+### Frozen-source release gates
+
+Executed through the locked Nix environment (**Go 1.26.10, sqlc 1.31.1**) at **20:15:15–20:15:54 UTC**, after all source/test writes completed:
+
+```sh
+nix develop -c go fmt ./...
+nix develop -c go vet ./...
+nix develop -c go build ./...
+nix develop -c go mod tidy
+nix develop -c go test -count=1 -json ./...
+nix develop -c go test -race -count=1 ./...
+nix develop -c go test -count=1 ./pkg/storage/sqlite -run 'Quality|Bootstrap|FreshAcceptance|Relational|JobTransition|OptionalMedia|MediaRejects'
+nix develop -c go test -count=1 ./server -run 'Wire|HTTPDatabase'
+# Two rounds, comparing sorted sha256sum manifests of the 25 generated files:
+nix develop -c sqlc generate
+nix develop -c go generate ./pkg/storage ./pkg/download ./pkg/indexer ./pkg/library
+```
+
+All PASS. Full uncached suite: **403 top-level + 844 subtests = 1,247 passing test events**, **15 tested packages**, zero failing/skipped tests. Full race suite has no reports. All **61 wire fixtures** rerun unchanged. Formatting produced no further changes; tidy left `go.mod`/`go.sum` unchanged; `git diff --check` passed. Both generation manifests retain SHA-256 **`d46315584c8366603c6ba5331fb8474d50c9a999cebd9ad62acdce81cdab14c3`**; generated Go remains byte-identical to the prior head.
+
+The portable implementation fingerprint algorithm documented below gives **`38ae82f4bbadb00302ad344346a112dceb25fe95c6a10e6628b38b694661b5ac`** before gates, after generation/race, and after final rebuilt smoke. No implementation inputs changed across gates or publication. Final binary SHA-256: **`f5f30b48acbba446c48c1596fd3b7bb2a7a356e60c5cabada207e8bcb478ca74`**.
+
+After the Go gates, rebuilt with `nix develop -c go build -o /tmp/mediaz-cutoff/mediaz .`, then ran the existing portable scenario described below:
+
+```sh
+LIVE_BINARY=/tmp/mediaz-cutoff/mediaz \
+LIVE_DIST=/tmp/mediaz-followup/frontend/dist \
+LIVE_EVIDENCE=/tmp/mediaz-cutoff/live-smoke.md \
+nix develop -c node /tmp/mediaz-validation/live-smoke.mjs
+```
+
+Post-freeze smoke at **20:15:43–20:15:54 UTC**: **51 HTTP checks, zero failures**, five scheduler types done with correct history/latest rows, temporary sentinel unchanged, server stopped; fresh isolated DB/config `/tmp/mediaz-live-NoGnj3/`. The unchanged frontend dist is the prior isolated verified build; no new frontend build/typecheck/test claim. Frontend source is identical to the previously verified install/build/configured-lint baseline: **14 preexisting TypeScript errors, 26 vulnerabilities, no test script** remain explicit exceptions. Smoke checks compatibility; the new direct tests, not the smoke scenario, prove cutoff enforcement.
+
+Supplemental artifacts: `/tmp/mediaz-cutoff/{gates.log,test.json,counts.json,race.log,fk-profile.log,wire.log,generated-A.sha256,generated-B.sha256,fingerprint-before,fingerprint-after,fingerprint-after-smoke,binary.sha256,live-smoke.md,before.log,before.exit}`. Scenario and portable fingerprint commands remain below; local artifact paths are not required to interpret the recorded results.
+
+**Boundaries:** this is fresh-start baseline enforcement, not an incremental upgrade for existing version-1 databases. Fresh atomic bootstrap is tested; arbitrary partial-seed repair and simultaneous first-ever migrations are not claimed. With a valid cutoff but another invalid selection, preexisting multi-step manager profile/item operations can still partially persist; the missing-cutoff regressions do not claim general transactionality. No actual user DB/media deletion, merge or force-push. Human approval remains required.
+
 ## Final review followup — 2026-10-26
 
 **Verified followup implementation: `ed8e5e481d9058f24d7827308c41d7303e8248e7`**, based on `a04454eb1aec47a9166199da662b4d98b899584e`. The evidence update is a separate documentation-only commit. This section supersedes the initial-delivery counts and fingerprints below for the current source. Exact pushed-head CI is recorded on PR #183; old green CI is not substituted for new-head checks.
