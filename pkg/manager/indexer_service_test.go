@@ -18,6 +18,22 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
+func TestCategoryPersistenceSeparatesMediaTypesAndSearchFallback(t *testing.T) {
+	movieRoot, movieChild := int32(2000), int32(2040)
+	tvRoot, tvChild := int32(5000), int32(5040)
+	persisted := categoriesByType([]prowlarr.IndexerCategory{
+		{ID: &movieRoot, SubCategories: nullable.NewNullableWithValue([]prowlarr.IndexerCategory{{ID: &movieChild}})},
+		{ID: &tvRoot, SubCategories: nullable.NewNullableWithValue([]prowlarr.IndexerCategory{{ID: &tvChild}})},
+	})
+	assert.Equal(t, categoryIDsByType{Movie: []int32{2000, 2040}, TV: []int32{5000, 5040}}, persisted)
+
+	movie, tv := indexer.TypeMovie, indexer.TypeTV
+	assert.Equal(t, []int32{2000, 2040}, categoriesForSearch(persisted, []int32{9}, &movie))
+	assert.Equal(t, []int32{5000, 5040}, categoriesForSearch(persisted, []int32{9}, &tv))
+	assert.Equal(t, []int32{9}, categoriesForSearch(categoryIDsByType{Movie: []int32{2000}}, []int32{9}, &tv))
+	assert.Equal(t, []int32{9}, categoriesForSearch(categoryIDsByType{}, []int32{9}, &movie))
+}
+
 func newTestIndexerService(ctrl *gomock.Controller) (*IndexerService, *storageMocks.MockIndexerStorage, *storageMocks.MockIndexerSourceStorage, *indexerMock.MockFactory) {
 	idxStorage := storageMocks.NewMockIndexerStorage(ctrl)
 	srcStorage := storageMocks.NewMockIndexerSourceStorage(ctrl)
@@ -632,10 +648,10 @@ func TestIndexerService_RefreshIndexerSource(t *testing.T) {
 			{ID: 2, Name: "indexer-2"},
 		}, nil)
 		idxStorage.EXPECT().CreateIndexer(ctx, sqlcdb.Indexer{
-			Name: "indexer-1", IndexerSourceID: sql.NullInt64{Int64: 1, Valid: true}, Categories: "[]",
+			Name: "indexer-1", IndexerSourceID: sql.NullInt64{Int64: 1, Valid: true}, Categories: `{"movie":[],"tv":[]}`,
 		}).Return(int64(1), nil)
 		idxStorage.EXPECT().CreateIndexer(ctx, sqlcdb.Indexer{
-			Name: "indexer-2", IndexerSourceID: sql.NullInt64{Int64: 1, Valid: true}, Categories: "[]",
+			Name: "indexer-2", IndexerSourceID: sql.NullInt64{Int64: 1, Valid: true}, Categories: `{"movie":[],"tv":[]}`,
 		}).Return(int64(2), nil)
 
 		err := svc.RefreshIndexerSource(ctx, 1)
@@ -692,7 +708,12 @@ func TestIndexerService_RefreshAllIndexerSources(t *testing.T) {
 		factory.EXPECT().NewIndexerSource(gomock.Any()).Return(src, nil).Times(2)
 		src.EXPECT().ListIndexers(ctx).Return([]indexer.SourceIndexer{{ID: 1, Name: "idx-1"}}, nil).Times(2)
 		// Each source refresh persists its returned indexer.
-		idxStorage.EXPECT().CreateIndexer(ctx, gomock.Any()).Return(int64(1), nil).Times(2)
+		idxStorage.EXPECT().CreateIndexer(ctx, sqlcdb.Indexer{
+			Name: "idx-1", IndexerSourceID: sql.NullInt64{Int64: 1, Valid: true}, Categories: `{"movie":[],"tv":[]}`,
+		}).Return(int64(1), nil)
+		idxStorage.EXPECT().CreateIndexer(ctx, sqlcdb.Indexer{
+			Name: "idx-1", IndexerSourceID: sql.NullInt64{Int64: 2, Valid: true}, Categories: `{"movie":[],"tv":[]}`,
+		}).Return(int64(1), nil)
 
 		err := svc.RefreshAllIndexerSources(ctx)
 		require.NoError(t, err)
@@ -756,18 +777,21 @@ func TestIndexerService_SearchIndexers(t *testing.T) {
 
 		src := indexerMock.NewMockIndexerSource(ctrl)
 		categoryID := int32(2040)
+		rootCategoryID := int32(2000)
+		movieType := indexer.TypeMovie
+		storedCategories := `{"movie":[2000,2040],"tv":[]}`
 		idxStorage.EXPECT().CreateIndexer(ctx, sqlcdb.Indexer{
-			Name: "indexer-1", Priority: 0, Uri: "", IndexerSourceID: sql.NullInt64{Int64: 1, Valid: true}, Categories: "[2040]",
+			Name: "indexer-1", IndexerSourceID: sql.NullInt64{Int64: 1, Valid: true}, Categories: storedCategories,
 		}).Return(int64(1), nil)
 		idxStorage.EXPECT().ListIndexers(gomock.Any()).Return([]sqlcdb.Indexer{{
-			Name: "indexer-1", IndexerSourceID: sql.NullInt64{Int64: 1, Valid: true}, Categories: "[2040]",
+			Name: "indexer-1", IndexerSourceID: sql.NullInt64{Int64: 1, Valid: true}, Categories: storedCategories,
 		}}, nil)
 		// RefreshIndexerSource call
 		srcStorage.EXPECT().GetIndexerSource(ctx, int64(1)).Return(sqlcdb.IndexerSource{
 			ID: 1, Name: "prowlarr", Scheme: "http", Host: "prowlarr-host", Enabled: true,
 		}, nil)
 		factory.EXPECT().NewIndexerSource(gomock.Any()).Return(src, nil)
-		src.EXPECT().ListIndexers(ctx).Return([]indexer.SourceIndexer{{ID: 1, Name: "indexer-1", Categories: []prowlarr.IndexerCategory{{ID: &categoryID}}}}, nil)
+		src.EXPECT().ListIndexers(ctx).Return([]indexer.SourceIndexer{{ID: 1, Name: "indexer-1", Categories: []prowlarr.IndexerCategory{{ID: &rootCategoryID, SubCategories: nullable.NewNullableWithValue([]prowlarr.IndexerCategory{{ID: &categoryID}})}}}}, nil)
 		require.NoError(t, svc.RefreshIndexerSource(ctx, 1))
 		// Simulate a cache entry without categories: search must still consult
 		// the persisted categories, rather than gating that read on the cache.
@@ -781,9 +805,9 @@ func TestIndexerService_SearchIndexers(t *testing.T) {
 			ID: 1, Enabled: true,
 		}, nil)
 		factory.EXPECT().NewIndexerSource(gomock.Any()).Return(src, nil)
-		src.EXPECT().Search(gomock.Any(), int32(1), []int32{2040}, gomock.Any()).Return(want, nil)
+		src.EXPECT().Search(gomock.Any(), int32(1), []int32{2000, 2040}, gomock.Any()).Return(want, nil)
 
-		got, err := svc.SearchIndexers(ctx, []int64{1}, nil, indexer.SearchOptions{Query: "test movie"})
+		got, err := svc.SearchIndexers(ctx, []int64{1}, []int32{77}, indexer.SearchOptions{Query: "test movie", Type: &movieType})
 		require.NoError(t, err)
 		assert.Equal(t, want, got)
 	})
@@ -803,8 +827,8 @@ func TestIndexerService_SearchIndexers(t *testing.T) {
 			{ID: 10, Name: "idx-10"},
 			{ID: 20, Name: "idx-20"},
 		}, nil)
-		idxStorage.EXPECT().CreateIndexer(ctx, gomock.Any()).Return(int64(10), nil)
-		idxStorage.EXPECT().CreateIndexer(ctx, gomock.Any()).Return(int64(20), nil)
+		idxStorage.EXPECT().CreateIndexer(ctx, sqlcdb.Indexer{Name: "idx-10", IndexerSourceID: sql.NullInt64{Int64: 1, Valid: true}, Categories: `{"movie":[],"tv":[]}`}).Return(int64(10), nil)
+		idxStorage.EXPECT().CreateIndexer(ctx, sqlcdb.Indexer{Name: "idx-20", IndexerSourceID: sql.NullInt64{Int64: 1, Valid: true}, Categories: `{"movie":[],"tv":[]}`}).Return(int64(20), nil)
 		require.NoError(t, svc.RefreshIndexerSource(ctx, 1))
 
 		releases := []*prowlarr.ReleaseResource{{Title: nullable.NewNullableWithValue("Movie A")}}
@@ -838,7 +862,7 @@ func TestIndexerService_SearchIndexers(t *testing.T) {
 		src1.EXPECT().ListIndexers(ctx).Return([]indexer.SourceIndexer{
 			{ID: 10, Name: "idx-10"},
 		}, nil)
-		idxStorage.EXPECT().CreateIndexer(ctx, gomock.Any()).Return(int64(10), nil)
+		idxStorage.EXPECT().CreateIndexer(ctx, sqlcdb.Indexer{Name: "idx-10", IndexerSourceID: sql.NullInt64{Int64: 1, Valid: true}, Categories: `{"movie":[],"tv":[]}`}).Return(int64(10), nil)
 		require.NoError(t, svc.RefreshIndexerSource(ctx, 1))
 
 		// Source 2 with indexer 20
@@ -850,7 +874,7 @@ func TestIndexerService_SearchIndexers(t *testing.T) {
 		src2.EXPECT().ListIndexers(ctx).Return([]indexer.SourceIndexer{
 			{ID: 20, Name: "idx-20"},
 		}, nil)
-		idxStorage.EXPECT().CreateIndexer(ctx, gomock.Any()).Return(int64(20), nil)
+		idxStorage.EXPECT().CreateIndexer(ctx, sqlcdb.Indexer{Name: "idx-20", IndexerSourceID: sql.NullInt64{Int64: 2, Valid: true}, Categories: `{"movie":[],"tv":[]}`}).Return(int64(20), nil)
 		require.NoError(t, svc.RefreshIndexerSource(ctx, 2))
 
 		releases := []*prowlarr.ReleaseResource{{Title: nullable.NewNullableWithValue("Movie A")}}
@@ -887,7 +911,7 @@ func TestIndexerService_SearchIndexers(t *testing.T) {
 		}, nil)
 		factory.EXPECT().NewIndexerSource(gomock.Any()).Return(src, nil)
 		src.EXPECT().ListIndexers(ctx).Return([]indexer.SourceIndexer{{ID: 1, Name: "indexer-1"}}, nil)
-		idxStorage.EXPECT().CreateIndexer(ctx, gomock.Any()).Return(int64(1), nil)
+		idxStorage.EXPECT().CreateIndexer(ctx, sqlcdb.Indexer{Name: "indexer-1", IndexerSourceID: sql.NullInt64{Int64: 1, Valid: true}, Categories: `{"movie":[],"tv":[]}`}).Return(int64(1), nil)
 		require.NoError(t, svc.RefreshIndexerSource(ctx, 1))
 
 		// Simulate a source that blocks until its per-source context times out

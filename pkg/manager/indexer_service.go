@@ -93,7 +93,7 @@ func (is IndexerService) listIndexersInternal(ctx context.Context) ([]sqlcdb.Ind
 				Priority:        int64(idx.Priority),
 				Uri:             idx.URI,
 				ApiKey:          sql.NullString{},
-				Categories:      categoriesJSON(categoryIDs(idx.Categories)),
+				Categories:      categoriesJSON(categoriesByType(idx.Categories)),
 			})
 		}
 	}
@@ -341,7 +341,7 @@ func (is IndexerService) RefreshIndexerSource(ctx context.Context, id int64) err
 	}
 
 	for _, idx := range indexers {
-		categories := categoryIDs(idx.Categories)
+		categories := categoriesByType(idx.Categories)
 		if _, err := is.indexerStorage.CreateIndexer(ctx, sqlcdb.Indexer{
 			Name:            idx.Name,
 			Priority:        int64(idx.Priority),
@@ -476,10 +476,7 @@ func (is IndexerService) searchIndexerSource(ctx context.Context, sourceID int64
 
 	var sourceReleases []*prowlarr.ReleaseResource
 	cached, _ := is.indexerCache.Get(sourceID)
-	categoriesByID := make(map[int32][]int32, len(cached.Indexers))
-	for _, idx := range cached.Indexers {
-		categoriesByID[idx.ID] = categoryIDs(idx.Categories)
-	}
+	categoriesByID := make(map[int32]categoryIDsByType, len(cached.Indexers))
 	storedIndexers, err := is.indexerStorage.ListIndexers(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list stored indexers: %w", err)
@@ -488,7 +485,7 @@ func (is IndexerService) searchIndexerSource(ctx context.Context, sourceID int64
 		for _, stored := range storedIndexers {
 			if stored.IndexerSourceID.Valid && stored.IndexerSourceID.Int64 == sourceID && stored.Name == idx.Name {
 				if stored.Categories != "" {
-					var categories []int32
+					var categories categoryIDsByType
 					if err := json.Unmarshal([]byte(stored.Categories), &categories); err != nil {
 						return nil, fmt.Errorf("failed to decode categories for indexer %q: %w", idx.Name, err)
 					}
@@ -502,10 +499,7 @@ func (is IndexerService) searchIndexerSource(ctx context.Context, sourceID int64
 		if indexerID < 0 || indexerID > math.MaxInt32 {
 			return nil, fmt.Errorf("indexer ID %d exceeds the Prowlarr API range", indexerID)
 		}
-		indexerCategories := categoriesByID[int32(indexerID)]
-		if len(indexerCategories) == 0 {
-			indexerCategories = categories
-		}
+		indexerCategories := categoriesForSearch(categoriesByID[int32(indexerID)], categories, opts.Type)
 		releases, err := source.Search(ctx, int32(indexerID), indexerCategories, opts)
 		if err != nil {
 			log.Error("indexer search failed",
@@ -519,22 +513,62 @@ func (is IndexerService) searchIndexerSource(ctx context.Context, sourceID int64
 	return sourceReleases, nil
 }
 
-func categoryIDs(categories []prowlarr.IndexerCategory) []int32 {
-	var ids []int32
+type categoryIDsByType struct {
+	Movie []int32 `json:"movie"`
+	TV    []int32 `json:"tv"`
+}
+
+func categoriesByType(categories []prowlarr.IndexerCategory) categoryIDsByType {
+	var result categoryIDsByType
 	for _, category := range categories {
-		if category.ID != nil {
-			ids = append(ids, *category.ID)
+		if category.ID == nil {
+			continue
 		}
-		if subcategories, err := category.SubCategories.Get(); err == nil {
-			ids = append(ids, categoryIDs(subcategories)...)
+		switch *category.ID {
+		case 2000:
+			result.Movie = append(result.Movie, categoryTreeIDs(category)...)
+		case 5000:
+			result.TV = append(result.TV, categoryTreeIDs(category)...)
+		}
+	}
+	return result
+}
+
+func categoryTreeIDs(category prowlarr.IndexerCategory) []int32 {
+	var ids []int32
+	if category.ID != nil {
+		ids = append(ids, *category.ID)
+	}
+	if subcategories, err := category.SubCategories.Get(); err == nil {
+		for _, subcategory := range subcategories {
+			ids = append(ids, categoryTreeIDs(subcategory)...)
 		}
 	}
 	return ids
 }
 
-func categoriesJSON(categories []int32) string {
-	if categories == nil {
-		categories = []int32{}
+func categoriesForSearch(stored categoryIDsByType, fallback []int32, mediaType *string) []int32 {
+	if mediaType != nil {
+		switch *mediaType {
+		case indexer.TypeMovie:
+			if len(stored.Movie) > 0 {
+				return stored.Movie
+			}
+		case indexer.TypeTV:
+			if len(stored.TV) > 0 {
+				return stored.TV
+			}
+		}
+	}
+	return fallback
+}
+
+func categoriesJSON(categories categoryIDsByType) string {
+	if categories.Movie == nil {
+		categories.Movie = []int32{}
+	}
+	if categories.TV == nil {
+		categories.TV = []int32{}
 	}
 	encoded, _ := json.Marshal(categories)
 	return string(encoded)

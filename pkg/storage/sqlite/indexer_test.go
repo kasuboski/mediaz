@@ -119,13 +119,18 @@ func TestUpdateIndexer(t *testing.T) {
 	ctx := context.Background()
 	store := initSqlite(t, ctx)
 
+	sourceID, err := store.CreateIndexerSource(ctx, sqlcdb.IndexerSource{
+		Name: "source", Implementation: "prowlarr", Scheme: "http", Host: "localhost", Enabled: true,
+	})
+	require.NoError(t, err)
 	apiKey := "original-key"
 	id, err := store.CreateIndexer(ctx, sqlcdb.Indexer{
-		Name:       "indexer",
-		Priority:   25,
-		Uri:        "http://here",
-		ApiKey:     sql.NullString{String: apiKey, Valid: true},
-		Categories: "[2040]",
+		Name:            "indexer",
+		Priority:        25,
+		Uri:             "http://here",
+		ApiKey:          sql.NullString{String: apiKey, Valid: true},
+		IndexerSourceID: sql.NullInt64{Int64: sourceID, Valid: true},
+		Categories:      "[2040]",
 	})
 	require.NoError(t, err)
 
@@ -140,12 +145,12 @@ func TestUpdateIndexer(t *testing.T) {
 	indexers, err := store.ListIndexers(ctx)
 	require.NoError(t, err)
 	require.Len(t, indexers, 1)
-	assert.Equal(t, "renamed", indexers[0].Name)
-	assert.Equal(t, int64(10), indexers[0].Priority)
-	assert.Equal(t, "http://there", indexers[0].Uri)
-	require.True(t, indexers[0].ApiKey.Valid)
-	assert.Equal(t, "original-key", indexers[0].ApiKey.String)
-	assert.Equal(t, "[2040]", indexers[0].Categories, "omitting categories preserves stored categories")
+	assert.Equal(t, sqlcdb.Indexer{
+		ID: id, Name: "renamed", Priority: 10, Uri: "http://there",
+		IndexerSourceID: sql.NullInt64{Int64: sourceID, Valid: true},
+		ApiKey:          sql.NullString{String: "original-key", Valid: true},
+		Categories:      "[2040]",
+	}, indexers[0], "omitting source and categories preserves stored values")
 
 	// Updating with an API key replaces it.
 	newKey := "new-key"
