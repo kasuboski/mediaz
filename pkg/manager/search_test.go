@@ -263,10 +263,10 @@ func TestMediaManager_SearchForSeason(t *testing.T) {
 		}, nil)
 		indexerFactory.EXPECT().NewIndexerSource(gomock.Any()).Return(mockIndexerSource, nil)
 		mockIndexerSource.EXPECT().ListIndexers(gomock.Any()).Return([]indexer.SourceIndexer{
-			{ID: 1, Name: "test-indexer", Priority: 1},
+			{ID: indexer.ProwlarrID(1), Name: "test-indexer", Priority: 1},
 		}, nil)
 		store.EXPECT().CreateIndexer(gomock.Any(), sqlcdb.Indexer{
-			Name: "test-indexer", Priority: 1, IndexerSourceID: sql.NullInt64{Int64: 1, Valid: true}, Categories: `{"movie":[],"tv":[]}`,
+			Name: "test-indexer", Priority: 1, IndexerSourceID: sql.NullInt64{Int64: 1, Valid: true}, Categories: `{"movie":[],"tv":[]}`, ProwlarrID: sql.NullInt64{Int64: 1, Valid: true},
 		}).Return(int64(1), nil)
 
 		m := New(nil, indexerFactory, nil, store, downloadFactory, config.Manager{}, config.Config{})
@@ -411,10 +411,10 @@ func TestMediaManager_prepareSearchSnapshot(t *testing.T) {
 		}, nil)
 		indexerFactory.EXPECT().NewIndexerSource(gomock.Any()).Return(mockIndexerSource, nil)
 		mockIndexerSource.EXPECT().ListIndexers(gomock.Any()).Return([]indexer.SourceIndexer{
-			{ID: 1, Name: "test-indexer", Priority: 1},
+			{ID: indexer.ProwlarrID(1), Name: "test-indexer", Priority: 1},
 		}, nil)
 		store.EXPECT().CreateIndexer(gomock.Any(), sqlcdb.Indexer{
-			Name: "test-indexer", Priority: 1, IndexerSourceID: sql.NullInt64{Int64: 1, Valid: true}, Categories: `{"movie":[],"tv":[]}`,
+			Name: "test-indexer", Priority: 1, IndexerSourceID: sql.NullInt64{Int64: 1, Valid: true}, Categories: `{"movie":[],"tv":[]}`, ProwlarrID: sql.NullInt64{Int64: 1, Valid: true},
 		}).Return(int64(1), nil)
 
 		m := New(nil, indexerFactory, nil, store, nil, config.Manager{}, config.Config{})
@@ -424,6 +424,6 @@ func TestMediaManager_prepareSearchSnapshot(t *testing.T) {
 
 		require.NoError(t, err)
 		assert.NotNil(t, snapshot)
-		assert.Equal(t, []int64{1}, snapshot.GetIndexerIDs())
+		assert.Equal(t, []indexer.RowID{1}, snapshot.GetIndexerIDs())
 	})
 }

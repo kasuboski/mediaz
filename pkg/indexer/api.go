@@ -12,13 +12,19 @@ const (
 	TypeMovie = "movie"
 )
 
+// RowID identifies an indexer row in Mediaz's SQLite database.
+type RowID int64
+
+// ProwlarrID identifies an indexer within one Prowlarr source, not a SQLite row.
+type ProwlarrID int32
+
 type IndexerSource interface {
 	ListIndexers(ctx context.Context) ([]SourceIndexer, error)
-	Search(ctx context.Context, indexerID int32, categories []int32, opts SearchOptions) ([]*prowlarr.ReleaseResource, error)
+	Search(ctx context.Context, indexerID ProwlarrID, categories []int32, opts SearchOptions) ([]*prowlarr.ReleaseResource, error)
 }
 
 type SourceIndexer struct {
-	ID         int32
+	ID         ProwlarrID
 	Name       string
 	URI        string
 	Priority   int32

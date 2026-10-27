@@ -4,7 +4,9 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/kasuboski/mediaz/pkg/indexer"
 	"github.com/kasuboski/mediaz/pkg/manager"
+	"github.com/kasuboski/mediaz/pkg/storage"
 )
 
 // ListIndexers lists all indexers
@@ -48,7 +50,12 @@ func (s Server) DeleteIndexer() http.HandlerFunc {
 			return
 		}
 
-		if err := s.manager.DeleteIndexer(r.Context(), manager.DeleteIndexerRequest{ID: &id}); err != nil {
+		rowID := indexer.RowID(id)
+		if err := s.manager.DeleteIndexer(r.Context(), manager.DeleteIndexerRequest{ID: &rowID}); err != nil {
+			if errors.Is(err, storage.ErrNotFound) {
+				s.respondError(r, w, http.StatusNotFound, err)
+				return
+			}
 			s.respondError(r, w, http.StatusInternalServerError, err)
 			return
 		}
@@ -69,8 +76,12 @@ func (s Server) UpdateIndexer() http.HandlerFunc {
 			return
 		}
 
-		indexer, err := s.manager.UpdateIndexer(r.Context(), id, req)
+		indexer, err := s.manager.UpdateIndexer(r.Context(), indexer.RowID(id), req)
 		if err != nil {
+			if errors.Is(err, storage.ErrNotFound) {
+				s.respondError(r, w, http.StatusNotFound, err)
+				return
+			}
 			if errors.Is(err, manager.ErrValidation) {
 				s.respondError(r, w, http.StatusBadRequest, err)
 				return

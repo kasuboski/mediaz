@@ -11,13 +11,14 @@ import (
 )
 
 const createIndexer = `-- name: CreateIndexer :one
-INSERT INTO indexer (name, priority, uri, api_key, indexer_source_id, categories)
-VALUES (?, ?, ?, ?, ?, ?)
-ON CONFLICT (indexer_source_id, name) DO UPDATE SET
+INSERT INTO indexer (name, priority, uri, api_key, indexer_source_id, categories, prowlarr_id)
+VALUES (?, ?, ?, ?, ?, ?, ?)
+ON CONFLICT (indexer_source_id, prowlarr_id) DO UPDATE SET
  priority = excluded.priority,
  uri = excluded.uri,
  api_key = COALESCE(excluded.api_key, indexer.api_key),
- categories = excluded.categories
+ categories = excluded.categories,
+ name = excluded.name
 RETURNING id
 `
 
@@ -28,6 +29,7 @@ type CreateIndexerParams struct {
 	ApiKey          sql.NullString
 	IndexerSourceID sql.NullInt64
 	Categories      string
+	ProwlarrID      sql.NullInt64
 }
 
 func (q *Queries) CreateIndexer(ctx context.Context, arg CreateIndexerParams) (int64, error) {
@@ -38,64 +40,27 @@ func (q *Queries) CreateIndexer(ctx context.Context, arg CreateIndexerParams) (i
 		arg.ApiKey,
 		arg.IndexerSourceID,
 		arg.Categories,
+		arg.ProwlarrID,
 	)
 	var id int64
 	err := row.Scan(&id)
 	return id, err
 }
 
-const deleteIndexer = `-- name: DeleteIndexer :exec
-DELETE FROM indexer WHERE id = ?
+const deleteIndexer = `-- name: DeleteIndexer :execrows
+DELETE FROM indexer WHERE id = ? AND indexer_source_id IS NULL
 `
 
-func (q *Queries) DeleteIndexer(ctx context.Context, id int64) error {
-	_, err := q.db.ExecContext(ctx, deleteIndexer, id)
-	return err
-}
-
-const getIndexerBySourceAndName = `-- name: GetIndexerBySourceAndName :one
-SELECT
-    id,
-    name,
-    priority,
-    uri,
-    api_key,
-    indexer_source_id,
-    categories
-FROM indexer
-WHERE indexer_source_id IS ?
-  AND name = ?
-`
-
-type GetIndexerBySourceAndNameParams struct {
-	IndexerSourceID sql.NullInt64
-	Name            string
-}
-
-func (q *Queries) GetIndexerBySourceAndName(ctx context.Context, arg GetIndexerBySourceAndNameParams) (Indexer, error) {
-	row := q.db.QueryRowContext(ctx, getIndexerBySourceAndName, arg.IndexerSourceID, arg.Name)
-	var i Indexer
-	err := row.Scan(
-		&i.ID,
-		&i.Name,
-		&i.Priority,
-		&i.Uri,
-		&i.ApiKey,
-		&i.IndexerSourceID,
-		&i.Categories,
-	)
-	return i, err
+func (q *Queries) DeleteIndexer(ctx context.Context, id int64) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deleteIndexer, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
 const listIndexers = `-- name: ListIndexers :many
-SELECT
-    id,
-    name,
-    priority,
-    uri,
-    api_key,
-    indexer_source_id,
-    categories
+SELECT id, name, priority, uri, api_key, indexer_source_id, categories, prowlarr_id
 FROM indexer
 ORDER BY priority DESC, id
 `
@@ -117,6 +82,7 @@ func (q *Queries) ListIndexers(ctx context.Context) ([]Indexer, error) {
 			&i.ApiKey,
 			&i.IndexerSourceID,
 			&i.Categories,
+			&i.ProwlarrID,
 		); err != nil {
 			return nil, err
 		}
@@ -131,15 +97,12 @@ func (q *Queries) ListIndexers(ctx context.Context) ([]Indexer, error) {
 	return items, nil
 }
 
-const updateIndexer = `-- name: UpdateIndexer :exec
+const updateIndexer = `-- name: UpdateIndexer :execrows
 UPDATE indexer
-SET
-    name = ?1,
-    priority = ?2,
-    uri = ?3,
+SET name = ?1, priority = ?2, uri = ?3,
     api_key = COALESCE(?4, api_key),
     categories = COALESCE(NULLIF(CAST(?5 AS TEXT), ''), categories)
-WHERE id = ?6
+WHERE id = ?6 AND indexer_source_id IS NULL
 `
 
 type UpdateIndexerParams struct {
@@ -151,8 +114,8 @@ type UpdateIndexerParams struct {
 	ID         int64
 }
 
-func (q *Queries) UpdateIndexer(ctx context.Context, arg UpdateIndexerParams) error {
-	_, err := q.db.ExecContext(ctx, updateIndexer,
+func (q *Queries) UpdateIndexer(ctx context.Context, arg UpdateIndexerParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, updateIndexer,
 		arg.Name,
 		arg.Priority,
 		arg.Uri,
@@ -160,5 +123,8 @@ func (q *Queries) UpdateIndexer(ctx context.Context, arg UpdateIndexerParams) er
 		arg.Categories,
 		arg.ID,
 	)
-	return err
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }

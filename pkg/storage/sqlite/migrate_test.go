@@ -9,11 +9,11 @@ import (
 )
 
 // TestMigrations_BaselineOnly verifies the embedded migration source includes
-// the baseline and indexer category migration (version 2).
+// the baseline, indexer category, and Prowlarr ID migrations (version 3).
 func TestMigrations_BaselineOnly(t *testing.T) {
 	version, err := maxMigrationSourceVersion()
 	require.NoError(t, err)
-	assert.Equal(t, uint(2), version)
+	assert.Equal(t, uint(3), version)
 }
 
 // TestMigrations_RunnerIsIdempotent verifies the forward-only runner: the
@@ -35,7 +35,7 @@ func TestMigrations_RunnerIsIdempotent(t *testing.T) {
 	version, exists, err = storedMigrationVersion(db)
 	require.NoError(t, err)
 	assert.True(t, exists)
-	assert.Equal(t, uint64(2), version)
+	assert.Equal(t, uint64(3), version)
 
 	migrated, err = runMigrations(db, ":memory:")
 	require.NoError(t, err)
@@ -44,7 +44,7 @@ func TestMigrations_RunnerIsIdempotent(t *testing.T) {
 	version, exists, err = storedMigrationVersion(db)
 	require.NoError(t, err)
 	assert.True(t, exists)
-	assert.Equal(t, uint64(2), version)
+	assert.Equal(t, uint64(3), version)
 }
 
 func TestMigrations_EmptyVersionTableResumes(t *testing.T) {
@@ -60,7 +60,7 @@ func TestMigrations_EmptyVersionTableResumes(t *testing.T) {
 	version, exists, err := storedMigrationVersion(db)
 	require.NoError(t, err)
 	assert.True(t, exists)
-	assert.Equal(t, uint64(2), version)
+	assert.Equal(t, uint64(3), version)
 }
 
 // TestMigrations_RecreateErrorMessage pins the operator-facing error for

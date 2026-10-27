@@ -103,10 +103,10 @@ var searchIndexerCmd = &cobra.Command{
 		if err != nil {
 			log.Fatalw("failed to list indexers", "error", err)
 		}
-		indexers := make([]int64, len(idx))
-		for i, indexer := range idx {
-			indexers[i] = indexer.ID
-			log.Debugw("will search", "indexer", indexer.Name)
+		indexers := make([]indexer.RowID, len(idx))
+		for i, idx := range idx {
+			indexers[i] = indexer.RowID(idx.ID)
+			log.Debugw("will search", "indexer", idx.Name)
 		}
 
 		query := args[0]

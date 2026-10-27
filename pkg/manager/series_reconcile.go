@@ -350,7 +350,7 @@ func (m MediaManager) reconcileMissingSeries(ctx context.Context, series sqlcdb.
 		Type:  ptr.To(indexer.TypeTV),
 	})
 	if err != nil {
-		log.Warn("some indexer sources failed during series search", zap.Int64s("indexers", snapshot.GetIndexerIDs()), zap.Error(err))
+		log.Warn("some indexer sources failed during series search", zap.Any("indexers", snapshot.GetIndexerIDs()), zap.Error(err))
 		if len(releases) == 0 {
 			return err
 		}

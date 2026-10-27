@@ -4,6 +4,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/kasuboski/mediaz/pkg/indexer"
+
 	sqlcdb "github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 )
 
@@ -13,14 +15,14 @@ type ReconcileSnapshot struct {
 	downloadProtocols map[string]struct{}
 	downloadClients   []sqlcdb.DownloadClient
 	indexers          []sqlcdb.Indexer
-	indexerIDs        []int64
+	indexerIDs        []indexer.RowID
 	mu                sync.Mutex
 }
 
 func newReconcileSnapshot(indexers []sqlcdb.Indexer, downloadClients []sqlcdb.DownloadClient) *ReconcileSnapshot {
-	ids := make([]int64, 0)
+	ids := make([]indexer.RowID, 0)
 	for i := range indexers {
-		ids = append(ids, indexers[i].ID)
+		ids = append(ids, indexer.RowID(indexers[i].ID))
 	}
 
 	protocols := availableProtocols(downloadClients)
@@ -59,7 +61,7 @@ func (r *ReconcileSnapshot) GetProtocols() map[string]struct{} {
 	return r.downloadProtocols
 }
 
-func (r *ReconcileSnapshot) GetIndexerIDs() []int64 {
+func (r *ReconcileSnapshot) GetIndexerIDs() []indexer.RowID {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	return r.indexerIDs
