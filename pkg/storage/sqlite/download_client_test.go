@@ -2,9 +2,11 @@ package sqlite
 
 import (
 	"context"
+	"database/sql"
 	"testing"
 
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
+	"github.com/kasuboski/mediaz/pkg/storage"
+	"github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -13,7 +15,7 @@ func TestDownloadClientStorage(t *testing.T) {
 	ctx := context.Background()
 	store := initSqlite(t, ctx)
 
-	clientOne := model.DownloadClient{
+	clientOne := sqlcdb.DownloadClient{
 		Type:           "torrent",
 		Implementation: "transmission",
 		Host:           "transmission",
@@ -33,7 +35,7 @@ func TestDownloadClientStorage(t *testing.T) {
 	assert.Equal(t, clientOne.Scheme, storedClient.Scheme)
 	assert.Equal(t, clientOne.Port, storedClient.Port)
 
-	clientTwo := model.DownloadClient{
+	clientTwo := sqlcdb.DownloadClient{
 		Type:           "usenet",
 		Implementation: "something",
 		Host:           "host",
@@ -53,6 +55,12 @@ func TestDownloadClientStorage(t *testing.T) {
 	assert.Equal(t, clientTwo.Scheme, storedClient.Scheme)
 	assert.Equal(t, clientTwo.Port, storedClient.Port)
 
+	clients, err := store.ListDownloadClients(ctx)
+	require.NoError(t, err)
+	require.Len(t, clients, 2)
+	assert.Equal(t, client1ID, int64(clients[0].ID))
+	assert.Equal(t, client2ID, int64(clients[1].ID))
+
 	err = store.DeleteDownloadClient(ctx, client1ID)
 	assert.Nil(t, err)
 
@@ -60,31 +68,39 @@ func TestDownloadClientStorage(t *testing.T) {
 	assert.Nil(t, err)
 }
 
+func TestGetDownloadClientNotFound(t *testing.T) {
+	ctx := context.Background()
+	store := initSqlite(t, ctx)
+
+	_, err := store.GetDownloadClient(ctx, 1234)
+	assert.ErrorIs(t, err, storage.ErrNotFound)
+}
+
 func TestUpdateDownloadClient(t *testing.T) {
 	ctx := context.Background()
 	store := initSqlite(t, ctx)
 
 	apiKey := "original-key"
-	client := model.DownloadClient{
+	client := sqlcdb.DownloadClient{
 		Type:           "usenet",
 		Implementation: "sabnzbd",
 		Scheme:         "http",
 		Host:           "localhost",
 		Port:           8080,
-		APIKey:         &apiKey,
+		ApiKey:         sql.NullString{String: apiKey, Valid: true},
 	}
 
 	id, err := store.CreateDownloadClient(ctx, client)
 	require.NoError(t, err)
 
 	newApiKey := "updated-key"
-	updatedClient := model.DownloadClient{
+	updatedClient := sqlcdb.DownloadClient{
 		Type:           "usenet",
 		Implementation: "sabnzbd",
 		Scheme:         "https",
 		Host:           "sabnzbd.updated.com",
 		Port:           443,
-		APIKey:         &newApiKey,
+		ApiKey:         sql.NullString{String: newApiKey, Valid: true},
 	}
 
 	err = store.UpdateDownloadClient(ctx, id, updatedClient)
@@ -94,6 +110,6 @@ func TestUpdateDownloadClient(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "https", retrieved.Scheme)
 	assert.Equal(t, "sabnzbd.updated.com", retrieved.Host)
-	assert.Equal(t, int32(443), retrieved.Port)
-	assert.Equal(t, &newApiKey, retrieved.APIKey)
+	assert.Equal(t, int64(443), retrieved.Port)
+	assert.Equal(t, sql.NullString{String: newApiKey, Valid: true}, retrieved.ApiKey)
 }

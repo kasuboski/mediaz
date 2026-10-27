@@ -2,15 +2,15 @@ package manager
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"time"
 
-	"github.com/go-jet/jet/v2/sqlite"
 	"github.com/kasuboski/mediaz/config"
 	"github.com/kasuboski/mediaz/pkg/logger"
 	"github.com/kasuboski/mediaz/pkg/pagination"
 	"github.com/kasuboski/mediaz/pkg/storage"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/table"
+	"github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 	"go.uber.org/zap"
 )
 
@@ -44,16 +44,37 @@ type JobListResponse struct {
 	Pagination *pagination.Meta `json:"pagination,omitempty"`
 }
 
-// toJobResponse converts a storage.Job to a JobResponse
-func toJobResponse(job *storage.Job) JobResponse {
+// toJobResponse converts a single-job read row to a JobResponse
+func toJobResponse(job sqlcdb.GetJobByIDRow) JobResponse {
 	return JobResponse{
-		ID:        int64(job.ID),
-		Type:      job.Type,
-		State:     string(job.State),
-		CreatedAt: *job.CreatedAt,
-		UpdatedAt: *job.UpdatedAt,
-		Error:     job.Error,
+		ID:        job.Job.ID,
+		Type:      job.Job.Type,
+		State:     job.State,
+		CreatedAt: job.Job.CreatedAt.Time,
+		UpdatedAt: job.UpdatedAt.Time,
+		Error:     nullStrOut(job.Error),
 	}
+}
+
+// toJobListResponse converts a listed job row to a JobResponse
+func toJobListResponse(job sqlcdb.ListJobsRow) JobResponse {
+	return JobResponse{
+		ID:        job.Job.ID,
+		Type:      job.Job.Type,
+		State:     job.State,
+		CreatedAt: job.Job.CreatedAt.Time,
+		UpdatedAt: job.UpdatedAt.Time,
+		Error:     nullStrOut(job.Error),
+	}
+}
+
+// nullStrOut converts a nullable string to an optional string.
+func nullStrOut(v sql.NullString) *string {
+	if !v.Valid {
+		return nil
+	}
+	s := v.String
+	return &s
 }
 
 // isValidJobType validates that a job type string matches one of the defined JobType constants
@@ -96,7 +117,7 @@ func (js *JobService) CreateJob(ctx context.Context, request TriggerJobRequest) 
 		if len(jobs) == 0 {
 			return JobResponse{}, fmt.Errorf("pending job not found after conflict")
 		}
-		return toJobResponse(jobs[0]), nil
+		return toJobListResponse(jobs[0]), nil
 	}
 	if err != nil {
 		return JobResponse{}, err
@@ -119,44 +140,40 @@ func (js *JobService) GetJob(ctx context.Context, id int64) (JobResponse, error)
 }
 
 func (js *JobService) ListJobs(ctx context.Context, jobType *string, state *string, params pagination.Params) (JobListResponse, error) {
-	var conditions []sqlite.BoolExpression
+	filter := storage.JobFilter{}
 
 	if jobType != nil {
 		if !isValidJobType(*jobType) {
 			return JobListResponse{}, fmt.Errorf("invalid job type: %s", *jobType)
 		}
-		conditions = append(conditions, table.Job.Type.EQ(sqlite.String(*jobType)))
+		filter.Type = jobType
 	}
 
 	if state != nil {
 		switch storage.JobState(*state) {
 		case storage.JobStatePending, storage.JobStateRunning, storage.JobStateDone,
 			storage.JobStateError, storage.JobStateCancelled:
-			conditions = append(conditions, table.JobTransition.ToState.EQ(sqlite.String(*state)))
+			filter.State = state
 		default:
 			return JobListResponse{}, fmt.Errorf("invalid job state: %s", *state)
 		}
 	}
 
-	conditions = append(conditions, table.JobTransition.MostRecent.EQ(sqlite.Bool(true)))
-
-	where := sqlite.AND(conditions...)
-
-	totalCount, err := js.jobStorage.CountJobs(ctx, where)
+	totalCount, err := js.jobStorage.CountJobs(ctx, filter)
 	if err != nil {
 		return JobListResponse{}, err
 	}
 
 	offset, limit := params.CalculateOffsetLimit()
 
-	jobs, err := js.jobStorage.ListJobs(ctx, offset, limit, where)
+	jobs, err := js.jobStorage.ListJobs(ctx, offset, limit, filter)
 	if err != nil {
 		return JobListResponse{}, err
 	}
 
 	responses := make([]JobResponse, len(jobs))
 	for i, job := range jobs {
-		responses[i] = toJobResponse(job)
+		responses[i] = toJobListResponse(job)
 	}
 
 	if params.PageSize == 0 {

@@ -12,7 +12,6 @@ import (
 	"github.com/kasuboski/mediaz/pkg/library"
 	"github.com/kasuboski/mediaz/pkg/logger"
 	"github.com/kasuboski/mediaz/pkg/manager"
-	"github.com/kasuboski/mediaz/pkg/storage"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite"
 	"github.com/oapi-codegen/nullable"
 
@@ -98,23 +97,13 @@ var searchIndexerCmd = &cobra.Command{
 			log.Fatalw("failed to create storage connection", "error", err)
 		}
 
-		schemas, err := storage.GetSchemas()
-		if err != nil {
-			log.Fatalw("failed to get schemas", "error", err)
-		}
-
-		err = store.Init(ctx, schemas...)
-		if err != nil {
-			log.Fatalw("failed to init database", "error", err)
-		}
-
 		m := manager.New(tmdbClient, indexerFactory, library, store, nil, cfg.Manager, cfg)
 
 		idx, err := m.ListIndexers(ctx)
 		if err != nil {
 			log.Fatalw("failed to list indexers", "error", err)
 		}
-		indexers := make([]int32, len(idx))
+		indexers := make([]int64, len(idx))
 		for i, indexer := range idx {
 			indexers[i] = indexer.ID
 			log.Debugw("will search", "indexer", indexer.Name)

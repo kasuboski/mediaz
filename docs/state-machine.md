@@ -559,7 +559,7 @@ Reconciliation methods are scheduled to run periodically to process entities in 
 ### Database Schema
 
 - `pkg/storage/sqlite/schema/schema.sql` - Transition table definitions
-- `pkg/storage/sqlite/schema/gen/model/` - Generated transition models
+- `pkg/storage/model/` - Domain transition models
 
 ### Manager Layer
 

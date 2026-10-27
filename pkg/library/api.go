@@ -22,7 +22,7 @@ type Library interface {
 	DeleteMovieFile(ctx context.Context, relativePath string) error
 	DeleteMovieDirectory(ctx context.Context, relativePath string) error
 
-	AddEpisode(ctx context.Context, seriesTitle string, seasonNumber int32, sourcePath string) (EpisodeFile, error)
+	AddEpisode(ctx context.Context, seriesTitle string, seasonNumber int64, sourcePath string) (EpisodeFile, error)
 	FindEpisodes(ctx context.Context) ([]EpisodeFile, error)
 	DeleteSeriesFile(ctx context.Context, relativePath string) error
 	DeleteSeriesDirectory(ctx context.Context, relativePath string) error

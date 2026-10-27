@@ -2,86 +2,64 @@ package sqlite
 
 import (
 	"context"
+	"database/sql"
 
-	"github.com/go-jet/jet/v2/sqlite"
 	"github.com/kasuboski/mediaz/pkg/logger"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/table"
-	"go.uber.org/zap"
+	"github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 )
 
 // CreateIndexerSource stores a new indexer source in the database
-func (s *SQLite) CreateIndexerSource(ctx context.Context, source model.IndexerSource) (int64, error) {
-	stmt := table.IndexerSource.INSERT(table.IndexerSource.AllColumns.Except(table.IndexerSource.ID)).MODEL(source).RETURNING(table.IndexerSource.ID)
-	result, err := s.handleInsert(ctx, stmt)
-	if err != nil {
-		return 0, err
-	}
-
-	return result.LastInsertId()
+func (s *SQLite) CreateIndexerSource(ctx context.Context, source sqlcdb.IndexerSource) (int64, error) {
+	return s.Queries.CreateIndexerSource(ctx, sqlcdb.CreateIndexerSourceParams{
+		Name:           source.Name,
+		Implementation: source.Implementation,
+		Scheme:         source.Scheme,
+		Host:           source.Host,
+		Port:           source.Port,
+		ApiKey:         source.ApiKey,
+		Enabled:        source.Enabled,
+	})
 }
 
 // GetIndexerSource gets a stored indexer source given an id
-func (s *SQLite) GetIndexerSource(ctx context.Context, id int64) (model.IndexerSource, error) {
-	stmt := table.IndexerSource.SELECT(table.IndexerSource.AllColumns).FROM(table.IndexerSource).WHERE(table.IndexerSource.ID.EQ(sqlite.Int64(id)))
-	var result model.IndexerSource
-	err := stmt.QueryContext(ctx, s.db, &result)
-	return result, err
+func (s *SQLite) GetIndexerSource(ctx context.Context, id int64) (sqlcdb.IndexerSource, error) {
+	source, err := s.Queries.GetIndexerSource(ctx, id)
+	if err != nil {
+		return sqlcdb.IndexerSource{}, mapQueryErr(err, "failed to get indexer source")
+	}
+	return source, nil
 }
 
-// ListIndexerSources lists all stored indexer sources
-func (s *SQLite) ListIndexerSources(ctx context.Context, where ...sqlite.BoolExpression) ([]*model.IndexerSource, error) {
-	items := make([]*model.IndexerSource, 0)
-
-	stmt := table.IndexerSource.SELECT(table.IndexerSource.AllColumns).FROM(table.IndexerSource)
-
-	var conds []sqlite.BoolExpression
-	for _, w := range where {
-		conds = append(conds, w)
-	}
-	if len(conds) > 0 {
-		stmt = stmt.WHERE(sqlite.AND(conds...))
-	}
-
-	stmt = stmt.ORDER_BY(table.IndexerSource.Name.ASC())
-
-	err := stmt.QueryContext(ctx, s.db, &items)
-	return items, err
+// ListIndexerSources lists all stored indexer sources ordered by name
+func (s *SQLite) ListIndexerSources(ctx context.Context) ([]sqlcdb.IndexerSource, error) {
+	return s.Queries.ListIndexerSources(ctx)
 }
 
-// UpdateIndexerSource updates an existing indexer source
-func (s *SQLite) UpdateIndexerSource(ctx context.Context, id int64, source model.IndexerSource) error {
-	if source.APIKey != nil {
-		stmt := table.IndexerSource.UPDATE(
-			table.IndexerSource.Name,
-			table.IndexerSource.Implementation,
-			table.IndexerSource.Scheme,
-			table.IndexerSource.Host,
-			table.IndexerSource.Port,
-			table.IndexerSource.APIKey,
-			table.IndexerSource.Enabled,
-		).MODEL(source).WHERE(table.IndexerSource.ID.EQ(sqlite.Int64(id)))
-		_, err := stmt.ExecContext(ctx, s.db)
-		return err
-	}
-
-	stmt := table.IndexerSource.UPDATE(
-		table.IndexerSource.Name,
-		table.IndexerSource.Implementation,
-		table.IndexerSource.Scheme,
-		table.IndexerSource.Host,
-		table.IndexerSource.Port,
-		table.IndexerSource.Enabled,
-	).MODEL(source).WHERE(table.IndexerSource.ID.EQ(sqlite.Int64(id)))
-	_, err := stmt.ExecContext(ctx, s.db)
-	return err
+// ListEnabledIndexerSources lists all stored indexer sources that are
+// enabled, ordered by name
+func (s *SQLite) ListEnabledIndexerSources(ctx context.Context) ([]sqlcdb.IndexerSource, error) {
+	return s.Queries.ListEnabledIndexerSources(ctx)
 }
 
-// DeleteIndexerSource deletes an indexer source given an id
+// UpdateIndexerSource updates an existing indexer source. An invalid (NULL)
+// ApiKey leaves the stored key untouched (COALESCE in the query).
+func (s *SQLite) UpdateIndexerSource(ctx context.Context, id int64, source sqlcdb.IndexerSource) error {
+	return s.Queries.UpdateIndexerSource(ctx, sqlcdb.UpdateIndexerSourceParams{
+		Name:           source.Name,
+		Implementation: source.Implementation,
+		Scheme:         source.Scheme,
+		Host:           source.Host,
+		Port:           source.Port,
+		Enabled:        source.Enabled,
+		ApiKey:         source.ApiKey,
+		ID:             id,
+	})
+}
+
+// DeleteIndexerSource deletes an indexer source given an id. Child indexers
+// cascade-delete via the schema FK.
 func (s *SQLite) DeleteIndexerSource(ctx context.Context, id int64) error {
-	stmt := table.IndexerSource.DELETE().WHERE(table.IndexerSource.ID.EQ(sqlite.Int64(id)))
-	_, err := s.handleDelete(ctx, stmt)
-	return err
+	return s.Queries.DeleteIndexerSource(ctx, id)
 }
 
 // DeleteIndexerSourceCascade deletes an indexer source and all associated
@@ -95,11 +73,11 @@ func (s *SQLite) DeleteIndexerSourceCascade(ctx context.Context, id int64) error
 		return err
 	}
 
+	q := s.txQueries(tx)
+
 	// Delete all child indexers belonging to this source.
-	deleteIndexers := table.Indexer.DELETE().WHERE(table.Indexer.IndexerSourceID.EQ(sqlite.Int64(id)))
-	_, err = deleteIndexers.ExecContext(ctx, tx)
-	if err != nil {
-		log.Errorw("failed to delete child indexers", "id", id, zap.String("query", deleteIndexers.DebugSql()), "error", err)
+	if err := q.DeleteIndexersBySourceID(ctx, sql.NullInt64{Int64: id, Valid: true}); err != nil {
+		log.Errorw("failed to delete child indexers", "id", id, "error", err)
 		if rbErr := tx.Rollback(); rbErr != nil {
 			log.Errorw("failed to rollback", "id", id, "error", rbErr)
 		}
@@ -107,10 +85,8 @@ func (s *SQLite) DeleteIndexerSourceCascade(ctx context.Context, id int64) error
 	}
 
 	// Delete the source row itself.
-	deleteSource := table.IndexerSource.DELETE().WHERE(table.IndexerSource.ID.EQ(sqlite.Int64(id)))
-	_, err = deleteSource.ExecContext(ctx, tx)
-	if err != nil {
-		log.Errorw("failed to delete indexer source", "id", id, zap.String("query", deleteSource.DebugSql()), "error", err)
+	if err := q.DeleteIndexerSource(ctx, id); err != nil {
+		log.Errorw("failed to delete indexer source", "id", id, "error", err)
 		if rbErr := tx.Rollback(); rbErr != nil {
 			log.Errorw("failed to rollback", "id", id, "error", rbErr)
 		}

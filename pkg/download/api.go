@@ -7,7 +7,7 @@ import (
 	"net/http"
 
 	"github.com/kasuboski/mediaz/pkg/prowlarr"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
+	"github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 )
 
 type DownloadClient interface {
@@ -17,7 +17,7 @@ type DownloadClient interface {
 }
 
 type Factory interface {
-	NewDownloadClient(config model.DownloadClient) (DownloadClient, error)
+	NewDownloadClient(config sqlcdb.DownloadClient) (DownloadClient, error)
 }
 
 type DownloadClientFactory struct {
@@ -37,16 +37,16 @@ func NewDownloadClientFactory(mountPrefix ...string) Factory {
 
 // NewDownloadClient returns a downloada client for the given configuration
 // TODO: handle supporting configurations such as timeouts, etc
-func (d DownloadClientFactory) NewDownloadClient(config model.DownloadClient) (DownloadClient, error) {
+func (d DownloadClientFactory) NewDownloadClient(config sqlcdb.DownloadClient) (DownloadClient, error) {
 	switch config.Implementation {
 	case "transmission":
 		// TODO: Replace default http client with stored configurations
 		return NewTransmissionClient(http.DefaultClient, config.Scheme, config.Host, d.downloadMountPrefix, int(config.Port)), nil
 	case "sabnzbd":
-		if config.APIKey == nil {
+		if !config.ApiKey.Valid {
 			return nil, errors.New("missing api key")
 		}
-		return NewSabnzbdClient(http.DefaultClient, config.Scheme, config.Host, d.downloadMountPrefix, *config.APIKey), nil
+		return NewSabnzbdClient(http.DefaultClient, config.Scheme, config.Host, d.downloadMountPrefix, config.ApiKey.String), nil
 	default:
 		return nil, fmt.Errorf("unsupported client implementation: %v", config.Implementation)
 	}

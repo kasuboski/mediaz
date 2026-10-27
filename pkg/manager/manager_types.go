@@ -1,14 +1,14 @@
 package manager
 
 import (
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
+	sqlcdb "github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 )
 
 // LibraryShow summarizes a tracked TV series in the local library for list views.
 // Path may be empty when not yet imported; TMDBID maps to series metadata; PosterPath can be unset; Year is optional; State reflects storage state, not TMDB status.
 type LibraryShow struct {
 	Path       string `json:"path"`
-	TMDBID     int32  `json:"tmdbID"`
+	TMDBID     int64  `json:"tmdbID"`
 	Title      string `json:"title"`
 	PosterPath string `json:"poster_path"`
 	Year       int32  `json:"year,omitempty"`
@@ -51,8 +51,8 @@ type SearchMediaResult struct {
 // Fields like ImdbID, OriginalTitle, Overview, BackdropPath, ReleaseDate, Year, Runtime, ratings, and collection info are optional.
 // LibraryStatus is derived from storage; Path may be empty; QualityProfileID/Monitored are set only when tracked.
 type MovieDetailResult struct {
-	ID               *int32   `json:"id,omitempty"`
-	TMDBID           int32    `json:"tmdbID"`
+	ID               *int64   `json:"id,omitempty"`
+	TMDBID           int64    `json:"tmdbID"`
 	ImdbID           *string  `json:"imdbID,omitempty"`
 	Title            string   `json:"title"`
 	OriginalTitle    *string  `json:"originalTitle,omitempty"`
@@ -69,11 +69,11 @@ type MovieDetailResult struct {
 	Genres           *string  `json:"genres,omitempty"`
 	Studio           *string  `json:"studio,omitempty"`
 	Website          *string  `json:"website,omitempty"`
-	CollectionTmdbID *int32   `json:"collectionTmdbID,omitempty"`
+	CollectionTmdbID *int64   `json:"collectionTmdbID,omitempty"`
 	CollectionTitle  *string  `json:"collectionTitle,omitempty"`
 	LibraryStatus    string   `json:"libraryStatus"`
 	Path             *string  `json:"path,omitempty"`
-	QualityProfileID *int32   `json:"qualityProfileID,omitempty"`
+	QualityProfileID *int64   `json:"qualityProfileID,omitempty"`
 	Monitored        *bool    `json:"monitored,omitempty"`
 }
 
@@ -105,8 +105,8 @@ type ExternalIDs struct {
 // LibraryStatus is storage-derived; Path may be empty; QualityProfileID/Monitored are only present when tracked.
 // Seasons array contains detailed season and episode information.
 type TVDetailResult struct {
-	ID                  *int32          `json:"id,omitempty"`
-	TMDBID              int32           `json:"tmdbID"`
+	ID                  *int64          `json:"id,omitempty"`
+	TMDBID              int64           `json:"tmdbID"`
 	Title               string          `json:"title"`
 	OriginalTitle       *string         `json:"originalTitle,omitempty"`
 	Overview            string          `json:"overview,omitempty"`
@@ -128,7 +128,7 @@ type TVDetailResult struct {
 	Genres              []string        `json:"genres,omitempty"`
 	LibraryStatus       string          `json:"libraryStatus"`
 	Path                *string         `json:"path,omitempty"`
-	QualityProfileID    *int32          `json:"qualityProfileID,omitempty"`
+	QualityProfileID    *int64          `json:"qualityProfileID,omitempty"`
 	Monitored           *bool           `json:"monitored,omitempty"`
 	MonitorNewSeasons   *bool           `json:"monitorNewSeasons,omitempty"`
 	Seasons             []SeasonResult  `json:"seasons,omitempty"`
@@ -140,7 +140,7 @@ type TVDetailResult struct {
 // Path may be empty prior to import; Year is optional; PosterPath can be empty; State reflects storage state.
 type LibraryMovie struct {
 	Path       string `json:"path"`
-	TMDBID     int32  `json:"tmdbID"`
+	TMDBID     int64  `json:"tmdbID"`
 	Title      string `json:"title"`
 	PosterPath string `json:"poster_path"`
 	Year       int32  `json:"year,omitempty"`
@@ -150,36 +150,36 @@ type LibraryMovie struct {
 // AddMovieRequest describes inputs to start managing a movie.
 // TMDBID must refer to a valid TMDB movie; QualityProfileID must match an existing quality profile.
 type AddMovieRequest struct {
-	TMDBID           int   `json:"tmdbID" validate:"required,gt=0"`
-	QualityProfileID int32 `json:"qualityProfileID" validate:"required,gt=0"`
+	TMDBID           int64 `json:"tmdbID" validate:"required,gt=0"`
+	QualityProfileID int64 `json:"qualityProfileID" validate:"required,gt=0"`
 }
 
 // AddSeriesRequest describes inputs to start managing a TV series.
 // TMDBID must refer to a valid TMDB series; QualityProfileID must match an existing quality profile.
 // MonitorNewSeasons indicates whether new seasons should be automatically monitored.
 type AddSeriesRequest struct {
-	TMDBID            int   `json:"tmdbID" validate:"required,gt=0"`
-	QualityProfileID  int32 `json:"qualityProfileID" validate:"required,gt=0"`
+	TMDBID            int64 `json:"tmdbID" validate:"required,gt=0"`
+	QualityProfileID  int64 `json:"qualityProfileID" validate:"required,gt=0"`
 	MonitorNewSeasons bool  `json:"monitorNewSeasons,omitempty"`
 }
 
 type IndexerResponse struct {
-	ID       int32  `json:"id"`
+	ID       int64  `json:"id"`
 	Name     string `json:"name"`
 	Source   string `json:"source"`
-	Priority int32  `json:"priority"`
+	Priority int64  `json:"priority"`
 	URI      string `json:"uri"`
 }
 
 // AddIndexerRequest wraps a storage Indexer model to create a new indexer.
 // Ensure Name and Priority are set appropriately; credentials/URI should be validated upstream.
 type AddIndexerRequest struct {
-	model.Indexer
+	sqlcdb.Indexer
 }
 
 type UpdateIndexerRequest struct {
 	Name     string  `json:"name" validate:"required"`
-	Priority int32   `json:"priority" validate:"required,gt=0"`
+	Priority int64   `json:"priority" validate:"required,gt=0"`
 	URI      string  `json:"uri" validate:"required"`
 	APIKey   *string `json:"api_key,omitempty"`
 }
@@ -187,16 +187,16 @@ type UpdateIndexerRequest struct {
 // DeleteIndexerRequest identifies an indexer to delete by ID.
 // ID must be provided; callers should confirm existence before deletion to avoid silent no-ops.
 type DeleteIndexerRequest struct {
-	ID *int `json:"id" yaml:"id" validate:"required,gt=0"`
+	ID *int64 `json:"id" yaml:"id" validate:"required,gt=0"`
 }
 
 // SeasonResult represents a season with metadata for API responses.
 // Overview, AirDate, and PosterPath are optional fields from TMDB; EpisodeCount reflects known episodes; Monitored indicates tracking status.
 // Episodes array contains detailed episode information when requested.
 type SeasonResult struct {
-	TMDBID       int32           `json:"tmdbID"`
-	SeriesID     int32           `json:"seriesID"`
-	Number       int32           `json:"seasonNumber"`
+	TMDBID       int64           `json:"tmdbID"`
+	SeriesID     int64           `json:"seriesID"`
+	Number       int64           `json:"seasonNumber"`
 	Title        string          `json:"title"`
 	Overview     *string         `json:"overview,omitempty"`
 	AirDate      *string         `json:"airDate,omitempty"`
@@ -209,10 +209,10 @@ type SeasonResult struct {
 // EpisodeResult represents an episode with metadata for API responses.
 // Overview, AirDate, StillPath, Runtime, and VoteAverage are optional TMDB fields; Downloaded reflects local status.
 type EpisodeResult struct {
-	TMDBID       int32    `json:"tmdbID"`
-	SeriesID     int32    `json:"seriesID"`
-	SeasonNumber int32    `json:"seasonNumber"`
-	Number       int32    `json:"episodeNumber"`
+	TMDBID       int64    `json:"tmdbID"`
+	SeriesID     int64    `json:"seriesID"`
+	SeasonNumber int64    `json:"seasonNumber"`
+	Number       int64    `json:"episodeNumber"`
 	Title        string   `json:"title"`
 	Overview     *string  `json:"overview,omitempty"`
 	AirDate      *string  `json:"airDate,omitempty"`

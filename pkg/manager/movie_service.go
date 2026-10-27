@@ -2,15 +2,14 @@ package manager
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 
-	"github.com/go-jet/jet/v2/sqlite"
 	"github.com/kasuboski/mediaz/pkg/library"
 	"github.com/kasuboski/mediaz/pkg/logger"
 	"github.com/kasuboski/mediaz/pkg/storage"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/table"
+	sqlcdb "github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 	"github.com/kasuboski/mediaz/pkg/tmdb"
 	"go.uber.org/zap"
 )
@@ -23,8 +22,8 @@ var ErrMovieAlreadyExists = errors.New("movie already exists in library")
 // This decouples MovieService from the full MediaManager, allowing the metadata
 // subsystem to be extracted independently later.
 type MovieMetadataProvider interface {
-	GetMovieMetadata(ctx context.Context, tmdbID int) (*model.MovieMetadata, error)
-	GetMovieMetadataByID(ctx context.Context, metadataID int32) (*model.MovieMetadata, error)
+	GetMovieMetadata(ctx context.Context, tmdbID int64) (*sqlcdb.MovieMetadatum, error)
+	GetMovieMetadataByID(ctx context.Context, metadataID int64) (*sqlcdb.MovieMetadatum, error)
 }
 
 // MovieService handles movie CRUD, search, and detail lookups.
@@ -56,12 +55,12 @@ func NewMovieService(tmdbClient tmdb.ITmdb, lib library.Library, movieStorage st
 // If the movie already exists and is in a downloaded or downloading state it returns
 // the movie alongside ErrMovieAlreadyExists. Movies in discovered, missing, unreleased,
 // or new states are returned without error — they still need reconciliation.
-func (s *MovieService) AddMovieToLibrary(ctx context.Context, request AddMovieRequest) (*storage.Movie, error) {
+func (s *MovieService) AddMovieToLibrary(ctx context.Context, request AddMovieRequest) (*sqlcdb.GetMovieByIDRow, error) {
 	log := logger.FromCtx(ctx)
 
-	profile, err := s.qualityService.GetQualityProfile(ctx, int64(request.QualityProfileID))
+	profile, err := s.qualityService.GetQualityProfile(ctx, request.QualityProfileID)
 	if err != nil {
-		log.Debug("failed to get quality profile", zap.Int32("id", request.QualityProfileID), zap.Error(err))
+		log.Debug("failed to get quality profile", zap.Int64("id", request.QualityProfileID), zap.Error(err))
 		return nil, err
 	}
 
@@ -71,58 +70,57 @@ func (s *MovieService) AddMovieToLibrary(ctx context.Context, request AddMovieRe
 		return nil, err
 	}
 
-	movie, err := s.movieStorage.GetMovieByMetadataID(ctx, int(det.ID))
+	movie, err := s.movieStorage.GetMovieByMetadataID(ctx, det.ID)
 	if err == nil {
+		result := sqlcdb.GetMovieByIDRow(movie)
 		// Movie already exists — check its state before deciding what to return.
-		switch movie.State {
+		switch storage.MovieState(movie.State) {
 		case storage.MovieStateDownloaded, storage.MovieStateDownloading:
 			log.Debug("movie already exists in library",
-				zap.Int32("movie_id", movie.ID),
-				zap.String("state", string(movie.State)),
+				zap.Int64("movie_id", movie.Movie.ID),
+				zap.String("state", movie.State),
 			)
-			return movie, ErrMovieAlreadyExists
+			return &result, ErrMovieAlreadyExists
 		default:
 			// discovered, missing, unreleased, new — still needs processing
 			log.Debug("movie exists but still needs reconciliation",
-				zap.Int32("movie_id", movie.ID),
-				zap.String("state", string(movie.State)),
+				zap.Int64("movie_id", movie.Movie.ID),
+				zap.String("state", movie.State),
 			)
-			return movie, nil
+			return &result, nil
 		}
 	}
 
 	// anything other than a not found error is an internal error
 	if !errors.Is(err, storage.ErrNotFound) {
-		log.Warn("couldn't find movie by metadata", zap.Int32("meta_id", det.ID), zap.Error(err))
+		log.Warn("couldn't find movie by metadata", zap.Int64("meta_id", det.ID), zap.Error(err))
 		return nil, err
 	}
 
 	// need to add the movie if it does not exist
-	movie = &storage.Movie{
-		Movie: model.Movie{
-			MovieMetadataID:  &det.ID,
-			QualityProfileID: profile.ID,
-			Monitored:        1,
-			Path:             &det.Title,
-		},
+	newMovie := sqlcdb.Movie{
+		MovieMetadataID:  sql.NullInt64{Int64: det.ID, Valid: true},
+		QualityProfileID: profile.ID,
+		Monitored:        1,
+		Path:             sql.NullString{String: det.Title, Valid: true},
 	}
 
 	state := initialMovieState(det.ReleaseDate)
 
-	id, err := s.movieStorage.CreateMovie(ctx, *movie, state)
+	id, err := s.movieStorage.CreateMovie(ctx, newMovie, state)
 	if err != nil {
 		log.Warn("failed to create movie", zap.Error(err))
 		return nil, err
 	}
 
-	log.Debug("created movie", zap.Any("movie", movie))
+	log.Debug("created movie", zap.Any("movie", newMovie))
 
-	movie, err = s.movieStorage.GetMovie(ctx, id)
+	created, err := s.movieStorage.GetMovie(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("GetMovie after create: %w", err)
 	}
 
-	return movie, nil
+	return &created, nil
 }
 
 // DeleteMovie removes a movie and optionally its files from disk.
@@ -135,12 +133,12 @@ func (s *MovieService) DeleteMovie(ctx context.Context, movieID int64, deleteFil
 	}
 
 	if deleteFiles {
-		if movie.Path == nil {
+		if !movie.Movie.Path.Valid {
 			return fmt.Errorf("cannot delete files: movie path is nil")
 		}
 
-		if err := s.library.DeleteMovieDirectory(ctx, *movie.Path); err != nil {
-			return fmt.Errorf("failed to delete movie directory %s: %w", *movie.Path, err)
+		if err := s.library.DeleteMovieDirectory(ctx, movie.Movie.Path.String); err != nil {
+			return fmt.Errorf("failed to delete movie directory %s: %w", movie.Movie.Path.String, err)
 		}
 	}
 
@@ -153,14 +151,14 @@ func (s *MovieService) DeleteMovie(ctx context.Context, movieID int64, deleteFil
 }
 
 // UpdateMovieMonitored toggles the monitored state of a movie.
-func (s *MovieService) UpdateMovieMonitored(ctx context.Context, movieID int64, monitored bool) (*storage.Movie, error) {
-	monitoredInt := int32(0)
+func (s *MovieService) UpdateMovieMonitored(ctx context.Context, movieID int64, monitored bool) (*sqlcdb.GetMovieByIDRow, error) {
+	monitoredInt := int64(0)
 	if monitored {
 		monitoredInt = 1
 	}
 
-	movieUpdate := model.Movie{Monitored: monitoredInt}
-	err := s.movieStorage.UpdateMovie(ctx, movieUpdate, table.Movie.ID.EQ(sqlite.Int64(movieID)))
+	movieUpdate := sqlcdb.Movie{Monitored: monitoredInt}
+	err := s.movieStorage.UpdateMovieByID(ctx, movieID, movieUpdate)
 	if err != nil {
 		return nil, err
 	}
@@ -171,11 +169,11 @@ func (s *MovieService) UpdateMovieMonitored(ctx context.Context, movieID int64, 
 	}
 
 	logger.FromCtx(ctx).Info("updated monitoring", zap.Int64("movie_id", movieID), zap.Bool("monitored", monitored))
-	return movie, nil
+	return &movie, nil
 }
 
 // UpdateMovieQualityProfile updates the quality profile for a movie.
-func (s *MovieService) UpdateMovieQualityProfile(ctx context.Context, movieID int64, qualityProfileID int32) (*storage.Movie, error) {
+func (s *MovieService) UpdateMovieQualityProfile(ctx context.Context, movieID int64, qualityProfileID int64) (*sqlcdb.GetMovieByIDRow, error) {
 	err := s.movieStorage.UpdateMovieQualityProfile(ctx, movieID, qualityProfileID)
 	if err != nil {
 		return nil, err
@@ -186,8 +184,8 @@ func (s *MovieService) UpdateMovieQualityProfile(ctx context.Context, movieID in
 		return nil, err
 	}
 
-	logger.FromCtx(ctx).Info("updated quality profile", zap.Int64("movie_id", movieID), zap.Int32("quality_profile_id", qualityProfileID))
-	return movie, nil
+	logger.FromCtx(ctx).Info("updated quality profile", zap.Int64("movie_id", movieID), zap.Int64("quality_profile_id", qualityProfileID))
+	return &movie, nil
 }
 
 // ---------------------------------------------------------------------------
@@ -220,52 +218,65 @@ func (s *MovieService) SearchMovie(ctx context.Context, query string) (*SearchMe
 }
 
 // GetMovieDetailByTMDBID retrieves detailed information for a single movie by TMDB ID.
-func (s *MovieService) GetMovieDetailByTMDBID(ctx context.Context, tmdbID int) (*MovieDetailResult, error) {
+func (s *MovieService) GetMovieDetailByTMDBID(ctx context.Context, tmdbID int64) (*MovieDetailResult, error) {
 	log := logger.FromCtx(ctx)
 
 	// Get movie metadata from TMDB (creates if not exists)
 	metadata, err := s.metadataProvider.GetMovieMetadata(ctx, tmdbID)
 	if err != nil {
-		log.Error("failed to get movie metadata", zap.Error(err), zap.Int("tmdbID", tmdbID))
+		log.Error("failed to get movie metadata", zap.Error(err), zap.Int64("tmdbID", tmdbID))
 		return nil, err
 	}
 
 	// Create the detailed result from metadata
+	runtime := int32(metadata.Runtime)
+	year := nullI32Out(metadata.Year)
+	var popularity *float64
+	if metadata.Popularity.Valid {
+		popularity = &metadata.Popularity.Float64
+	}
+	var collectionTmdbID *int64
+	if metadata.CollectionTmdbID.Valid {
+		collectionTmdbID = &metadata.CollectionTmdbID.Int64
+	}
 	result := &MovieDetailResult{
 		TMDBID:           metadata.TmdbID,
-		ImdbID:           metadata.ImdbID,
+		ImdbID:           nullStrOut(metadata.ImdbID),
 		Title:            metadata.Title,
-		OriginalTitle:    metadata.OriginalTitle,
-		Overview:         metadata.Overview,
+		OriginalTitle:    nullStrOut(metadata.OriginalTitle),
+		Overview:         nullStrOut(metadata.Overview),
 		PosterPath:       metadata.Images,
-		Runtime:          &metadata.Runtime,
-		Genres:           metadata.Genres,
-		Studio:           metadata.Studio,
-		Website:          metadata.Website,
-		CollectionTmdbID: metadata.CollectionTmdbID,
-		CollectionTitle:  metadata.CollectionTitle,
-		Popularity:       metadata.Popularity,
-		Year:             metadata.Year,
+		Runtime:          &runtime,
+		Genres:           nullStrOut(metadata.Genres),
+		Studio:           nullStrOut(metadata.Studio),
+		Website:          nullStrOut(metadata.Website),
+		CollectionTmdbID: collectionTmdbID,
+		CollectionTitle:  nullStrOut(metadata.CollectionTitle),
+		Popularity:       popularity,
+		Year:             year,
 		LibraryStatus:    "Not In Library", // Default status
 	}
 
 	// Format release date as string if available
-	if metadata.ReleaseDate != nil {
-		releaseDateStr := metadata.ReleaseDate.Format("2006-01-02")
+	if metadata.ReleaseDate.Valid {
+		releaseDateStr := metadata.ReleaseDate.Time.Format("2006-01-02")
 		result.ReleaseDate = &releaseDateStr
 	}
 
 	// Try to get library information (movie record)
-	movie, err := s.movieStorage.GetMovieByMetadataID(ctx, int(metadata.ID))
-	if err == nil && movie != nil {
-		result.ID = &movie.ID
-		result.LibraryStatus = string(movie.State)
-		result.Path = movie.Path
-		result.QualityProfileID = &movie.QualityProfileID
-		monitored := movie.Monitored == 1
+	movie, err := s.movieStorage.GetMovieByMetadataID(ctx, metadata.ID)
+	if err == nil {
+		movieID := movie.Movie.ID
+		qualityProfileID := movie.Movie.QualityProfileID
+		path := nullStrOut(movie.Movie.Path)
+		monitored := movie.Movie.Monitored == 1
+		result.ID = &movieID
+		result.LibraryStatus = movie.State
+		result.Path = path
+		result.QualityProfileID = &qualityProfileID
 		result.Monitored = &monitored
 	} else if !errors.Is(err, storage.ErrNotFound) {
-		log.Debug("error checking movie library status", zap.Error(err), zap.Int32("metadataID", metadata.ID))
+		log.Debug("error checking movie library status", zap.Error(err), zap.Int64("metadataID", metadata.ID))
 	}
 
 	return result, nil
@@ -281,26 +292,35 @@ func (s *MovieService) ListMoviesInLibrary(ctx context.Context) ([]LibraryMovie,
 	if err != nil {
 		return nil, err
 	}
-	movies := filterAndMap(all, func(mp *storage.Movie) (LibraryMovie, bool) {
+	movies := filterAndMap(all, func(mp sqlcdb.ListMoviesRow) (LibraryMovie, bool) {
 		// Skip movies without metadata - they haven't been reconciled yet
-		if mp.MovieMetadataID == nil {
+		if !mp.Movie.MovieMetadataID.Valid {
 			return LibraryMovie{}, false
 		}
-		lm := LibraryMovie{State: string(mp.State)}
-		if mp.Path != nil {
-			lm.Path = *mp.Path
+		lm := LibraryMovie{State: mp.State}
+		if mp.Movie.Path.Valid {
+			lm.Path = mp.Movie.Path.String
 		}
-		meta, err := s.metadataProvider.GetMovieMetadataByID(ctx, *mp.MovieMetadataID)
+		meta, err := s.metadataProvider.GetMovieMetadataByID(ctx, mp.Movie.MovieMetadataID.Int64)
 		if err != nil || meta == nil {
 			return LibraryMovie{}, false
 		}
 		lm.TMDBID = meta.TmdbID
 		lm.Title = meta.Title
 		lm.PosterPath = meta.Images
-		if meta.Year != nil {
-			lm.Year = *meta.Year
+		if meta.Year.Valid {
+			lm.Year = int32(meta.Year.Int64)
 		}
 		return lm, true
 	})
 	return movies, nil
+}
+
+// nullI32Out converts a nullable int64 to an optional int32.
+func nullI32Out(v sql.NullInt64) *int32 {
+	if !v.Valid {
+		return nil
+	}
+	n := int32(v.Int64)
+	return &n
 }

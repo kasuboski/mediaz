@@ -16,7 +16,7 @@ import (
 
 	indexer "github.com/kasuboski/mediaz/pkg/indexer"
 	prowlarr "github.com/kasuboski/mediaz/pkg/prowlarr"
-	model "github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
+	sqlcdb "github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -97,7 +97,7 @@ func (m *MockFactory) EXPECT() *MockFactoryMockRecorder {
 }
 
 // NewIndexerSource mocks base method.
-func (m *MockFactory) NewIndexerSource(arg0 model.IndexerSource) (indexer.IndexerSource, error) {
+func (m *MockFactory) NewIndexerSource(arg0 sqlcdb.IndexerSource) (indexer.IndexerSource, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "NewIndexerSource", arg0)
 	ret0, _ := ret[0].(indexer.IndexerSource)

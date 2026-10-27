@@ -2,72 +2,155 @@ package sqlite
 
 import (
 	"context"
+	"database/sql"
 	"testing"
-	"time"
 
-	"github.com/go-jet/jet/v2/sqlite"
 	"github.com/kasuboski/mediaz/pkg/ptr"
 	"github.com/kasuboski/mediaz/pkg/storage"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/table"
+	"github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func TestUpdateEpisodeState(t *testing.T) {
-	ctx := context.Background()
+// tvTestEpisode creates a series, season and episode and returns the episode ID.
+func tvTestEpisode(t *testing.T, ctx context.Context, store storage.Storage, episodeNumber int64) int64 {
+	t.Helper()
+	seasonID, err := store.CreateSeason(ctx, sqlcdb.Season{SeriesID: tvTestSeries(t, ctx, store), SeasonNumber: 1, Monitored: 1}, storage.SeasonStateMissing)
+	require.NoError(t, err)
+	id, err := store.CreateEpisode(ctx, sqlcdb.Episode{SeasonID: seasonID, EpisodeNumber: episodeNumber, Monitored: 1}, storage.EpisodeStateMissing)
+	require.NoError(t, err)
+	return id
+}
+
+func TestEpisodeStorage(t *testing.T) {
+	ctx := t.Context()
 	store := initSqlite(t, ctx)
-	assert.NotNil(t, store)
+	id := tvTestEpisode(t, ctx, store, 1)
+	got, err := store.GetEpisodeByID(ctx, id)
+	require.NoError(t, err)
+	episode := sqlcdb.Episode{ID: id, SeasonID: got.Episode.SeasonID, EpisodeNumber: 1, Monitored: 1}
+	assert.Equal(t, sqlcdb.GetEpisodeByIDRow{Episode: episode, State: sql.NullString{String: string(storage.EpisodeStateMissing), Valid: true}}, got)
+	seasonID := episode.SeasonID
+	list, err := store.ListEpisodes(ctx, storage.EpisodeFilter{SeasonID: &seasonID})
+	require.NoError(t, err)
+	assert.Equal(t, []sqlcdb.ListEpisodesRow{{Episode: episode, State: string(storage.EpisodeStateMissing)}}, list)
+	require.NoError(t, store.DeleteEpisode(ctx, id))
+	list, err = store.ListEpisodes(ctx, storage.EpisodeFilter{SeasonID: &seasonID})
+	require.NoError(t, err)
+	assert.Empty(t, list)
+	_, err = store.GetEpisodeByID(ctx, id)
+	assert.ErrorIs(t, err, storage.ErrNotFound)
+}
 
-	series := storage.Series{
-		Series: model.Series{
-			Monitored:        1,
-			QualityProfileID: 1,
-			Added:            ptr.To(time.Now()),
-		},
-	}
-	seriesID, err := store.CreateSeries(ctx, series, storage.SeriesStateMissing)
-	require.Nil(t, err)
-
-	season := storage.Season{
-		Season: model.Season{
-			SeriesID: int32(seriesID),
-		},
-	}
-	seasonID, err := store.CreateSeason(ctx, season, storage.SeasonStateMissing)
-	require.Nil(t, err)
-
-	episode := storage.Episode{
-		Episode: model.Episode{
-			SeasonID:      int32(seasonID),
-			EpisodeNumber: 1,
-			Monitored:     1,
-		},
-	}
+func TestEpisodeStorage_CreateWithID(t *testing.T) {
+	ctx := t.Context()
+	store := initSqlite(t, ctx)
+	seasonID, err := store.CreateSeason(ctx, sqlcdb.Season{SeriesID: tvTestSeries(t, ctx, store), SeasonNumber: 1}, storage.SeasonStateMissing)
+	require.NoError(t, err)
+	episode := sqlcdb.Episode{ID: 100, SeasonID: seasonID, EpisodeNumber: 7, Monitored: 1}
 	id, err := store.CreateEpisode(ctx, episode, storage.EpisodeStateMissing)
-	require.Nil(t, err)
+	require.NoError(t, err)
+	assert.Equal(t, episode.ID, id)
+	before, err := store.GetEpisodeByID(ctx, id)
+	require.NoError(t, err)
+	assert.Equal(t, episode, before.Episode)
+	update := episode
+	update.EpisodeNumber = 9
+	upsertID, err := store.CreateEpisode(ctx, update, storage.EpisodeStateDiscovered)
+	require.NoError(t, err)
+	assert.Equal(t, id, upsertID)
+	after, err := store.GetEpisodeByID(ctx, id)
+	require.NoError(t, err)
+	before.Episode = update
+	assert.Equal(t, before, after, "entity refresh must preserve its existing transition state")
+}
 
-	downloadID := "12"
-	isSeasonDownload := true
-	metadata := &storage.TransitionStateMetadata{
-		DownloadID:             &downloadID,
-		DownloadClientID:       ptr.To(int32(1)),
-		IsEntireSeasonDownload: &isSeasonDownload,
+func TestEpisodeStorage_ListFilters(t *testing.T) {
+	ctx := t.Context()
+	store := initSqlite(t, ctx)
+	a := tvTestEpisode(t, ctx, store, 1)
+	first, err := store.GetEpisodeByID(ctx, a)
+	require.NoError(t, err)
+	seasonID := first.Episode.SeasonID
+	b, err := store.CreateEpisode(ctx, sqlcdb.Episode{SeasonID: seasonID, EpisodeNumber: 2, Monitored: 1}, storage.EpisodeStateMissing)
+	require.NoError(t, err)
+	other := tvTestEpisode(t, ctx, store, 3)
+	require.NoError(t, store.UpdateEpisodeState(ctx, b, storage.EpisodeStateDownloading, nil))
+	require.NoError(t, store.UpdateEpisodeState(ctx, b, storage.EpisodeStateDownloaded, nil))
+	for _, tc := range []struct {
+		name   string
+		filter storage.EpisodeFilter
+		ids    []int64
+	}{
+		{"all", storage.EpisodeFilter{}, []int64{a, b, other}},
+		{"season", storage.EpisodeFilter{SeasonID: &seasonID}, []int64{a, b}},
+		{"missing", storage.EpisodeFilter{SeasonID: &seasonID, States: []storage.EpisodeState{storage.EpisodeStateMissing}}, []int64{a}},
+		{"downloaded", storage.EpisodeFilter{SeasonID: &seasonID, States: []storage.EpisodeState{storage.EpisodeStateDownloaded}}, []int64{b}},
+		{"empty", storage.EpisodeFilter{States: []storage.EpisodeState{storage.EpisodeStateCompleted}}, nil},
+		{"many states", storage.EpisodeFilter{SeasonID: &seasonID, States: []storage.EpisodeState{storage.EpisodeStateNew, storage.EpisodeStateCompleted, storage.EpisodeStateDiscovered, storage.EpisodeStateDownloading, storage.EpisodeStateMissing, storage.EpisodeStateDownloaded}}, []int64{a, b}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			rows, err := store.ListEpisodes(ctx, tc.filter)
+			require.NoError(t, err)
+			var ids []int64
+			for _, row := range rows {
+				ids = append(ids, row.Episode.ID)
+			}
+			assert.ElementsMatch(t, tc.ids, ids)
+		})
 	}
+}
 
-	err = store.UpdateEpisodeState(ctx, id, storage.EpisodeStateDownloading, metadata)
-	assert.Nil(t, err)
+func TestUpdateEpisodeState(t *testing.T) {
+	ctx := t.Context()
+	store := initSqlite(t, ctx)
+	id := tvTestEpisode(t, ctx, store, 1)
+	before, err := store.GetEpisodeByID(ctx, id)
+	require.NoError(t, err)
+	clientID, err := store.CreateDownloadClient(ctx, sqlcdb.DownloadClient{Type: "torrent", Implementation: "transmission", Host: "localhost", Scheme: "http"})
+	require.NoError(t, err)
+	require.NoError(t, store.UpdateEpisodeState(ctx, id, storage.EpisodeStateDownloading, &storage.TransitionStateMetadata{DownloadID: ptr.To("12"), DownloadClientID: &clientID, IsEntireSeasonDownload: ptr.To(true)}))
+	got, err := store.GetEpisodeByID(ctx, id)
+	require.NoError(t, err)
+	assert.Equal(t, sqlcdb.GetEpisodeByIDRow{Episode: before.Episode, State: sql.NullString{String: string(storage.EpisodeStateDownloading), Valid: true}, DownloadID: sql.NullString{String: "12", Valid: true}, DownloadClientID: sql.NullInt64{Int64: clientID, Valid: true}, IsEntireSeasonDownload: sql.NullBool{Bool: true, Valid: true}}, got)
+	assert.ErrorIs(t, store.UpdateEpisodeState(ctx, 999999, storage.EpisodeStateMissing, nil), storage.ErrNotFound)
+}
 
-	updated, err := store.GetEpisode(ctx, table.Episode.ID.EQ(sqlite.Int64(id)))
-	assert.Nil(t, err)
+func TestUpdateEpisodeState_InvalidTransition(t *testing.T) {
+	ctx := t.Context()
+	store := initSqlite(t, ctx)
+	id := tvTestEpisode(t, ctx, store, 1)
+	require.NoError(t, store.UpdateEpisodeState(ctx, id, storage.EpisodeStateDiscovered, nil))
+	before, err := store.GetEpisodeByID(ctx, id)
+	require.NoError(t, err)
+	require.Error(t, store.UpdateEpisodeState(ctx, id, storage.EpisodeStateDownloading, nil))
+	after, err := store.GetEpisodeByID(ctx, id)
+	require.NoError(t, err)
+	assert.Equal(t, before, after)
+}
 
-	assert.Nil(t, err)
-	assert.Equal(t, storage.EpisodeStateDownloading, updated.State)
-	assert.Equal(t, downloadID, updated.DownloadID)
-	assert.Equal(t, int32(1), updated.DownloadClientID)
-	assert.Equal(t, isSeasonDownload, updated.IsEntireSeasonDownload)
-	assert.Equal(t, storage.EpisodeStateDownloading, updated.State)
-
-	err = store.UpdateEpisodeState(ctx, 999999, storage.EpisodeStateMissing, nil)
+func TestEpisodeStorage_GetByEpisodeFileID(t *testing.T) {
+	ctx := t.Context()
+	store := initSqlite(t, ctx)
+	id := tvTestEpisode(t, ctx, store, 1)
+	fileID, err := store.CreateEpisodeFile(ctx, sqlcdb.EpisodeFile{Quality: "HDTV-720p", RelativePath: sql.NullString{String: "episode.mkv", Valid: true}})
+	require.NoError(t, err)
+	before, err := store.GetEpisodeByID(ctx, id)
+	require.NoError(t, err)
+	require.NoError(t, store.UpdateEpisodeEpisodeFileID(ctx, id, fileID))
+	before.Episode.EpisodeFileID = sql.NullInt64{Int64: fileID, Valid: true}
+	got, err := store.GetEpisodeByID(ctx, id)
+	require.NoError(t, err)
+	assert.Equal(t, before, got)
+	byFile, err := store.GetEpisodeByEpisodeFileID(ctx, fileID)
+	require.NoError(t, err)
+	assert.Equal(t, sqlcdb.GetEpisodeByEpisodeFileIDRow{Episode: before.Episode, State: before.State}, byFile)
+	clientID, err := store.CreateDownloadClient(ctx, sqlcdb.DownloadClient{Type: "torrent", Implementation: "transmission", Host: "localhost", Scheme: "http"})
+	require.NoError(t, err)
+	require.NoError(t, store.UpdateEpisodeState(ctx, id, storage.EpisodeStateDownloading, &storage.TransitionStateMetadata{DownloadID: ptr.To("bundle-1"), DownloadClientID: &clientID, IsEntireSeasonDownload: ptr.To(true)}))
+	byFile, err = store.GetEpisodeByEpisodeFileID(ctx, fileID)
+	require.NoError(t, err)
+	assert.Equal(t, sqlcdb.GetEpisodeByEpisodeFileIDRow{Episode: before.Episode, State: sql.NullString{String: string(storage.EpisodeStateDownloading), Valid: true}, DownloadID: sql.NullString{String: "bundle-1", Valid: true}, DownloadClientID: sql.NullInt64{Int64: clientID, Valid: true}, IsEntireSeasonDownload: sql.NullBool{Bool: true, Valid: true}}, byFile)
+	_, err = store.GetEpisodeByEpisodeFileID(ctx, 99999)
 	assert.ErrorIs(t, err, storage.ErrNotFound)
 }

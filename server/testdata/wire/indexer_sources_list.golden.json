@@ -1,0 +1,1 @@
+{"response":[{"id":1,"name":"Prowlarr","implementation":"prowlarr","scheme":"http","host":"prowlarr.local","port":9696,"enabled":true}]}

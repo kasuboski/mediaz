@@ -2,6 +2,7 @@ package manager
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -10,7 +11,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/go-jet/jet/v2/qrm"
 	"github.com/kasuboski/mediaz/config"
 	"github.com/kasuboski/mediaz/pkg/download"
 	"github.com/kasuboski/mediaz/pkg/indexer"
@@ -19,7 +19,7 @@ import (
 	"github.com/kasuboski/mediaz/pkg/pagination"
 	"github.com/kasuboski/mediaz/pkg/prowlarr"
 	"github.com/kasuboski/mediaz/pkg/storage"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
+	sqlcdb "github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 	"github.com/kasuboski/mediaz/pkg/tmdb"
 	"github.com/oapi-codegen/nullable"
 	"go.uber.org/zap"
@@ -94,37 +94,37 @@ func (m MediaManager) SearchMovie(ctx context.Context, query string) (*SearchMed
 }
 
 // GetMovieDetailByTMDBID retrieves detailed information for a single movie by TMDB ID
-func (m MediaManager) GetMovieDetailByTMDBID(ctx context.Context, tmdbID int) (*MovieDetailResult, error) {
+func (m MediaManager) GetMovieDetailByTMDBID(ctx context.Context, tmdbID int64) (*MovieDetailResult, error) {
 	return m.movieService.GetMovieDetailByTMDBID(ctx, tmdbID)
 }
 
 // GetTVDetailByTMDBID retrieves detailed information for a single TV show by TMDB ID
-func (m MediaManager) GetTVDetailByTMDBID(ctx context.Context, tmdbID int) (*TVDetailResult, error) {
+func (m MediaManager) GetTVDetailByTMDBID(ctx context.Context, tmdbID int64) (*TVDetailResult, error) {
 	return m.seriesService.GetTVDetailByTMDBID(ctx, tmdbID)
 }
 
 // buildTVDetailResult is delegated to SeriesService
-func (m MediaManager) buildTVDetailResult(metadata *model.SeriesMetadata, details *tmdb.SeriesDetailsResponse, series *storage.Series, seasons []SeasonResult) *TVDetailResult {
+func (m MediaManager) buildTVDetailResult(metadata *sqlcdb.SeriesMetadatum, details *tmdb.SeriesDetailsResponse, series *sqlcdb.GetSeriesRow, seasons []SeasonResult) *TVDetailResult {
 	return m.seriesService.buildTVDetailResult(metadata, details, series, seasons)
 }
 
 // getSeasonsWithEpisodes retrieves seasons and their episodes for a series
-func (m MediaManager) getSeasonsWithEpisodes(ctx context.Context, seriesID int32) ([]SeasonResult, error) {
+func (m MediaManager) getSeasonsWithEpisodes(ctx context.Context, seriesID int64) ([]SeasonResult, error) {
 	return m.seriesService.getSeasonsWithEpisodes(ctx, seriesID)
 }
 
 // preloadEpisodeMetadata fetches all episode metadata for the given IDs in a single query.
-func (m MediaManager) preloadEpisodeMetadata(ctx context.Context, episodes []*storage.Episode) map[int32]*model.EpisodeMetadata {
+func (m MediaManager) preloadEpisodeMetadata(ctx context.Context, episodes []sqlcdb.ListEpisodesRow) map[int64]*sqlcdb.EpisodeMetadatum {
 	return m.seriesService.preloadEpisodeMetadata(ctx, episodes)
 }
 
 // buildEpisodeResult constructs an EpisodeResult from a storage episode and optional metadata.
-func buildEpisodeResult(episode *storage.Episode, episodeMeta *model.EpisodeMetadata, seriesID int32, seasonNumber int32) EpisodeResult {
+func buildEpisodeResult(episode sqlcdb.ListEpisodesRow, episodeMeta *sqlcdb.EpisodeMetadatum, seriesID int64, seasonNumber int64) EpisodeResult {
 	result := EpisodeResult{
-		SeriesID:     seriesID,
+		SeriesID:     int64(seriesID),
 		SeasonNumber: seasonNumber,
-		Monitored:    episode.Monitored == 1,
-		Downloaded:   episode.State == storage.EpisodeStateDownloaded || episode.State == storage.EpisodeStateCompleted,
+		Monitored:    episode.Episode.Monitored == 1,
+		Downloaded:   storage.EpisodeState(episode.State) == storage.EpisodeStateDownloaded || storage.EpisodeState(episode.State) == storage.EpisodeStateCompleted,
 	}
 
 	if episodeMeta != nil {
@@ -132,30 +132,33 @@ func buildEpisodeResult(episode *storage.Episode, episodeMeta *model.EpisodeMeta
 		result.Number = episodeMeta.Number
 		result.Title = episodeMeta.Title
 
-		if episodeMeta.Overview != nil {
-			result.Overview = episodeMeta.Overview
+		if episodeMeta.Overview.Valid {
+			overview := episodeMeta.Overview.String
+			result.Overview = &overview
 		}
-		if episodeMeta.AirDate != nil {
-			airDateStr := episodeMeta.AirDate.Format("2006-01-02")
+		if episodeMeta.AirDate.Valid {
+			airDateStr := episodeMeta.AirDate.Time.Format("2006-01-02")
 			result.AirDate = &airDateStr
 		}
-		if episodeMeta.Runtime != nil {
-			result.Runtime = episodeMeta.Runtime
+		if episodeMeta.Runtime.Valid {
+			runtime := int32(episodeMeta.Runtime.Int64)
+			result.Runtime = &runtime
 		}
-		if episodeMeta.StillPath != nil {
-			result.StillPath = episodeMeta.StillPath
+		if episodeMeta.StillPath.Valid {
+			stillPath := episodeMeta.StillPath.String
+			result.StillPath = &stillPath
 		}
 	} else {
 		result.TMDBID = 0
-		result.Number = episode.EpisodeNumber
-		result.Title = fmt.Sprintf("Episode %d", episode.EpisodeNumber)
+		result.Number = episode.Episode.EpisodeNumber
+		result.Title = fmt.Sprintf("Episode %d", episode.Episode.EpisodeNumber)
 	}
 
 	return result
 }
 
 // getEpisodesForSeason retrieves episodes for a specific season
-func (m MediaManager) getEpisodesForSeason(ctx context.Context, seasonID int32, seriesID int32, seasonNumber int32) ([]EpisodeResult, error) {
+func (m MediaManager) getEpisodesForSeason(ctx context.Context, seasonID int64, seriesID int64, seasonNumber int64) ([]EpisodeResult, error) {
 	return m.seriesService.getEpisodesForSeason(ctx, seasonID, seriesID, seasonNumber)
 }
 
@@ -205,7 +208,7 @@ func (m MediaManager) SearchTV(ctx context.Context, query string) (*SearchMediaR
 	return m.seriesService.SearchTV(ctx, query)
 }
 
-func (m MediaManager) GetSeriesDetails(ctx context.Context, tmdbID int) (model.SeriesMetadata, error) {
+func (m MediaManager) GetSeriesDetails(ctx context.Context, tmdbID int64) (sqlcdb.SeriesMetadatum, error) {
 	return m.seriesService.GetSeriesDetails(ctx, tmdbID)
 }
 
@@ -224,7 +227,7 @@ func parseMediaResult(res *http.Response) (*SearchMediaResponse, error) {
 	return results, err
 }
 
-func (m MediaManager) listIndexersInternal(ctx context.Context) ([]model.Indexer, error) {
+func (m MediaManager) listIndexersInternal(ctx context.Context) ([]sqlcdb.Indexer, error) {
 	return m.indexerService.listIndexersInternal(ctx)
 }
 
@@ -280,14 +283,11 @@ func (m MediaManager) IndexMovieLibrary(ctx context.Context) error {
 	// Build a set of tracked paths for O(1) lookup instead of O(n*m) nested loop
 	tracked := make(map[string]struct{}, len(movieFiles)*2)
 	for _, mf := range movieFiles {
-		if mf == nil {
-			continue
+		if mf.RelativePath.Valid {
+			tracked[strings.ToLower(mf.RelativePath.String)] = struct{}{}
 		}
-		if mf.RelativePath != nil {
-			tracked[strings.ToLower(*mf.RelativePath)] = struct{}{}
-		}
-		if mf.OriginalFilePath != nil {
-			tracked[strings.ToLower(*mf.OriginalFilePath)] = struct{}{}
+		if mf.OriginalFilePath.Valid {
+			tracked[strings.ToLower(mf.OriginalFilePath.String)] = struct{}{}
 		}
 	}
 
@@ -312,9 +312,9 @@ func (m MediaManager) IndexMovieLibrary(ctx context.Context) error {
 			continue
 		}
 
-		mf := model.MovieFile{
-			OriginalFilePath: &discoveredFile.RelativePath,
-			RelativePath:     &discoveredFile.RelativePath,
+		mf := sqlcdb.MovieFile{
+			OriginalFilePath: sql.NullString{String: discoveredFile.RelativePath, Valid: true},
+			RelativePath:     sql.NullString{String: discoveredFile.RelativePath, Valid: true},
 			Size:             discoveredFile.Size,
 		}
 
@@ -322,8 +322,7 @@ func (m MediaManager) IndexMovieLibrary(ctx context.Context) error {
 
 		id, err := m.movieStorage.CreateMovieFile(ctx, mf)
 		if err != nil {
-			log.Error("couldn't store movie file", zap.Error(err))
-			continue
+			return fmt.Errorf("store discovered movie file %q: %w", discoveredFile.RelativePath, err)
 		}
 
 		log.Debug("created new movie file in storage", zap.Int64("movie file id", id))
@@ -335,32 +334,43 @@ func (m MediaManager) IndexMovieLibrary(ctx context.Context) error {
 		return fmt.Errorf("failed to list movie files: %w", err)
 	}
 
+	var discoveryProfileID int64
 	for _, f := range movieFiles {
-		movieName := library.MovieNameFromFilepath(*f.RelativePath)
+		movieName := library.MovieNameFromFilepath(f.RelativePath.String)
 		foundMovie, err := m.movieStorage.GetMovieByPath(ctx, movieName)
 		if err == nil {
-			log.Debug("movie file associated with movie already", zap.Any("movie id", foundMovie.ID))
+			log.Debug("movie file associated with movie already", zap.Any("movie id", foundMovie.Movie.ID))
 			continue
 		}
-		if !errors.Is(err, qrm.ErrNoRows) {
-			log.Debug("error fetching movie", zap.Error(err))
-			continue
+		if !errors.Is(err, storage.ErrNotFound) {
+			return fmt.Errorf("look up discovered movie %q: %w", movieName, err)
 		}
 
 		log.Debug("movie file does not have associated movie")
 
-		movie := storage.Movie{
-			Movie: model.Movie{
-				MovieFileID: &f.ID,
-				Path:        &movieName,
-				Monitored:   0,
-			},
+		if discoveryProfileID == 0 {
+			profiles, err := m.ListMovieQualityProfiles(ctx)
+			if err != nil {
+				return fmt.Errorf("select movie discovery quality profile: %w", err)
+			}
+			if len(profiles) == 0 {
+				return fmt.Errorf("cannot discover movies: create a movie quality profile with at least one movie quality before indexing the library")
+			}
+			// Match TV discovery: choose the first profile in storage's stable
+			// media-type ordering, never a zero ID or an episode-only profile.
+			discoveryProfileID = profiles[0].ID
+		}
+
+		movie := sqlcdb.Movie{
+			QualityProfileID: discoveryProfileID,
+			MovieFileID:      sql.NullInt64{Int64: f.ID, Valid: true},
+			Path:             sql.NullString{String: movieName, Valid: true},
+			Monitored:        0,
 		}
 
 		_, err = m.movieStorage.CreateMovie(ctx, movie, storage.MovieStateDiscovered)
 		if err != nil {
-			log.Error("couldn't create new movie for discovered file", zap.Error(err))
-			continue
+			return fmt.Errorf("create discovered movie %q: %w", movieName, err)
 		}
 
 		log.Debug("successfully created movie for discovered movie file")
@@ -370,12 +380,12 @@ func (m MediaManager) IndexMovieLibrary(ctx context.Context) error {
 }
 
 // AddMovieToLibrary adds a movie to be managed by mediaz
-func (m MediaManager) AddMovieToLibrary(ctx context.Context, request AddMovieRequest) (*storage.Movie, error) {
+func (m MediaManager) AddMovieToLibrary(ctx context.Context, request AddMovieRequest) (*sqlcdb.GetMovieByIDRow, error) {
 	return m.movieService.AddMovieToLibrary(ctx, request)
 }
 
 // AddSeriesToLibrary adds a series to be managed by mediaz
-func (m MediaManager) AddSeriesToLibrary(ctx context.Context, request AddSeriesRequest) (*storage.Series, error) {
+func (m MediaManager) AddSeriesToLibrary(ctx context.Context, request AddSeriesRequest) (*sqlcdb.GetSeriesRow, error) {
 	return m.seriesService.AddSeriesToLibrary(ctx, request)
 }
 
@@ -387,15 +397,15 @@ func (m MediaManager) DeleteSeries(ctx context.Context, seriesID int64, deleteDi
 	return m.seriesService.DeleteSeries(ctx, seriesID, deleteDirectory)
 }
 
-func (m MediaManager) UpdateMovieMonitored(ctx context.Context, movieID int64, monitored bool) (*storage.Movie, error) {
+func (m MediaManager) UpdateMovieMonitored(ctx context.Context, movieID int64, monitored bool) (*sqlcdb.GetMovieByIDRow, error) {
 	return m.movieService.UpdateMovieMonitored(ctx, movieID, monitored)
 }
 
-func (m MediaManager) UpdateMovieQualityProfile(ctx context.Context, movieID int64, qualityProfileID int32) (*storage.Movie, error) {
+func (m MediaManager) UpdateMovieQualityProfile(ctx context.Context, movieID int64, qualityProfileID int64) (*sqlcdb.GetMovieByIDRow, error) {
 	return m.movieService.UpdateMovieQualityProfile(ctx, movieID, qualityProfileID)
 }
 
-func (m MediaManager) UpdateSeriesMonitored(ctx context.Context, seriesID int64, monitored bool) (*storage.Series, error) {
+func (m MediaManager) UpdateSeriesMonitored(ctx context.Context, seriesID int64, monitored bool) (*sqlcdb.GetSeriesRow, error) {
 	return m.seriesService.UpdateSeriesMonitored(ctx, seriesID, monitored)
 }
 
@@ -403,7 +413,7 @@ func (m MediaManager) AddIndexer(ctx context.Context, request AddIndexerRequest)
 	return m.indexerService.AddIndexer(ctx, request)
 }
 
-func (m MediaManager) UpdateIndexer(ctx context.Context, id int32, request UpdateIndexerRequest) (IndexerResponse, error) {
+func (m MediaManager) UpdateIndexer(ctx context.Context, id int64, request UpdateIndexerRequest) (IndexerResponse, error) {
 	return m.indexerService.UpdateIndexer(ctx, id, request)
 }
 
@@ -443,7 +453,7 @@ func (m MediaManager) RefreshAllIndexerSources(ctx context.Context) error {
 	return m.indexerService.RefreshAllIndexerSources(ctx)
 }
 
-func (m MediaManager) SearchIndexers(ctx context.Context, indexers, categories []int32, opts indexer.SearchOptions) ([]*prowlarr.ReleaseResource, error) {
+func (m MediaManager) SearchIndexers(ctx context.Context, indexers []int64, categories []int32, opts indexer.SearchOptions) ([]*prowlarr.ReleaseResource, error) {
 	return m.indexerService.SearchIndexers(ctx, indexers, categories, opts)
 }
 
@@ -457,13 +467,11 @@ func nullableDefault[T any](n nullable.Nullable[T]) T {
 	return def
 }
 
-// filterAndMap applies fn to each non-nil element of items, collecting results where fn returns ok=true.
-func filterAndMap[T any, R any](items []*T, fn func(*T) (R, bool)) []R {
+// filterAndMap applies fn to each element of items, collecting results where
+// fn returns ok=true.
+func filterAndMap[T any, R any](items []T, fn func(T) (R, bool)) []R {
 	var result []R
 	for _, item := range items {
-		if item == nil {
-			continue
-		}
 		if r, ok := fn(item); ok {
 			result = append(result, r)
 		}
@@ -472,17 +480,17 @@ func filterAndMap[T any, R any](items []*T, fn func(*T) (R, bool)) []R {
 }
 
 // GetMovieMetadataByID retrieves movie metadata by its primary key
-func (m MediaManager) GetMovieMetadataByID(ctx context.Context, metadataID int32) (*model.MovieMetadata, error) {
+func (m MediaManager) GetMovieMetadataByID(ctx context.Context, metadataID int64) (*sqlcdb.MovieMetadatum, error) {
 	return m.metadataService.GetMovieMetadataByID(ctx, metadataID)
 }
 
 // ListSeasonsForSeries retrieves all seasons for a TV series by TMDB ID
-func (m MediaManager) ListSeasonsForSeries(ctx context.Context, tmdbID int) ([]SeasonResult, error) {
+func (m MediaManager) ListSeasonsForSeries(ctx context.Context, tmdbID int64) ([]SeasonResult, error) {
 	return m.seriesService.ListSeasonsForSeries(ctx, tmdbID)
 }
 
 // ListEpisodesForSeason retrieves all episodes for a season by TMDB ID and season number
-func (m MediaManager) ListEpisodesForSeason(ctx context.Context, tmdbID int, seasonNumber int) ([]EpisodeResult, error) {
+func (m MediaManager) ListEpisodesForSeason(ctx context.Context, tmdbID int64, seasonNumber int) ([]EpisodeResult, error) {
 	return m.seriesService.ListEpisodesForSeason(ctx, tmdbID, seasonNumber)
 }
 
@@ -502,7 +510,7 @@ func (m MediaManager) CancelJob(ctx context.Context, id int64) (JobResponse, err
 	return m.jobService.CancelJob(ctx, id)
 }
 
-func (m MediaManager) AddQualityDefinition(ctx context.Context, request AddQualityDefinitionRequest) (model.QualityDefinition, error) {
+func (m MediaManager) AddQualityDefinition(ctx context.Context, request AddQualityDefinitionRequest) (sqlcdb.QualityDefinition, error) {
 	return m.qualityService.AddQualityDefinition(ctx, request)
 }
 
@@ -510,39 +518,43 @@ func (m MediaManager) DeleteQualityDefinition(ctx context.Context, request Delet
 	return m.qualityService.DeleteQualityDefinition(ctx, request)
 }
 
-func (m MediaManager) ListQualityDefinitions(ctx context.Context) ([]*model.QualityDefinition, error) {
+func (m MediaManager) ListQualityDefinitions(ctx context.Context) ([]sqlcdb.QualityDefinition, error) {
 	return m.qualityService.ListQualityDefinitions(ctx)
 }
 
-func (m MediaManager) GetQualityDefinition(ctx context.Context, id int64) (model.QualityDefinition, error) {
+func (m MediaManager) GetQualityDefinition(ctx context.Context, id int64) (sqlcdb.QualityDefinition, error) {
 	return m.qualityService.GetQualityDefinition(ctx, id)
 }
 
-func (m MediaManager) GetQualityProfile(ctx context.Context, id int64) (storage.QualityProfile, error) {
+func (m MediaManager) ListQualityProfileRows(ctx context.Context, profileID int64) ([]sqlcdb.ListQualityProfileRowsRow, error) {
+	return m.qualityService.ListQualityProfileRows(ctx, profileID)
+}
+
+func (m MediaManager) GetQualityProfile(ctx context.Context, id int64) (sqlcdb.QualityProfile, error) {
 	return m.qualityService.GetQualityProfile(ctx, id)
 }
 
-func (m MediaManager) ListEpisodeQualityProfiles(ctx context.Context) ([]*storage.QualityProfile, error) {
+func (m MediaManager) ListEpisodeQualityProfiles(ctx context.Context) ([]sqlcdb.QualityProfile, error) {
 	return m.qualityService.ListEpisodeQualityProfiles(ctx)
 }
 
-func (m MediaManager) ListMovieQualityProfiles(ctx context.Context) ([]*storage.QualityProfile, error) {
+func (m MediaManager) ListMovieQualityProfiles(ctx context.Context) ([]sqlcdb.QualityProfile, error) {
 	return m.qualityService.ListMovieQualityProfiles(ctx)
 }
 
-func (m MediaManager) ListQualityProfiles(ctx context.Context) ([]*storage.QualityProfile, error) {
+func (m MediaManager) ListQualityProfiles(ctx context.Context) ([]sqlcdb.QualityProfile, error) {
 	return m.qualityService.ListQualityProfiles(ctx)
 }
 
-func (m MediaManager) UpdateQualityDefinition(ctx context.Context, id int64, request UpdateQualityDefinitionRequest) (model.QualityDefinition, error) {
+func (m MediaManager) UpdateQualityDefinition(ctx context.Context, id int64, request UpdateQualityDefinitionRequest) (sqlcdb.QualityDefinition, error) {
 	return m.qualityService.UpdateQualityDefinition(ctx, id, request)
 }
 
-func (m MediaManager) AddQualityProfile(ctx context.Context, request AddQualityProfileRequest) (storage.QualityProfile, error) {
+func (m MediaManager) AddQualityProfile(ctx context.Context, request AddQualityProfileRequest) (sqlcdb.QualityProfile, error) {
 	return m.qualityService.AddQualityProfile(ctx, request)
 }
 
-func (m MediaManager) UpdateQualityProfile(ctx context.Context, id int64, request UpdateQualityProfileRequest) (storage.QualityProfile, error) {
+func (m MediaManager) UpdateQualityProfile(ctx context.Context, id int64, request UpdateQualityProfileRequest) (sqlcdb.QualityProfile, error) {
 	return m.qualityService.UpdateQualityProfile(ctx, id, request)
 }
 
@@ -550,11 +562,11 @@ func (m MediaManager) DeleteQualityProfile(ctx context.Context, request DeleteQu
 	return m.qualityService.DeleteQualityProfile(ctx, request)
 }
 
-func (m MediaManager) CreateDownloadClient(ctx context.Context, request AddDownloadClientRequest) (model.DownloadClient, error) {
+func (m MediaManager) CreateDownloadClient(ctx context.Context, request AddDownloadClientRequest) (sqlcdb.DownloadClient, error) {
 	return m.downloadClientService.CreateDownloadClient(ctx, request)
 }
 
-func (m MediaManager) UpdateDownloadClient(ctx context.Context, id int64, request UpdateDownloadClientRequest) (model.DownloadClient, error) {
+func (m MediaManager) UpdateDownloadClient(ctx context.Context, id int64, request UpdateDownloadClientRequest) (sqlcdb.DownloadClient, error) {
 	return m.downloadClientService.UpdateDownloadClient(ctx, id, request)
 }
 
@@ -562,11 +574,11 @@ func (m MediaManager) TestDownloadClient(ctx context.Context, request AddDownloa
 	return m.downloadClientService.TestDownloadClient(ctx, request)
 }
 
-func (m MediaManager) GetDownloadClient(ctx context.Context, id int64) (model.DownloadClient, error) {
+func (m MediaManager) GetDownloadClient(ctx context.Context, id int64) (sqlcdb.DownloadClient, error) {
 	return m.downloadClientService.GetDownloadClient(ctx, id)
 }
 
-func (m MediaManager) ListDownloadClients(ctx context.Context) ([]*model.DownloadClient, error) {
+func (m MediaManager) ListDownloadClients(ctx context.Context) ([]sqlcdb.DownloadClient, error) {
 	return m.downloadClientService.ListDownloadClients(ctx)
 }
 
@@ -574,44 +586,44 @@ func (m MediaManager) DeleteDownloadClient(ctx context.Context, id int64) error 
 	return m.downloadClientService.DeleteDownloadClient(ctx, id)
 }
 
-func (m MediaManager) GetMovieMetadata(ctx context.Context, tmdbID int) (*model.MovieMetadata, error) {
+func (m MediaManager) GetMovieMetadata(ctx context.Context, tmdbID int64) (*sqlcdb.MovieMetadatum, error) {
 	return m.metadataService.GetMovieMetadata(ctx, tmdbID)
 }
 
-func (m MediaManager) UpdateMovieMetadataFromTMDB(ctx context.Context, tmdbID int) (*model.MovieMetadata, error) {
+func (m MediaManager) UpdateMovieMetadataFromTMDB(ctx context.Context, tmdbID int64) (*sqlcdb.MovieMetadatum, error) {
 	return m.metadataService.UpdateMovieMetadataFromTMDB(ctx, tmdbID)
 }
 
 // GetSeriesMetadata gets all metadata around a series. If it does not exist, it will be created including seasons and episodes.
-func (m MediaManager) GetSeriesMetadata(ctx context.Context, tmdbID int) (*model.SeriesMetadata, error) {
+func (m MediaManager) GetSeriesMetadata(ctx context.Context, tmdbID int64) (*sqlcdb.SeriesMetadatum, error) {
 	return m.metadataService.GetSeriesMetadata(ctx, tmdbID)
 }
 
 // RefreshSeriesMetadataFromTMDB refreshes series metadata with proper entity linking.
-func (m MediaManager) RefreshSeriesMetadataFromTMDB(ctx context.Context, tmdbID int) (*model.SeriesMetadata, error) {
+func (m MediaManager) RefreshSeriesMetadataFromTMDB(ctx context.Context, tmdbID int64) (*sqlcdb.SeriesMetadatum, error) {
 	return m.metadataService.RefreshSeriesMetadataFromTMDB(ctx, tmdbID)
 }
 
-func (m MediaManager) UpdateSeriesMetadataFromTMDB(ctx context.Context, tmdbID int) (*model.SeriesMetadata, error) {
+func (m MediaManager) UpdateSeriesMetadataFromTMDB(ctx context.Context, tmdbID int64) (*sqlcdb.SeriesMetadatum, error) {
 	return m.metadataService.UpdateSeriesMetadataFromTMDB(ctx, tmdbID)
 }
 
-func (m MediaManager) RefreshSeriesMetadata(ctx context.Context, tmdbIDs ...int) error {
+func (m MediaManager) RefreshSeriesMetadata(ctx context.Context, tmdbIDs ...int64) error {
 	return m.metadataService.RefreshSeriesMetadata(ctx, tmdbIDs...)
 }
 
-func (m MediaManager) RefreshMovieMetadata(ctx context.Context, tmdbIDs ...int) error {
+func (m MediaManager) RefreshMovieMetadata(ctx context.Context, tmdbIDs ...int64) error {
 	return m.metadataService.RefreshMovieMetadata(ctx, tmdbIDs...)
 }
 
-func (m MediaManager) loadSeriesMetadata(ctx context.Context, tmdbID int) (*model.SeriesMetadata, error) {
+func (m MediaManager) loadSeriesMetadata(ctx context.Context, tmdbID int64) (*sqlcdb.SeriesMetadatum, error) {
 	return m.metadataService.loadSeriesMetadata(ctx, tmdbID)
 }
 
-func (m MediaManager) fetchExternalIDs(ctx context.Context, tmdbID int) (*string, error) {
+func (m MediaManager) fetchExternalIDs(ctx context.Context, tmdbID int64) (*string, error) {
 	return m.metadataService.fetchExternalIDs(ctx, tmdbID)
 }
 
-func (m MediaManager) fetchWatchProviders(ctx context.Context, tmdbID int) (*string, error) {
+func (m MediaManager) fetchWatchProviders(ctx context.Context, tmdbID int64) (*string, error) {
 	return m.metadataService.fetchWatchProviders(ctx, tmdbID)
 }

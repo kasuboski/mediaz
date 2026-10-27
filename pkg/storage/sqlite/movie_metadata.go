@@ -2,80 +2,113 @@ package sqlite
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
-	"github.com/go-jet/jet/v2/qrm"
-	"github.com/go-jet/jet/v2/sqlite"
-	"github.com/kasuboski/mediaz/pkg/storage"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/table"
+	"github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 )
 
-// CreateMovieMetadata creates the given movieMeta
-func (s *SQLite) CreateMovieMetadata(ctx context.Context, movieMeta model.MovieMetadata) (int64, error) {
-	stmt := table.MovieMetadata.INSERT(table.MovieMetadata.MutableColumns).MODEL(movieMeta).ON_CONFLICT(table.MovieMetadata.ID).DO_NOTHING()
-	result, err := s.handleInsert(ctx, stmt)
+// CreateMovieMetadata creates the given movieMeta, returning the new id.
+func (s *SQLite) CreateMovieMetadata(ctx context.Context, movieMeta sqlcdb.MovieMetadatum) (int64, error) {
+	inserted, err := s.Queries.CreateMovieMetadata(ctx, sqlcdb.CreateMovieMetadataParams{
+		TmdbID:             movieMeta.TmdbID,
+		ImdbID:             movieMeta.ImdbID,
+		Images:             movieMeta.Images,
+		Genres:             movieMeta.Genres,
+		Title:              movieMeta.Title,
+		SortTitle:          movieMeta.SortTitle,
+		CleanTitle:         movieMeta.CleanTitle,
+		OriginalTitle:      movieMeta.OriginalTitle,
+		CleanOriginalTitle: movieMeta.CleanOriginalTitle,
+		OriginalLanguage:   movieMeta.OriginalLanguage,
+		Status:             movieMeta.Status,
+		LastInfoSync:       movieMeta.LastInfoSync,
+		Runtime:            movieMeta.Runtime,
+		InCinemas:          movieMeta.InCinemas,
+		ReleaseDate:        movieMeta.ReleaseDate,
+		Year:               movieMeta.Year,
+		SecondaryYear:      movieMeta.SecondaryYear,
+		Ratings:            movieMeta.Ratings,
+		Recommendations:    movieMeta.Recommendations,
+		Certification:      movieMeta.Certification,
+		YoutubeTrailerID:   movieMeta.YoutubeTrailerID,
+		Studio:             movieMeta.Studio,
+		Overview:           movieMeta.Overview,
+		Website:            movieMeta.Website,
+		Popularity:         movieMeta.Popularity,
+		CollectionTmdbID:   movieMeta.CollectionTmdbID,
+		CollectionTitle:    movieMeta.CollectionTitle,
+	})
 	if err != nil {
 		return 0, err
 	}
-
-	inserted, err := result.LastInsertId()
-	if err != nil {
-		return 0, err
-	}
-
 	return inserted, nil
 }
 
-// UpdateMovieMetadata updates an existing movie metadata record
-func (s *SQLite) UpdateMovieMetadata(ctx context.Context, metadata model.MovieMetadata) error {
-	stmt := table.MovieMetadata.
-		UPDATE(table.MovieMetadata.AllColumns.Except(table.MovieMetadata.ID, table.MovieMetadata.TmdbID, table.MovieMetadata.LastInfoSync)).
-		MODEL(metadata).
-		WHERE(table.MovieMetadata.ID.EQ(sqlite.Int32(metadata.ID)))
-
-	_, err := s.handleStatement(ctx, stmt)
+// UpdateMovieMetadata refreshes mutable metadata and stamps last_info_sync in UTC.
+// The persistent id and external tmdb_id remain stable.
+func (s *SQLite) UpdateMovieMetadata(ctx context.Context, metadata sqlcdb.MovieMetadatum) error {
+	err := s.Queries.UpdateMovieMetadataQuery(ctx, sqlcdb.UpdateMovieMetadataQueryParams{
+		ImdbID:             metadata.ImdbID,
+		Images:             metadata.Images,
+		Genres:             metadata.Genres,
+		Title:              metadata.Title,
+		SortTitle:          metadata.SortTitle,
+		CleanTitle:         metadata.CleanTitle,
+		OriginalTitle:      metadata.OriginalTitle,
+		CleanOriginalTitle: metadata.CleanOriginalTitle,
+		OriginalLanguage:   metadata.OriginalLanguage,
+		Status:             metadata.Status,
+		Runtime:            metadata.Runtime,
+		InCinemas:          metadata.InCinemas,
+		ReleaseDate:        metadata.ReleaseDate,
+		Year:               metadata.Year,
+		SecondaryYear:      metadata.SecondaryYear,
+		Ratings:            metadata.Ratings,
+		Recommendations:    metadata.Recommendations,
+		Certification:      metadata.Certification,
+		YoutubeTrailerID:   metadata.YoutubeTrailerID,
+		Studio:             metadata.Studio,
+		Overview:           metadata.Overview,
+		Website:            metadata.Website,
+		Popularity:         metadata.Popularity,
+		CollectionTmdbID:   metadata.CollectionTmdbID,
+		CollectionTitle:    metadata.CollectionTitle,
+		ID:                 metadata.ID,
+	})
 	if err != nil {
 		return fmt.Errorf("failed to update movie metadata: %w", err)
 	}
-
 	return nil
 }
 
 // DeleteMovieMetadata deletes a movie metadata by id
 func (s *SQLite) DeleteMovieMetadata(ctx context.Context, id int64) error {
-	stmt := table.MovieMetadata.DELETE().WHERE(table.MovieMetadata.ID.EQ(sqlite.Int64(id))).RETURNING(table.MovieMetadata.ID)
-	_, err := s.handleDelete(ctx, stmt)
-	if err != nil {
-		return err
-	}
-	return nil
+	return s.Queries.DeleteMovieMetadata(ctx, id)
 }
 
 // ListMovieMetadata lists all movie metadata
-func (s *SQLite) ListMovieMetadata(ctx context.Context) ([]*model.MovieMetadata, error) {
-	movies := make([]*model.MovieMetadata, 0)
-	stmt := table.Movie.SELECT(table.MovieMetadata.AllColumns).FROM(table.MovieMetadata).ORDER_BY(table.MovieMetadata.LastInfoSync.ASC())
-	err := stmt.QueryContext(ctx, s.db, &movies)
+func (s *SQLite) ListMovieMetadata(ctx context.Context) ([]sqlcdb.MovieMetadatum, error) {
+	rows, err := s.Queries.ListMovieMetadata(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to list movies: %w", err)
+		return nil, fmt.Errorf("failed to list movie metadata: %w", err)
 	}
-
-	return movies, nil
+	return rows, nil
 }
 
-// GetMovieMetadata get a movie metadata for the given where
-func (s *SQLite) GetMovieMetadata(ctx context.Context, where sqlite.BoolExpression) (*model.MovieMetadata, error) {
-	meta := &model.MovieMetadata{}
-	stmt := table.Movie.SELECT(table.MovieMetadata.AllColumns).FROM(table.MovieMetadata).WHERE(where).LIMIT(1)
-	err := stmt.QueryContext(ctx, s.db, meta)
+// GetMovieMetadataByID gets a movie metadata by its id
+func (s *SQLite) GetMovieMetadataByID(ctx context.Context, id int64) (sqlcdb.MovieMetadatum, error) {
+	row, err := s.Queries.GetMovieMetadataByID(ctx, id)
 	if err != nil {
-		if errors.Is(err, qrm.ErrNoRows) {
-			return nil, storage.ErrNotFound
-		}
-		return nil, fmt.Errorf("failed to list movies: %w", err)
+		return sqlcdb.MovieMetadatum{}, mapQueryErr(err, "failed to get movie metadata")
 	}
+	return row, nil
+}
 
-	return meta, nil
+// GetMovieMetadataByTmdbID gets a movie metadata by its tmdb id
+func (s *SQLite) GetMovieMetadataByTmdbID(ctx context.Context, tmdbID int64) (sqlcdb.MovieMetadatum, error) {
+	row, err := s.Queries.GetMovieMetadataByTmdbID(ctx, tmdbID)
+	if err != nil {
+		return sqlcdb.MovieMetadatum{}, mapQueryErr(err, "failed to get movie metadata")
+	}
+	return row, nil
 }

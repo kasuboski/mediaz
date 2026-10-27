@@ -2,71 +2,48 @@ package sqlite
 
 import (
 	"context"
-	"errors"
+	"database/sql"
 	"fmt"
-	"time"
 
-	"github.com/go-jet/jet/v2/qrm"
-	"github.com/go-jet/jet/v2/sqlite"
-	"github.com/kasuboski/mediaz/pkg/storage"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/table"
+	"github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 )
 
-// CreateSeriesMetadata creates the given series metadata
-func (s *SQLite) CreateSeriesMetadata(ctx context.Context, seriesMeta model.SeriesMetadata) (int64, error) {
-	// don't insert a zeroed ID
-	insertColumns := table.SeriesMetadata.MutableColumns
-	if seriesMeta.ID != 0 {
-		insertColumns = table.SeriesMetadata.AllColumns
-	}
-
-	stmt := table.SeriesMetadata.
-		INSERT(insertColumns).
-		MODEL(seriesMeta).
-		ON_CONFLICT(table.SeriesMetadata.TmdbID).
-		DO_UPDATE(sqlite.SET(
-			table.SeriesMetadata.Title.SET(sqlite.String(seriesMeta.Title)),
-			table.SeriesMetadata.LastInfoSync.SET(sqlite.CURRENT_TIMESTAMP()),
-			table.SeriesMetadata.SeasonCount.SET(sqlite.Int32(seriesMeta.SeasonCount)),
-			table.SeriesMetadata.EpisodeCount.SET(sqlite.Int32(seriesMeta.EpisodeCount)),
-			table.SeriesMetadata.Status.SET(sqlite.String(seriesMeta.Status)),
-		))
-
-	_, err := s.handleInsert(ctx, stmt)
-	if err != nil {
-		return 0, err
-	}
-
-	var existing model.SeriesMetadata
-	getStmt := table.SeriesMetadata.
-		SELECT(table.SeriesMetadata.ID).
-		FROM(table.SeriesMetadata).
-		WHERE(table.SeriesMetadata.TmdbID.EQ(sqlite.Int32(seriesMeta.TmdbID)))
-
-	err = getStmt.QueryContext(ctx, s.db, &existing)
-	if err != nil {
-		return 0, fmt.Errorf("failed to get series metadata ID after upsert: %w", err)
-	}
-
-	return int64(existing.ID), nil
+// CreateSeriesMetadata upserts the given series metadata keyed by tmdb_id.
+// When meta.ID is zero SQLite assigns a fresh autoincrement id.
+func (s *SQLite) CreateSeriesMetadata(ctx context.Context, seriesMeta sqlcdb.SeriesMetadatum) (int64, error) {
+	return s.Queries.UpsertSeriesMetadata(ctx, sqlcdb.UpsertSeriesMetadataParams{
+		ID:             sql.NullInt64{Int64: seriesMeta.ID, Valid: seriesMeta.ID != 0},
+		TmdbID:         seriesMeta.TmdbID,
+		Title:          seriesMeta.Title,
+		Overview:       seriesMeta.Overview,
+		LastInfoSync:   seriesMeta.LastInfoSync,
+		FirstAirDate:   seriesMeta.FirstAirDate,
+		LastAirDate:    seriesMeta.LastAirDate,
+		SeasonCount:    seriesMeta.SeasonCount,
+		EpisodeCount:   seriesMeta.EpisodeCount,
+		Status:         seriesMeta.Status,
+		PosterPath:     seriesMeta.PosterPath,
+		ExternalIds:    seriesMeta.ExternalIds,
+		WatchProviders: seriesMeta.WatchProviders,
+	})
 }
 
-// UpdateSeriesMetadata updates an existing series metadata record
-func (s *SQLite) UpdateSeriesMetadata(ctx context.Context, metadata model.SeriesMetadata) error {
-	now := time.Now()
-	metadata.LastInfoSync = &now
-
-	stmt := table.SeriesMetadata.
-		UPDATE(table.SeriesMetadata.AllColumns.
-			Except(
-				table.SeriesMetadata.ID,
-				table.SeriesMetadata.TmdbID,
-			)).
-		MODEL(metadata).
-		WHERE(table.SeriesMetadata.ID.EQ(sqlite.Int32(metadata.ID)))
-
-	_, err := s.handleStatement(ctx, stmt)
+// UpdateSeriesMetadata updates an existing series metadata record. The
+// last_info_sync column is stamped with CURRENT_TIMESTAMP (UTC) by the query.
+func (s *SQLite) UpdateSeriesMetadata(ctx context.Context, metadata sqlcdb.SeriesMetadatum) error {
+	err := s.Queries.UpdateSeriesMetadata(ctx, sqlcdb.UpdateSeriesMetadataParams{
+		Title:          metadata.Title,
+		Overview:       metadata.Overview,
+		FirstAirDate:   metadata.FirstAirDate,
+		LastAirDate:    metadata.LastAirDate,
+		SeasonCount:    metadata.SeasonCount,
+		EpisodeCount:   metadata.EpisodeCount,
+		Status:         metadata.Status,
+		PosterPath:     metadata.PosterPath,
+		ExternalIds:    metadata.ExternalIds,
+		WatchProviders: metadata.WatchProviders,
+		ID:             metadata.ID,
+	})
 	if err != nil {
 		return fmt.Errorf("failed to update series metadata: %w", err)
 	}
@@ -76,128 +53,165 @@ func (s *SQLite) UpdateSeriesMetadata(ctx context.Context, metadata model.Series
 
 // DeleteSeriesMetadata deletes a Series metadata by id
 func (s *SQLite) DeleteSeriesMetadata(ctx context.Context, id int64) error {
-	stmt := table.SeriesMetadata.
-		DELETE().
-		WHERE(table.SeriesMetadata.ID.EQ(sqlite.Int64(id)))
-
-	_, err := s.handleDelete(ctx, stmt)
-	if err != nil {
+	if err := s.Queries.DeleteSeriesMetadata(ctx, id); err != nil {
 		return fmt.Errorf("failed to delete Series metadata: %w", err)
 	}
-
 	return nil
 }
 
 // ListSeriesMetadata lists all Series metadata
-func (s *SQLite) ListSeriesMetadata(ctx context.Context, where ...sqlite.BoolExpression) ([]*model.SeriesMetadata, error) {
-	stmt := table.SeriesMetadata.
-		SELECT(table.SeriesMetadata.AllColumns).
-		FROM(table.SeriesMetadata)
-
-	for _, w := range where {
-		stmt = stmt.WHERE(w)
-	}
-
-	var SeriesMetadata []*model.SeriesMetadata
-	err := stmt.QueryContext(ctx, s.db, &SeriesMetadata)
+func (s *SQLite) ListSeriesMetadata(ctx context.Context) ([]sqlcdb.SeriesMetadatum, error) {
+	rows, err := s.Queries.ListSeriesMetadata(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list Series metadata: %w", err)
 	}
-
-	return SeriesMetadata, nil
+	return rows, nil
 }
 
-// GetSeriesMetadata get a Series metadata for the given where
-func (s *SQLite) GetSeriesMetadata(ctx context.Context, where sqlite.BoolExpression) (*model.SeriesMetadata, error) {
-	stmt := table.SeriesMetadata.
-		SELECT(table.SeriesMetadata.AllColumns).
-		FROM(table.SeriesMetadata).
-		WHERE(where)
-
-	var seriesMetadata model.SeriesMetadata
-	err := stmt.QueryContext(ctx, s.db, &seriesMetadata)
+// ListSeriesMetadataByStatus lists all Series metadata with the given status
+func (s *SQLite) ListSeriesMetadataByStatus(ctx context.Context, status string) ([]sqlcdb.SeriesMetadatum, error) {
+	rows, err := s.Queries.ListSeriesMetadataByStatus(ctx, status)
 	if err != nil {
-		if errors.Is(err, qrm.ErrNoRows) {
-			return nil, storage.ErrNotFound
-		}
-		return nil, fmt.Errorf("failed to get Series metadata: %w", err)
+		return nil, fmt.Errorf("failed to list Series metadata: %w", err)
 	}
-
-	return &seriesMetadata, nil
+	return rows, nil
 }
 
-// UpdateSeriesState updates the transition state of a series
-// Metadata is optional and can be nil
-func (s *SQLite) UpdateSeriesState(ctx context.Context, id int64, state storage.SeriesState, metadata *storage.TransitionStateMetadata) error {
-	series, err := s.GetSeries(ctx, table.Series.ID.EQ(sqlite.Int64(id)))
+// GetSeriesMetadataByID get a Series metadata by id
+func (s *SQLite) GetSeriesMetadataByID(ctx context.Context, id int64) (sqlcdb.SeriesMetadatum, error) {
+	row, err := s.Queries.GetSeriesMetadataByID(ctx, id)
 	if err != nil {
-		return err
+		return sqlcdb.SeriesMetadatum{}, mapQueryErr(err, "failed to get Series metadata")
 	}
-
-	err = series.Machine().ToState(state)
-	if err != nil {
-		return err
-	}
-
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-
-	previousTransitionStmt := table.SeriesTransition.
-		UPDATE().
-		SET(
-			table.SeriesTransition.MostRecent.SET(sqlite.Bool(false))).
-		WHERE(
-			table.SeriesTransition.SeriesID.EQ(sqlite.Int(id)).
-				AND(table.SeriesTransition.MostRecent.EQ(sqlite.Bool(true)))).
-		RETURNING(table.SeriesTransition.AllColumns)
-
-	var previousTransition storage.SeriesTransition
-	err = previousTransitionStmt.QueryContext(ctx, tx, &previousTransition)
-	if err != nil {
-		tx.Rollback()
-		return err
-	}
-
-	transition := storage.SeriesTransition{
-		SeriesID:   int32(id),
-		ToState:    string(state),
-		MostRecent: true,
-		SortKey:    previousTransition.SortKey + 1,
-	}
-
-	// Note: SeriesTransition doesn't currently support DownloadClientID and DownloadID
-	// These can be added to the schema if needed in the future
-
-	newTransitionStmt := table.SeriesTransition.
-		INSERT(table.SeriesTransition.AllColumns.
-			Except(table.SeriesTransition.ID, table.SeriesTransition.CreatedAt, table.SeriesTransition.UpdatedAt)).
-		MODEL(transition).
-		RETURNING(table.SeriesTransition.AllColumns)
-
-	_, err = newTransitionStmt.ExecContext(ctx, tx)
-	if err != nil {
-		tx.Rollback()
-		return err
-	}
-
-	return tx.Commit()
+	return row, nil
 }
 
-// UpdateSeries updates fields on a series
-func (s *SQLite) UpdateSeries(ctx context.Context, series model.Series, where ...sqlite.BoolExpression) error {
-	stmt := table.Series.UPDATE(table.Series.Monitored).MODEL(series)
-	for _, w := range where {
-		stmt = stmt.WHERE(w)
+// GetSeriesMetadataByTmdbID get a Series metadata by tmdb id
+func (s *SQLite) GetSeriesMetadataByTmdbID(ctx context.Context, tmdbID int64) (sqlcdb.SeriesMetadatum, error) {
+	row, err := s.Queries.GetSeriesMetadataByTmdbID(ctx, tmdbID)
+	if err != nil {
+		return sqlcdb.SeriesMetadatum{}, mapQueryErr(err, "failed to get Series metadata")
 	}
-	_, err := stmt.ExecContext(ctx, s.db)
-	return err
+	return row, nil
 }
 
-// LinkSeriesMetadata links a series with its metadata
-func (s *SQLite) LinkSeriesMetadata(ctx context.Context, seriesID int64, metadataID int32) error {
-	stmt := table.Series.UPDATE(table.Series.SeriesMetadataID).SET(metadataID).WHERE(table.Series.ID.EQ(sqlite.Int64(seriesID)))
-	_, err := stmt.Exec(s.db)
-	return err
+// CreateSeasonMetadata upserts the given season metadata keyed by tmdb_id.
+// When meta.ID is zero SQLite assigns a fresh autoincrement id.
+func (s *SQLite) CreateSeasonMetadata(ctx context.Context, seasonMeta sqlcdb.SeasonMetadatum) (int64, error) {
+	return s.Queries.UpsertSeasonMetadata(ctx, sqlcdb.UpsertSeasonMetadataParams{
+		ID:               sql.NullInt64{Int64: seasonMeta.ID, Valid: seasonMeta.ID != 0},
+		SeriesMetadataID: seasonMeta.SeriesMetadataID,
+		Number:           seasonMeta.Number,
+		TmdbID:           seasonMeta.TmdbID,
+		Title:            seasonMeta.Title,
+		Overview:         seasonMeta.Overview,
+		AirDate:          seasonMeta.AirDate,
+	})
+}
+
+// DeleteSeasonMetadata deletes a season metadata by id
+func (s *SQLite) DeleteSeasonMetadata(ctx context.Context, id int64) error {
+	if err := s.Queries.DeleteSeasonMetadata(ctx, id); err != nil {
+		return fmt.Errorf("failed to delete season metadata: %w", err)
+	}
+	return nil
+}
+
+// ListSeasonMetadataBySeriesMetadataID lists all season metadata for the given series metadata
+func (s *SQLite) ListSeasonMetadataBySeriesMetadataID(ctx context.Context, seriesMetadataID int64) ([]sqlcdb.SeasonMetadatum, error) {
+	rows, err := s.Queries.ListSeasonMetadataBySeriesMetadataID(ctx, seriesMetadataID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list season metadata: %w", err)
+	}
+	return rows, nil
+}
+
+// GetSeasonMetadataByID get a season metadata by id
+func (s *SQLite) GetSeasonMetadataByID(ctx context.Context, id int64) (sqlcdb.SeasonMetadatum, error) {
+	row, err := s.Queries.GetSeasonMetadataByID(ctx, id)
+	if err != nil {
+		return sqlcdb.SeasonMetadatum{}, mapQueryErr(err, "failed to get season metadata")
+	}
+	return row, nil
+}
+
+// GetSeasonMetadataByTmdbID get a season metadata by tmdb id
+func (s *SQLite) GetSeasonMetadataByTmdbID(ctx context.Context, tmdbID int64) (sqlcdb.SeasonMetadatum, error) {
+	row, err := s.Queries.GetSeasonMetadataByTmdbID(ctx, tmdbID)
+	if err != nil {
+		return sqlcdb.SeasonMetadatum{}, mapQueryErr(err, "failed to get season metadata")
+	}
+	return row, nil
+}
+
+// CreateEpisodeMetadata upserts the given episode metadata keyed by tmdb_id.
+// When meta.ID is zero SQLite assigns a fresh autoincrement id.
+func (s *SQLite) CreateEpisodeMetadata(ctx context.Context, episodeMeta sqlcdb.EpisodeMetadatum) (int64, error) {
+	return s.Queries.UpsertEpisodeMetadata(ctx, sqlcdb.UpsertEpisodeMetadataParams{
+		ID:               sql.NullInt64{Int64: episodeMeta.ID, Valid: episodeMeta.ID != 0},
+		SeasonMetadataID: episodeMeta.SeasonMetadataID,
+		Number:           episodeMeta.Number,
+		TmdbID:           episodeMeta.TmdbID,
+		Title:            episodeMeta.Title,
+		Overview:         episodeMeta.Overview,
+		AirDate:          episodeMeta.AirDate,
+		Runtime:          episodeMeta.Runtime,
+		StillPath:        episodeMeta.StillPath,
+	})
+}
+
+// DeleteEpisodeMetadata deletes an episode metadata by id
+func (s *SQLite) DeleteEpisodeMetadata(ctx context.Context, id int64) error {
+	if err := s.Queries.DeleteEpisodeMetadata(ctx, id); err != nil {
+		return fmt.Errorf("failed to delete episode metadata: %w", err)
+	}
+	return nil
+}
+
+// ListEpisodeMetadataBySeasonMetadataID lists all episode metadata for the given season metadata
+func (s *SQLite) ListEpisodeMetadataBySeasonMetadataID(ctx context.Context, seasonMetadataID int64) ([]sqlcdb.EpisodeMetadatum, error) {
+	rows, err := s.Queries.ListEpisodeMetadataBySeasonMetadataID(ctx, seasonMetadataID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list episode metadata: %w", err)
+	}
+	return rows, nil
+}
+
+// ListEpisodeMetadataByIDs lists all episode metadata for the given ids
+func (s *SQLite) ListEpisodeMetadataByIDs(ctx context.Context, ids []int64) ([]sqlcdb.EpisodeMetadatum, error) {
+	rows, err := s.Queries.ListEpisodeMetadataByIDs(ctx, ids)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list episode metadata: %w", err)
+	}
+	return rows, nil
+}
+
+// GetEpisodeMetadataByID get an episode metadata by id
+func (s *SQLite) GetEpisodeMetadataByID(ctx context.Context, id int64) (sqlcdb.EpisodeMetadatum, error) {
+	row, err := s.Queries.GetEpisodeMetadataByID(ctx, id)
+	if err != nil {
+		return sqlcdb.EpisodeMetadatum{}, mapQueryErr(err, "failed to get episode metadata")
+	}
+	return row, nil
+}
+
+// GetEpisodeMetadataByTmdbID get an episode metadata by tmdb id
+func (s *SQLite) GetEpisodeMetadataByTmdbID(ctx context.Context, tmdbID int64) (sqlcdb.EpisodeMetadatum, error) {
+	row, err := s.Queries.GetEpisodeMetadataByTmdbID(ctx, tmdbID)
+	if err != nil {
+		return sqlcdb.EpisodeMetadatum{}, mapQueryErr(err, "failed to get episode metadata")
+	}
+	return row, nil
+}
+
+// GetEpisodeMetadataBySeasonAndNumber get an episode metadata by season metadata id and episode number
+func (s *SQLite) GetEpisodeMetadataBySeasonAndNumber(ctx context.Context, seasonMetadataID, number int64) (sqlcdb.EpisodeMetadatum, error) {
+	row, err := s.Queries.GetEpisodeMetadataBySeasonAndNumber(ctx, sqlcdb.GetEpisodeMetadataBySeasonAndNumberParams{
+		SeasonMetadataID: seasonMetadataID,
+		Number:           number,
+	})
+	if err != nil {
+		return sqlcdb.EpisodeMetadatum{}, mapQueryErr(err, "failed to get episode metadata")
+	}
+	return row, nil
 }

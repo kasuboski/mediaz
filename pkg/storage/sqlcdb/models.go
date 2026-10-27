@@ -64,11 +64,25 @@ type EpisodeTransition struct {
 }
 
 type Indexer struct {
-	ID       int64
-	Name     string
-	Priority int64
-	Uri      string
-	ApiKey   sql.NullString
+	ID              int64
+	Name            string
+	Priority        int64
+	Uri             string
+	ApiKey          sql.NullString
+	IndexerSourceID sql.NullInt64
+}
+
+type IndexerSource struct {
+	ID             int64
+	Name           string
+	Implementation string
+	Scheme         string
+	Host           string
+	Port           sql.NullInt64
+	ApiKey         sql.NullString
+	Enabled        bool
+	CreatedAt      sql.NullTime
+	UpdatedAt      sql.NullTime
 }
 
 type Job struct {

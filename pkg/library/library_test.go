@@ -672,7 +672,7 @@ func TestMediaLibrary_AddEpisode(t *testing.T) {
 		library := New(FileSystem{}, fileSystem, mockfs, true)
 
 		seriesTitle := "Series Name"
-		var seasonNumber int32 = 1
+		var seasonNumber int64 = 1
 		episodeFile, err := library.AddEpisode(ctx, seriesTitle, seasonNumber, episodeToAdd)
 
 		expectedFilename := filepath.Base(tmpFile.Name())
@@ -719,7 +719,7 @@ func TestMediaLibrary_AddEpisode(t *testing.T) {
 		library := New(FileSystem{}, fileSystem, mockfs, true)
 
 		seriesTitle := "Series Name"
-		var seasonNumber int32 = 1
+		var seasonNumber int64 = 1
 		episodeFile, err := library.AddEpisode(ctx, seriesTitle, seasonNumber, episodeToAdd)
 
 		expectedFilename := filepath.Base(tmpFile.Name())
@@ -766,7 +766,7 @@ func TestMediaLibrary_AddEpisode(t *testing.T) {
 		library := New(FileSystem{}, fileSystem, mockfs, true)
 
 		seriesTitle := "Series Name"
-		var seasonNumber int32 = 1
+		var seasonNumber int64 = 1
 		episodeFile, err := library.AddEpisode(ctx, seriesTitle, seasonNumber, episodeToAdd)
 
 		expectedFilename := filepath.Base(tmpFile.Name())
@@ -814,7 +814,7 @@ func TestMediaLibrary_AddEpisode(t *testing.T) {
 		library := New(FileSystem{}, fileSystem, mockfs, false)
 
 		seriesTitle := "Series Name"
-		var seasonNumber int32 = 1
+		var seasonNumber int64 = 1
 		episodeFile, err := library.AddEpisode(ctx, seriesTitle, seasonNumber, episodeToAdd)
 
 		expectedFilename := filepath.Base(tmpFile.Name())
@@ -861,7 +861,7 @@ func TestMediaLibrary_AddEpisode(t *testing.T) {
 		library := New(FileSystem{}, fileSystem, mockfs, false)
 
 		seriesTitle := "Series Name"
-		var seasonNumber int32 = 1
+		var seasonNumber int64 = 1
 		episodeFile, err := library.AddEpisode(ctx, seriesTitle, seasonNumber, episodeToAdd)
 
 		expectedFilename := filepath.Base(tmpFile.Name())

@@ -8,7 +8,7 @@ import (
 	"github.com/kasuboski/mediaz/config"
 	"github.com/kasuboski/mediaz/pkg/pagination"
 	"github.com/kasuboski/mediaz/pkg/storage"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
+	"github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -16,7 +16,7 @@ import (
 func TestJobService_GetJob(t *testing.T) {
 	t.Run("get job", func(t *testing.T) {
 		ctx := context.Background()
-		store := newStore(t, ctx)
+		store := newJobTestStore(t, ctx)
 		js := NewJobService(store, store, store, config.Manager{}, make(map[JobType]JobExecutor))
 
 		id, err := js.scheduler.createPendingJob(ctx, MovieIndex)
@@ -39,7 +39,7 @@ func TestJobService_GetJob(t *testing.T) {
 
 	t.Run("job not found", func(t *testing.T) {
 		ctx := context.Background()
-		store := newStore(t, ctx)
+		store := newJobTestStore(t, ctx)
 		js := NewJobService(store, store, store, config.Manager{}, make(map[JobType]JobExecutor))
 
 		_, err := js.GetJob(ctx, 999)
@@ -51,7 +51,7 @@ func TestJobService_GetJob(t *testing.T) {
 func TestJobService_CreateJob(t *testing.T) {
 	t.Run("create job successfully", func(t *testing.T) {
 		ctx := context.Background()
-		store := newStore(t, ctx)
+		store := newJobTestStore(t, ctx)
 		js := NewJobService(store, store, store, config.Manager{}, make(map[JobType]JobExecutor))
 
 		req := TriggerJobRequest{Type: string(MovieIndex)}
@@ -72,7 +72,7 @@ func TestJobService_CreateJob(t *testing.T) {
 
 	t.Run("create job when pending already exists", func(t *testing.T) {
 		ctx := context.Background()
-		store := newStore(t, ctx)
+		store := newJobTestStore(t, ctx)
 		js := NewJobService(store, store, store, config.Manager{}, make(map[JobType]JobExecutor))
 
 		req := TriggerJobRequest{Type: string(MovieReconcile)}
@@ -93,7 +93,7 @@ func TestJobService_CreateJob(t *testing.T) {
 
 	t.Run("create multiple different job types", func(t *testing.T) {
 		ctx := context.Background()
-		store := newStore(t, ctx)
+		store := newJobTestStore(t, ctx)
 		js := NewJobService(store, store, store, config.Manager{}, make(map[JobType]JobExecutor))
 
 		movieJob, err := js.CreateJob(ctx, TriggerJobRequest{Type: string(MovieIndex)})
@@ -129,7 +129,7 @@ func TestJobService_CreateJob(t *testing.T) {
 func TestJobService_ListJobs(t *testing.T) {
 	t.Run("list all jobs", func(t *testing.T) {
 		ctx := context.Background()
-		store := newStore(t, ctx)
+		store := newJobTestStore(t, ctx)
 		js := NewJobService(store, store, store, config.Manager{}, make(map[JobType]JobExecutor))
 
 		_, err := js.CreateJob(ctx, TriggerJobRequest{Type: string(MovieIndex)})
@@ -145,7 +145,7 @@ func TestJobService_ListJobs(t *testing.T) {
 
 	t.Run("list jobs filtered by type", func(t *testing.T) {
 		ctx := context.Background()
-		store := newStore(t, ctx)
+		store := newJobTestStore(t, ctx)
 		js := NewJobService(store, store, store, config.Manager{}, make(map[JobType]JobExecutor))
 
 		_, err := js.CreateJob(ctx, TriggerJobRequest{Type: string(MovieIndex)})
@@ -165,7 +165,7 @@ func TestJobService_ListJobs(t *testing.T) {
 
 	t.Run("list jobs filtered by state", func(t *testing.T) {
 		ctx := context.Background()
-		store := newStore(t, ctx)
+		store := newJobTestStore(t, ctx)
 		js := NewJobService(store, store, store, config.Manager{}, make(map[JobType]JobExecutor))
 
 		id1, err := js.CreateJob(ctx, TriggerJobRequest{Type: string(MovieIndex)})
@@ -188,7 +188,7 @@ func TestJobService_ListJobs(t *testing.T) {
 
 	t.Run("list jobs filtered by type and state", func(t *testing.T) {
 		ctx := context.Background()
-		store := newStore(t, ctx)
+		store := newJobTestStore(t, ctx)
 		js := NewJobService(store, store, store, config.Manager{}, make(map[JobType]JobExecutor))
 
 		id1, err := js.CreateJob(ctx, TriggerJobRequest{Type: string(MovieIndex)})
@@ -215,7 +215,7 @@ func TestJobService_ListJobs(t *testing.T) {
 
 	t.Run("list jobs with no results", func(t *testing.T) {
 		ctx := context.Background()
-		store := newStore(t, ctx)
+		store := newJobTestStore(t, ctx)
 		js := NewJobService(store, store, store, config.Manager{}, make(map[JobType]JobExecutor))
 
 		result, err := js.ListJobs(ctx, nil, nil, pagination.Params{Page: 1, PageSize: 0})
@@ -226,7 +226,7 @@ func TestJobService_ListJobs(t *testing.T) {
 
 	t.Run("invalid job type", func(t *testing.T) {
 		ctx := context.Background()
-		store := newStore(t, ctx)
+		store := newJobTestStore(t, ctx)
 		js := NewJobService(store, store, store, config.Manager{}, make(map[JobType]JobExecutor))
 
 		invalidType := "InvalidJobType"
@@ -237,7 +237,7 @@ func TestJobService_ListJobs(t *testing.T) {
 
 	t.Run("invalid job state", func(t *testing.T) {
 		ctx := context.Background()
-		store := newStore(t, ctx)
+		store := newJobTestStore(t, ctx)
 		js := NewJobService(store, store, store, config.Manager{}, make(map[JobType]JobExecutor))
 
 		invalidState := "InvalidState"
@@ -250,7 +250,7 @@ func TestJobService_ListJobs(t *testing.T) {
 func TestJobService_CancelJob(t *testing.T) {
 	t.Run("cancel running job", func(t *testing.T) {
 		ctx := context.Background()
-		store := newStore(t, ctx)
+		store := newJobTestStore(t, ctx)
 
 		startedCh := make(chan struct{})
 		cancelledCh := make(chan struct{})
@@ -267,12 +267,9 @@ func TestJobService_CancelJob(t *testing.T) {
 		job, err := js.CreateJob(ctx, TriggerJobRequest{Type: string(MovieIndex)})
 		require.NoError(t, err)
 
-		go js.scheduler.executeJob(ctx, &storage.Job{
-			Job: model.Job{
-				ID:   int32(job.ID),
-				Type: job.Type,
-			},
-			State: storage.JobStatePending,
+		go js.scheduler.executeJob(ctx, sqlcdb.ListJobsRow{
+			Job:   sqlcdb.Job{ID: job.ID, Type: job.Type},
+			State: string(storage.JobStatePending),
 		})
 
 		<-startedCh
@@ -285,7 +282,7 @@ func TestJobService_CancelJob(t *testing.T) {
 
 		cancelledJob, err := store.GetJob(ctx, job.ID)
 		require.NoError(t, err)
-		assert.Equal(t, storage.JobStateCancelled, cancelledJob.State)
+		assert.Equal(t, string(storage.JobStateCancelled), cancelledJob.State)
 
 		retrievedJob, err := js.GetJob(ctx, job.ID)
 		require.NoError(t, err)
@@ -294,7 +291,7 @@ func TestJobService_CancelJob(t *testing.T) {
 
 	t.Run("cancel pending job", func(t *testing.T) {
 		ctx := context.Background()
-		store := newStore(t, ctx)
+		store := newJobTestStore(t, ctx)
 		js := NewJobService(store, store, store, config.Manager{}, make(map[JobType]JobExecutor))
 
 		job, err := js.CreateJob(ctx, TriggerJobRequest{Type: string(MovieIndex)})
@@ -306,7 +303,7 @@ func TestJobService_CancelJob(t *testing.T) {
 
 		cancelledJob, err := store.GetJob(ctx, job.ID)
 		require.NoError(t, err)
-		assert.Equal(t, storage.JobStateCancelled, cancelledJob.State)
+		assert.Equal(t, string(storage.JobStateCancelled), cancelledJob.State)
 
 		retrievedJob, err := js.GetJob(ctx, job.ID)
 		require.NoError(t, err)
@@ -315,7 +312,7 @@ func TestJobService_CancelJob(t *testing.T) {
 
 	t.Run("cancel completed job", func(t *testing.T) {
 		ctx := context.Background()
-		store := newStore(t, ctx)
+		store := newJobTestStore(t, ctx)
 		js := NewJobService(store, store, store, config.Manager{}, make(map[JobType]JobExecutor))
 
 		job, err := js.CreateJob(ctx, TriggerJobRequest{Type: string(MovieIndex)})
@@ -332,7 +329,7 @@ func TestJobService_CancelJob(t *testing.T) {
 
 		doneJob, err := store.GetJob(ctx, job.ID)
 		require.NoError(t, err)
-		assert.Equal(t, storage.JobStateDone, doneJob.State)
+		assert.Equal(t, string(storage.JobStateDone), doneJob.State)
 
 		retrievedJob, err := js.GetJob(ctx, job.ID)
 		require.NoError(t, err)
@@ -341,7 +338,7 @@ func TestJobService_CancelJob(t *testing.T) {
 
 	t.Run("cancel non-existent job", func(t *testing.T) {
 		ctx := context.Background()
-		store := newStore(t, ctx)
+		store := newJobTestStore(t, ctx)
 		js := NewJobService(store, store, store, config.Manager{}, make(map[JobType]JobExecutor))
 
 		_, err := js.CancelJob(ctx, 999)

@@ -1,0 +1,1 @@
+{"response":{"library":{"movieDir":"/data/movies","tvDir":"/data/tv","downloadMountDir":"/data/downloads"},"server":{"port":8080},"jobs":{"movieReconcile":"10m0s","movieIndex":"5m0s","seriesReconcile":"15m0s","seriesIndex":"7m0s"}}}

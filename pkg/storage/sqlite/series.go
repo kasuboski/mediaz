@@ -2,23 +2,16 @@ package sqlite
 
 import (
 	"context"
-	"errors"
-	"fmt"
+	"database/sql"
 
-	"github.com/go-jet/jet/v2/qrm"
-	"github.com/go-jet/jet/v2/sqlite"
 	"github.com/kasuboski/mediaz/pkg/storage"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/table"
+	"github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 )
 
-// CreateSeries stores a Series in the database
-func (s *SQLite) CreateSeries(ctx context.Context, series storage.Series, initialState storage.SeriesState) (int64, error) {
-	if series.State == "" {
-		series.State = storage.SeriesStateNew
-	}
-
-	err := series.Machine().ToState(initialState)
-	if err != nil {
+// CreateSeries stores a Series in the database. When series.Added is zero the
+// column default (CURRENT_TIMESTAMP, UTC) applies.
+func (s *SQLite) CreateSeries(ctx context.Context, series sqlcdb.Series, initialState storage.SeriesState) (int64, error) {
+	if err := storage.SeriesStateNew.Machine().ToState(initialState); err != nil {
 		return 0, err
 	}
 
@@ -26,59 +19,45 @@ func (s *SQLite) CreateSeries(ctx context.Context, series storage.Series, initia
 	if err != nil {
 		return 0, err
 	}
+	q := s.txQueries(tx)
 
-	setColumns := make([]sqlite.Expression, len(table.Series.MutableColumns))
-	for i, c := range table.Series.MutableColumns {
-		setColumns[i] = c
+	var inserted int64
+	if series.Added.Valid && !series.Added.Time.IsZero() {
+		inserted, err = q.CreateSeriesWithAdded(ctx, sqlcdb.CreateSeriesWithAddedParams{
+			Path:              series.Path,
+			Monitored:         series.Monitored,
+			Added:             series.Added,
+			QualityProfileID:  series.QualityProfileID,
+			SeriesMetadataID:  series.SeriesMetadataID,
+			LastSearchTime:    series.LastSearchTime,
+			MonitorNewSeasons: series.MonitorNewSeasons,
+		})
+	} else {
+		inserted, err = q.CreateSeries(ctx, sqlcdb.CreateSeriesParams{
+			Path:              series.Path,
+			Monitored:         series.Monitored,
+			QualityProfileID:  series.QualityProfileID,
+			SeriesMetadataID:  series.SeriesMetadataID,
+			LastSearchTime:    series.LastSearchTime,
+			MonitorNewSeasons: series.MonitorNewSeasons,
+		})
 	}
-
-	insertColumns := table.Series.MutableColumns
-	if series.ID == 0 {
-		insertColumns = insertColumns.Except(table.Series.ID)
-	}
-	if series.Added == nil || series.Added.IsZero() {
-		insertColumns = insertColumns.Except(table.Series.Added)
-	}
-
-	stmt := table.Series.
-		INSERT(insertColumns).
-		MODEL(series.Series).
-		RETURNING(table.Series.ID).
-		ON_CONFLICT(table.Series.ID).
-		DO_UPDATE(sqlite.SET(table.Series.MutableColumns.SET(sqlite.ROW(setColumns...))))
-
-	result, err := stmt.ExecContext(ctx, tx)
 	if err != nil {
 		tx.Rollback()
 		return 0, err
 	}
 
-	inserted, err := result.LastInsertId()
-	if err != nil {
-		tx.Rollback()
-		return 0, err
-	}
-
-	state := storage.SeriesTransition{
-		SeriesID:   int32(inserted),
+	if err := q.InsertSeriesTransition(ctx, sqlcdb.InsertSeriesTransitionParams{
+		SeriesID:   inserted,
 		ToState:    string(initialState),
 		MostRecent: true,
 		SortKey:    1,
-	}
-
-	transitionStmt := table.SeriesTransition.
-		INSERT(table.SeriesTransition.AllColumns.
-			Except(table.SeriesTransition.ID, table.SeriesTransition.CreatedAt, table.SeriesTransition.UpdatedAt)).
-		MODEL(state)
-
-	_, err = transitionStmt.ExecContext(ctx, tx)
-	if err != nil {
+	}); err != nil {
 		tx.Rollback()
 		return 0, err
 	}
 
-	err = tx.Commit()
-	if err != nil {
+	if err := tx.Commit(); err != nil {
 		tx.Rollback()
 		return 0, err
 	}
@@ -86,78 +65,114 @@ func (s *SQLite) CreateSeries(ctx context.Context, series storage.Series, initia
 	return inserted, nil
 }
 
-// GetSeries looks for a series given a where condition
-func (s *SQLite) GetSeries(ctx context.Context, where sqlite.BoolExpression) (*storage.Series, error) {
-	stmt := table.Series.
-		SELECT(
-			table.Series.AllColumns,
-			table.SeriesTransition.AllColumns,
-		).
-		FROM(
-			table.Series.
-				INNER_JOIN(
-					table.SeriesTransition,
-					table.Series.ID.EQ(table.SeriesTransition.SeriesID).
-						AND(table.SeriesTransition.MostRecent.EQ(sqlite.Bool(true)))),
-		).
-		WHERE(
-			where,
-		)
+// GetSeriesByID looks for a series given its id
+func (s *SQLite) GetSeriesByID(ctx context.Context, id int64) (sqlcdb.GetSeriesRow, error) {
+	return s.getSeries(ctx, sqlcdb.GetSeriesParams{ID: sql.NullInt64{Int64: id, Valid: true}})
+}
 
-	var series storage.Series
-	err := stmt.QueryContext(ctx, s.db, &series)
+// GetSeriesByMetadataID looks for a series given its metadata id
+func (s *SQLite) GetSeriesByMetadataID(ctx context.Context, metadataID int64) (sqlcdb.GetSeriesRow, error) {
+	return s.getSeries(ctx, sqlcdb.GetSeriesParams{SeriesMetadataID: sql.NullInt64{Int64: metadataID, Valid: true}})
+}
+
+// GetSeriesByPath looks for a series given its path
+func (s *SQLite) GetSeriesByPath(ctx context.Context, path string) (sqlcdb.GetSeriesRow, error) {
+	return s.getSeries(ctx, sqlcdb.GetSeriesParams{Path: sql.NullString{String: path, Valid: true}})
+}
+
+func (s *SQLite) getSeries(ctx context.Context, params sqlcdb.GetSeriesParams) (sqlcdb.GetSeriesRow, error) {
+	row, err := s.Queries.GetSeries(ctx, params)
 	if err != nil {
-		if errors.Is(err, qrm.ErrNoRows) {
-			return nil, storage.ErrNotFound
-		}
-		return nil, fmt.Errorf("failed to get series: %w", err)
+		return sqlcdb.GetSeriesRow{}, mapQueryErr(err, "failed to get series")
 	}
-
-	return &series, nil
+	return row, nil
 }
 
 // DeleteSeries removes a Series by id
 func (s *SQLite) DeleteSeries(ctx context.Context, id int64) error {
-	stmt := table.Series.
-		DELETE().
-		WHERE(table.Series.ID.EQ(sqlite.Int64(id)))
-
-	_, err := s.handleDelete(ctx, stmt)
-	if err != nil {
-		return fmt.Errorf("failed to delete Series: %w", err)
+	if err := s.Queries.DeleteSeries(ctx, id); err != nil {
+		return err
 	}
-
 	return nil
 }
 
-// ListSeries lists all Series
-func (s *SQLite) ListSeries(ctx context.Context, where ...sqlite.BoolExpression) ([]*storage.Series, error) {
-	stmt := table.Series.
-		SELECT(
-			table.Series.AllColumns,
-			table.SeriesTransition.AllColumns,
-		).
-		FROM(
-			table.Series.
-				INNER_JOIN(
-					table.SeriesTransition,
-					table.Series.ID.EQ(table.SeriesTransition.SeriesID).
-						AND(table.SeriesTransition.MostRecent.EQ(sqlite.Bool(true)))).
-				LEFT_JOIN(
-					table.SeriesMetadata,
-					table.Series.SeriesMetadataID.EQ(table.SeriesMetadata.ID)),
-		).
-		ORDER_BY(table.SeriesMetadata.Title.ASC())
-
-	for _, w := range where {
-		stmt = stmt.WHERE(w)
+// ListSeries lists all Series constrained by the filter; a zero-value filter
+// lists everything. The States filter accepts any number of states.
+func (s *SQLite) ListSeries(ctx context.Context, filter storage.SeriesFilter) ([]sqlcdb.ListSeriesRow, error) {
+	params := sqlcdb.ListSeriesParams{
+		States: make([]string, 0, len(filter.States)),
+	}
+	if filter.Monitored != nil {
+		if *filter.Monitored {
+			params.Monitored = sql.NullInt64{Int64: 1, Valid: true}
+		} else {
+			params.Monitored = sql.NullInt64{Int64: 0, Valid: true}
+		}
+	}
+	for _, state := range filter.States {
+		params.States = append(params.States, string(state))
+	}
+	if len(params.States) > 0 {
+		params.StatesAny = sql.NullString{String: params.States[0], Valid: true}
 	}
 
-	var series []*storage.Series
-	err := stmt.QueryContext(ctx, s.db, &series)
+	rows, err := s.Queries.ListSeries(ctx, params)
 	if err != nil {
-		return nil, fmt.Errorf("failed to list series: %w", err)
+		return nil, mapQueryErr(err, "failed to list series")
+	}
+	return rows, nil
+}
+
+// UpdateSeriesState updates the transition state of a series. The demote and
+// insert statements run in one transaction; on any failure nothing is written.
+func (s *SQLite) UpdateSeriesState(ctx context.Context, id int64, state storage.SeriesState, metadata *storage.TransitionStateMetadata) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	q := s.txQueries(tx)
+	series, err := q.GetSeries(ctx, sqlcdb.GetSeriesParams{ID: sql.NullInt64{Int64: id, Valid: true}})
+	if err != nil {
+		return mapQueryErr(err, "failed to get series")
+	}
+	if err := storage.SeriesState(series.State).Machine().ToState(state); err != nil {
+		return err
 	}
 
-	return series, nil
+	previousSortKey, err := q.DemoteSeriesTransition(ctx, id)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	if err := q.InsertSeriesTransition(ctx, sqlcdb.InsertSeriesTransitionParams{
+		SeriesID:   id,
+		FromState:  sql.NullString{String: series.State, Valid: true},
+		ToState:    string(state),
+		MostRecent: true,
+		SortKey:    previousSortKey + 1,
+	}); err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	return tx.Commit()
+}
+
+// LinkSeriesMetadata links a series with its metadata
+func (s *SQLite) LinkSeriesMetadata(ctx context.Context, seriesID int64, metadataID int64) error {
+	return s.Queries.LinkSeriesMetadata(ctx, sqlcdb.LinkSeriesMetadataParams{
+		SeriesMetadataID: sql.NullInt64{Int64: metadataID, Valid: true},
+		ID:               seriesID,
+	})
+}
+
+// UpdateSeriesByID updates fields on a series identified by id.
+// Legacy parity: only the monitored column is persisted.
+func (s *SQLite) UpdateSeriesByID(ctx context.Context, id int64, series sqlcdb.Series) error {
+	return s.Queries.UpdateSeriesByID(ctx, sqlcdb.UpdateSeriesByIDParams{
+		Monitored: series.Monitored,
+		ID:        id,
+	})
 }

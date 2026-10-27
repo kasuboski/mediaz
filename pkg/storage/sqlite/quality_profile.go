@@ -2,120 +2,58 @@ package sqlite
 
 import (
 	"context"
+	"database/sql"
 
-	"github.com/go-jet/jet/v2/sqlite"
-	"github.com/kasuboski/mediaz/pkg/logger"
-	"github.com/kasuboski/mediaz/pkg/storage"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/table"
-	"go.uber.org/zap"
+	"github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 )
 
-func (s *SQLite) CreateQualityProfile(ctx context.Context, profile model.QualityProfile) (int64, error) {
-	stmt := table.QualityProfile.INSERT(table.QualityProfile.AllColumns.Except(table.QualityProfile.ID)).MODEL(profile).RETURNING(table.QualityProfile.ID)
-	result, err := s.handleInsert(ctx, stmt)
+func (s *SQLite) CreateQualityProfile(ctx context.Context, profile sqlcdb.QualityProfile) (int64, error) {
+	return s.Queries.CreateQualityProfile(ctx, sqlcdb.CreateQualityProfileParams{Name: profile.Name, CutoffQualityID: profile.CutoffQualityID, UpgradeAllowed: profile.UpgradeAllowed})
+}
+
+func (s *SQLite) GetQualityProfile(ctx context.Context, id int64) (sqlcdb.QualityProfile, error) {
+	row, err := s.Queries.GetQualityProfile(ctx, id)
 	if err != nil {
-		return 0, err
+		return sqlcdb.QualityProfile{}, mapQueryErr(err, "failed to get quality profile")
 	}
+	return row, nil
+}
 
-	inserted, err := result.LastInsertId()
+func (s *SQLite) ListQualityProfiles(ctx context.Context) ([]sqlcdb.QualityProfile, error) {
+	return s.Queries.ListQualityProfiles(ctx)
+}
+
+func (s *SQLite) ListQualityProfilesByMediaType(ctx context.Context, mediaType string) ([]sqlcdb.QualityProfile, error) {
+	return s.Queries.ListQualityProfilesByMediaType(ctx, mediaType)
+}
+
+func (s *SQLite) ListQualityProfileRows(ctx context.Context, profileID int64) ([]sqlcdb.ListQualityProfileRowsRow, error) {
+	return s.Queries.ListQualityProfileRows(ctx, sqlcdb.ListQualityProfileRowsParams{ProfileID: sql.NullInt64{Int64: profileID, Valid: profileID != 0}})
+}
+
+func (s *SQLite) UpdateQualityProfile(ctx context.Context, id int64, profile sqlcdb.QualityProfile) error {
+	_, err := s.GetQualityProfile(ctx, id)
 	if err != nil {
-		return 0, err
+		return err
 	}
-
-	return inserted, nil
+	return s.Queries.UpdateQualityProfile(ctx, sqlcdb.UpdateQualityProfileParams{Name: profile.Name, CutoffQualityID: profile.CutoffQualityID, UpgradeAllowed: profile.UpgradeAllowed, ID: id})
 }
 
-// GetQualityProfile gets a quality profile and all associated quality items given a quality profile id
-func (s *SQLite) GetQualityProfile(ctx context.Context, id int64) (storage.QualityProfile, error) {
-	stmt := sqlite.
-		SELECT(
-			table.QualityProfile.AllColumns,
-			table.QualityProfileItem.AllColumns,
-			table.QualityDefinition.AllColumns,
-		).
-		FROM(
-			table.QualityProfile.INNER_JOIN(
-				table.QualityProfileItem, table.QualityProfileItem.ProfileID.EQ(table.QualityProfile.ID)).INNER_JOIN(
-				table.QualityDefinition, table.QualityProfileItem.QualityID.EQ(table.QualityDefinition.ID)),
-		).
-		WHERE(table.QualityProfile.ID.EQ(sqlite.Int(id))).
-		ORDER_BY(table.QualityDefinition.MinSize.DESC())
-
-	var result storage.QualityProfile
-	err := stmt.QueryContext(ctx, s.db, &result)
-	return result, err
-}
-
-// ListQualityProfiles lists all quality profiles and their associated quality items
-func (s *SQLite) ListQualityProfiles(ctx context.Context, where ...sqlite.BoolExpression) ([]*storage.QualityProfile, error) {
-	stmt := sqlite.
-		SELECT(
-			table.QualityProfile.AllColumns,
-			table.QualityDefinition.AllColumns,
-		).
-		FROM(
-			table.QualityProfile.INNER_JOIN(
-				table.QualityProfileItem, table.QualityProfileItem.ProfileID.EQ(table.QualityProfile.ID)).INNER_JOIN(
-				table.QualityDefinition, table.QualityProfileItem.QualityID.EQ(table.QualityDefinition.ID)),
-		)
-
-	var conds []sqlite.BoolExpression
-	for _, w := range where {
-		conds = append(conds, w)
-	}
-	if len(conds) > 0 {
-		stmt = stmt.WHERE(sqlite.AND(conds...))
-	}
-
-	stmt = stmt.ORDER_BY(table.QualityDefinition.MinSize.DESC())
-
-	result := make([]*storage.QualityProfile, 0)
-	err := stmt.QueryContext(ctx, s.db, &result)
-	return result, err
-}
-
-// UpdateQualityProfile updates a quality profile
-func (s *SQLite) UpdateQualityProfile(ctx context.Context, id int64, profile model.QualityProfile) error {
-	stmt := table.QualityProfile.UPDATE(
-		table.QualityProfile.Name,
-		table.QualityProfile.CutoffQualityID,
-		table.QualityProfile.UpgradeAllowed,
-	).MODEL(profile).WHERE(table.QualityProfile.ID.EQ(sqlite.Int64(id)))
-	_, err := stmt.ExecContext(ctx, s.db)
-	return err
-}
-
-// DeleteQualityProfile delete a quality profile
 func (s *SQLite) DeleteQualityProfile(ctx context.Context, id int64) error {
-	log := logger.FromCtx(ctx)
-
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
-		log.Errorw("failed to begin transaction", "id", id, "error", err)
 		return err
 	}
-
-	deleteItems := table.QualityProfileItem.DELETE().WHERE(table.QualityProfileItem.ProfileID.EQ(sqlite.Int64(id)))
-	_, err = deleteItems.ExecContext(ctx, tx)
-	if err != nil {
-		log.Errorw("failed to delete profile items", "id", id, zap.String("query", deleteItems.DebugSql()), "error", err)
-		if rbErr := tx.Rollback(); rbErr != nil {
-			log.Errorw("failed to rollback", "id", id, "error", rbErr)
-		}
+	defer tx.Rollback()
+	q := s.txQueries(tx)
+	if _, err := q.GetQualityProfile(ctx, id); err != nil {
+		return mapQueryErr(err, "failed to get quality profile")
+	}
+	if err := q.DeleteQualityProfileItemsByProfileID(ctx, id); err != nil {
 		return err
 	}
-
-	stmt := table.QualityProfile.DELETE().WHERE(table.QualityProfile.ID.EQ(sqlite.Int64(id))).RETURNING(table.QualityProfile.AllColumns)
-	_, err = stmt.ExecContext(ctx, tx)
-	if err != nil {
-		log.Errorw("failed to delete profile", "id", id, zap.String("query", stmt.DebugSql()), "error", err)
-		if rbErr := tx.Rollback(); rbErr != nil {
-			log.Errorw("failed to rollback", "id", id, "error", rbErr)
-		}
+	if err := q.DeleteQualityProfile(ctx, id); err != nil {
 		return err
 	}
-
-	log.Debugw("deleted quality profile", "id", id)
 	return tx.Commit()
 }

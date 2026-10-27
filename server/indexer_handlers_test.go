@@ -12,23 +12,18 @@ import (
 	"github.com/kasuboski/mediaz/config"
 	"github.com/kasuboski/mediaz/pkg/manager"
 	"github.com/kasuboski/mediaz/pkg/storage"
+	"github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 	mediaSqlite "github.com/kasuboski/mediaz/pkg/storage/sqlite"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
 	tmdbMocks "github.com/kasuboski/mediaz/pkg/tmdb/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
 
-// newInMemoryStore creates an in-memory SQLite storage with schemas initialized.
+// newInMemoryStore creates an initialized in-memory SQLite storage.
 func newInMemoryStore(t *testing.T) storage.Storage {
 	t.Helper()
-	ctx := context.Background()
-	store, err := mediaSqlite.New(ctx, ":memory:")
-	require.NoError(t, err)
-	schemas, err := storage.GetSchemas()
-	require.NoError(t, err)
-	err = store.Init(ctx, schemas...)
+	store, err := mediaSqlite.New(context.Background(), ":memory:")
 	require.NoError(t, err)
 	return store
 }
@@ -39,23 +34,14 @@ func gomockController(t *testing.T) *gomock.Controller {
 	return gomock.NewController(t)
 }
 
-// modelIndexer creates a model.Indexer with the given fields.
-func modelIndexer(name string, priority int32, uri string) model.Indexer {
-	return model.Indexer{
-		Name:     name,
-		Priority: priority,
-		URI:      uri,
-	}
+// modelIndexer creates a sqlcdb.Indexer with the given fields.
+func modelIndexer(name string, priority int64, uri string) sqlcdb.Indexer {
+	return sqlcdb.Indexer{Name: name, Priority: priority, Uri: uri}
 }
 
 func newIndexerStore(t *testing.T) storage.Storage {
 	t.Helper()
-	ctx := context.Background()
-	store, err := mediaSqlite.New(ctx, ":memory:")
-	require.NoError(t, err)
-	schemas, err := storage.GetSchemas()
-	require.NoError(t, err)
-	err = store.Init(ctx, schemas...)
+	store, err := mediaSqlite.New(context.Background(), ":memory:")
 	require.NoError(t, err)
 	return store
 }

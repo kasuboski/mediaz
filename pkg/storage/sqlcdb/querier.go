@@ -10,28 +10,210 @@ import (
 )
 
 type Querier interface {
+	CountJobs(ctx context.Context, arg CountJobsParams) (int64, error)
 	CountTransitionsByDate(ctx context.Context, arg CountTransitionsByDateParams) (int64, error)
-	GetEntityTransitionsEpisode(ctx context.Context, id int64) ([]GetEntityTransitionsEpisodeRow, error)
-	GetEntityTransitionsJob(ctx context.Context, id int64) ([]GetEntityTransitionsJobRow, error)
-	GetEntityTransitionsMovie(ctx context.Context, id int64) ([]GetEntityTransitionsMovieRow, error)
-	GetEntityTransitionsSeason(ctx context.Context, id int64) ([]GetEntityTransitionsSeasonRow, error)
-	GetEntityTransitionsSeries(ctx context.Context, id int64) ([]GetEntityTransitionsSeriesRow, error)
+	CreateDownloadClient(ctx context.Context, arg CreateDownloadClientParams) (int64, error)
+	// TV episode queries. Entity reads join the most recent episode_transition via
+	// embed(e) plus named transition columns. Get-by-id keeps the legacy LEFT
+	// JOIN (an episode without transitions is still returned) while ListEpisodes
+	// uses an INNER JOIN. ListEpisodes supports any-length state filters through
+	// slice guarded by a nullable param (A3). Unlike the legacy statement,
+	// GetEpisodeByEpisodeFileID now also selects is_entire_season_download so all
+	// episode reads share one column shape.
+	// A NULL id lets SQLite assign a fresh AUTOINCREMENT rowid; a non-NULL id
+	// inserts explicitly or lands in the ON CONFLICT branch (upsert by id).
+	CreateEpisode(ctx context.Context, arg CreateEpisodeParams) (int64, error)
+	// Episode files with explicit IDs upsert mutable fields.
+	CreateEpisodeFile(ctx context.Context, arg CreateEpisodeFileParams) (int64, error)
+	CreateEpisodeFileWithID(ctx context.Context, arg CreateEpisodeFileWithIDParams) (int64, error)
+	CreateIndexer(ctx context.Context, arg CreateIndexerParams) (int64, error)
+	CreateIndexerSource(ctx context.Context, arg CreateIndexerSourceParams) (int64, error)
+	CreateJob(ctx context.Context, type_ string) (int64, error)
+	CreateJobTransition(ctx context.Context, arg CreateJobTransitionParams) error
+	// Movie queries. Entity reads join the most recent movie_transition and use
+	// embed so the generated *Row types carry the movie entity plus named
+	// transition columns (state, download metadata) - no manual join-row structs.
+	// Transition writers let SQLite assign created_at/updated_at (CURRENT_TIMESTAMP,
+	// UTC); the demote statement stamps updated_at with CURRENT_TIMESTAMP so no
+	// application code ever hand-formats timestamps (B5).
+	CreateMovie(ctx context.Context, arg CreateMovieParams) (int64, error)
+	CreateMovieFile(ctx context.Context, arg CreateMovieFileParams) (int64, error)
+	// Plain insert: the legacy ON CONFLICT (id) DO NOTHING clause could never
+	// fire because id was never inserted (autoincrement assigns it).
+	CreateMovieMetadata(ctx context.Context, arg CreateMovieMetadataParams) (int64, error)
+	CreateMovieTransition(ctx context.Context, arg CreateMovieTransitionParams) error
+	// Used when the caller supplies an explicit "added" timestamp; otherwise
+	// CreateMovie lets the column default (CURRENT_TIMESTAMP, UTC) apply.
+	CreateMovieWithAdded(ctx context.Context, arg CreateMovieWithAddedParams) (int64, error)
+	CreateQualityDefinition(ctx context.Context, arg CreateQualityDefinitionParams) (int64, error)
+	CreateQualityProfile(ctx context.Context, arg CreateQualityProfileParams) (int64, error)
+	CreateQualityProfileItem(ctx context.Context, arg CreateQualityProfileItemParams) (int64, error)
+	// TV season queries. Entity reads join the most recent season_transition via
+	// embed(s) plus named transition columns. Get-by-id keeps the legacy LEFT
+	// JOIN (a season without transitions is still returned) while ListSeasons uses
+	// an INNER JOIN. ListSeasons supports any-length state filters through
+	// slice guarded by a nullable param (A3).
+	// A NULL id lets SQLite assign a fresh AUTOINCREMENT rowid; a non-NULL id
+	// inserts explicitly or lands in the ON CONFLICT branch (upsert by id).
+	CreateSeason(ctx context.Context, arg CreateSeasonParams) (int64, error)
+	// TV series queries. Entity reads join the most recent series_transition via
+	// embed(s) plus the named state column. ListSeries supports any-length
+	// state filters through slice guarded by a nullable param (A3). Inserts
+	// are plain INSERTs: the legacy ON CONFLICT (id) clause could never fire
+	// because id was never inserted.
+	CreateSeries(ctx context.Context, arg CreateSeriesParams) (int64, error)
+	// Used when the caller supplies an explicit "added" timestamp; otherwise
+	// CreateSeries lets the column default (CURRENT_TIMESTAMP, UTC) apply.
+	CreateSeriesWithAdded(ctx context.Context, arg CreateSeriesWithAddedParams) (int64, error)
+	DeactivateJobTransition(ctx context.Context, jobID int64) (JobTransition, error)
+	DeactivateMovieTransition(ctx context.Context, movieID int64) (int64, error)
+	DeleteDownloadClient(ctx context.Context, id int64) error
+	DeleteEpisode(ctx context.Context, id int64) error
+	DeleteEpisodeFile(ctx context.Context, id int64) error
+	DeleteEpisodeMetadata(ctx context.Context, id int64) error
+	DeleteIndexer(ctx context.Context, id int64) error
+	DeleteIndexerSource(ctx context.Context, id int64) error
+	DeleteIndexersBySourceID(ctx context.Context, indexerSourceID sql.NullInt64) error
+	DeleteJob(ctx context.Context, id int64) error
+	// An empty ids slice expands to IN (NULL) and deletes nothing (no-op).
+	DeleteJobsByIDs(ctx context.Context, ids []int64) (int64, error)
+	DeleteMovie(ctx context.Context, id int64) error
+	DeleteMovieFile(ctx context.Context, id int64) error
+	DeleteMovieMetadata(ctx context.Context, id int64) error
+	DeleteQualityDefinition(ctx context.Context, id int64) error
+	DeleteQualityProfile(ctx context.Context, id int64) error
+	DeleteQualityProfileItem(ctx context.Context, id int64) error
+	DeleteQualityProfileItemsByProfileID(ctx context.Context, profileID int64) error
+	DeleteSeason(ctx context.Context, id int64) error
+	DeleteSeasonMetadata(ctx context.Context, id int64) error
+	DeleteSeries(ctx context.Context, id int64) error
+	DeleteSeriesMetadata(ctx context.Context, id int64) error
+	DemoteEpisodeTransition(ctx context.Context, episodeID int64) (int64, error)
+	DemoteSeasonTransition(ctx context.Context, seasonID int64) (int64, error)
+	DemoteSeriesTransition(ctx context.Context, seriesID int64) (int64, error)
+	GetDownloadClient(ctx context.Context, id int64) (DownloadClient, error)
+	GetEntityTransitionsEpisode(ctx context.Context, entityID int64) ([]GetEntityTransitionsEpisodeRow, error)
+	GetEntityTransitionsJob(ctx context.Context, entityID int64) ([]GetEntityTransitionsJobRow, error)
+	GetEntityTransitionsMovie(ctx context.Context, entityID int64) ([]GetEntityTransitionsMovieRow, error)
+	GetEntityTransitionsSeason(ctx context.Context, entityID int64) ([]GetEntityTransitionsSeasonRow, error)
+	GetEntityTransitionsSeries(ctx context.Context, entityID int64) ([]GetEntityTransitionsSeriesRow, error)
+	GetEpisodeByEpisodeFileID(ctx context.Context, episodeFileID sql.NullInt64) (GetEpisodeByEpisodeFileIDRow, error)
+	GetEpisodeByID(ctx context.Context, id int64) (GetEpisodeByIDRow, error)
+	GetEpisodeFile(ctx context.Context, id int64) (EpisodeFile, error)
+	GetEpisodeFileByID(ctx context.Context, id int64) ([]EpisodeFile, error)
+	GetEpisodeMetadataByID(ctx context.Context, id int64) (EpisodeMetadatum, error)
+	GetEpisodeMetadataBySeasonAndNumber(ctx context.Context, arg GetEpisodeMetadataBySeasonAndNumberParams) (EpisodeMetadatum, error)
+	GetEpisodeMetadataByTmdbID(ctx context.Context, tmdbID int64) (EpisodeMetadatum, error)
+	GetEpisodeMetadataIDByTmdbID(ctx context.Context, tmdbID int64) (int64, error)
 	GetEpisodeTransitionItems(ctx context.Context, arg GetEpisodeTransitionItemsParams) ([]GetEpisodeTransitionItemsRow, error)
-	GetEpisodeTransitionItemsNoLimit(ctx context.Context, arg GetEpisodeTransitionItemsNoLimitParams) ([]GetEpisodeTransitionItemsNoLimitRow, error)
+	GetIndexerBySourceAndName(ctx context.Context, arg GetIndexerBySourceAndNameParams) (Indexer, error)
+	GetIndexerSource(ctx context.Context, id int64) (IndexerSource, error)
+	GetJobByID(ctx context.Context, id int64) (GetJobByIDRow, error)
+	// Job queries. Entity reads join the most recent job_transition via
+	// embed(j) plus named transition columns. ListJobs paginates with a
+	// stable ORDER BY (created_at DESC, id DESC) so same-second rows never
+	// duplicate/skip across pages (A4). The demote statement stamps updated_at
+	// with CURRENT_TIMESTAMP (UTC) - no application-formatted timestamps (B5).
+	GetJobByTypeAndState(ctx context.Context, arg GetJobByTypeAndStateParams) (GetJobByTypeAndStateRow, error)
 	GetJobTransitionItems(ctx context.Context, arg GetJobTransitionItemsParams) ([]GetJobTransitionItemsRow, error)
-	GetJobTransitionItemsNoLimit(ctx context.Context, arg GetJobTransitionItemsNoLimitParams) ([]GetJobTransitionItemsNoLimitRow, error)
 	GetJobTransitionsByDate(ctx context.Context, arg GetJobTransitionsByDateParams) ([]GetJobTransitionsByDateRow, error)
 	GetLibraryStatsByState(ctx context.Context) ([]GetLibraryStatsByStateRow, error)
+	GetMovieByFileID(ctx context.Context, movieFileID sql.NullInt64) (GetMovieByFileIDRow, error)
+	GetMovieByID(ctx context.Context, id int64) (GetMovieByIDRow, error)
+	GetMovieByMetadataID(ctx context.Context, movieMetadataID sql.NullInt64) (GetMovieByMetadataIDRow, error)
+	GetMovieByPath(ctx context.Context, path sql.NullString) (GetMovieByPathRow, error)
+	GetMovieFilesByMovieName(ctx context.Context, path sql.NullString) ([]MovieFile, error)
+	GetMovieMetadataByID(ctx context.Context, id int64) (MovieMetadatum, error)
+	GetMovieMetadataByTmdbID(ctx context.Context, tmdbID int64) (MovieMetadatum, error)
 	GetMovieTransitionItems(ctx context.Context, arg GetMovieTransitionItemsParams) ([]GetMovieTransitionItemsRow, error)
-	GetMovieTransitionItemsNoLimit(ctx context.Context, arg GetMovieTransitionItemsNoLimitParams) ([]GetMovieTransitionItemsNoLimitRow, error)
 	GetMovieTransitionsByDate(ctx context.Context, arg GetMovieTransitionsByDateParams) ([]GetMovieTransitionsByDateRow, error)
+	GetQualityDefinition(ctx context.Context, id int64) (QualityDefinition, error)
+	// Profiles and joined definition rows remain generated types throughout storage.
+	GetQualityProfile(ctx context.Context, id int64) (QualityProfile, error)
+	GetQualityProfileItem(ctx context.Context, id int64) (QualityProfileItem, error)
+	GetSeasonByID(ctx context.Context, id int64) (GetSeasonByIDRow, error)
+	GetSeasonBySeriesIDAndNumber(ctx context.Context, arg GetSeasonBySeriesIDAndNumberParams) (GetSeasonBySeriesIDAndNumberRow, error)
+	GetSeasonMetadataByID(ctx context.Context, id int64) (SeasonMetadatum, error)
+	GetSeasonMetadataByTmdbID(ctx context.Context, tmdbID int64) (SeasonMetadatum, error)
+	GetSeasonMetadataIDByTmdbID(ctx context.Context, tmdbID int64) (int64, error)
 	GetSeasonTransitionItems(ctx context.Context, arg GetSeasonTransitionItemsParams) ([]GetSeasonTransitionItemsRow, error)
-	GetSeasonTransitionItemsNoLimit(ctx context.Context, arg GetSeasonTransitionItemsNoLimitParams) ([]GetSeasonTransitionItemsNoLimitRow, error)
+	// Flexible lookup: each nullable param that is set constrains the match.
+	GetSeries(ctx context.Context, arg GetSeriesParams) (GetSeriesRow, error)
+	GetSeriesMetadataByID(ctx context.Context, id int64) (SeriesMetadatum, error)
+	GetSeriesMetadataByTmdbID(ctx context.Context, tmdbID int64) (SeriesMetadatum, error)
+	GetSeriesMetadataIDByTmdbID(ctx context.Context, tmdbID int64) (int64, error)
 	GetSeriesTransitionsByDate(ctx context.Context, arg GetSeriesTransitionsByDateParams) ([]GetSeriesTransitionsByDateRow, error)
+	InsertEpisodeTransition(ctx context.Context, arg InsertEpisodeTransitionParams) error
+	InsertSeasonTransition(ctx context.Context, arg InsertSeasonTransitionParams) error
+	InsertSeriesTransition(ctx context.Context, arg InsertSeriesTransitionParams) error
+	LinkEpisodeMetadata(ctx context.Context, arg LinkEpisodeMetadataParams) error
+	LinkMovieMetadata(ctx context.Context, arg LinkMovieMetadataParams) error
+	LinkSeasonMetadata(ctx context.Context, arg LinkSeasonMetadataParams) error
+	LinkSeriesMetadata(ctx context.Context, arg LinkSeriesMetadataParams) error
+	ListDownloadClients(ctx context.Context) ([]DownloadClient, error)
+	// Activity queries return generated rows; manager owns aggregation and presentation.
+	// Transition item listings paginate with stable ORDER BY (created_at DESC, id DESC) and the
+	// "zero limit = unlimited" COALESCE pattern, collapsing the old separate
+	// NoLimit queries. Date range params are named consistently.
 	ListDownloadingMovies(ctx context.Context) ([]ListDownloadingMoviesRow, error)
 	ListDownloadingSeries(ctx context.Context) ([]ListDownloadingSeriesRow, error)
+	ListEnabledIndexerSources(ctx context.Context) ([]IndexerSource, error)
+	ListEpisodeFiles(ctx context.Context) ([]EpisodeFile, error)
+	ListEpisodeMetadataByIDs(ctx context.Context, ids []int64) ([]EpisodeMetadatum, error)
+	ListEpisodeMetadataBySeasonMetadataID(ctx context.Context, seasonMetadataID int64) ([]EpisodeMetadatum, error)
+	// states_any is a NULL guard: when NULL no state constraint applies; when set,
+	// the states slice constrains the current transition state (any length).
+	ListEpisodes(ctx context.Context, arg ListEpisodesParams) ([]ListEpisodesRow, error)
 	ListErrorJobs(ctx context.Context, cutoffDatetime sql.NullTime) ([]ListErrorJobsRow, error)
+	ListIndexerSources(ctx context.Context) ([]IndexerSource, error)
+	ListIndexers(ctx context.Context) ([]Indexer, error)
+	// Stable pagination: created_at DESC with id DESC tie-break (CURRENT_TIMESTAMP
+	// has 1-second resolution). lim = 0 means unlimited.
+	ListJobs(ctx context.Context, arg ListJobsParams) ([]ListJobsRow, error)
+	ListMovieFiles(ctx context.Context) ([]MovieFile, error)
+	ListMovieMetadata(ctx context.Context) ([]MovieMetadatum, error)
+	ListMovies(ctx context.Context) ([]ListMoviesRow, error)
+	// states_any is a NULL guard: when NULL no state constraint applies; when set,
+	// the states slice constrains the current transition state (any length).
+	ListMoviesByStates(ctx context.Context, arg ListMoviesByStatesParams) ([]ListMoviesByStatesRow, error)
+	ListQualityDefinitions(ctx context.Context) ([]QualityDefinition, error)
+	ListQualityProfileItems(ctx context.Context) ([]QualityProfileItem, error)
+	ListQualityProfileRows(ctx context.Context, arg ListQualityProfileRowsParams) ([]ListQualityProfileRowsRow, error)
+	ListQualityProfiles(ctx context.Context) ([]QualityProfile, error)
+	ListQualityProfilesByMediaType(ctx context.Context, mediaType string) ([]QualityProfile, error)
 	ListRunningJobs(ctx context.Context) ([]ListRunningJobsRow, error)
+	ListSeasonMetadataBySeriesMetadataID(ctx context.Context, seriesMetadataID int64) ([]SeasonMetadatum, error)
+	// states_any is a NULL guard: when NULL no state constraint applies; when set,
+	// the states slice constrains the current transition state (any length).
+	ListSeasons(ctx context.Context, arg ListSeasonsParams) ([]ListSeasonsRow, error)
+	// states_any is a NULL guard: when NULL no state constraint applies; when set,
+	// the states slice constrains the current transition state (any length).
+	ListSeries(ctx context.Context, arg ListSeriesParams) ([]ListSeriesRow, error)
+	ListSeriesMetadata(ctx context.Context) ([]SeriesMetadatum, error)
+	ListSeriesMetadataByStatus(ctx context.Context, status string) ([]SeriesMetadatum, error)
+	UpdateDownloadClient(ctx context.Context, arg UpdateDownloadClientParams) error
+	UpdateEpisodeEpisodeFileID(ctx context.Context, arg UpdateEpisodeEpisodeFileIDParams) error
+	UpdateEpisodeFile(ctx context.Context, arg UpdateEpisodeFileParams) error
+	UpdateIndexer(ctx context.Context, arg UpdateIndexerParams) error
+	UpdateIndexerSource(ctx context.Context, arg UpdateIndexerSourceParams) error
+	UpdateMovieMetadataQuery(ctx context.Context, arg UpdateMovieMetadataQueryParams) error
+	UpdateMovieMonitored(ctx context.Context, arg UpdateMovieMonitoredParams) error
+	UpdateMovieMovieFileID(ctx context.Context, arg UpdateMovieMovieFileIDParams) error
+	UpdateMovieQualityProfileID(ctx context.Context, arg UpdateMovieQualityProfileIDParams) error
+	UpdateQualityDefinition(ctx context.Context, arg UpdateQualityDefinitionParams) error
+	UpdateQualityProfile(ctx context.Context, arg UpdateQualityProfileParams) error
+	// Legacy parity: only the monitored column is ever updated through this path.
+	UpdateSeriesByID(ctx context.Context, arg UpdateSeriesByIDParams) error
+	UpdateSeriesMetadata(ctx context.Context, arg UpdateSeriesMetadataParams) error
+	UpsertEpisodeMetadata(ctx context.Context, arg UpsertEpisodeMetadataParams) (int64, error)
+	UpsertSeasonMetadata(ctx context.Context, arg UpsertSeasonMetadataParams) (int64, error)
+	// Series/season/episode metadata queries plus the series-entity statements
+	// that live in series_metadata.go (UpdateSeriesByID, LinkSeriesMetadata).
+	// Upserts insert the id column only when non-zero (narg); a NULL id lets
+	// SQLite AUTOINCREMENT assign a fresh rowid. UpdateSeriesMetadata stamps
+	// last_info_sync with CURRENT_TIMESTAMP (UTC) in SQL - writers never
+	// hand-format local timestamps (B5).
+	UpsertSeriesMetadata(ctx context.Context, arg UpsertSeriesMetadataParams) (int64, error)
 }
 
 var _ Querier = (*Queries)(nil)

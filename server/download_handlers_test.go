@@ -8,13 +8,14 @@ import (
 	"strings"
 	"testing"
 
+	"database/sql"
 	"github.com/gorilla/mux"
 	"github.com/kasuboski/mediaz/config"
 	"github.com/kasuboski/mediaz/pkg/download"
 	downloadMocks "github.com/kasuboski/mediaz/pkg/download/mocks"
 	"github.com/kasuboski/mediaz/pkg/manager"
 	storeMocks "github.com/kasuboski/mediaz/pkg/storage/mocks"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
+	"github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 	tmdbMocks "github.com/kasuboski/mediaz/pkg/tmdb/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -30,14 +31,14 @@ func TestServer_UpdateDownloadClient(t *testing.T) {
 		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
 
 		apiKey := "test-api-key"
-		existingClient := model.DownloadClient{
+		existingClient := sqlcdb.DownloadClient{
 			ID:             1,
 			Type:           "usenet",
 			Implementation: "sabnzbd",
 			Scheme:         "http",
 			Host:           "localhost",
 			Port:           8080,
-			APIKey:         &apiKey,
+			ApiKey:         sql.NullString{String: apiKey, Valid: true},
 		}
 		store.EXPECT().GetDownloadClient(gomock.Any(), int64(1)).Return(existingClient, nil)
 		store.EXPECT().UpdateDownloadClient(gomock.Any(), int64(1), gomock.Any()).Return(nil)
@@ -115,7 +116,7 @@ func TestServer_UpdateDownloadClient(t *testing.T) {
 		store := storeMocks.NewMockStorage(ctrl)
 		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
 
-		store.EXPECT().GetDownloadClient(gomock.Any(), int64(1)).Return(model.DownloadClient{}, errors.New("client not found"))
+		store.EXPECT().GetDownloadClient(gomock.Any(), int64(1)).Return(sqlcdb.DownloadClient{}, errors.New("client not found"))
 
 		mgr := manager.New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
 
@@ -149,7 +150,7 @@ func TestServer_TestDownloadClient(t *testing.T) {
 		factory := downloadMocks.NewMockFactory(ctrl)
 		client := downloadMocks.NewMockDownloadClient(ctrl)
 
-		testClient := model.DownloadClient{
+		testClient := sqlcdb.DownloadClient{
 			Type:           "torrent",
 			Implementation: "transmission",
 			Scheme:         "http",
@@ -210,7 +211,7 @@ func TestServer_TestDownloadClient(t *testing.T) {
 		factory := downloadMocks.NewMockFactory(ctrl)
 		client := downloadMocks.NewMockDownloadClient(ctrl)
 
-		testClient := model.DownloadClient{
+		testClient := sqlcdb.DownloadClient{
 			Type:           "torrent",
 			Implementation: "transmission",
 			Scheme:         "http",

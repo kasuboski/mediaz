@@ -2,111 +2,136 @@ package sqlite
 
 import (
 	"context"
+	"database/sql"
 	"testing"
-	"time"
 
-	"github.com/go-jet/jet/v2/sqlite"
 	"github.com/kasuboski/mediaz/pkg/ptr"
 	"github.com/kasuboski/mediaz/pkg/storage"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/table"
+	"github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
+func tvTestSeries(t *testing.T, ctx context.Context, store storage.Storage) int64 {
+	t.Helper()
+	id, err := store.CreateSeries(ctx, sqlcdb.Series{Monitored: 1, QualityProfileID: 1}, storage.SeriesStateMissing)
+	require.NoError(t, err)
+	return id
+}
+
 func TestSeasonStorage(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	store := initSqlite(t, ctx)
-	assert.NotNil(t, store)
-
-	series := storage.Series{
-		Series: model.Series{
-			Monitored:        1,
-			QualityProfileID: 1,
-			Added:            ptr.To(time.Now()),
-		},
-	}
-
-	// Create a Series first
-	SeriesID, err := store.CreateSeries(ctx, series, storage.SeriesStateMissing)
-	require.Nil(t, err)
-
-	// Test creating a season
-	season := storage.Season{
-		Season: model.Season{
-			SeriesID: int32(SeriesID),
-		},
-	}
-
+	seriesID := tvTestSeries(t, ctx, store)
+	season := sqlcdb.Season{SeriesID: seriesID, SeasonNumber: 1, Monitored: 1}
 	id, err := store.CreateSeason(ctx, season, storage.SeasonStateMissing)
-	assert.Nil(t, err)
-	assert.Greater(t, id, int64(0))
-
-	// Test getting the season
-	retrieved, err := store.GetSeason(ctx, table.Season.ID.EQ(sqlite.Int64(id)))
-	assert.Nil(t, err)
-	assert.NotNil(t, retrieved)
-	assert.Equal(t, season.SeriesID, retrieved.SeriesID)
-	assert.Equal(t, storage.SeasonStateMissing, retrieved.State)
-
-	// Test listing seasons
-	seasons, err := store.ListSeasons(ctx, table.Season.SeriesID.EQ(sqlite.Int64(SeriesID)))
-	assert.Nil(t, err)
-	assert.Len(t, seasons, 1)
-	assert.Equal(t, season.SeriesID, seasons[0].SeriesID)
-	assert.Equal(t, storage.SeasonStateMissing, seasons[0].State)
-
-	// Test deleting the season
-	err = store.DeleteSeason(ctx, id)
-	assert.Nil(t, err)
-
-	// Verify deletion
-	seasons, err = store.ListSeasons(ctx, table.Season.SeriesID.EQ(sqlite.Int64(SeriesID)))
-	assert.Nil(t, err)
-	assert.Empty(t, seasons)
-
-	// Test getting non-existent season
-	_, err = store.GetSeason(ctx, table.Season.ID.EQ(sqlite.Int64(id)))
+	require.NoError(t, err)
+	season.ID = id
+	got, err := store.GetSeasonByID(ctx, id)
+	require.NoError(t, err)
+	assert.Equal(t, sqlcdb.GetSeasonByIDRow{Season: season, State: sql.NullString{String: string(storage.SeasonStateMissing), Valid: true}}, got)
+	list, err := store.ListSeasons(ctx, storage.SeasonFilter{SeriesID: &seriesID})
+	require.NoError(t, err)
+	assert.Equal(t, []sqlcdb.ListSeasonsRow{{Season: season, State: got.State.String}}, list)
+	byNumber, err := store.GetSeasonBySeriesIDAndNumber(ctx, seriesID, 1)
+	require.NoError(t, err)
+	assert.Equal(t, season, byNumber.Season)
+	_, err = store.GetSeasonBySeriesIDAndNumber(ctx, seriesID, 9)
+	assert.ErrorIs(t, err, storage.ErrNotFound)
+	_, err = store.GetSeasonBySeriesIDAndNumber(ctx, seriesID+1000, 1)
+	assert.ErrorIs(t, err, storage.ErrNotFound)
+	require.NoError(t, store.DeleteSeason(ctx, id))
+	list, err = store.ListSeasons(ctx, storage.SeasonFilter{SeriesID: &seriesID})
+	require.NoError(t, err)
+	assert.Empty(t, list)
+	_, err = store.GetSeasonByID(ctx, id)
 	assert.ErrorIs(t, err, storage.ErrNotFound)
 }
 
-func TestSQLite_UpdateSeasonState(t *testing.T) {
-	t.Run("update season state", func(t *testing.T) {
-		ctx := context.Background()
-		store := initSqlite(t, ctx)
-		require.NotNil(t, store)
+func TestSeasonStorage_CreateWithID(t *testing.T) {
+	ctx := t.Context()
+	store := initSqlite(t, ctx)
+	season := sqlcdb.Season{ID: 100, SeriesID: tvTestSeries(t, ctx, store), SeasonNumber: 7, Monitored: 1}
+	id, err := store.CreateSeason(ctx, season, storage.SeasonStateMissing)
+	require.NoError(t, err)
+	assert.Equal(t, season.ID, id)
+	before, err := store.GetSeasonByID(ctx, id)
+	require.NoError(t, err)
+	assert.Equal(t, season, before.Season)
+	update := season
+	update.SeasonNumber = 9
+	upsertID, err := store.CreateSeason(ctx, update, storage.SeasonStateDiscovered)
+	require.NoError(t, err)
+	assert.Equal(t, id, upsertID)
+	after, err := store.GetSeasonByID(ctx, id)
+	require.NoError(t, err)
+	before.Season = update
+	assert.Equal(t, before, after, "entity refresh must preserve its existing transition state")
+}
 
-		season := storage.Season{
-			Season: model.Season{
-				ID:               1,
-				SeriesID:         1,
-				SeasonMetadataID: ptr.To(int32(1)),
-				Monitored:        1,
-			},
-		}
-
-		seasonID, err := store.CreateSeason(ctx, season, storage.SeasonStateMissing)
-		require.NoError(t, err)
-		assert.Equal(t, int64(1), seasonID)
-
-		season.ID = int32(seasonID)
-		err = store.UpdateSeasonState(ctx, seasonID, storage.SeasonStateDownloading, &storage.TransitionStateMetadata{
-			DownloadID:             ptr.To("123"),
-			DownloadClientID:       ptr.To(int32(2)),
-			IsEntireSeasonDownload: ptr.To(true),
+func TestSeasonStorage_ListFilters(t *testing.T) {
+	ctx := t.Context()
+	store := initSqlite(t, ctx)
+	seriesID := tvTestSeries(t, ctx, store)
+	otherSeries := tvTestSeries(t, ctx, store)
+	missing, err := store.CreateSeason(ctx, sqlcdb.Season{SeriesID: seriesID, SeasonNumber: 1, Monitored: 1}, storage.SeasonStateMissing)
+	require.NoError(t, err)
+	downloading, err := store.CreateSeason(ctx, sqlcdb.Season{SeriesID: seriesID, SeasonNumber: 2, Monitored: 1}, storage.SeasonStateMissing)
+	require.NoError(t, err)
+	require.NoError(t, store.UpdateSeasonState(ctx, downloading, storage.SeasonStateDownloading, nil))
+	other, err := store.CreateSeason(ctx, sqlcdb.Season{SeriesID: otherSeries, SeasonNumber: 1}, storage.SeasonStateMissing)
+	require.NoError(t, err)
+	for _, tc := range []struct {
+		name   string
+		filter storage.SeasonFilter
+		ids    []int64
+	}{
+		{"all", storage.SeasonFilter{}, []int64{missing, downloading, other}},
+		{"series", storage.SeasonFilter{SeriesID: &seriesID}, []int64{missing, downloading}},
+		{"missing", storage.SeasonFilter{SeriesID: &seriesID, States: []storage.SeasonState{storage.SeasonStateMissing}}, []int64{missing}},
+		{"empty", storage.SeasonFilter{States: []storage.SeasonState{storage.SeasonStateCompleted}}, nil},
+		{"many states", storage.SeasonFilter{SeriesID: &seriesID, States: []storage.SeasonState{storage.SeasonStateNew, storage.SeasonStateCompleted, storage.SeasonStateContinuing, storage.SeasonStateDiscovered, storage.SeasonStateMissing, storage.SeasonStateDownloading}}, []int64{missing, downloading}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			rows, err := store.ListSeasons(ctx, tc.filter)
+			require.NoError(t, err)
+			var ids []int64
+			for _, row := range rows {
+				ids = append(ids, row.Season.ID)
+			}
+			assert.ElementsMatch(t, tc.ids, ids)
 		})
-		require.NoError(t, err)
+	}
+}
 
-		foundSeason, err := store.GetSeason(ctx, table.Season.ID.EQ(sqlite.Int64(seasonID)))
-		require.NoError(t, err)
-		require.NotNil(t, foundSeason)
-
-		assert.Equal(t, storage.SeasonStateDownloading, foundSeason.State)
-		assert.Equal(t, "123", foundSeason.DownloadID)
-		assert.Equal(t, int32(1), foundSeason.SeriesID)
-		assert.Equal(t, ptr.To(int32(1)), foundSeason.SeasonMetadataID)
-
-		err = store.UpdateSeasonState(ctx, 999999, storage.SeasonStateMissing, nil)
-		assert.ErrorIs(t, err, storage.ErrNotFound)
-	})
+func TestSQLite_UpdateSeasonState(t *testing.T) {
+	ctx := t.Context()
+	store := initSqlite(t, ctx)
+	id, err := store.CreateSeason(ctx, sqlcdb.Season{SeriesID: tvTestSeries(t, ctx, store), SeasonNumber: 1, Monitored: 1}, storage.SeasonStateMissing)
+	require.NoError(t, err)
+	clientID, err := store.CreateDownloadClient(ctx, sqlcdb.DownloadClient{Type: "torrent", Implementation: "transmission", Host: "localhost", Scheme: "http"})
+	require.NoError(t, err)
+	require.NoError(t, store.UpdateSeasonState(ctx, id, storage.SeasonStateDownloading, &storage.TransitionStateMetadata{DownloadID: ptr.To("bundle"), DownloadClientID: &clientID, IsEntireSeasonDownload: ptr.To(true)}))
+	got, err := store.GetSeasonByID(ctx, id)
+	require.NoError(t, err)
+	assert.Equal(t, sqlcdb.GetSeasonByIDRow{Season: got.Season, State: sql.NullString{String: string(storage.SeasonStateDownloading), Valid: true}, DownloadID: sql.NullString{String: "bundle", Valid: true}, DownloadClientID: sql.NullInt64{Int64: clientID, Valid: true}, IsEntireSeasonDownload: sql.NullBool{Bool: true, Valid: true}}, got)
+	require.NoError(t, store.UpdateSeasonState(ctx, id, storage.SeasonStateCompleted, nil))
+	require.NoError(t, store.UpdateSeasonState(ctx, id, storage.SeasonStateContinuing, nil))
+	got, err = store.GetSeasonByID(ctx, id)
+	require.NoError(t, err)
+	assert.Equal(t, sqlcdb.GetSeasonByIDRow{Season: got.Season, State: sql.NullString{String: string(storage.SeasonStateContinuing), Valid: true}}, got)
+	require.NoError(t, store.UpdateSeasonState(ctx, id, storage.SeasonStateCompleted, nil))
+	beforeRejected, err := store.GetSeasonByID(ctx, id)
+	require.NoError(t, err)
+	historyBeforeRejected := seasonTransitionRows(t, store.(*SQLite))
+	require.Len(t, historyBeforeRejected, 5)
+	for i, transition := range historyBeforeRejected {
+		assert.Equal(t, i == len(historyBeforeRejected)-1, transition.MostRecent)
+	}
+	require.Error(t, store.UpdateSeasonState(ctx, id, storage.SeasonStateMissing, nil))
+	afterRejected, err := store.GetSeasonByID(ctx, id)
+	require.NoError(t, err)
+	assert.Equal(t, beforeRejected, afterRejected, "rejected update must preserve the complete season row")
+	assert.Equal(t, historyBeforeRejected, seasonTransitionRows(t, store.(*SQLite)), "rejected update must preserve all history and latest markers")
+	assert.ErrorIs(t, store.UpdateSeasonState(ctx, 999999, storage.SeasonStateMissing, nil), storage.ErrNotFound)
 }

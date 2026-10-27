@@ -2,118 +2,68 @@ package sqlite
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
-	"time"
+	"strings"
 
-	"github.com/go-jet/jet/v2/qrm"
-	"github.com/go-jet/jet/v2/sqlite"
 	"github.com/kasuboski/mediaz/pkg/storage"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/table"
+	"github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
+	"github.com/mattn/go-sqlite3"
 )
 
-// getJobByTypeAndState retrieves a job by type and state
-func (s *SQLite) getJobByTypeAndState(ctx context.Context, jobType string, state storage.JobState) (*storage.Job, error) {
-	stmt := table.Job.
-		SELECT(
-			table.Job.AllColumns,
-			table.JobTransition.ToState,
-			table.JobTransition.UpdatedAt,
-			table.JobTransition.Error,
-		).
-		FROM(
-			table.Job.INNER_JOIN(
-				table.JobTransition,
-				table.Job.ID.EQ(table.JobTransition.JobID),
-			),
-		).
-		WHERE(
-			table.JobTransition.Type.EQ(sqlite.String(jobType)).
-				AND(table.JobTransition.ToState.EQ(sqlite.String(string(state)))).
-				AND(table.JobTransition.MostRecent.EQ(sqlite.Bool(true))),
-		)
-
-	job := new(storage.Job)
-	err := stmt.QueryContext(ctx, s.db, job)
-	if err != nil {
-		if errors.Is(err, qrm.ErrNoRows) {
-			return nil, storage.ErrNotFound
-		}
-		return nil, fmt.Errorf("failed to get job by type and state: %w", err)
-	}
-
-	return job, nil
-}
-
-// CreateJob stores a job and creates an initial state
-func (s *SQLite) CreateJob(ctx context.Context, job storage.Job, initialState storage.JobState) (int64, error) {
-	if job.State == "" {
-		job.State = storage.JobStateNew
-	}
-
-	err := job.Machine().ToState(initialState)
-	if err != nil {
+// CreateJob stores a job and creates an initial state. When the initial state
+// is pending, the check-then-insert pair runs inside the same immediate
+// transaction that inserts the job, and a UNIQUE violation of
+// idx_job_type_pending (another pending job of the same type) maps to
+// storage.ErrJobAlreadyPending.
+func (s *SQLite) CreateJob(ctx context.Context, job sqlcdb.Job, initialState storage.JobState) (int64, error) {
+	if err := storage.JobStateNew.Machine().ToState(initialState); err != nil {
 		return 0, err
-	}
-
-	if initialState == storage.JobStatePending {
-		existing, err := s.getJobByTypeAndState(ctx, job.Type, storage.JobStatePending)
-		if err == nil && existing != nil {
-			return 0, storage.ErrJobAlreadyPending
-		}
-		if err != nil && !errors.Is(err, storage.ErrNotFound) {
-			return 0, err
-		}
 	}
 
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return 0, err
 	}
+	q := s.txQueries(tx)
 
-	jobModel := model.Job{
-		Type: job.Type,
+	if initialState == storage.JobStatePending {
+		_, err := q.GetJobByTypeAndState(ctx, sqlcdb.GetJobByTypeAndStateParams{
+			Type:    job.Type,
+			ToState: string(storage.JobStatePending),
+		})
+		if err == nil {
+			tx.Rollback()
+			return 0, storage.ErrJobAlreadyPending
+		}
+		if !errors.Is(err, sql.ErrNoRows) {
+			tx.Rollback()
+			return 0, fmt.Errorf("failed to check for pending job: %w", err)
+		}
 	}
 
-	stmt := table.Job.
-		INSERT(table.Job.AllColumns.Except(table.Job.ID, table.Job.CreatedAt)).
-		MODEL(jobModel).
-		RETURNING(table.Job.ID)
-
-	result, err := stmt.ExecContext(ctx, tx)
+	inserted, err := q.CreateJob(ctx, job.Type)
 	if err != nil {
 		tx.Rollback()
 		return 0, err
 	}
 
-	inserted, err := result.LastInsertId()
-	if err != nil {
-		tx.Rollback()
-		return 0, err
-	}
-
-	transition := storage.JobTransition{
-		JobID:      int32(inserted),
+	if err := q.CreateJobTransition(ctx, sqlcdb.CreateJobTransitionParams{
+		JobID:      inserted,
 		Type:       job.Type,
 		ToState:    string(initialState),
 		MostRecent: true,
 		SortKey:    1,
-	}
-
-	transitionStmt := table.JobTransition.
-		INSERT(table.JobTransition.AllColumns.
-			Except(table.JobTransition.ID, table.JobTransition.CreatedAt, table.JobTransition.UpdatedAt)).
-		MODEL(transition)
-
-	_, err = transitionStmt.ExecContext(ctx, tx)
-	if err != nil {
+	}); err != nil {
 		tx.Rollback()
+		if isUniqueViolation(err, "idx_job_type_pending") {
+			return 0, storage.ErrJobAlreadyPending
+		}
 		return 0, err
 	}
 
-	err = tx.Commit()
-	if err != nil {
+	if err := tx.Commit(); err != nil {
 		tx.Rollback()
 		return 0, err
 	}
@@ -121,152 +71,107 @@ func (s *SQLite) CreateJob(ctx context.Context, job storage.Job, initialState st
 	return inserted, nil
 }
 
-// GetJob retrieves a job by ID with its current state
-func (s *SQLite) GetJob(ctx context.Context, id int64) (*storage.Job, error) {
-	stmt := table.Job.
-		SELECT(
-			table.Job.AllColumns,
-			table.JobTransition.ToState,
-			table.JobTransition.UpdatedAt,
-			table.JobTransition.Error,
-		).
-		FROM(
-			table.Job.INNER_JOIN(
-				table.JobTransition,
-				table.Job.ID.EQ(table.JobTransition.JobID),
-			),
-		).
-		WHERE(
-			table.Job.ID.EQ(sqlite.Int(id)).
-				AND(table.JobTransition.MostRecent.EQ(sqlite.Bool(true))),
-		)
-
-	job := new(storage.Job)
-	err := stmt.QueryContext(ctx, s.db, job)
-	if err != nil {
-		if errors.Is(err, qrm.ErrNoRows) {
-			return nil, storage.ErrNotFound
-		}
-		return nil, fmt.Errorf("failed to get job: %w", err)
+// isUniqueViolation reports whether err is a SQLite UNIQUE constraint
+// violation, optionally on the given index.
+func isUniqueViolation(err error, index string) bool {
+	var sqliteErr sqlite3.Error
+	if !errors.As(err, &sqliteErr) {
+		return false
 	}
-
-	return job, nil
+	if sqliteErr.ExtendedCode != sqlite3.ErrConstraintUnique && sqliteErr.ExtendedCode != sqlite3.ErrConstraintPrimaryKey {
+		return false
+	}
+	if index == "" {
+		return true
+	}
+	if strings.Contains(sqliteErr.Error(), index) {
+		return true
+	}
+	// SQLite reports indexed columns, not the partial index name.
+	return index == "idx_job_type_pending" && sqliteErr.ExtendedCode == sqlite3.ErrConstraintUnique && strings.Contains(sqliteErr.Error(), "job_transition.type, job_transition.to_state")
 }
 
-// CountJobs returns the total count of jobs matching the where conditions
-func (s *SQLite) CountJobs(ctx context.Context, where ...sqlite.BoolExpression) (int, error) {
-	stmt := table.Job.
-		SELECT(sqlite.COUNT(table.Job.ID).AS("count")).
-		FROM(
-			table.Job.INNER_JOIN(
-				table.JobTransition,
-				table.Job.ID.EQ(table.JobTransition.JobID),
-			),
-		)
-
-	for _, w := range where {
-		stmt = stmt.WHERE(w)
+// GetJob retrieves a job by ID with its current state
+func (s *SQLite) GetJob(ctx context.Context, id int64) (sqlcdb.GetJobByIDRow, error) {
+	row, err := s.Queries.GetJobByID(ctx, id)
+	if err != nil {
+		return sqlcdb.GetJobByIDRow{}, mapQueryErr(err, "failed to get job")
 	}
+	return row, nil
+}
 
-	var result struct {
-		Count int64
-	}
-	err := stmt.QueryContext(ctx, s.db, &result)
+// CountJobs returns the total count of jobs matching the filter. Queries are
+// always constrained to the most recent transition of each job.
+func (s *SQLite) CountJobs(ctx context.Context, filter storage.JobFilter) (int, error) {
+	count, err := s.Queries.CountJobs(ctx, sqlcdb.CountJobsParams{
+		JobType: filter.Type,
+		State:   filter.State,
+	})
 	if err != nil {
 		return 0, fmt.Errorf("failed to count jobs: %w", err)
 	}
 
-	return int(result.Count), nil
+	return int(count), nil
 }
 
-// ListJobs lists all jobs with optional pagination and where expressions
-// If limit is 0, returns all jobs without pagination
-func (s *SQLite) ListJobs(ctx context.Context, offset, limit int, where ...sqlite.BoolExpression) ([]*storage.Job, error) {
-	stmt := table.Job.
-		SELECT(
-			table.Job.AllColumns,
-			table.JobTransition.ToState,
-			table.JobTransition.UpdatedAt,
-			table.JobTransition.Error,
-		).
-		FROM(
-			table.Job.INNER_JOIN(
-				table.JobTransition,
-				table.Job.ID.EQ(table.JobTransition.JobID),
-			),
-		).
-		ORDER_BY(table.Job.CreatedAt.DESC())
-
-	for _, w := range where {
-		stmt = stmt.WHERE(w)
+// ListJobs lists jobs with optional pagination and filtering. A zero limit
+// returns all jobs. Ordering is created_at DESC, id DESC so pagination windows
+// are stable across same-second rows.
+func (s *SQLite) ListJobs(ctx context.Context, offset, limit int, filter storage.JobFilter) ([]sqlcdb.ListJobsRow, error) {
+	if offset < 0 || limit < 0 {
+		return nil, fmt.Errorf("offset and limit must be nonnegative")
 	}
-
-	if limit > 0 {
-		stmt = stmt.LIMIT(int64(limit)).OFFSET(int64(offset))
-	}
-
-	jobs := make([]*storage.Job, 0)
-	err := stmt.QueryContext(ctx, s.db, &jobs)
+	rows, err := s.Queries.ListJobs(ctx, sqlcdb.ListJobsParams{
+		JobType: filter.Type,
+		State:   filter.State,
+		Lim:     int64(limit),
+		Offs:    int64(offset),
+	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to list jobs: %w", err)
 	}
 
-	return jobs, nil
+	return rows, nil
 }
 
-// UpdateJobState updates the state of a job, optionally setting an error message
+// UpdateJobState updates the state of a job, optionally setting an error
+// message. The demote+insert pair runs in one transaction; on any failure
+// (including an invalid transition) nothing is written.
 func (s *SQLite) UpdateJobState(ctx context.Context, id int64, state storage.JobState, errorMsg *string) error {
-	job, err := s.GetJob(ctx, id)
-	if err != nil {
-		return err
-	}
-
-	err = job.Machine().ToState(state)
-	if err != nil {
-		return err
-	}
-
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
+	defer tx.Rollback()
+	q := s.txQueries(tx)
+	job, err := q.GetJobByID(ctx, id)
+	if err != nil {
+		return mapQueryErr(err, "failed to get job")
+	}
+	if err := storage.JobState(job.State).Machine().ToState(state); err != nil {
+		return err
+	}
 
-	previousStmt := table.JobTransition.
-		UPDATE().
-		SET(
-			table.JobTransition.MostRecent.SET(sqlite.Bool(false)),
-			table.JobTransition.UpdatedAt.SET(sqlite.TimestampExp(sqlite.String(time.Now().Format(timestampFormat)))),
-		).
-		WHERE(
-			table.JobTransition.JobID.EQ(sqlite.Int32(int32(id))).
-				AND(table.JobTransition.MostRecent.EQ(sqlite.Bool(true))),
-		).
-		RETURNING(table.JobTransition.AllColumns)
-
-	var previousTransition storage.JobTransition
-	err = previousStmt.QueryContext(ctx, tx, &previousTransition)
+	previous, err := q.DeactivateJobTransition(ctx, id)
 	if err != nil {
 		tx.Rollback()
 		return fmt.Errorf("failed to update previous job transition: %w", err)
 	}
 
-	transition := storage.JobTransition{
-		JobID:      int32(id),
-		Type:       job.Type,
-		FromState:  &previousTransition.ToState,
+	fromState := previous.ToState
+	transition := sqlcdb.CreateJobTransitionParams{
+		JobID:      id,
+		Type:       job.Job.Type,
+		FromState:  sql.NullString{String: fromState, Valid: true},
 		ToState:    string(state),
 		MostRecent: true,
-		SortKey:    previousTransition.SortKey + 1,
-		Error:      errorMsg,
+		SortKey:    previous.SortKey + 1,
+	}
+	if errorMsg != nil {
+		transition.Error = sql.NullString{String: *errorMsg, Valid: true}
 	}
 
-	insertStmt := table.JobTransition.
-		INSERT(table.JobTransition.AllColumns.
-			Except(table.JobTransition.ID, table.JobTransition.CreatedAt, table.JobTransition.UpdatedAt)).
-		MODEL(transition)
-
-	_, err = insertStmt.ExecContext(ctx, tx)
-	if err != nil {
+	if err := q.CreateJobTransition(ctx, transition); err != nil {
 		tx.Rollback()
 		return fmt.Errorf("failed to insert new job transition: %w", err)
 	}
@@ -276,34 +181,18 @@ func (s *SQLite) UpdateJobState(ctx context.Context, id int64, state storage.Job
 
 // DeleteJob removes a job by ID
 func (s *SQLite) DeleteJob(ctx context.Context, id int64) error {
-	stmt := table.Job.
-		DELETE().
-		WHERE(table.Job.ID.EQ(sqlite.Int64(id)))
-
-	_, err := s.handleDelete(ctx, stmt)
-	if err != nil {
+	if err := s.Queries.DeleteJob(ctx, id); err != nil {
 		return fmt.Errorf("failed to delete job: %w", err)
 	}
-
 	return nil
 }
 
-// DeleteJobs removes multiple jobs matching the where clause
-func (s *SQLite) DeleteJobs(ctx context.Context, where ...sqlite.BoolExpression) (int64, error) {
-	stmt := table.Job.DELETE()
-	for _, w := range where {
-		stmt = stmt.WHERE(w)
-	}
-
-	result, err := s.handleDelete(ctx, stmt)
+// DeleteJobsByIDs removes multiple jobs by their ids in a single statement
+// and returns the number of jobs removed. An empty ids slice is a no-op.
+func (s *SQLite) DeleteJobsByIDs(ctx context.Context, ids []int64) (int64, error) {
+	count, err := s.Queries.DeleteJobsByIDs(ctx, ids)
 	if err != nil {
 		return 0, fmt.Errorf("failed to delete jobs: %w", err)
 	}
-
-	count, err := result.RowsAffected()
-	if err != nil {
-		return 0, fmt.Errorf("failed to get rows affected: %w", err)
-	}
-
 	return count, nil
 }

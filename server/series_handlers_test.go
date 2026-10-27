@@ -1,6 +1,7 @@
 package server
 
 import (
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"io"
@@ -13,10 +14,9 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/kasuboski/mediaz/config"
 	"github.com/kasuboski/mediaz/pkg/manager"
-	"github.com/kasuboski/mediaz/pkg/ptr"
 	"github.com/kasuboski/mediaz/pkg/storage"
 	storeMocks "github.com/kasuboski/mediaz/pkg/storage/mocks"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
+	"github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 	tmdbMocks "github.com/kasuboski/mediaz/pkg/tmdb/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -37,21 +37,21 @@ func TestServer_GetTVDetailByTMDBID(t *testing.T) {
 		// Setup expectations for GetSeriesMetadata call
 		externalIDsJSON := `{"imdb_id":"tt1234567","tvdb_id":12345}`
 		watchProvidersJSON := `{"US":{"flatrate":[{"provider_id":8,"provider_name":"Netflix","logo_path":"/net.png"}]}}`
-		expectedMetadata := &model.SeriesMetadata{
+		expectedMetadata := sqlcdb.SeriesMetadatum{
 			ID:             1,
 			TmdbID:         12345,
 			Title:          "Test TV Show",
-			Overview:       ptr.To("A test TV show overview"),
-			FirstAirDate:   ptr.To(time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC)),
-			LastAirDate:    ptr.To(time.Date(2023, 12, 31, 0, 0, 0, 0, time.UTC)),
+			Overview:       sql.NullString{String: "A test TV show overview", Valid: true},
+			FirstAirDate:   sql.NullTime{Time: time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC), Valid: true},
+			LastAirDate:    sql.NullTime{Time: time.Date(2023, 12, 31, 0, 0, 0, 0, time.UTC), Valid: true},
 			SeasonCount:    3,
 			EpisodeCount:   30,
 			Status:         "Continuing",
-			ExternalIds:    &externalIDsJSON,
-			WatchProviders: &watchProvidersJSON,
+			ExternalIds:    sql.NullString{String: externalIDsJSON, Valid: true},
+			WatchProviders: sql.NullString{String: watchProvidersJSON, Valid: true},
 		}
 
-		store.EXPECT().GetSeriesMetadata(gomock.Any(), gomock.Any()).Return(expectedMetadata, nil)
+		store.EXPECT().GetSeriesMetadataByTmdbID(gomock.Any(), gomock.Any()).Return(expectedMetadata, nil)
 
 		// Setup expectations for TvSeriesDetails call
 		responseBody := `{
@@ -69,57 +69,58 @@ func TestServer_GetTVDetailByTMDBID(t *testing.T) {
 		tmdbMock.EXPECT().TvSeriesDetails(gomock.Any(), int32(12345), nil).Return(resp, nil)
 
 		// Setup expectations for GetSeries call
-		expectedSeries := &storage.Series{
-			Series: model.Series{
+		expectedSeries := sqlcdb.GetSeriesRow{
+			Series: sqlcdb.Series{
 				ID:               1,
-				SeriesMetadataID: ptr.To(int32(1)),
+				SeriesMetadataID: sql.NullInt64{Int64: 1, Valid: true},
 				QualityProfileID: 1,
 				Monitored:        1,
-				Path:             ptr.To("/tv/Test TV Show (2023)"),
+				Path:             sql.NullString{String: "/tv/Test TV Show (2023)", Valid: true},
 			},
-			State: storage.SeriesStateDiscovered,
+			State: string(storage.SeriesStateDiscovered),
 		}
 
-		store.EXPECT().GetSeries(gomock.Any(), gomock.Any()).Return(expectedSeries, nil)
+		store.EXPECT().GetSeriesByMetadataID(gomock.Any(), gomock.Any()).Return(expectedSeries, nil)
 
 		// Setup expectations for seasons and episodes data
-		seasonMetadataID := int32(10)
-		season := &storage.Season{
-			Season: model.Season{
+		seasonMetadataID := int64(10)
+		season := sqlcdb.GetSeasonByIDRow{
+			State: sql.NullString{String: string(storage.SeasonStateMissing), Valid: true},
+			Season: sqlcdb.Season{
 				ID:               1,
 				SeriesID:         1,
-				SeasonMetadataID: &seasonMetadataID,
+				SeasonMetadataID: sql.NullInt64{Int64: seasonMetadataID, Valid: true},
 				Monitored:        1,
 			},
 		}
-		seasonMetadata := &model.SeasonMetadata{
+		seasonMetadata := sqlcdb.SeasonMetadatum{
 			ID:     10,
 			Number: 1,
 			TmdbID: 67890,
 			Title:  "Season 1",
 		}
-		episodeMetadataID := int32(200)
-		episode := &storage.Episode{
-			Episode: model.Episode{
+		episodeMetadataID := int64(200)
+		episode := sqlcdb.GetEpisodeByIDRow{
+			Episode: sqlcdb.Episode{
 				ID:                100,
 				SeasonID:          1,
-				EpisodeMetadataID: &episodeMetadataID,
+				EpisodeMetadataID: sql.NullInt64{Int64: episodeMetadataID, Valid: true},
 				Monitored:         1,
 				EpisodeNumber:     1,
 			},
-			State: storage.EpisodeStateDownloaded,
+			State: sql.NullString{String: string(storage.EpisodeStateDownloaded), Valid: true},
 		}
 
-		store.EXPECT().ListSeasons(gomock.Any(), gomock.Any()).Return([]*storage.Season{season}, nil)
-		store.EXPECT().GetSeasonMetadata(gomock.Any(), gomock.Any()).Return(seasonMetadata, nil)
-		store.EXPECT().ListEpisodes(gomock.Any(), gomock.Any()).Return([]*storage.Episode{episode}, nil)
-		episodeMetadata := &model.EpisodeMetadata{
+		store.EXPECT().ListSeasons(gomock.Any(), gomock.Any()).Return([]sqlcdb.ListSeasonsRow{{Season: season.Season, State: season.State.String}}, nil)
+		store.EXPECT().GetSeasonMetadataByID(gomock.Any(), gomock.Any()).Return(seasonMetadata, nil)
+		store.EXPECT().ListEpisodes(gomock.Any(), gomock.Any()).Return([]sqlcdb.ListEpisodesRow{{Episode: episode.Episode, State: episode.State.String}}, nil)
+		episodeMetadata := sqlcdb.EpisodeMetadatum{
 			ID:     200,
 			Number: 1,
 			TmdbID: 54321,
 			Title:  "Episode 1",
 		}
-		store.EXPECT().ListEpisodeMetadata(gomock.Any(), gomock.Any()).Return([]*model.EpisodeMetadata{episodeMetadata}, nil)
+		store.EXPECT().ListEpisodeMetadataByIDs(gomock.Any(), gomock.Any()).Return([]sqlcdb.EpisodeMetadatum{episodeMetadata}, nil)
 
 		// Create manager with mocked dependencies
 		mgr := manager.New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
@@ -210,18 +211,18 @@ func TestServer_GetTVDetailByTMDBID(t *testing.T) {
 
 		emptyExternalIDsJSON := `{"imdb_id":null,"tvdb_id":null}`
 		emptyWatchProvidersJSON := `{"US":{"flatrate":[]}}`
-		expectedMetadata := &model.SeriesMetadata{
+		expectedMetadata := sqlcdb.SeriesMetadatum{
 			ID:             1,
 			TmdbID:         12345,
 			Title:          "Test TV Show",
 			SeasonCount:    2,
 			EpisodeCount:   20,
 			Status:         "Continuing",
-			ExternalIds:    &emptyExternalIDsJSON,
-			WatchProviders: &emptyWatchProvidersJSON,
+			ExternalIds:    sql.NullString{String: emptyExternalIDsJSON, Valid: true},
+			WatchProviders: sql.NullString{String: emptyWatchProvidersJSON, Valid: true},
 		}
 
-		store.EXPECT().GetSeriesMetadata(gomock.Any(), gomock.Any()).Return(expectedMetadata, nil)
+		store.EXPECT().GetSeriesMetadataByTmdbID(gomock.Any(), gomock.Any()).Return(expectedMetadata, nil)
 
 		responseBody := `{"poster_path": "/test-poster.jpg"}`
 		resp := &http.Response{
@@ -230,7 +231,7 @@ func TestServer_GetTVDetailByTMDBID(t *testing.T) {
 		}
 		tmdbMock.EXPECT().TvSeriesDetails(gomock.Any(), int32(12345), nil).Return(resp, nil)
 
-		store.EXPECT().GetSeries(gomock.Any(), gomock.Any()).Return(nil, storage.ErrNotFound)
+		store.EXPECT().GetSeriesByMetadataID(gomock.Any(), gomock.Any()).Return(sqlcdb.GetSeriesRow{}, storage.ErrNotFound)
 
 		mgr := manager.New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
 
@@ -282,7 +283,7 @@ func TestServer_GetTVDetailByTMDBID(t *testing.T) {
 		store := storeMocks.NewMockStorage(ctrl)
 		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
 
-		store.EXPECT().GetSeriesMetadata(gomock.Any(), gomock.Any()).Return(nil, errors.New("metadata not found"))
+		store.EXPECT().GetSeriesMetadataByTmdbID(gomock.Any(), gomock.Any()).Return(sqlcdb.SeriesMetadatum{}, errors.New("metadata not found"))
 
 		mgr := manager.New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
 

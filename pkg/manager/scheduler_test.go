@@ -2,17 +2,34 @@ package manager
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"testing"
 	"time"
 
 	"github.com/kasuboski/mediaz/config"
 	"github.com/kasuboski/mediaz/pkg/storage"
+	"github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 	mediaSqlite "github.com/kasuboski/mediaz/pkg/storage/sqlite"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func newJobTestStore(t *testing.T, ctx context.Context) storage.Storage {
+	t.Helper()
+	store, err := mediaSqlite.New(ctx, ":memory:")
+	require.NoError(t, err)
+	return store
+}
+
+func asListJobRow(job sqlcdb.GetJobByIDRow) sqlcdb.ListJobsRow {
+	return sqlcdb.ListJobsRow{
+		Job:       job.Job,
+		State:     job.State,
+		UpdatedAt: job.UpdatedAt,
+		Error:     job.Error,
+	}
+}
 
 func TestScheduler_createPendingJob(t *testing.T) {
 	t.Run("invalid job type", func(t *testing.T) {
@@ -28,15 +45,8 @@ func TestScheduler_createPendingJob(t *testing.T) {
 	})
 
 	t.Run("create job and duplicate pending job", func(t *testing.T) {
-		store, err := mediaSqlite.New(context.Background(), ":memory:")
-		require.NoError(t, err)
-
-		schemas, err := storage.ReadSchemaFiles("../storage/sqlite/schema/schema.sql", "../storage/sqlite/schema/defaults.sql")
-		require.NoError(t, err)
-
 		ctx := context.Background()
-		err = store.Init(ctx, schemas...)
-		require.NoError(t, err)
+		store := newJobTestStore(t, ctx)
 
 		scheduler := NewScheduler(store, config.Manager{}, make(map[JobType]JobExecutor))
 
@@ -49,17 +59,17 @@ func TestScheduler_createPendingJob(t *testing.T) {
 		require.Len(t, jobs, 1)
 
 		job := jobs[0]
-		assert.Equal(t, job.ID, int32(id))
-		assert.Equal(t, job.Type, string(MovieIndex))
-		assert.NotNil(t, job.CreatedAt)
+		assert.Equal(t, id, job.Job.ID)
+		assert.Equal(t, job.Job.Type, string(MovieIndex))
+		assert.True(t, job.Job.CreatedAt.Valid)
 
 		jobs, err = scheduler.listPendingJobsByType(ctx, MovieIndex)
 		require.Nil(t, err)
 
 		job = jobs[0]
-		assert.Equal(t, job.ID, int32(id))
-		assert.Equal(t, job.Type, string(MovieIndex))
-		assert.NotNil(t, job.CreatedAt)
+		assert.Equal(t, id, job.Job.ID)
+		assert.Equal(t, job.Job.Type, string(MovieIndex))
+		assert.True(t, job.Job.CreatedAt.Valid)
 
 		id, err = scheduler.createPendingJob(ctx, MovieIndex)
 		require.NotNil(t, err)
@@ -69,15 +79,8 @@ func TestScheduler_createPendingJob(t *testing.T) {
 
 func TestScheduler_listPendingJobs(t *testing.T) {
 	t.Run("no pending jobs", func(t *testing.T) {
-		store, err := mediaSqlite.New(context.Background(), ":memory:")
-		require.NoError(t, err)
-
-		schemas, err := storage.ReadSchemaFiles("../storage/sqlite/schema/schema.sql", "../storage/sqlite/schema/defaults.sql")
-		require.NoError(t, err)
-
 		ctx := context.Background()
-		err = store.Init(ctx, schemas...)
-		require.NoError(t, err)
+		store := newJobTestStore(t, ctx)
 
 		scheduler := NewScheduler(store, config.Manager{}, make(map[JobType]JobExecutor))
 
@@ -87,15 +90,8 @@ func TestScheduler_listPendingJobs(t *testing.T) {
 	})
 
 	t.Run("list multiple pending jobs", func(t *testing.T) {
-		store, err := mediaSqlite.New(context.Background(), ":memory:")
-		require.NoError(t, err)
-
-		schemas, err := storage.ReadSchemaFiles("../storage/sqlite/schema/schema.sql", "../storage/sqlite/schema/defaults.sql")
-		require.NoError(t, err)
-
 		ctx := context.Background()
-		err = store.Init(ctx, schemas...)
-		require.NoError(t, err)
+		store := newJobTestStore(t, ctx)
 
 		scheduler := NewScheduler(store, config.Manager{}, make(map[JobType]JobExecutor))
 
@@ -114,23 +110,16 @@ func TestScheduler_listPendingJobs(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, jobs, 1)
 
-		assert.Equal(t, int64(jobs[0].ID), id2)
-		assert.Equal(t, jobs[0].Type, string(SeriesIndex))
-		assert.NotNil(t, jobs[0].CreatedAt)
+		assert.Equal(t, id2, jobs[0].Job.ID)
+		assert.Equal(t, jobs[0].Job.Type, string(SeriesIndex))
+		assert.True(t, jobs[0].Job.CreatedAt.Valid)
 	})
 }
 
 func TestScheduler_listPendingJobsByType(t *testing.T) {
 	t.Run("no pending jobs of type", func(t *testing.T) {
-		store, err := mediaSqlite.New(context.Background(), ":memory:")
-		require.NoError(t, err)
-
-		schemas, err := storage.ReadSchemaFiles("../storage/sqlite/schema/schema.sql", "../storage/sqlite/schema/defaults.sql")
-		require.NoError(t, err)
-
 		ctx := context.Background()
-		err = store.Init(ctx, schemas...)
-		require.NoError(t, err)
+		store := newJobTestStore(t, ctx)
 
 		scheduler := NewScheduler(store, config.Manager{}, make(map[JobType]JobExecutor))
 
@@ -140,15 +129,8 @@ func TestScheduler_listPendingJobsByType(t *testing.T) {
 	})
 
 	t.Run("list only jobs of specific type", func(t *testing.T) {
-		store, err := mediaSqlite.New(context.Background(), ":memory:")
-		require.NoError(t, err)
-
-		schemas, err := storage.ReadSchemaFiles("../storage/sqlite/schema/schema.sql", "../storage/sqlite/schema/defaults.sql")
-		require.NoError(t, err)
-
 		ctx := context.Background()
-		err = store.Init(ctx, schemas...)
-		require.NoError(t, err)
+		store := newJobTestStore(t, ctx)
 
 		scheduler := NewScheduler(store, config.Manager{}, make(map[JobType]JobExecutor))
 
@@ -167,23 +149,16 @@ func TestScheduler_listPendingJobsByType(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, jobs, 1)
 
-		assert.Equal(t, int64(jobs[0].ID), seriesID)
-		assert.Equal(t, jobs[0].Type, string(SeriesIndex))
-		assert.NotNil(t, jobs[0].CreatedAt)
+		assert.Equal(t, seriesID, jobs[0].Job.ID)
+		assert.Equal(t, jobs[0].Job.Type, string(SeriesIndex))
+		assert.True(t, jobs[0].Job.CreatedAt.Valid)
 	})
 }
 
 func TestScheduler_executeJob(t *testing.T) {
 	t.Run("successful job execution", func(t *testing.T) {
-		store, err := mediaSqlite.New(context.Background(), ":memory:")
-		require.NoError(t, err)
-
-		schemas, err := storage.ReadSchemaFiles("../storage/sqlite/schema/schema.sql", "../storage/sqlite/schema/defaults.sql")
-		require.NoError(t, err)
-
 		ctx := context.Background()
-		err = store.Init(ctx, schemas...)
-		require.NoError(t, err)
+		store := newJobTestStore(t, ctx)
 
 		executorCalled := false
 		executors := map[JobType]JobExecutor{
@@ -200,31 +175,24 @@ func TestScheduler_executeJob(t *testing.T) {
 
 		job, err := store.GetJob(ctx, jobID)
 		require.NoError(t, err)
-		require.Equal(t, storage.JobStatePending, job.State)
+		require.Equal(t, string(storage.JobStatePending), job.State)
 
-		scheduler.executeJob(ctx, job)
+		scheduler.executeJob(ctx, asListJobRow(job))
 
 		assert.True(t, executorCalled)
 
 		updatedJob, err := store.GetJob(ctx, jobID)
 		require.NoError(t, err)
-		assert.Equal(t, storage.JobStateDone, updatedJob.State)
-		assert.Nil(t, updatedJob.Error)
+		assert.Equal(t, string(storage.JobStateDone), updatedJob.State)
+		assert.Equal(t, sql.NullString{}, updatedJob.Error)
 
 		_, inCache := scheduler.runningJobs.Get(jobID)
 		assert.False(t, inCache, "job should be removed from cache after completion")
 	})
 
 	t.Run("no executor found for job type", func(t *testing.T) {
-		store, err := mediaSqlite.New(context.Background(), ":memory:")
-		require.NoError(t, err)
-
-		schemas, err := storage.ReadSchemaFiles("../storage/sqlite/schema/schema.sql", "../storage/sqlite/schema/defaults.sql")
-		require.NoError(t, err)
-
 		ctx := context.Background()
-		err = store.Init(ctx, schemas...)
-		require.NoError(t, err)
+		store := newJobTestStore(t, ctx)
 
 		scheduler := NewScheduler(store, config.Manager{}, make(map[JobType]JobExecutor))
 
@@ -234,28 +202,21 @@ func TestScheduler_executeJob(t *testing.T) {
 		job, err := store.GetJob(ctx, jobID)
 		require.NoError(t, err)
 
-		scheduler.executeJob(ctx, job)
+		scheduler.executeJob(ctx, asListJobRow(job))
 
 		updatedJob, err := store.GetJob(ctx, jobID)
 		require.NoError(t, err)
-		assert.Equal(t, storage.JobStateError, updatedJob.State)
-		assert.NotNil(t, updatedJob.Error)
-		assert.Equal(t, "no executor found for job type", *updatedJob.Error)
+		assert.Equal(t, string(storage.JobStateError), updatedJob.State)
+		assert.True(t, updatedJob.Error.Valid)
+		assert.Equal(t, "no executor found for job type", updatedJob.Error.String)
 
 		_, inCache := scheduler.runningJobs.Get(jobID)
 		assert.False(t, inCache, "job should be removed from cache after error")
 	})
 
 	t.Run("executor returns error", func(t *testing.T) {
-		store, err := mediaSqlite.New(context.Background(), ":memory:")
-		require.NoError(t, err)
-
-		schemas, err := storage.ReadSchemaFiles("../storage/sqlite/schema/schema.sql", "../storage/sqlite/schema/defaults.sql")
-		require.NoError(t, err)
-
 		ctx := context.Background()
-		err = store.Init(ctx, schemas...)
-		require.NoError(t, err)
+		store := newJobTestStore(t, ctx)
 
 		testError := "test execution error"
 		executors := map[JobType]JobExecutor{
@@ -272,28 +233,21 @@ func TestScheduler_executeJob(t *testing.T) {
 		job, err := store.GetJob(ctx, jobID)
 		require.NoError(t, err)
 
-		scheduler.executeJob(ctx, job)
+		scheduler.executeJob(ctx, asListJobRow(job))
 
 		updatedJob, err := store.GetJob(ctx, jobID)
 		require.NoError(t, err)
-		assert.Equal(t, storage.JobStateError, updatedJob.State)
-		assert.NotNil(t, updatedJob.Error)
-		assert.Equal(t, testError, *updatedJob.Error)
+		assert.Equal(t, string(storage.JobStateError), updatedJob.State)
+		assert.True(t, updatedJob.Error.Valid)
+		assert.Equal(t, testError, updatedJob.Error.String)
 
 		_, inCache := scheduler.runningJobs.Get(jobID)
 		assert.False(t, inCache, "job should be removed from cache after error")
 	})
 
 	t.Run("job added to and removed from running cache", func(t *testing.T) {
-		store, err := mediaSqlite.New(context.Background(), ":memory:")
-		require.NoError(t, err)
-
-		schemas, err := storage.ReadSchemaFiles("../storage/sqlite/schema/schema.sql", "../storage/sqlite/schema/defaults.sql")
-		require.NoError(t, err)
-
 		ctx := context.Background()
-		err = store.Init(ctx, schemas...)
-		require.NoError(t, err)
+		store := newJobTestStore(t, ctx)
 
 		jobExecuting := make(chan bool)
 		executors := map[JobType]JobExecutor{
@@ -315,7 +269,7 @@ func TestScheduler_executeJob(t *testing.T) {
 		jobCtx, cancel := context.WithCancel(ctx)
 		defer cancel()
 
-		go scheduler.executeJob(jobCtx, job)
+		go scheduler.executeJob(jobCtx, asListJobRow(job))
 
 		<-jobExecuting
 
@@ -333,15 +287,8 @@ func TestScheduler_executeJob(t *testing.T) {
 
 func TestScheduler_CancelJob(t *testing.T) {
 	t.Run("cancel pending job", func(t *testing.T) {
-		store, err := mediaSqlite.New(context.Background(), ":memory:")
-		require.NoError(t, err)
-
-		schemas, err := storage.ReadSchemaFiles("../storage/sqlite/schema/schema.sql", "../storage/sqlite/schema/defaults.sql")
-		require.NoError(t, err)
-
 		ctx := context.Background()
-		err = store.Init(ctx, schemas...)
-		require.NoError(t, err)
+		store := newJobTestStore(t, ctx)
 
 		scheduler := NewScheduler(store, config.Manager{}, make(map[JobType]JobExecutor))
 
@@ -350,26 +297,19 @@ func TestScheduler_CancelJob(t *testing.T) {
 
 		job, err := store.GetJob(ctx, jobID)
 		require.NoError(t, err)
-		assert.Equal(t, storage.JobStatePending, job.State)
+		assert.Equal(t, string(storage.JobStatePending), job.State)
 
 		err = scheduler.CancelJob(ctx, jobID)
 		require.NoError(t, err)
 
 		job, err = store.GetJob(ctx, jobID)
 		require.NoError(t, err)
-		assert.Equal(t, storage.JobStateCancelled, job.State)
+		assert.Equal(t, string(storage.JobStateCancelled), job.State)
 	})
 
 	t.Run("cancel running job", func(t *testing.T) {
-		store, err := mediaSqlite.New(context.Background(), ":memory:")
-		require.NoError(t, err)
-
-		schemas, err := storage.ReadSchemaFiles("../storage/sqlite/schema/schema.sql", "../storage/sqlite/schema/defaults.sql")
-		require.NoError(t, err)
-
 		ctx := context.Background()
-		err = store.Init(ctx, schemas...)
-		require.NoError(t, err)
+		store := newJobTestStore(t, ctx)
 
 		jobExecuting := make(chan bool)
 		executors := map[JobType]JobExecutor{
@@ -388,7 +328,7 @@ func TestScheduler_CancelJob(t *testing.T) {
 		job, err := store.GetJob(ctx, jobID)
 		require.NoError(t, err)
 
-		go scheduler.executeJob(ctx, job)
+		go scheduler.executeJob(ctx, asListJobRow(job))
 
 		<-jobExecuting
 
@@ -403,19 +343,12 @@ func TestScheduler_CancelJob(t *testing.T) {
 
 		updatedJob, err := store.GetJob(ctx, jobID)
 		require.NoError(t, err)
-		assert.Equal(t, storage.JobStateCancelled, updatedJob.State)
+		assert.Equal(t, string(storage.JobStateCancelled), updatedJob.State)
 	})
 
 	t.Run("cancel completed job does nothing", func(t *testing.T) {
-		store, err := mediaSqlite.New(context.Background(), ":memory:")
-		require.NoError(t, err)
-
-		schemas, err := storage.ReadSchemaFiles("../storage/sqlite/schema/schema.sql", "../storage/sqlite/schema/defaults.sql")
-		require.NoError(t, err)
-
 		ctx := context.Background()
-		err = store.Init(ctx, schemas...)
-		require.NoError(t, err)
+		store := newJobTestStore(t, ctx)
 
 		scheduler := NewScheduler(store, config.Manager{}, make(map[JobType]JobExecutor))
 
@@ -433,19 +366,12 @@ func TestScheduler_CancelJob(t *testing.T) {
 
 		job, err := store.GetJob(ctx, jobID)
 		require.NoError(t, err)
-		assert.Equal(t, storage.JobStateDone, job.State)
+		assert.Equal(t, string(storage.JobStateDone), job.State)
 	})
 
 	t.Run("cancel errored job does nothing", func(t *testing.T) {
-		store, err := mediaSqlite.New(context.Background(), ":memory:")
-		require.NoError(t, err)
-
-		schemas, err := storage.ReadSchemaFiles("../storage/sqlite/schema/schema.sql", "../storage/sqlite/schema/defaults.sql")
-		require.NoError(t, err)
-
 		ctx := context.Background()
-		err = store.Init(ctx, schemas...)
-		require.NoError(t, err)
+		store := newJobTestStore(t, ctx)
 
 		scheduler := NewScheduler(store, config.Manager{}, make(map[JobType]JobExecutor))
 
@@ -461,21 +387,14 @@ func TestScheduler_CancelJob(t *testing.T) {
 
 		job, err := store.GetJob(ctx, jobID)
 		require.NoError(t, err)
-		assert.Equal(t, storage.JobStateError, job.State)
-		assert.NotNil(t, job.Error)
-		assert.Equal(t, errorMsg, *job.Error)
+		assert.Equal(t, string(storage.JobStateError), job.State)
+		assert.True(t, job.Error.Valid)
+		assert.Equal(t, errorMsg, job.Error.String)
 	})
 
 	t.Run("cancel already cancelled job does nothing", func(t *testing.T) {
-		store, err := mediaSqlite.New(context.Background(), ":memory:")
-		require.NoError(t, err)
-
-		schemas, err := storage.ReadSchemaFiles("../storage/sqlite/schema/schema.sql", "../storage/sqlite/schema/defaults.sql")
-		require.NoError(t, err)
-
 		ctx := context.Background()
-		err = store.Init(ctx, schemas...)
-		require.NoError(t, err)
+		store := newJobTestStore(t, ctx)
 
 		scheduler := NewScheduler(store, config.Manager{}, make(map[JobType]JobExecutor))
 
@@ -490,23 +409,16 @@ func TestScheduler_CancelJob(t *testing.T) {
 
 		job, err := store.GetJob(ctx, jobID)
 		require.NoError(t, err)
-		assert.Equal(t, storage.JobStateCancelled, job.State)
+		assert.Equal(t, string(storage.JobStateCancelled), job.State)
 	})
 
 	t.Run("cancel non-existent job", func(t *testing.T) {
-		store, err := mediaSqlite.New(context.Background(), ":memory:")
-		require.NoError(t, err)
-
-		schemas, err := storage.ReadSchemaFiles("../storage/sqlite/schema/schema.sql", "../storage/sqlite/schema/defaults.sql")
-		require.NoError(t, err)
-
 		ctx := context.Background()
-		err = store.Init(ctx, schemas...)
-		require.NoError(t, err)
+		store := newJobTestStore(t, ctx)
 
 		scheduler := NewScheduler(store, config.Manager{}, make(map[JobType]JobExecutor))
 
-		err = scheduler.CancelJob(ctx, 9999)
+		err := scheduler.CancelJob(ctx, 9999)
 		require.Error(t, err)
 	})
 }
@@ -544,15 +456,10 @@ func TestToJobResponse(t *testing.T) {
 	errorMsg := "test error"
 
 	t.Run("job with no error", func(t *testing.T) {
-		job := &storage.Job{
-			Job: model.Job{
-				ID:        1,
-				Type:      string(MovieIndex),
-				CreatedAt: &now,
-			},
-			State:     storage.JobStateDone,
-			UpdatedAt: &now,
-			Error:     nil,
+		job := sqlcdb.GetJobByIDRow{
+			Job:       sqlcdb.Job{ID: 1, Type: string(MovieIndex), CreatedAt: sql.NullTime{Time: now, Valid: true}},
+			State:     string(storage.JobStateDone),
+			UpdatedAt: sql.NullTime{Time: now, Valid: true},
 		}
 
 		response := toJobResponse(job)
@@ -566,15 +473,11 @@ func TestToJobResponse(t *testing.T) {
 	})
 
 	t.Run("job with error", func(t *testing.T) {
-		job := &storage.Job{
-			Job: model.Job{
-				ID:        2,
-				Type:      string(SeriesIndex),
-				CreatedAt: &now,
-			},
-			State:     storage.JobStateError,
-			UpdatedAt: &now,
-			Error:     &errorMsg,
+		job := sqlcdb.GetJobByIDRow{
+			Job:       sqlcdb.Job{ID: 2, Type: string(SeriesIndex), CreatedAt: sql.NullTime{Time: now, Valid: true}},
+			State:     string(storage.JobStateError),
+			UpdatedAt: sql.NullTime{Time: now, Valid: true},
+			Error:     sql.NullString{String: errorMsg, Valid: true},
 		}
 
 		response := toJobResponse(job)
@@ -782,7 +685,7 @@ func TestScheduler_checkAndScheduleJob(t *testing.T) {
 
 		jobs, err := scheduler.listPendingJobsByType(ctx, MovieIndex)
 		require.NoError(t, err)
-		assert.Len(t, jobs, 1, "should create new job even when running job exists")
+		assert.Empty(t, jobs, "should not create a pending job while one is running")
 	})
 }
 
@@ -812,13 +715,13 @@ func TestScheduler_pruneOldJobs(t *testing.T) {
 			require.NoError(t, err)
 		}
 
-		allJobs, err := store.ListJobs(ctx, 0, 0)
+		allJobs, err := store.ListJobs(ctx, 0, 0, storage.JobFilter{})
 		require.NoError(t, err)
 		assert.Len(t, allJobs, 5)
 
 		scheduler.pruneOldJobs(ctx)
 
-		remainingJobs, err := store.ListJobs(ctx, 0, 0)
+		remainingJobs, err := store.ListJobs(ctx, 0, 0, storage.JobFilter{})
 		require.NoError(t, err)
 		assert.Equal(t, 2, len(remainingJobs), "should retain exactly minimum jobs")
 	})
@@ -848,10 +751,10 @@ func TestScheduler_pruneOldJobs(t *testing.T) {
 
 		scheduler.pruneOldJobs(ctx)
 
-		remainingJobs, err := store.ListJobs(ctx, 0, 0)
+		remainingJobs, err := store.ListJobs(ctx, 0, 0, storage.JobFilter{})
 		require.NoError(t, err)
 		require.Len(t, remainingJobs, 1)
-		assert.Equal(t, jobID, int64(remainingJobs[0].ID))
+		assert.Equal(t, jobID, remainingJobs[0].Job.ID)
 	})
 
 	t.Run("cleanup disabled with 0 does nothing", func(t *testing.T) {
@@ -888,10 +791,10 @@ func TestScheduler_pruneOldJobs(t *testing.T) {
 
 		assert.False(t, called, "pruning should not run when min jobs to keep is 0")
 
-		remainingJobs, err := store.ListJobs(ctx, 0, 0)
+		remainingJobs, err := store.ListJobs(ctx, 0, 0, storage.JobFilter{})
 		require.NoError(t, err)
 		require.Len(t, remainingJobs, 1)
-		assert.Equal(t, jobID, int64(remainingJobs[0].ID))
+		assert.Equal(t, jobID, remainingJobs[0].Job.ID)
 	})
 }
 

@@ -1,11 +1,12 @@
 package manager
 
 import (
+	"database/sql"
 	"testing"
 
 	"github.com/kasuboski/mediaz/pkg/ptr"
 	"github.com/kasuboski/mediaz/pkg/storage"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
+	sqlcdb "github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -13,51 +14,51 @@ import (
 func Test_getSeasonRuntime(t *testing.T) {
 	tests := []struct {
 		name                string
-		episodeMetadata     []*model.EpisodeMetadata
+		episodeMetadata     []*sqlcdb.EpisodeMetadatum
 		totalSeasonEpisodes int
-		want                int32
+		want                int64
 	}{
 		{
 			name: "all episodes have runtime",
-			episodeMetadata: []*model.EpisodeMetadata{
-				{Runtime: ptr.To(int32(30))},
-				{Runtime: ptr.To(int32(30))},
-				{Runtime: ptr.To(int32(30))},
+			episodeMetadata: []*sqlcdb.EpisodeMetadatum{
+				{Runtime: sql.NullInt64{Int64: 30, Valid: true}},
+				{Runtime: sql.NullInt64{Int64: 30, Valid: true}},
+				{Runtime: sql.NullInt64{Int64: 30, Valid: true}},
 			},
 			totalSeasonEpisodes: 3,
 			want:                90,
 		},
 		{
 			name: "some episodes missing runtime",
-			episodeMetadata: []*model.EpisodeMetadata{
-				{Runtime: ptr.To(int32(30))},
-				{Runtime: nil},
-				{Runtime: ptr.To(int32(30))},
+			episodeMetadata: []*sqlcdb.EpisodeMetadatum{
+				{Runtime: sql.NullInt64{Int64: 30, Valid: true}},
+				{Runtime: sql.NullInt64{}},
+				{Runtime: sql.NullInt64{Int64: 30, Valid: true}},
 			},
 			totalSeasonEpisodes: 3,
 			want:                90, // Average of 30 mins applied to missing episode
 		},
 		{
 			name: "all episodes missing runtime",
-			episodeMetadata: []*model.EpisodeMetadata{
-				{Runtime: nil},
-				{Runtime: nil},
-				{Runtime: nil},
+			episodeMetadata: []*sqlcdb.EpisodeMetadatum{
+				{Runtime: sql.NullInt64{}},
+				{Runtime: sql.NullInt64{}},
+				{Runtime: sql.NullInt64{}},
 			},
 			totalSeasonEpisodes: 3,
 			want:                0,
 		},
 		{
 			name:                "empty episode list",
-			episodeMetadata:     []*model.EpisodeMetadata{},
+			episodeMetadata:     []*sqlcdb.EpisodeMetadatum{},
 			totalSeasonEpisodes: 0,
 			want:                0,
 		},
 		{
 			name: "more total episodes than provided",
-			episodeMetadata: []*model.EpisodeMetadata{
-				{Runtime: ptr.To(int32(30))},
-				{Runtime: ptr.To(int32(30))},
+			episodeMetadata: []*sqlcdb.EpisodeMetadatum{
+				{Runtime: sql.NullInt64{Int64: 30, Valid: true}},
+				{Runtime: sql.NullInt64{Int64: 30, Valid: true}},
 			},
 			totalSeasonEpisodes: 4,
 			want:                120, // (30+30) + (30*2) for missing episodes
@@ -75,141 +76,141 @@ func Test_getSeasonRuntime(t *testing.T) {
 func TestDetermineSeasonState(t *testing.T) {
 	tests := []struct {
 		name     string
-		episodes []*storage.Episode
+		episodes []sqlcdb.ListEpisodesRow
 		expected storage.SeasonState
 	}{
 		{
 			name:     "empty episodes",
-			episodes: []*storage.Episode{},
+			episodes: []sqlcdb.ListEpisodesRow{},
 			expected: storage.SeasonStateMissing,
 		},
 		{
 			name: "all episodes downloaded",
-			episodes: []*storage.Episode{
-				{Episode: model.Episode{ID: 1}, State: storage.EpisodeStateDownloaded},
-				{Episode: model.Episode{ID: 2}, State: storage.EpisodeStateDownloaded},
-				{Episode: model.Episode{ID: 3}, State: storage.EpisodeStateDownloaded},
+			episodes: []sqlcdb.ListEpisodesRow{
+				{Episode: sqlcdb.Episode{ID: 1}, State: string(storage.EpisodeStateDownloaded)},
+				{Episode: sqlcdb.Episode{ID: 2}, State: string(storage.EpisodeStateDownloaded)},
+				{Episode: sqlcdb.Episode{ID: 3}, State: string(storage.EpisodeStateDownloaded)},
 			},
 			expected: storage.SeasonStateCompleted,
 		},
 		{
 			name: "some episodes downloading",
-			episodes: []*storage.Episode{
-				{Episode: model.Episode{ID: 1}, State: storage.EpisodeStateDownloaded},
-				{Episode: model.Episode{ID: 2}, State: storage.EpisodeStateDownloading},
-				{Episode: model.Episode{ID: 3}, State: storage.EpisodeStateMissing},
+			episodes: []sqlcdb.ListEpisodesRow{
+				{Episode: sqlcdb.Episode{ID: 1}, State: string(storage.EpisodeStateDownloaded)},
+				{Episode: sqlcdb.Episode{ID: 2}, State: string(storage.EpisodeStateDownloading)},
+				{Episode: sqlcdb.Episode{ID: 3}, State: string(storage.EpisodeStateMissing)},
 			},
 			expected: storage.SeasonStateDownloading,
 		},
 		{
 			name: "one episode downloading others downloaded",
-			episodes: []*storage.Episode{
-				{Episode: model.Episode{ID: 1}, State: storage.EpisodeStateDownloaded},
-				{Episode: model.Episode{ID: 2}, State: storage.EpisodeStateDownloaded},
-				{Episode: model.Episode{ID: 3}, State: storage.EpisodeStateDownloading},
+			episodes: []sqlcdb.ListEpisodesRow{
+				{Episode: sqlcdb.Episode{ID: 1}, State: string(storage.EpisodeStateDownloaded)},
+				{Episode: sqlcdb.Episode{ID: 2}, State: string(storage.EpisodeStateDownloaded)},
+				{Episode: sqlcdb.Episode{ID: 3}, State: string(storage.EpisodeStateDownloading)},
 			},
 			expected: storage.SeasonStateDownloading,
 		},
 		{
 			name: "continuing - downloaded and unreleased",
-			episodes: []*storage.Episode{
-				{Episode: model.Episode{ID: 1}, State: storage.EpisodeStateDownloaded},
-				{Episode: model.Episode{ID: 2}, State: storage.EpisodeStateDownloaded},
-				{Episode: model.Episode{ID: 3}, State: storage.EpisodeStateUnreleased},
-				{Episode: model.Episode{ID: 4}, State: storage.EpisodeStateUnreleased},
+			episodes: []sqlcdb.ListEpisodesRow{
+				{Episode: sqlcdb.Episode{ID: 1}, State: string(storage.EpisodeStateDownloaded)},
+				{Episode: sqlcdb.Episode{ID: 2}, State: string(storage.EpisodeStateDownloaded)},
+				{Episode: sqlcdb.Episode{ID: 3}, State: string(storage.EpisodeStateUnreleased)},
+				{Episode: sqlcdb.Episode{ID: 4}, State: string(storage.EpisodeStateUnreleased)},
 			},
 			expected: storage.SeasonStateContinuing,
 		},
 		{
 			name: "continuing - missing and unreleased",
-			episodes: []*storage.Episode{
-				{Episode: model.Episode{ID: 1}, State: storage.EpisodeStateMissing},
-				{Episode: model.Episode{ID: 2}, State: storage.EpisodeStateMissing},
-				{Episode: model.Episode{ID: 3}, State: storage.EpisodeStateUnreleased},
-				{Episode: model.Episode{ID: 4}, State: storage.EpisodeStateUnreleased},
+			episodes: []sqlcdb.ListEpisodesRow{
+				{Episode: sqlcdb.Episode{ID: 1}, State: string(storage.EpisodeStateMissing)},
+				{Episode: sqlcdb.Episode{ID: 2}, State: string(storage.EpisodeStateMissing)},
+				{Episode: sqlcdb.Episode{ID: 3}, State: string(storage.EpisodeStateUnreleased)},
+				{Episode: sqlcdb.Episode{ID: 4}, State: string(storage.EpisodeStateUnreleased)},
 			},
 			expected: storage.SeasonStateContinuing,
 		},
 		{
 			name: "continuing - mix of downloaded, missing and unreleased",
-			episodes: []*storage.Episode{
-				{Episode: model.Episode{ID: 1}, State: storage.EpisodeStateDownloaded},
-				{Episode: model.Episode{ID: 2}, State: storage.EpisodeStateMissing},
-				{Episode: model.Episode{ID: 3}, State: storage.EpisodeStateUnreleased},
+			episodes: []sqlcdb.ListEpisodesRow{
+				{Episode: sqlcdb.Episode{ID: 1}, State: string(storage.EpisodeStateDownloaded)},
+				{Episode: sqlcdb.Episode{ID: 2}, State: string(storage.EpisodeStateMissing)},
+				{Episode: sqlcdb.Episode{ID: 3}, State: string(storage.EpisodeStateUnreleased)},
 			},
 			expected: storage.SeasonStateContinuing,
 		},
 		{
 			name: "missing - all aired episodes missing, no unreleased",
-			episodes: []*storage.Episode{
-				{Episode: model.Episode{ID: 1}, State: storage.EpisodeStateMissing},
-				{Episode: model.Episode{ID: 2}, State: storage.EpisodeStateMissing},
-				{Episode: model.Episode{ID: 3}, State: storage.EpisodeStateMissing},
+			episodes: []sqlcdb.ListEpisodesRow{
+				{Episode: sqlcdb.Episode{ID: 1}, State: string(storage.EpisodeStateMissing)},
+				{Episode: sqlcdb.Episode{ID: 2}, State: string(storage.EpisodeStateMissing)},
+				{Episode: sqlcdb.Episode{ID: 3}, State: string(storage.EpisodeStateMissing)},
 			},
 			expected: storage.SeasonStateMissing,
 		},
 		{
 			name: "missing - mix of downloaded and missing, no unreleased",
-			episodes: []*storage.Episode{
-				{Episode: model.Episode{ID: 1}, State: storage.EpisodeStateDownloaded},
-				{Episode: model.Episode{ID: 2}, State: storage.EpisodeStateMissing},
-				{Episode: model.Episode{ID: 3}, State: storage.EpisodeStateMissing},
+			episodes: []sqlcdb.ListEpisodesRow{
+				{Episode: sqlcdb.Episode{ID: 1}, State: string(storage.EpisodeStateDownloaded)},
+				{Episode: sqlcdb.Episode{ID: 2}, State: string(storage.EpisodeStateMissing)},
+				{Episode: sqlcdb.Episode{ID: 3}, State: string(storage.EpisodeStateMissing)},
 			},
 			expected: storage.SeasonStateMissing,
 		},
 		{
 			name: "unreleased - all episodes unreleased",
-			episodes: []*storage.Episode{
-				{Episode: model.Episode{ID: 1}, State: storage.EpisodeStateUnreleased},
-				{Episode: model.Episode{ID: 2}, State: storage.EpisodeStateUnreleased},
-				{Episode: model.Episode{ID: 3}, State: storage.EpisodeStateUnreleased},
+			episodes: []sqlcdb.ListEpisodesRow{
+				{Episode: sqlcdb.Episode{ID: 1}, State: string(storage.EpisodeStateUnreleased)},
+				{Episode: sqlcdb.Episode{ID: 2}, State: string(storage.EpisodeStateUnreleased)},
+				{Episode: sqlcdb.Episode{ID: 3}, State: string(storage.EpisodeStateUnreleased)},
 			},
 			expected: storage.SeasonStateUnreleased,
 		},
 		{
 			name: "downloading takes priority over continuing",
-			episodes: []*storage.Episode{
-				{Episode: model.Episode{ID: 1}, State: storage.EpisodeStateDownloaded},
-				{Episode: model.Episode{ID: 2}, State: storage.EpisodeStateDownloading},
-				{Episode: model.Episode{ID: 3}, State: storage.EpisodeStateUnreleased},
+			episodes: []sqlcdb.ListEpisodesRow{
+				{Episode: sqlcdb.Episode{ID: 1}, State: string(storage.EpisodeStateDownloaded)},
+				{Episode: sqlcdb.Episode{ID: 2}, State: string(storage.EpisodeStateDownloading)},
+				{Episode: sqlcdb.Episode{ID: 3}, State: string(storage.EpisodeStateUnreleased)},
 			},
 			expected: storage.SeasonStateDownloading,
 		},
 		{
 			name: "downloading takes priority over all other states",
-			episodes: []*storage.Episode{
-				{Episode: model.Episode{ID: 1}, State: storage.EpisodeStateDownloaded},
-				{Episode: model.Episode{ID: 2}, State: storage.EpisodeStateDownloading},
-				{Episode: model.Episode{ID: 3}, State: storage.EpisodeStateMissing},
-				{Episode: model.Episode{ID: 4}, State: storage.EpisodeStateUnreleased},
+			episodes: []sqlcdb.ListEpisodesRow{
+				{Episode: sqlcdb.Episode{ID: 1}, State: string(storage.EpisodeStateDownloaded)},
+				{Episode: sqlcdb.Episode{ID: 2}, State: string(storage.EpisodeStateDownloading)},
+				{Episode: sqlcdb.Episode{ID: 3}, State: string(storage.EpisodeStateMissing)},
+				{Episode: sqlcdb.Episode{ID: 4}, State: string(storage.EpisodeStateUnreleased)},
 			},
 			expected: storage.SeasonStateDownloading,
 		},
 		{
 			name: "single downloaded episode",
-			episodes: []*storage.Episode{
-				{Episode: model.Episode{ID: 1}, State: storage.EpisodeStateDownloaded},
+			episodes: []sqlcdb.ListEpisodesRow{
+				{Episode: sqlcdb.Episode{ID: 1}, State: string(storage.EpisodeStateDownloaded)},
 			},
 			expected: storage.SeasonStateCompleted,
 		},
 		{
 			name: "single missing episode",
-			episodes: []*storage.Episode{
-				{Episode: model.Episode{ID: 1}, State: storage.EpisodeStateMissing},
+			episodes: []sqlcdb.ListEpisodesRow{
+				{Episode: sqlcdb.Episode{ID: 1}, State: string(storage.EpisodeStateMissing)},
 			},
 			expected: storage.SeasonStateMissing,
 		},
 		{
 			name: "single unreleased episode",
-			episodes: []*storage.Episode{
-				{Episode: model.Episode{ID: 1}, State: storage.EpisodeStateUnreleased},
+			episodes: []sqlcdb.ListEpisodesRow{
+				{Episode: sqlcdb.Episode{ID: 1}, State: string(storage.EpisodeStateUnreleased)},
 			},
 			expected: storage.SeasonStateUnreleased,
 		},
 		{
 			name: "single downloading episode",
-			episodes: []*storage.Episode{
-				{Episode: model.Episode{ID: 1}, State: storage.EpisodeStateDownloading},
+			episodes: []sqlcdb.ListEpisodesRow{
+				{Episode: sqlcdb.Episode{ID: 1}, State: string(storage.EpisodeStateDownloading)},
 			},
 			expected: storage.SeasonStateDownloading,
 		},
@@ -226,13 +227,13 @@ func TestDetermineSeasonState(t *testing.T) {
 func TestDetermineSeasonStateWithCounts(t *testing.T) {
 	tests := []struct {
 		name           string
-		episodes       []*storage.Episode
+		episodes       []sqlcdb.ListEpisodesRow
 		expectedState  storage.SeasonState
 		expectedCounts map[string]int
 	}{
 		{
 			name:          "empty episodes",
-			episodes:      []*storage.Episode{},
+			episodes:      []sqlcdb.ListEpisodesRow{},
 			expectedState: storage.SeasonStateMissing,
 			expectedCounts: map[string]int{
 				"done":        0,
@@ -244,13 +245,13 @@ func TestDetermineSeasonStateWithCounts(t *testing.T) {
 		},
 		{
 			name: "mix of all states",
-			episodes: []*storage.Episode{
-				{Episode: model.Episode{ID: 1}, State: storage.EpisodeStateDownloaded},
-				{Episode: model.Episode{ID: 2}, State: storage.EpisodeStateDownloaded},
-				{Episode: model.Episode{ID: 3}, State: storage.EpisodeStateDownloading},
-				{Episode: model.Episode{ID: 4}, State: storage.EpisodeStateMissing},
-				{Episode: model.Episode{ID: 5}, State: storage.EpisodeStateMissing},
-				{Episode: model.Episode{ID: 6}, State: storage.EpisodeStateUnreleased},
+			episodes: []sqlcdb.ListEpisodesRow{
+				{Episode: sqlcdb.Episode{ID: 1}, State: string(storage.EpisodeStateDownloaded)},
+				{Episode: sqlcdb.Episode{ID: 2}, State: string(storage.EpisodeStateDownloaded)},
+				{Episode: sqlcdb.Episode{ID: 3}, State: string(storage.EpisodeStateDownloading)},
+				{Episode: sqlcdb.Episode{ID: 4}, State: string(storage.EpisodeStateMissing)},
+				{Episode: sqlcdb.Episode{ID: 5}, State: string(storage.EpisodeStateMissing)},
+				{Episode: sqlcdb.Episode{ID: 6}, State: string(storage.EpisodeStateUnreleased)},
 			},
 			expectedState: storage.SeasonStateDownloading,
 			expectedCounts: map[string]int{
@@ -263,10 +264,10 @@ func TestDetermineSeasonStateWithCounts(t *testing.T) {
 		},
 		{
 			name: "discovered with completed episodes",
-			episodes: []*storage.Episode{
-				{Episode: model.Episode{ID: 1}, State: storage.EpisodeStateDiscovered},
-				{Episode: model.Episode{ID: 2}, State: storage.EpisodeStateCompleted},
-				{Episode: model.Episode{ID: 3}, State: storage.EpisodeStateDiscovered},
+			episodes: []sqlcdb.ListEpisodesRow{
+				{Episode: sqlcdb.Episode{ID: 1}, State: string(storage.EpisodeStateDiscovered)},
+				{Episode: sqlcdb.Episode{ID: 2}, State: string(storage.EpisodeStateCompleted)},
+				{Episode: sqlcdb.Episode{ID: 3}, State: string(storage.EpisodeStateDiscovered)},
 			},
 			expectedState: storage.SeasonStateContinuing,
 			expectedCounts: map[string]int{
@@ -279,9 +280,9 @@ func TestDetermineSeasonStateWithCounts(t *testing.T) {
 		},
 		{
 			name: "all discovered episodes",
-			episodes: []*storage.Episode{
-				{Episode: model.Episode{ID: 1}, State: storage.EpisodeStateDiscovered},
-				{Episode: model.Episode{ID: 2}, State: storage.EpisodeStateDiscovered},
+			episodes: []sqlcdb.ListEpisodesRow{
+				{Episode: sqlcdb.Episode{ID: 1}, State: string(storage.EpisodeStateDiscovered)},
+				{Episode: sqlcdb.Episode{ID: 2}, State: string(storage.EpisodeStateDiscovered)},
 			},
 			expectedState: storage.SeasonStateDiscovered,
 			expectedCounts: map[string]int{
@@ -294,11 +295,11 @@ func TestDetermineSeasonStateWithCounts(t *testing.T) {
 		},
 		{
 			name: "continuing season counts",
-			episodes: []*storage.Episode{
-				{Episode: model.Episode{ID: 1}, State: storage.EpisodeStateDownloaded},
-				{Episode: model.Episode{ID: 2}, State: storage.EpisodeStateMissing},
-				{Episode: model.Episode{ID: 3}, State: storage.EpisodeStateUnreleased},
-				{Episode: model.Episode{ID: 4}, State: storage.EpisodeStateUnreleased},
+			episodes: []sqlcdb.ListEpisodesRow{
+				{Episode: sqlcdb.Episode{ID: 1}, State: string(storage.EpisodeStateDownloaded)},
+				{Episode: sqlcdb.Episode{ID: 2}, State: string(storage.EpisodeStateMissing)},
+				{Episode: sqlcdb.Episode{ID: 3}, State: string(storage.EpisodeStateUnreleased)},
+				{Episode: sqlcdb.Episode{ID: 4}, State: string(storage.EpisodeStateUnreleased)},
 			},
 			expectedState: storage.SeasonStateContinuing,
 			expectedCounts: map[string]int{

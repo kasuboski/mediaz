@@ -1,128 +1,118 @@
 package sqlite
 
 import (
-	"context"
+	"database/sql"
 	"testing"
 	"time"
 
-	"github.com/go-jet/jet/v2/sqlite"
 	"github.com/kasuboski/mediaz/pkg/storage"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/table"
+	"github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func TestUpdateSeriesMetadata(t *testing.T) {
-	ctx := context.Background()
-	store := initSqlite(t, ctx)
-	require.NotNil(t, store)
-
-	// Create initial series metadata
-	metadata := model.SeriesMetadata{
-		TmdbID:       12345,
-		Title:        "Test Series",
-		SeasonCount:  1,
-		EpisodeCount: 1,
-		Status:       "Continuing",
-	}
-
-	id, err := store.CreateSeriesMetadata(ctx, metadata)
-	require.Nil(t, err)
-	require.Greater(t, id, int64(0))
-
-	// Get the initial metadata
-	where := table.SeriesMetadata.ID.EQ(sqlite.Int64(id))
-	initial, err := store.GetSeriesMetadata(ctx, where)
-	require.Nil(t, err)
-	require.NotNil(t, initial)
-
-	// Sleep briefly to ensure timestamp will be different
-	time.Sleep(10 * time.Millisecond)
-
-	// Update the series metadata
-	updated := *initial
-	updated.Title = "Updated Test Series"
-	updated.SeasonCount = 2
-	updated.EpisodeCount = 10
-	updated.Status = "Ended"
-
-	err = store.UpdateSeriesMetadata(ctx, updated)
-	require.Nil(t, err)
-
-	// Retrieve the updated metadata
-	retrieved, err := store.GetSeriesMetadata(ctx, where)
-	require.Nil(t, err)
-	require.NotNil(t, retrieved)
-
-	// Verify the updates
-	assert.Equal(t, "Updated Test Series", retrieved.Title)
-	assert.Equal(t, int32(2), retrieved.SeasonCount)
-	assert.Equal(t, int32(10), retrieved.EpisodeCount)
-	assert.Equal(t, "Ended", retrieved.Status)
-
-	// Verify LastInfoSync was automatically set
-	require.NotNil(t, retrieved.LastInfoSync, "LastInfoSync should be set automatically")
-
-	// Verify LastInfoSync is a recent timestamp (within last 5 seconds)
-	now := time.Now()
-	timeSinceSync := now.Sub(*retrieved.LastInfoSync)
-	assert.Less(t, timeSinceSync, 5*time.Second, "LastInfoSync should be recent")
-	assert.Greater(t, timeSinceSync, time.Duration(0), "LastInfoSync should be in the past")
-
-	// If initial had a LastInfoSync, verify it was updated
-	if initial.LastInfoSync != nil {
-		assert.True(t, retrieved.LastInfoSync.After(*initial.LastInfoSync),
-			"LastInfoSync should be updated to a newer timestamp")
-	}
-}
 func TestSeriesMetadataStorage(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	store := initSqlite(t, ctx)
-	assert.NotNil(t, store)
-
-	// Test creating Series metadata
-	metadata := model.SeriesMetadata{
-		TmdbID:         12345,
-		Title:          "Test Series",
-		SeasonCount:    1,
-		EpisodeCount:   1,
-		Status:         "Continuing",
-		ExternalIds:    nil, // Optional field
-		WatchProviders: nil, // Optional field
-	}
-
-	id, err := store.CreateSeriesMetadata(ctx, metadata)
-	assert.Nil(t, err)
-	assert.Greater(t, id, int64(0))
-
-	// Test getting the Series metadata
-	where := table.SeriesMetadata.ID.EQ(sqlite.Int64(id))
-	retrieved, err := store.GetSeriesMetadata(ctx, where)
-	assert.Nil(t, err)
-	assert.NotNil(t, retrieved)
-	assert.Equal(t, metadata.TmdbID, retrieved.TmdbID)
-	assert.Equal(t, metadata.Title, retrieved.Title)
-	assert.Equal(t, metadata.SeasonCount, retrieved.SeasonCount)
-	assert.Equal(t, metadata.EpisodeCount, retrieved.EpisodeCount)
-	assert.Equal(t, metadata.Status, retrieved.Status)
-
-	// Test listing Series metadata
-	metadataList, err := store.ListSeriesMetadata(ctx)
-	assert.Nil(t, err)
-	assert.Len(t, metadataList, 1)
-	assert.Equal(t, metadata.Title, metadataList[0].Title)
-
-	// Test deleting the Series metadata
-	err = store.DeleteSeriesMetadata(ctx, id)
-	assert.Nil(t, err)
-
-	// Verify deletion
-	metadataList, err = store.ListSeriesMetadata(ctx)
-	assert.Nil(t, err)
-	assert.Empty(t, metadataList)
-
-	// Test getting non-existent Series metadata
-	_, err = store.GetSeriesMetadata(ctx, where)
+	want := sqlcdb.SeriesMetadatum{TmdbID: 12345, Title: "Test Series", SeasonCount: 1, EpisodeCount: 1, Status: "Continuing", Overview: sql.NullString{String: "overview", Valid: true}, ExternalIds: sql.NullString{String: "{}", Valid: true}}
+	id, err := store.CreateSeriesMetadata(ctx, want)
+	require.NoError(t, err)
+	want.ID = id
+	got, err := store.GetSeriesMetadataByID(ctx, id)
+	require.NoError(t, err)
+	assert.Equal(t, want, got)
+	got, err = store.GetSeriesMetadataByTmdbID(ctx, want.TmdbID)
+	require.NoError(t, err)
+	assert.Equal(t, want, got)
+	list, err := store.ListSeriesMetadata(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, []sqlcdb.SeriesMetadatum{want}, list)
+	list, err = store.ListSeriesMetadataByStatus(ctx, "Continuing")
+	require.NoError(t, err)
+	assert.Equal(t, []sqlcdb.SeriesMetadatum{want}, list)
+	list, err = store.ListSeriesMetadataByStatus(ctx, "Ended")
+	require.NoError(t, err)
+	assert.Empty(t, list)
+	require.NoError(t, store.DeleteSeriesMetadata(ctx, id))
+	_, err = store.GetSeriesMetadataByID(ctx, id)
 	assert.ErrorIs(t, err, storage.ErrNotFound)
+	_, err = store.GetSeriesMetadataByTmdbID(ctx, want.TmdbID)
+	assert.ErrorIs(t, err, storage.ErrNotFound)
+	list, err = store.ListSeriesMetadata(ctx)
+	require.NoError(t, err)
+	assert.Empty(t, list)
+}
+
+func TestUpdateSeriesMetadata(t *testing.T) {
+	ctx := t.Context()
+	store := initSqlite(t, ctx)
+	want := sqlcdb.SeriesMetadatum{TmdbID: 42, Title: "Original", Status: "Continuing", Overview: sql.NullString{String: "old", Valid: true}}
+	id, err := store.CreateSeriesMetadata(ctx, want)
+	require.NoError(t, err)
+	want.ID = id
+	want.Title = "Updated"
+	want.SeasonCount = 2
+	want.EpisodeCount = 10
+	want.Status = "Ended"
+	want.Overview = sql.NullString{}
+	require.NoError(t, store.UpdateSeriesMetadata(ctx, want))
+	got, err := store.GetSeriesMetadataByID(ctx, id)
+	require.NoError(t, err)
+	require.True(t, got.LastInfoSync.Valid)
+	assert.WithinDuration(t, time.Now(), got.LastInfoSync.Time, 5*time.Second)
+	want.LastInfoSync = got.LastInfoSync
+	assert.Equal(t, want, got)
+}
+
+func TestCreateSeriesMetadataUpsert(t *testing.T) {
+	ctx := t.Context()
+	store := initSqlite(t, ctx)
+	original := sqlcdb.SeriesMetadatum{TmdbID: 42, Title: "Original", Status: "Continuing", Overview: sql.NullString{String: "original overview", Valid: true}, PosterPath: sql.NullString{String: "/original.jpg", Valid: true}}
+	id, err := store.CreateSeriesMetadata(ctx, original)
+	require.NoError(t, err)
+	update := original
+	update.Title = "Updated"
+	update.SeasonCount = 3
+	update.EpisodeCount = 30
+	update.Status = "Ended"
+	upsertID, err := store.CreateSeriesMetadata(ctx, update)
+	require.NoError(t, err)
+	assert.Equal(t, id, upsertID)
+	got, err := store.GetSeriesMetadataByTmdbID(ctx, 42)
+	require.NoError(t, err)
+	update.ID = id
+	require.True(t, got.LastInfoSync.Valid)
+	update.LastInfoSync = got.LastInfoSync
+	assert.Equal(t, update, got)
+	list, err := store.ListSeriesMetadata(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, []sqlcdb.SeriesMetadatum{got}, list)
+}
+
+func TestCreateSeriesMetadataWithExplicitID(t *testing.T) {
+	ctx := t.Context()
+	store := initSqlite(t, ctx)
+	want := sqlcdb.SeriesMetadatum{ID: 777, TmdbID: 99, Title: "Explicit ID Series", Status: "Continuing"}
+	id, err := store.CreateSeriesMetadata(ctx, want)
+	require.NoError(t, err)
+	assert.Equal(t, want.ID, id)
+	got, err := store.GetSeriesMetadataByID(ctx, id)
+	require.NoError(t, err)
+	assert.Equal(t, want, got)
+}
+
+func TestLinkSeriesMetadata(t *testing.T) {
+	ctx := t.Context()
+	store := initSqlite(t, ctx)
+	id, err := store.CreateSeries(ctx, sqlcdb.Series{QualityProfileID: 1}, storage.SeriesStateMissing)
+	require.NoError(t, err)
+	before, err := store.GetSeriesByID(ctx, id)
+	require.NoError(t, err)
+	metadataID, err := store.CreateSeriesMetadata(ctx, sqlcdb.SeriesMetadatum{TmdbID: 42, Title: "Series"})
+	require.NoError(t, err)
+	require.NoError(t, store.LinkSeriesMetadata(ctx, id, metadataID))
+	before.Series.SeriesMetadataID = sql.NullInt64{Int64: metadataID, Valid: true}
+	got, err := store.GetSeriesByMetadataID(ctx, metadataID)
+	require.NoError(t, err)
+	assert.Equal(t, before, got)
 }

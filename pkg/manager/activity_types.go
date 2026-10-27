@@ -45,7 +45,7 @@ type ActiveJob struct {
 }
 
 type DownloadClientInfo struct {
-	ID   int    `json:"id"`
+	ID   int64  `json:"id"`
 	Host string `json:"host"`
 	Port int    `json:"port"`
 }
@@ -121,7 +121,7 @@ type EntityInfo struct {
 }
 
 type HistoryEntry struct {
-	SortKey   int                 `json:"sortKey"`
+	SortKey   int64               `json:"sortKey"`
 	ToState   string              `json:"toState"`
 	FromState *string             `json:"fromState,omitempty"`
 	CreatedAt time.Time           `json:"createdAt"`

@@ -13,7 +13,7 @@ import (
 	reflect "reflect"
 
 	download "github.com/kasuboski/mediaz/pkg/download"
-	model "github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
+	sqlcdb "github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -41,7 +41,7 @@ func (m *MockFactory) EXPECT() *MockFactoryMockRecorder {
 }
 
 // NewDownloadClient mocks base method.
-func (m *MockFactory) NewDownloadClient(arg0 model.DownloadClient) (download.DownloadClient, error) {
+func (m *MockFactory) NewDownloadClient(arg0 sqlcdb.DownloadClient) (download.DownloadClient, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "NewDownloadClient", arg0)
 	ret0, _ := ret[0].(download.DownloadClient)

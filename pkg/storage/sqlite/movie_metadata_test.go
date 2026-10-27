@@ -1,50 +1,62 @@
 package sqlite
 
 import (
-	"context"
+	"database/sql"
 	"testing"
+	"time"
 
-	"github.com/go-jet/jet/v2/sqlite"
 	"github.com/kasuboski/mediaz/pkg/storage"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/table"
+	"github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestMovieMetadataStorage(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	store := initSqlite(t, ctx)
-	require.NotNil(t, store)
-
-	movieMeta := model.MovieMetadata{
-		ID:      1,
-		TmdbID:  1234,
-		Title:   "My Cool Movie",
-		Runtime: 1000,
-	}
-	id, err := store.CreateMovieMetadata(ctx, movieMeta)
-	assert.NoError(t, err)
-	assert.Equal(t, int64(1), id)
-
-	metadata, err := store.ListMovieMetadata(ctx)
-	assert.NoError(t, err)
-	assert.Len(t, metadata, 1)
-	actual := metadata[0]
-	assert.Equal(t, &movieMeta, actual)
-
-	one, err := store.GetMovieMetadata(ctx, table.MovieMetadata.TmdbID.EQ(sqlite.Int(1234)))
-	assert.NoError(t, err)
-	assert.NotNil(t, one)
-
-	notFound, err := store.GetMovieMetadata(ctx, table.MovieMetadata.TmdbID.EQ(sqlite.Int(124)))
+	want := sqlcdb.MovieMetadatum{TmdbID: 1234, Title: "Title", ImdbID: sql.NullString{String: "tt1234", Valid: true}, Year: sql.NullInt64{Int64: 2024, Valid: true}, Overview: sql.NullString{String: "An overview", Valid: true}, Popularity: sql.NullFloat64{Float64: 4.5, Valid: true}, ReleaseDate: sql.NullTime{Time: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), Valid: true}}
+	id, err := store.CreateMovieMetadata(ctx, want)
+	require.NoError(t, err)
+	want.ID = id
+	got, err := store.GetMovieMetadataByID(ctx, id)
+	require.NoError(t, err)
+	assert.Equal(t, want, got)
+	got, err = store.GetMovieMetadataByTmdbID(ctx, want.TmdbID)
+	require.NoError(t, err)
+	assert.Equal(t, want, got)
+	list, err := store.ListMovieMetadata(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, []sqlcdb.MovieMetadatum{want}, list)
+	_, err = store.GetMovieMetadataByID(ctx, id+100)
 	assert.ErrorIs(t, err, storage.ErrNotFound)
-	assert.Nil(t, notFound)
+	_, err = store.GetMovieMetadataByTmdbID(ctx, 99)
+	assert.ErrorIs(t, err, storage.ErrNotFound)
+	require.NoError(t, store.DeleteMovieMetadata(ctx, id))
+	list, err = store.ListMovieMetadata(ctx)
+	require.NoError(t, err)
+	assert.Empty(t, list)
+}
 
-	err = store.DeleteMovieMetadata(ctx, id)
-	assert.NoError(t, err)
-
-	metadata, err = store.ListMovieMetadata(ctx)
-	assert.NoError(t, err)
-	assert.Empty(t, metadata)
+func TestSQLite_UpdateMovieMetadata(t *testing.T) {
+	ctx := t.Context()
+	store := initSqlite(t, ctx)
+	want := sqlcdb.MovieMetadatum{TmdbID: 1234, Title: "Original", Overview: sql.NullString{String: "old", Valid: true}}
+	id, err := store.CreateMovieMetadata(ctx, want)
+	require.NoError(t, err)
+	want.ID = id
+	update := want
+	update.TmdbID = 999
+	update.Title = "Updated"
+	update.Overview = sql.NullString{}
+	update.Year = sql.NullInt64{Int64: 2025, Valid: true}
+	require.NoError(t, store.UpdateMovieMetadata(ctx, update))
+	want.Title = update.Title
+	want.Overview = update.Overview
+	want.Year = update.Year
+	got, err := store.GetMovieMetadataByID(ctx, id)
+	require.NoError(t, err)
+	require.True(t, got.LastInfoSync.Valid)
+	assert.WithinDuration(t, time.Now(), got.LastInfoSync.Time, 5*time.Second)
+	want.LastInfoSync = got.LastInfoSync
+	assert.Equal(t, want, got)
 }

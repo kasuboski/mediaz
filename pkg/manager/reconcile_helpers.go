@@ -4,21 +4,21 @@ import (
 	"sync"
 	"time"
 
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
+	sqlcdb "github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 )
 
 // ReconcileSnapshot is a thread safe snapshot of the current reconcile loop state.
 type ReconcileSnapshot struct {
 	time              time.Time
 	downloadProtocols map[string]struct{}
-	downloadClients   []*model.DownloadClient
-	indexers          []model.Indexer
-	indexerIDs        []int32
+	downloadClients   []sqlcdb.DownloadClient
+	indexers          []sqlcdb.Indexer
+	indexerIDs        []int64
 	mu                sync.Mutex
 }
 
-func newReconcileSnapshot(indexers []model.Indexer, downloadClients []*model.DownloadClient) *ReconcileSnapshot {
-	ids := make([]int32, 0)
+func newReconcileSnapshot(indexers []sqlcdb.Indexer, downloadClients []sqlcdb.DownloadClient) *ReconcileSnapshot {
+	ids := make([]int64, 0)
 	for i := range indexers {
 		ids = append(ids, indexers[i].ID)
 	}
@@ -35,19 +35,19 @@ func newReconcileSnapshot(indexers []model.Indexer, downloadClients []*model.Dow
 	}
 }
 
-func (r *ReconcileSnapshot) GetDownloadClient(id int32) *model.DownloadClient {
+func (r *ReconcileSnapshot) GetDownloadClient(id int64) *sqlcdb.DownloadClient {
 	dcs := r.GetDownloadClients()
 
-	for _, dc := range dcs {
-		if dc.ID == id {
-			return dc
+	for i := range dcs {
+		if dcs[i].ID == id {
+			return &dcs[i]
 		}
 	}
 
 	return nil
 }
 
-func (r *ReconcileSnapshot) GetDownloadClients() []*model.DownloadClient {
+func (r *ReconcileSnapshot) GetDownloadClients() []sqlcdb.DownloadClient {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	return r.downloadClients
@@ -59,13 +59,13 @@ func (r *ReconcileSnapshot) GetProtocols() map[string]struct{} {
 	return r.downloadProtocols
 }
 
-func (r *ReconcileSnapshot) GetIndexerIDs() []int32 {
+func (r *ReconcileSnapshot) GetIndexerIDs() []int64 {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	return r.indexerIDs
 }
 
-func (r *ReconcileSnapshot) GetIndexers() []model.Indexer {
+func (r *ReconcileSnapshot) GetIndexers() []sqlcdb.Indexer {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	return r.indexers

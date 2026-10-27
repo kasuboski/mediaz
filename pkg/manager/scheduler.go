@@ -6,13 +6,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-jet/jet/v2/sqlite"
 	"github.com/kasuboski/mediaz/config"
 	"github.com/kasuboski/mediaz/pkg/cache"
 	"github.com/kasuboski/mediaz/pkg/logger"
 	"github.com/kasuboski/mediaz/pkg/storage"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/table"
+	sqlcdb "github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 	"go.uber.org/zap"
 )
 
@@ -78,12 +76,8 @@ func (s *Scheduler) pruneOldJobs(ctx context.Context) {
 	totalDeleted := int64(0)
 
 	for _, jobType := range jobTypes {
-		where := sqlite.AND(
-			table.Job.Type.EQ(sqlite.String(string(jobType))),
-			table.JobTransition.MostRecent.EQ(sqlite.Bool(true)),
-		)
-
-		allJobs, err := s.storage.ListJobs(ctx, 0, 0, where)
+		jobTypeStr := string(jobType)
+		allJobs, err := s.storage.ListJobs(ctx, 0, 0, storage.JobFilter{Type: &jobTypeStr})
 		if err != nil {
 			log.Error("failed to list jobs",
 				zap.String("type", string(jobType)),
@@ -99,21 +93,16 @@ func (s *Scheduler) pruneOldJobs(ctx context.Context) {
 			continue
 		}
 
-		jobIDsToDelete := make([]int32, 0)
+		jobIDsToDelete := make([]int64, 0)
 		for i := s.config.Jobs.MinJobsToKeep; i < len(allJobs); i++ {
-			jobIDsToDelete = append(jobIDsToDelete, allJobs[i].ID)
+			jobIDsToDelete = append(jobIDsToDelete, allJobs[i].Job.ID)
 		}
 
 		if len(jobIDsToDelete) == 0 {
 			continue
 		}
 
-		ids := make([]sqlite.Expression, len(jobIDsToDelete))
-		for i, id := range jobIDsToDelete {
-			ids[i] = sqlite.Int32(id)
-		}
-
-		deleted, err := s.storage.DeleteJobs(ctx, table.Job.ID.IN(ids...))
+		deleted, err := s.storage.DeleteJobsByIDs(ctx, jobIDsToDelete)
 		if err != nil {
 			log.Error("failed to delete jobs",
 				zap.String("type", string(jobType)),
@@ -181,11 +170,8 @@ func (s *Scheduler) checkAndScheduleJob(ctx context.Context, jobType JobType) {
 
 	interval := s.getIntervalForJobType(jobType)
 
-	where := sqlite.AND(
-		table.Job.Type.EQ(sqlite.String(string(jobType))),
-		table.JobTransition.MostRecent.EQ(sqlite.Bool(true)),
-	)
-	jobs, err := s.storage.ListJobs(ctx, 0, 1, where)
+	jobTypeStr := string(jobType)
+	jobs, err := s.storage.ListJobs(ctx, 0, 1, storage.JobFilter{Type: &jobTypeStr})
 
 	if err != nil {
 		log.Error("failed to get last job", zap.Error(err))
@@ -203,13 +189,13 @@ func (s *Scheduler) checkAndScheduleJob(ctx context.Context, jobType JobType) {
 
 	lastJob := jobs[0]
 
-	switch lastJob.State {
+	switch storage.JobState(lastJob.State) {
 	case storage.JobStatePending, storage.JobStateRunning:
 		log.Debug("job already pending or running, not scheduling",
-			zap.String("state", string(lastJob.State)))
+			zap.String("state", lastJob.State))
 		return
 	case storage.JobStateDone, storage.JobStateError, storage.JobStateCancelled:
-		timeSinceLastJob := time.Since(*lastJob.CreatedAt)
+		timeSinceLastJob := time.Since(lastJob.Job.CreatedAt.Time)
 
 		if timeSinceLastJob >= interval {
 			log.Debug("interval elapsed, scheduling job",
@@ -254,10 +240,8 @@ func (s *Scheduler) createPendingJob(ctx context.Context, jobType JobType) (int6
 		return 0, errors.New("invalid job type")
 	}
 
-	job := storage.Job{
-		Job: model.Job{
-			Type: newJobType,
-		},
+	job := sqlcdb.Job{
+		Type: newJobType,
 	}
 
 	id, err := s.storage.CreateJob(ctx, job, storage.JobStatePending)
@@ -273,21 +257,15 @@ func (s *Scheduler) createPendingJob(ctx context.Context, jobType JobType) (int6
 	return id, nil
 }
 
-func (s *Scheduler) listPendingJobs(ctx context.Context) ([]*storage.Job, error) {
-	where := sqlite.AND(
-		table.JobTransition.ToState.EQ(sqlite.String(string(storage.JobStatePending))),
-		table.JobTransition.MostRecent.EQ(sqlite.Bool(true)),
-	)
-	return s.storage.ListJobs(ctx, 0, 0, where)
+func (s *Scheduler) listPendingJobs(ctx context.Context) ([]sqlcdb.ListJobsRow, error) {
+	state := string(storage.JobStatePending)
+	return s.storage.ListJobs(ctx, 0, 0, storage.JobFilter{State: &state})
 }
 
-func (s *Scheduler) listPendingJobsByType(ctx context.Context, jobType JobType) ([]*storage.Job, error) {
-	where := sqlite.AND(
-		table.JobTransition.Type.EQ(sqlite.String(string(jobType))),
-		table.JobTransition.ToState.EQ(sqlite.String(string(storage.JobStatePending))),
-		table.JobTransition.MostRecent.EQ(sqlite.Bool(true)),
-	)
-	return s.storage.ListJobs(ctx, 0, 0, where)
+func (s *Scheduler) listPendingJobsByType(ctx context.Context, jobType JobType) ([]sqlcdb.ListJobsRow, error) {
+	jobTypeStr := string(jobType)
+	state := string(storage.JobStatePending)
+	return s.storage.ListJobs(ctx, 0, 0, storage.JobFilter{Type: &jobTypeStr, State: &state})
 }
 
 func (s *Scheduler) processPendingJobs(ctx context.Context) {
@@ -323,21 +301,21 @@ func (s *Scheduler) processPendingJobs(ctx context.Context) {
 	}
 }
 
-func (s *Scheduler) executeJob(ctx context.Context, job *storage.Job) {
+func (s *Scheduler) executeJob(ctx context.Context, job sqlcdb.ListJobsRow) {
 	log := logger.FromCtx(ctx).With(
-		zap.Int64("job_id", int64(job.ID)),
-		zap.String("job_type", job.Type),
+		zap.Int64("job_id", job.Job.ID),
+		zap.String("job_type", job.Job.Type),
 	)
 
-	executor, ok := s.executors[JobType(job.Type)]
+	executor, ok := s.executors[JobType(job.Job.Type)]
 	if !ok {
 		log.Error("no executor found for job type")
 		errMsg := "no executor found for job type"
-		s.storage.UpdateJobState(ctx, int64(job.ID), storage.JobStateError, &errMsg)
+		s.storage.UpdateJobState(ctx, job.Job.ID, storage.JobStateError, &errMsg)
 		return
 	}
 
-	err := s.storage.UpdateJobState(ctx, int64(job.ID), storage.JobStateRunning, nil)
+	err := s.storage.UpdateJobState(ctx, job.Job.ID, storage.JobStateRunning, nil)
 	if err != nil {
 		log.Error("failed to update job state to running", zap.Error(err))
 		return
@@ -346,29 +324,29 @@ func (s *Scheduler) executeJob(ctx context.Context, job *storage.Job) {
 	jobCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	s.runningJobs.Set(int64(job.ID), cancel)
+	s.runningJobs.Set(job.Job.ID, cancel)
 
 	defer func() {
-		s.runningJobs.Delete(int64(job.ID))
+		s.runningJobs.Delete(job.Job.ID)
 	}()
 
 	log.Debug("executing job")
 
-	err = executor(jobCtx, int64(job.ID))
+	err = executor(jobCtx, job.Job.ID)
 	if err != nil {
 		if jobCtx.Err() == context.Canceled {
 			log.Info("job cancelled")
-			s.storage.UpdateJobState(ctx, int64(job.ID), storage.JobStateCancelled, nil)
+			s.storage.UpdateJobState(ctx, job.Job.ID, storage.JobStateCancelled, nil)
 			return
 		}
 
 		log.Error("job execution failed", zap.Error(err))
 		errMsg := err.Error()
-		s.storage.UpdateJobState(ctx, int64(job.ID), storage.JobStateError, &errMsg)
+		s.storage.UpdateJobState(ctx, job.Job.ID, storage.JobStateError, &errMsg)
 		return
 	}
 
-	err = s.storage.UpdateJobState(ctx, int64(job.ID), storage.JobStateDone, nil)
+	err = s.storage.UpdateJobState(ctx, job.Job.ID, storage.JobStateDone, nil)
 	if err != nil {
 		log.Error("failed to update job state to done", zap.Error(err))
 		return
@@ -385,7 +363,7 @@ func (s *Scheduler) CancelJob(ctx context.Context, jobID int64) error {
 		return err
 	}
 
-	switch job.State {
+	switch storage.JobState(job.State) {
 	case storage.JobStatePending:
 		log.Debug("cancelling pending job")
 		return s.storage.UpdateJobState(ctx, jobID, storage.JobStateCancelled, nil)

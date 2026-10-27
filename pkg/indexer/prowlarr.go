@@ -10,7 +10,7 @@ import (
 	"github.com/kasuboski/mediaz/pkg/logger"
 	"github.com/kasuboski/mediaz/pkg/prowlarr"
 	"github.com/kasuboski/mediaz/pkg/ptr"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
+	"github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 	"go.uber.org/zap"
 )
 
@@ -24,20 +24,20 @@ type ProwlarrClient interface {
 
 type ProwlarrIndexerSource struct {
 	client ProwlarrClient
-	config model.IndexerSource
+	config sqlcdb.IndexerSource
 }
 
-func NewProwlarrSource(config model.IndexerSource) (*ProwlarrIndexerSource, error) {
-	if config.APIKey == nil {
+func NewProwlarrSource(config sqlcdb.IndexerSource) (*ProwlarrIndexerSource, error) {
+	if !config.ApiKey.Valid {
 		return nil, fmt.Errorf("prowlarr source requires api_key")
 	}
 
 	url := fmt.Sprintf("%s://%s", config.Scheme, config.Host)
-	if config.Port != nil && *config.Port != 80 && *config.Port != 443 {
-		url = fmt.Sprintf("%s:%d", url, *config.Port)
+	if config.Port.Valid && config.Port.Int64 != 80 && config.Port.Int64 != 443 {
+		url = fmt.Sprintf("%s:%d", url, config.Port.Int64)
 	}
 
-	client, err := prowlarr.New(url, *config.APIKey)
+	client, err := prowlarr.New(url, config.ApiKey.String)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create prowlarr client: %w", err)
 	}
@@ -50,7 +50,7 @@ func NewProwlarrSource(config model.IndexerSource) (*ProwlarrIndexerSource, erro
 
 // NewProwlarrIndexerSourceWithClient creates a ProwlarrIndexerSource with a
 // pre-configured client, useful for testing.
-func NewProwlarrIndexerSourceWithClient(client ProwlarrClient, config model.IndexerSource) *ProwlarrIndexerSource {
+func NewProwlarrIndexerSourceWithClient(client ProwlarrClient, config sqlcdb.IndexerSource) *ProwlarrIndexerSource {
 	return &ProwlarrIndexerSource{
 		client: client,
 		config: config,

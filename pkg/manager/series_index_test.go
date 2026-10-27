@@ -2,14 +2,15 @@ package manager
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"testing"
 
 	"github.com/kasuboski/mediaz/config"
 	"github.com/kasuboski/mediaz/pkg/library"
 	mockLibrary "github.com/kasuboski/mediaz/pkg/library/mocks"
-	"github.com/kasuboski/mediaz/pkg/ptr"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
+	"github.com/kasuboski/mediaz/pkg/storage"
+	sqlcdb "github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -43,7 +44,7 @@ func TestIndexSeriesLibrary(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	t.Run("error listing episode files from storage", func(t *testing.T) {
+	t.Run("indexes episode files with empty storage", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		ctx := context.Background()
 
@@ -83,7 +84,7 @@ func TestIndexSeriesLibrary(t *testing.T) {
 		err := m.IndexSeriesLibrary(ctx)
 		assert.NoError(t, err)
 
-		series, err := store.ListSeries(ctx)
+		series, err := store.ListSeries(ctx, storage.SeriesFilter{})
 		require.NoError(t, err)
 		assert.Len(t, series, 2)
 
@@ -91,13 +92,13 @@ func TestIndexSeriesLibrary(t *testing.T) {
 		require.NoError(t, err)
 		assert.Len(t, episodeFiles, 2)
 
-		assert.Equal(t, "Show 1/Season 01/episode1.mkv", *episodeFiles[0].RelativePath)
+		assert.Equal(t, "Show 1/Season 01/episode1.mkv", episodeFiles[0].RelativePath.String)
 		assert.Equal(t, int64(1024), episodeFiles[0].Size)
-		assert.Equal(t, "Show 2/Season 01/episode1.mp4", *episodeFiles[1].RelativePath)
+		assert.Equal(t, "Show 2/Season 01/episode1.mp4", episodeFiles[1].RelativePath.String)
 		assert.Equal(t, int64(2048), episodeFiles[1].Size)
 
-		assert.Equal(t, "Show 1", *series[0].Path)
-		assert.Equal(t, "Show 2", *series[1].Path)
+		assert.Equal(t, "Show 1", series[0].Series.Path.String)
+		assert.Equal(t, "Show 2", series[1].Series.Path.String)
 	})
 
 	t.Run("create series for already tracked file", func(t *testing.T) {
@@ -107,10 +108,10 @@ func TestIndexSeriesLibrary(t *testing.T) {
 		store := newStore(t, ctx)
 		mockLibrary := mockLibrary.NewMockLibrary(ctrl)
 
-		_, err := store.CreateEpisodeFile(ctx, model.EpisodeFile{
+		_, err := store.CreateEpisodeFile(ctx, sqlcdb.EpisodeFile{
 			Size:             1024,
-			RelativePath:     ptr.To("Show 1/Season 01/episode1.mkv"),
-			OriginalFilePath: ptr.To("/tv/Show 1/Season 01/episode1.mkv"),
+			RelativePath:     sql.NullString{String: "Show 1/Season 01/episode1.mkv", Valid: true},
+			OriginalFilePath: sql.NullString{String: "/tv/Show 1/Season 01/episode1.mkv", Valid: true},
 		})
 		require.NoError(t, err)
 
@@ -130,11 +131,11 @@ func TestIndexSeriesLibrary(t *testing.T) {
 		require.NoError(t, err)
 		assert.Len(t, episodeFiles, 1)
 
-		series, err := store.ListSeries(ctx)
+		series, err := store.ListSeries(ctx, storage.SeriesFilter{})
 		require.NoError(t, err)
 		require.Len(t, series, 1)
 
-		assert.Equal(t, "Show 1", *series[0].Path)
+		assert.Equal(t, "Show 1", series[0].Series.Path.String)
 	})
 
 	t.Run("link new episode file to existing series", func(t *testing.T) {
@@ -144,10 +145,10 @@ func TestIndexSeriesLibrary(t *testing.T) {
 		store := newStore(t, ctx)
 		mockLibrary := mockLibrary.NewMockLibrary(ctrl)
 
-		_, err := store.CreateEpisodeFile(ctx, model.EpisodeFile{
+		_, err := store.CreateEpisodeFile(ctx, sqlcdb.EpisodeFile{
 			Size:             1024,
-			RelativePath:     ptr.To("Show 1/Season 01/episode1.mkv"),
-			OriginalFilePath: ptr.To("/tv/Show 1/Season 01/episode1.mkv"),
+			RelativePath:     sql.NullString{String: "Show 1/Season 01/episode1.mkv", Valid: true},
+			OriginalFilePath: sql.NullString{String: "/tv/Show 1/Season 01/episode1.mkv", Valid: true},
 		})
 		require.NoError(t, err)
 
@@ -167,11 +168,11 @@ func TestIndexSeriesLibrary(t *testing.T) {
 		require.NoError(t, err)
 		assert.Len(t, episodeFiles, 1)
 
-		series, err := store.ListSeries(ctx)
+		series, err := store.ListSeries(ctx, storage.SeriesFilter{})
 		require.NoError(t, err)
 		require.Len(t, series, 1)
 
-		assert.Equal(t, "Show 1", *series[0].Path)
+		assert.Equal(t, "Show 1", series[0].Series.Path.String)
 
 		discoveredFiles = []library.EpisodeFile{
 			{RelativePath: "Show 1/Season 01/episode1.mkv", AbsolutePath: "/tv/Show 1/Season 01/episode1.mkv", SeriesName: "Show 1"},
@@ -187,7 +188,7 @@ func TestIndexSeriesLibrary(t *testing.T) {
 		require.NoError(t, err)
 		assert.Len(t, episodeFiles, 2)
 
-		series, err = store.ListSeries(ctx)
+		series, err = store.ListSeries(ctx, storage.SeriesFilter{})
 		require.NoError(t, err)
 		require.Len(t, series, 1)
 	})
@@ -199,10 +200,10 @@ func TestIndexSeriesLibrary(t *testing.T) {
 		store := newStore(t, ctx)
 		mockLibrary := mockLibrary.NewMockLibrary(ctrl)
 
-		fileID, err := store.CreateEpisodeFile(ctx, model.EpisodeFile{
+		fileID, err := store.CreateEpisodeFile(ctx, sqlcdb.EpisodeFile{
 			Size:             1024,
-			RelativePath:     ptr.To("Fargo/Fargo - S01E01.mkv"),
-			OriginalFilePath: ptr.To("/old/library/tv/Fargo/Fargo - S01E01.mkv"),
+			RelativePath:     sql.NullString{String: "Fargo/Fargo - S01E01.mkv", Valid: true},
+			OriginalFilePath: sql.NullString{String: "/old/library/tv/Fargo/Fargo - S01E01.mkv", Valid: true},
 		})
 		require.NoError(t, err)
 
@@ -229,10 +230,10 @@ func TestIndexSeriesLibrary(t *testing.T) {
 		require.NoError(t, err)
 		assert.Len(t, episodeFiles, 1, "Should still have 1 file, not duplicate")
 
-		updatedFile, err := store.GetEpisodeFile(ctx, int32(fileID))
+		updatedFile, err := store.GetEpisodeFile(ctx, fileID)
 		require.NoError(t, err)
-		assert.Equal(t, "/new/library/tv/Fargo/Fargo - S01E01.mkv", *updatedFile.OriginalFilePath, "Absolute path should be updated")
-		assert.Equal(t, "Fargo/Fargo - S01E01.mkv", *updatedFile.RelativePath, "Relative path should remain the same")
+		assert.Equal(t, "/new/library/tv/Fargo/Fargo - S01E01.mkv", updatedFile.OriginalFilePath.String, "Absolute path should be updated")
+		assert.Equal(t, "Fargo/Fargo - S01E01.mkv", updatedFile.RelativePath.String, "Relative path should remain the same")
 	})
 
 	t.Run("does not update when paths match", func(t *testing.T) {
@@ -242,10 +243,10 @@ func TestIndexSeriesLibrary(t *testing.T) {
 		store := newStore(t, ctx)
 		mockLibrary := mockLibrary.NewMockLibrary(ctrl)
 
-		fileID, err := store.CreateEpisodeFile(ctx, model.EpisodeFile{
+		fileID, err := store.CreateEpisodeFile(ctx, sqlcdb.EpisodeFile{
 			Size:             1024,
-			RelativePath:     ptr.To("Fargo/Fargo - S01E01.mkv"),
-			OriginalFilePath: ptr.To("/library/tv/Fargo/Fargo - S01E01.mkv"),
+			RelativePath:     sql.NullString{String: "Fargo/Fargo - S01E01.mkv", Valid: true},
+			OriginalFilePath: sql.NullString{String: "/library/tv/Fargo/Fargo - S01E01.mkv", Valid: true},
 		})
 		require.NoError(t, err)
 
@@ -268,9 +269,9 @@ func TestIndexSeriesLibrary(t *testing.T) {
 		err = m.IndexSeriesLibrary(ctx)
 		assert.NoError(t, err)
 
-		updatedFile, err := store.GetEpisodeFile(ctx, int32(fileID))
+		updatedFile, err := store.GetEpisodeFile(ctx, fileID)
 		require.NoError(t, err)
-		assert.Equal(t, "/library/tv/Fargo/Fargo - S01E01.mkv", *updatedFile.OriginalFilePath, "Path should remain unchanged")
+		assert.Equal(t, "/library/tv/Fargo/Fargo - S01E01.mkv", updatedFile.OriginalFilePath.String, "Path should remain unchanged")
 	})
 
 	t.Run("handles multiple files with mixed scenarios", func(t *testing.T) {
@@ -280,17 +281,17 @@ func TestIndexSeriesLibrary(t *testing.T) {
 		store := newStore(t, ctx)
 		mockLibrary := mockLibrary.NewMockLibrary(ctrl)
 
-		existingFileID, err := store.CreateEpisodeFile(ctx, model.EpisodeFile{
+		existingFileID, err := store.CreateEpisodeFile(ctx, sqlcdb.EpisodeFile{
 			Size:             1024,
-			RelativePath:     ptr.To("Fargo/Fargo - S01E01.mkv"),
-			OriginalFilePath: ptr.To("/old/path/tv/Fargo/Fargo - S01E01.mkv"),
+			RelativePath:     sql.NullString{String: "Fargo/Fargo - S01E01.mkv", Valid: true},
+			OriginalFilePath: sql.NullString{String: "/old/path/tv/Fargo/Fargo - S01E01.mkv", Valid: true},
 		})
 		require.NoError(t, err)
 
-		movedFileID, err := store.CreateEpisodeFile(ctx, model.EpisodeFile{
+		movedFileID, err := store.CreateEpisodeFile(ctx, sqlcdb.EpisodeFile{
 			Size:             2048,
-			RelativePath:     ptr.To("Fargo/Fargo - S01E02.mkv"),
-			OriginalFilePath: ptr.To("/old/path/tv/Fargo/Fargo - S01E02.mkv"),
+			RelativePath:     sql.NullString{String: "Fargo/Fargo - S01E02.mkv", Valid: true},
+			OriginalFilePath: sql.NullString{String: "/old/path/tv/Fargo/Fargo - S01E02.mkv", Valid: true},
 		})
 		require.NoError(t, err)
 
@@ -333,23 +334,23 @@ func TestIndexSeriesLibrary(t *testing.T) {
 		require.NoError(t, err)
 		assert.Len(t, episodeFiles, 3, "Should have 3 files: 2 existing + 1 new")
 
-		unchangedFile, err := store.GetEpisodeFile(ctx, int32(existingFileID))
+		unchangedFile, err := store.GetEpisodeFile(ctx, existingFileID)
 		require.NoError(t, err)
-		assert.Equal(t, "/old/path/tv/Fargo/Fargo - S01E01.mkv", *unchangedFile.OriginalFilePath, "File with same path should not be updated")
+		assert.Equal(t, "/old/path/tv/Fargo/Fargo - S01E01.mkv", unchangedFile.OriginalFilePath.String, "File with same path should not be updated")
 
-		movedFile, err := store.GetEpisodeFile(ctx, int32(movedFileID))
+		movedFile, err := store.GetEpisodeFile(ctx, movedFileID)
 		require.NoError(t, err)
-		assert.Equal(t, "/new/path/tv/Fargo/Fargo - S01E02.mkv", *movedFile.OriginalFilePath, "File with new path should be updated")
+		assert.Equal(t, "/new/path/tv/Fargo/Fargo - S01E02.mkv", movedFile.OriginalFilePath.String, "File with new path should be updated")
 
-		var newFile *model.EpisodeFile
+		var newFile *sqlcdb.EpisodeFile
 		for _, f := range episodeFiles {
-			if *f.RelativePath == "Fargo/Fargo - S01E03.mkv" {
-				newFile = f
+			if f.RelativePath.String == "Fargo/Fargo - S01E03.mkv" {
+				newFile = &f
 				break
 			}
 		}
 		require.NotNil(t, newFile, "Should find new file")
-		assert.Equal(t, "/new/path/tv/Fargo/Fargo - S01E03.mkv", *newFile.OriginalFilePath, "New file should have correct path")
+		assert.Equal(t, "/new/path/tv/Fargo/Fargo - S01E03.mkv", newFile.OriginalFilePath.String, "New file should have correct path")
 		assert.Equal(t, int64(3072), newFile.Size, "New file should have correct size")
 	})
 
@@ -360,10 +361,10 @@ func TestIndexSeriesLibrary(t *testing.T) {
 		store := newStore(t, ctx)
 		mockLibrary := mockLibrary.NewMockLibrary(ctrl)
 
-		_, err := store.CreateEpisodeFile(ctx, model.EpisodeFile{
+		_, err := store.CreateEpisodeFile(ctx, sqlcdb.EpisodeFile{
 			Size:             1024,
-			RelativePath:     ptr.To(""),
-			OriginalFilePath: ptr.To(""),
+			RelativePath:     sql.NullString{String: "", Valid: true},
+			OriginalFilePath: sql.NullString{String: "", Valid: true},
 		})
 		require.NoError(t, err)
 

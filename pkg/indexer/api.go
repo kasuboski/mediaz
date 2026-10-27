@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/kasuboski/mediaz/pkg/prowlarr"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
+	"github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 )
 
 const (
@@ -28,12 +28,12 @@ type SourceIndexer struct {
 
 type SearchOptions struct {
 	Query   string
-	Season  *int32
-	Episode *int32
+	Season  *int64
+	Episode *int64
 	Type    *string
 	TmdbID  *int32
 }
 
 type Factory interface {
-	NewIndexerSource(config model.IndexerSource) (IndexerSource, error)
+	NewIndexerSource(config sqlcdb.IndexerSource) (IndexerSource, error)
 }

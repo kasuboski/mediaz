@@ -30,7 +30,7 @@ func (s Server) GetTVDetailByTMDBID() http.HandlerFunc {
 			return
 		}
 
-		tvDetail, err := s.manager.GetTVDetailByTMDBID(r.Context(), int(id))
+		tvDetail, err := s.manager.GetTVDetailByTMDBID(r.Context(), id)
 		if err != nil {
 			if isNotFound(err) {
 				s.respondError(r, w, http.StatusNotFound, err)
@@ -56,7 +56,7 @@ func (s Server) AddSeriesToLibrary() http.HandlerFunc {
 			s.respondError(r, w, http.StatusInternalServerError, err)
 			return
 		}
-		s.respond(r, w, http.StatusOK, release)
+		s.respond(r, w, http.StatusOK, seriesDTO(release))
 	}
 }
 
@@ -111,7 +111,7 @@ func (s Server) UpdateSeriesMonitored() http.HandlerFunc {
 			s.respondError(r, w, http.StatusInternalServerError, err)
 			return
 		}
-		s.respond(r, w, http.StatusOK, series)
+		s.respond(r, w, http.StatusOK, seriesDTO(series))
 	}
 }
 

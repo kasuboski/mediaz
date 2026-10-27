@@ -615,13 +615,13 @@ Error: near "COLUMN": syntax error
 # Apply migration (via server startup)
 ./mediaz serve
 
-# Regenerate Jet models
-go generate ./...
+# Regenerate sqlc queries and mocks
+make generate
 ```
 
 This updates:
-- `pkg/storage/sqlite/schema/gen/model/*.go` - Struct definitions
-- `pkg/storage/sqlite/schema/gen/table/*.go` - Table definitions
+- `pkg/storage/sqlcdb/*.go` - Generated query code
+- `pkg/storage/model/` - Handwritten domain models (update alongside schema)
 
 ### Type Mapping Reference
 
@@ -663,8 +663,9 @@ Before committing a migration, verify:
 | Migrations | `pkg/storage/sqlite/migrations/` |
 | Migration logic | `pkg/storage/sqlite/migrate.go` |
 | Migration tests | `pkg/storage/sqlite/migrate_test.go` |
-| Generated models | `pkg/storage/sqlite/schema/gen/model/` |
-| Generated tables | `pkg/storage/sqlite/schema/gen/table/` |
+| Schema snapshot parity | `pkg/storage/sqlite/schema_parity_test.go` |
+| Generated queries | `pkg/storage/sqlcdb/` |
+| Domain models | `pkg/storage/model/` |
 
 ### Common Commands
 

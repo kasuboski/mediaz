@@ -2,30 +2,24 @@ package sqlite
 
 import (
 	"context"
-	"errors"
-	"fmt"
+	"database/sql"
 
-	"github.com/go-jet/jet/v2/qrm"
-	"github.com/go-jet/jet/v2/sqlite"
 	"github.com/kasuboski/mediaz/pkg/storage"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/table"
+	"github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 )
 
 // LinkSeasonMetadata links a season with its metadata
-func (s *SQLite) LinkSeasonMetadata(ctx context.Context, seasonID int64, metadataID int32) error {
-	stmt := table.Season.UPDATE(table.Season.SeasonMetadataID).SET(metadataID).WHERE(table.Season.ID.EQ(sqlite.Int64(seasonID)))
-	_, err := stmt.Exec(s.db)
-	return err
+func (s *SQLite) LinkSeasonMetadata(ctx context.Context, seasonID int64, metadataID int64) error {
+	return s.Queries.LinkSeasonMetadata(ctx, sqlcdb.LinkSeasonMetadataParams{
+		SeasonMetadataID: sql.NullInt64{Int64: metadataID, Valid: true},
+		ID:               seasonID,
+	})
 }
 
-// CreateSeason stores a season in the database
-func (s *SQLite) CreateSeason(ctx context.Context, season storage.Season, initialState storage.SeasonState) (int64, error) {
-	if season.State == "" {
-		season.State = storage.SeasonStateNew
-	}
-
-	err := season.Machine().ToState(initialState)
-	if err != nil {
+// CreateSeason stores a season in the database. A zero season.ID lets SQLite
+// assign a fresh autoincrement id; a non-zero id upserts by id.
+func (s *SQLite) CreateSeason(ctx context.Context, season sqlcdb.Season, initialState storage.SeasonState) (int64, error) {
+	if err := storage.SeasonStateNew.Machine().ToState(initialState); err != nil {
 		return 0, err
 	}
 
@@ -33,55 +27,41 @@ func (s *SQLite) CreateSeason(ctx context.Context, season storage.Season, initia
 	if err != nil {
 		return 0, err
 	}
+	q := s.txQueries(tx)
 
-	setColumns := make([]sqlite.Expression, len(table.Season.MutableColumns))
-	for i, c := range table.Season.MutableColumns {
-		setColumns[i] = c
-	}
-	// don't insert a zeroed ID
-	insertColumns := table.Season.MutableColumns
-	if season.ID != 0 {
-		insertColumns = table.Season.AllColumns
-	}
-
-	stmt := table.Season.
-		INSERT(insertColumns).
-		MODEL(season.Season).
-		RETURNING(table.Season.ID).
-		ON_CONFLICT(table.Season.ID).
-		DO_UPDATE(sqlite.SET(table.Season.MutableColumns.SET(sqlite.ROW(setColumns...))))
-
-	result, err := stmt.ExecContext(ctx, tx)
-	if err != nil {
-		return 0, err
-	}
-
-	inserted, err := result.LastInsertId()
+	inserted, err := q.CreateSeason(ctx, sqlcdb.CreateSeasonParams{
+		ID:               sql.NullInt64{Int64: season.ID, Valid: season.ID != 0},
+		SeriesID:         season.SeriesID,
+		SeasonNumber:     season.SeasonNumber,
+		SeasonMetadataID: season.SeasonMetadataID,
+		Monitored:        season.Monitored,
+	})
 	if err != nil {
 		tx.Rollback()
 		return 0, err
 	}
 
-	state := storage.SeasonTransition{
-		SeasonID:   int32(inserted),
+	current, err := q.GetSeasonByID(ctx, inserted)
+	if err != nil {
+		tx.Rollback()
+		return 0, err
+	}
+	// Upserts update the entity, never reset its transition history.
+	if current.State.Valid {
+		return inserted, tx.Commit()
+	}
+
+	if err := q.InsertSeasonTransition(ctx, sqlcdb.InsertSeasonTransitionParams{
+		SeasonID:   inserted,
 		ToState:    string(initialState),
 		MostRecent: true,
 		SortKey:    1,
-	}
-
-	transitionStmt := table.SeasonTransition.
-		INSERT(table.SeasonTransition.AllColumns.
-			Except(table.SeasonTransition.ID, table.SeasonTransition.CreatedAt, table.SeasonTransition.UpdatedAt)).
-		MODEL(state)
-
-	_, err = transitionStmt.ExecContext(ctx, tx)
-	if err != nil {
+	}); err != nil {
 		tx.Rollback()
 		return 0, err
 	}
 
-	err = tx.Commit()
-	if err != nil {
+	if err := tx.Commit(); err != nil {
 		tx.Rollback()
 		return 0, err
 	}
@@ -89,134 +69,104 @@ func (s *SQLite) CreateSeason(ctx context.Context, season storage.Season, initia
 	return inserted, nil
 }
 
-// GetSeason gets a season by id
-func (s *SQLite) GetSeason(ctx context.Context, where sqlite.BoolExpression) (*storage.Season, error) {
-	stmt := sqlite.
-		SELECT(
-			table.Season.AllColumns,
-			table.SeasonTransition.AllColumns,
-		).
-		FROM(table.Season.
-			LEFT_JOIN(table.SeasonTransition,
-				table.Season.ID.EQ(table.SeasonTransition.SeasonID).
-					AND(table.SeasonTransition.MostRecent.IS_TRUE()),
-			)).
-		WHERE(where)
-
-	var season storage.Season
-	err := stmt.QueryContext(ctx, s.db, &season)
+// GetSeasonByID gets a season by id
+func (s *SQLite) GetSeasonByID(ctx context.Context, id int64) (sqlcdb.GetSeasonByIDRow, error) {
+	row, err := s.Queries.GetSeasonByID(ctx, id)
 	if err != nil {
-		if errors.Is(err, qrm.ErrNoRows) {
-			return nil, storage.ErrNotFound
-		}
-		return nil, fmt.Errorf("failed to get season: %w", err)
+		return sqlcdb.GetSeasonByIDRow{}, mapQueryErr(err, "failed to get season")
 	}
+	return row, nil
+}
 
-	return &season, nil
+// GetSeasonBySeriesIDAndNumber gets a season given its series id and season number
+func (s *SQLite) GetSeasonBySeriesIDAndNumber(ctx context.Context, seriesID int64, seasonNumber int64) (sqlcdb.GetSeasonBySeriesIDAndNumberRow, error) {
+	row, err := s.Queries.GetSeasonBySeriesIDAndNumber(ctx, sqlcdb.GetSeasonBySeriesIDAndNumberParams{
+		SeriesID:     seriesID,
+		SeasonNumber: seasonNumber,
+	})
+	if err != nil {
+		return sqlcdb.GetSeasonBySeriesIDAndNumberRow{}, mapQueryErr(err, "failed to get season")
+	}
+	return row, nil
 }
 
 // DeleteSeason removes a season by id
 func (s *SQLite) DeleteSeason(ctx context.Context, id int64) error {
-	stmt := table.Season.
-		DELETE().
-		WHERE(table.Season.ID.EQ(sqlite.Int64(id)))
-
-	_, err := s.handleDelete(ctx, stmt)
-	if err != nil {
-		return fmt.Errorf("failed to delete season: %w", err)
+	if err := s.Queries.DeleteSeason(ctx, id); err != nil {
+		return err
 	}
-
 	return nil
 }
 
-// ListSeasons lists all seasons for a Series
-func (s *SQLite) ListSeasons(ctx context.Context, where ...sqlite.BoolExpression) ([]*storage.Season, error) {
-	stmt := table.Season.
-		SELECT(
-			table.Season.AllColumns,
-			table.SeasonTransition.AllColumns,
-		).
-		FROM(
-			table.Season.
-				INNER_JOIN(
-					table.SeasonTransition,
-					table.Season.ID.EQ(table.SeasonTransition.SeasonID).
-						AND(table.SeasonTransition.MostRecent.EQ(sqlite.Bool(true)))),
-		)
-
-	for _, w := range where {
-		stmt = stmt.WHERE(w)
+// ListSeasons lists seasons constrained by the filter; a zero-value filter
+// lists everything. The States filter accepts any number of states.
+func (s *SQLite) ListSeasons(ctx context.Context, filter storage.SeasonFilter) ([]sqlcdb.ListSeasonsRow, error) {
+	params := sqlcdb.ListSeasonsParams{
+		States: make([]string, 0, len(filter.States)),
 	}
-	var seasons []*storage.Season
-	err := stmt.QueryContext(ctx, s.db, &seasons)
+	if filter.SeriesID != nil {
+		params.SeriesID = sql.NullInt64{Int64: *filter.SeriesID, Valid: true}
+	}
+	for _, state := range filter.States {
+		params.States = append(params.States, string(state))
+	}
+	if len(params.States) > 0 {
+		params.StatesAny = sql.NullString{String: params.States[0], Valid: true}
+	}
+
+	rows, err := s.Queries.ListSeasons(ctx, params)
 	if err != nil {
-		return nil, fmt.Errorf("failed to list seasons: %w", err)
+		return nil, mapQueryErr(err, "failed to list seasons")
 	}
-
-	return seasons, nil
+	return rows, nil
 }
 
-// UpdateSeasonState updates the transition state of an episode
-// Metadata is optional and can be nil
+// UpdateSeasonState updates the transition state of a season. Metadata is
+// optional and can be nil. The demote+insert pair runs in one transaction; on
+// any failure nothing is written.
 func (s *SQLite) UpdateSeasonState(ctx context.Context, id int64, state storage.SeasonState, metadata *storage.TransitionStateMetadata) error {
-	season, err := s.GetSeason(ctx, table.Season.ID.EQ(sqlite.Int64(id)))
-	if err != nil {
-		return err
-	}
-
-	err = season.Machine().ToState(state)
-	if err != nil {
-		return err
-	}
-
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
+	defer tx.Rollback()
+	q := s.txQueries(tx)
+	season, err := q.GetSeasonByID(ctx, id)
+	if err != nil {
+		return mapQueryErr(err, "failed to get season")
+	}
+	if err := storage.SeasonState(season.State.String).Machine().ToState(state); err != nil {
+		return err
+	}
 
-	previousTransitionStmt := table.SeasonTransition.
-		UPDATE().
-		SET(
-			table.SeasonTransition.MostRecent.SET(sqlite.Bool(false))).
-		WHERE(
-			table.SeasonTransition.SeasonID.EQ(sqlite.Int(id)).
-				AND(table.SeasonTransition.MostRecent.EQ(sqlite.Bool(true)))).
-		RETURNING(table.SeasonTransition.AllColumns)
-
-	var previousTransition storage.SeasonTransition
-	err = previousTransitionStmt.QueryContext(ctx, tx, &previousTransition)
+	// Demote the current most recent transition; the query errors when the
+	// season has no transition, matching the legacy behavior.
+	previousSortKey, err := q.DemoteSeasonTransition(ctx, id)
 	if err != nil {
 		tx.Rollback()
 		return err
 	}
 
-	transition := storage.SeasonTransition{
-		SeasonID:   int32(id),
+	transition := sqlcdb.InsertSeasonTransitionParams{
+		SeasonID:   id,
+		FromState:  season.State,
 		ToState:    string(state),
 		MostRecent: true,
-		SortKey:    previousTransition.SortKey + 1,
+		SortKey:    previousSortKey + 1,
 	}
-
 	if metadata != nil {
 		if metadata.DownloadClientID != nil {
-			transition.DownloadClientID = metadata.DownloadClientID
+			transition.DownloadClientID = sql.NullInt64{Int64: *metadata.DownloadClientID, Valid: true}
 		}
 		if metadata.DownloadID != nil {
-			transition.DownloadID = metadata.DownloadID
+			transition.DownloadID = sql.NullString{String: *metadata.DownloadID, Valid: true}
 		}
 		if metadata.IsEntireSeasonDownload != nil {
-			transition.IsEntireSeasonDownload = metadata.IsEntireSeasonDownload
+			transition.IsEntireSeasonDownload = sql.NullBool{Bool: *metadata.IsEntireSeasonDownload, Valid: true}
 		}
 	}
 
-	newTransitionStmt := table.SeasonTransition.
-		INSERT(table.SeasonTransition.AllColumns.
-			Except(table.SeasonTransition.ID, table.SeasonTransition.CreatedAt, table.SeasonTransition.UpdatedAt)).
-		MODEL(transition).
-		RETURNING(table.SeasonTransition.AllColumns)
-
-	_, err = newTransitionStmt.ExecContext(ctx, tx)
-	if err != nil {
+	if err := q.InsertSeasonTransition(ctx, transition); err != nil {
 		tx.Rollback()
 		return err
 	}

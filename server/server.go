@@ -26,7 +26,7 @@ type GenericResponse struct {
 
 // RefreshRequest is the request body for refresh endpoints.
 type RefreshRequest struct {
-	TmdbIDs []int `json:"tmdbIds"`
+	TmdbIDs []int64 `json:"tmdbIds"`
 }
 
 // Server houses all dependencies for the media server to work such as loggers, clients, configurations, etc.

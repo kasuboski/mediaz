@@ -36,7 +36,7 @@ func (s Server) GetMovieDetailByTMDBID() http.HandlerFunc {
 			return
 		}
 
-		movieDetail, err := s.manager.GetMovieDetailByTMDBID(r.Context(), int(id))
+		movieDetail, err := s.manager.GetMovieDetailByTMDBID(r.Context(), id)
 		if err != nil {
 			if isNotFound(err) {
 				s.respondError(r, w, http.StatusNotFound, err)
@@ -61,14 +61,14 @@ func (s Server) AddMovieToLibrary() http.HandlerFunc {
 		if err != nil {
 			if isMovieAlreadyExists(err) {
 				log := logger.FromCtx(r.Context())
-				log.Debug("movie already exists in library", zap.Int("tmdbID", req.TMDBID))
-				s.respond(r, w, http.StatusConflict, release)
+				log.Debug("movie already exists in library", zap.Int64("tmdbID", req.TMDBID))
+				s.respond(r, w, http.StatusConflict, movieDTO(release))
 				return
 			}
 			s.respondError(r, w, http.StatusInternalServerError, err)
 			return
 		}
-		s.respond(r, w, http.StatusOK, release)
+		s.respond(r, w, http.StatusOK, movieDTO(release))
 	}
 }
 
@@ -123,7 +123,7 @@ func (s Server) UpdateMovieMonitored() http.HandlerFunc {
 			s.respondError(r, w, http.StatusInternalServerError, err)
 			return
 		}
-		s.respond(r, w, http.StatusOK, movie)
+		s.respond(r, w, http.StatusOK, movieDTO(movie))
 	}
 }
 
@@ -136,7 +136,7 @@ func (s Server) UpdateMovieQualityProfile() http.HandlerFunc {
 		}
 
 		var req struct {
-			QualityProfileID int32 `json:"qualityProfileId"`
+			QualityProfileID int64 `json:"qualityProfileId"`
 		}
 		if !s.decodeJSON(w, r, &req) {
 			return
@@ -151,7 +151,7 @@ func (s Server) UpdateMovieQualityProfile() http.HandlerFunc {
 			s.respondError(r, w, http.StatusInternalServerError, err)
 			return
 		}
-		s.respond(r, w, http.StatusOK, movie)
+		s.respond(r, w, http.StatusOK, movieDTO(movie))
 	}
 }
 

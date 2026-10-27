@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/kasuboski/mediaz/pkg/storage"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
+	sqlcdb "github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 )
 
 // initialSeriesState returns Missing or Unreleased based on the first air date.
@@ -40,12 +40,12 @@ func findMatchingSeriesResult(results []*SearchMediaResult, year *int32) *Search
 }
 
 // getSeasonRuntime sums episode runtimes, estimating missing values from the average.
-func getSeasonRuntime(episodeMetadata []*model.EpisodeMetadata, totalSeasonEpisodes int) int32 {
-	var runtime int32
+func getSeasonRuntime(episodeMetadata []*sqlcdb.EpisodeMetadatum, totalSeasonEpisodes int) int64 {
+	var runtime int64
 	var consideredRuntimeCount int
 	for _, meta := range episodeMetadata {
-		if meta.Runtime != nil {
-			runtime = runtime + *meta.Runtime
+		if meta.Runtime.Valid {
+			runtime += meta.Runtime.Int64
 			consideredRuntimeCount++
 		}
 	}
@@ -54,21 +54,21 @@ func getSeasonRuntime(episodeMetadata []*model.EpisodeMetadata, totalSeasonEpiso
 		return 0
 	}
 
-	// If we have runtimes for some but not all episodes, calculate an average and apply it to the missing ones
+	// If we have runtimes for some but not all episodes, calculate an average and apply it to the missing ones.
 	if consideredRuntimeCount < totalSeasonEpisodes {
-		averageRuntime := runtime / int32(consideredRuntimeCount)
-		missingRuntimes := (totalSeasonEpisodes - consideredRuntimeCount)
-		runtime = runtime + (averageRuntime * int32(missingRuntimes))
+		averageRuntime := runtime / int64(consideredRuntimeCount)
+		missingRuntimes := totalSeasonEpisodes - consideredRuntimeCount
+		runtime += averageRuntime * int64(missingRuntimes)
 	}
 
 	return runtime
 }
 
 // determineSeasonState counts episode states and derives the overall season state.
-func determineSeasonState(episodes []*storage.Episode) (map[string]int, storage.SeasonState) {
+func determineSeasonState(episodes []sqlcdb.ListEpisodesRow) (map[string]int, storage.SeasonState) {
 	var done, downloading, missing, unreleased, discovered int
 	for _, episode := range episodes {
-		switch episode.State {
+		switch storage.EpisodeState(episode.State) {
 		case storage.EpisodeStateDownloaded, storage.EpisodeStateCompleted:
 			done++
 		case storage.EpisodeStateDownloading:
@@ -124,16 +124,16 @@ type seriesStateCounts struct {
 
 // determineSeriesState counts season states (excluding specials) and derives the series state from them
 // and the TMDB status string.
-func determineSeriesState(seasons []*storage.Season, tmdbStatus string) (seriesStateCounts, storage.SeriesState) {
+func determineSeriesState(seasons []sqlcdb.ListSeasonsRow, tmdbStatus string) (seriesStateCounts, storage.SeriesState) {
 	total := 0
 	var counts seriesStateCounts
 	for _, season := range seasons {
 		// dont count specials
-		if season.SeasonNumber == 0 {
+		if season.Season.SeasonNumber == 0 {
 			continue
 		}
 		total++
-		switch season.State {
+		switch storage.SeasonState(season.State) {
 		case storage.SeasonStateCompleted:
 			counts.completed++
 		case storage.SeasonStateDownloading:
@@ -171,4 +171,28 @@ func determineSeriesState(seasons []*storage.Season, tmdbStatus string) (seriesS
 	}
 
 	return counts, state
+}
+
+// seasonListRow widens a single-season read row into the list-row shape used
+// by reconcile helpers (identical columns, non-null state).
+func seasonListRow(r sqlcdb.GetSeasonByIDRow) sqlcdb.ListSeasonsRow {
+	return sqlcdb.ListSeasonsRow{
+		Season:                 r.Season,
+		State:                  r.State.String,
+		DownloadID:             r.DownloadID,
+		DownloadClientID:       r.DownloadClientID,
+		IsEntireSeasonDownload: r.IsEntireSeasonDownload,
+	}
+}
+
+// episodeListRow widens a single-episode read row into the list-row shape
+// used by reconcile helpers (identical columns, non-null state).
+func episodeListRow(r sqlcdb.GetEpisodeByIDRow) sqlcdb.ListEpisodesRow {
+	return sqlcdb.ListEpisodesRow{
+		Episode:                r.Episode,
+		State:                  r.State.String,
+		DownloadID:             r.DownloadID,
+		DownloadClientID:       r.DownloadClientID,
+		IsEntireSeasonDownload: r.IsEntireSeasonDownload,
+	}
 }

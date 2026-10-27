@@ -2,25 +2,18 @@ package sqlite
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
-	"time"
 
-	"github.com/go-jet/jet/v2/qrm"
-	"github.com/go-jet/jet/v2/sqlite"
 	"github.com/kasuboski/mediaz/pkg/storage"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/table"
+	"github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 )
 
-// CreateMovie stores a movie and creates an initial transition state
-func (s *SQLite) CreateMovie(ctx context.Context, movie storage.Movie, initialState storage.MovieState) (int64, error) {
-	if movie.State == "" {
-		movie.State = storage.MovieStateNew
-	}
-
-	err := movie.Machine().ToState(initialState)
-	if err != nil {
+// CreateMovie stores a movie and creates an initial transition state. When
+// movie.Added is zero the column default (CURRENT_TIMESTAMP, UTC) applies.
+func (s *SQLite) CreateMovie(ctx context.Context, movie sqlcdb.Movie, initialState storage.MovieState) (int64, error) {
+	if err := storage.MovieStateNew.Machine().ToState(initialState); err != nil {
 		return 0, err
 	}
 
@@ -28,57 +21,54 @@ func (s *SQLite) CreateMovie(ctx context.Context, movie storage.Movie, initialSt
 	if err != nil {
 		return 0, err
 	}
+	q := s.txQueries(tx)
 
-	setColumns := make([]sqlite.Expression, len(table.Movie.MutableColumns))
-	for i, c := range table.Movie.MutableColumns {
-		setColumns[i] = c
+	params := sqlcdb.CreateMovieParams{
+		Path:                movie.Path,
+		Monitored:           movie.Monitored,
+		QualityProfileID:    movie.QualityProfileID,
+		Tags:                movie.Tags,
+		AddOptions:          movie.AddOptions,
+		MovieFileID:         movie.MovieFileID,
+		MinimumAvailability: movie.MinimumAvailability,
+		MovieMetadataID:     movie.MovieMetadataID,
+		LastSearchTime:      movie.LastSearchTime,
 	}
 
-	insertColumns := table.Movie.MutableColumns
-	if movie.ID == 0 {
-		insertColumns = insertColumns.Except(table.Movie.ID)
+	var inserted int64
+	if movie.Added.Valid && !movie.Added.Time.IsZero() {
+		withAdded := sqlcdb.CreateMovieWithAddedParams{
+			Added:               movie.Added,
+			Path:                params.Path,
+			Monitored:           params.Monitored,
+			QualityProfileID:    params.QualityProfileID,
+			Tags:                params.Tags,
+			AddOptions:          params.AddOptions,
+			MovieFileID:         params.MovieFileID,
+			MinimumAvailability: params.MinimumAvailability,
+			MovieMetadataID:     params.MovieMetadataID,
+			LastSearchTime:      params.LastSearchTime,
+		}
+		inserted, err = q.CreateMovieWithAdded(ctx, withAdded)
+	} else {
+		inserted, err = q.CreateMovie(ctx, params)
 	}
-	if movie.Added == nil || movie.Added.IsZero() {
-		insertColumns = insertColumns.Except(table.Movie.Added)
-	}
-	stmt := table.Movie.
-		INSERT(insertColumns).
-		MODEL(movie.Movie).
-		RETURNING(table.Movie.ID).
-		ON_CONFLICT(table.Movie.ID).
-		DO_UPDATE(sqlite.SET(table.Movie.MutableColumns.SET(sqlite.ROW(setColumns...))))
-
-	result, err := stmt.ExecContext(ctx, tx)
-	if err != nil {
-		return 0, err
-	}
-
-	inserted, err := result.LastInsertId()
 	if err != nil {
 		tx.Rollback()
 		return 0, err
 	}
 
-	state := storage.MovieTransition{
-		MovieID:    int32(inserted),
+	if err := q.CreateMovieTransition(ctx, sqlcdb.CreateMovieTransitionParams{
+		MovieID:    inserted,
 		ToState:    string(initialState),
 		MostRecent: true,
 		SortKey:    1,
-	}
-
-	transitionStmt := table.MovieTransition.
-		INSERT(table.MovieTransition.AllColumns.
-			Except(table.MovieTransition.ID, table.MovieTransition.CreatedAt, table.MovieTransition.UpdatedAt)).
-		MODEL(state)
-
-	_, err = transitionStmt.ExecContext(ctx, tx)
-	if err != nil {
+	}); err != nil {
 		tx.Rollback()
 		return 0, err
 	}
 
-	err = tx.Commit()
-	if err != nil {
+	if err := tx.Commit(); err != nil {
 		tx.Rollback()
 		return 0, err
 	}
@@ -86,180 +76,126 @@ func (s *SQLite) CreateMovie(ctx context.Context, movie storage.Movie, initialSt
 	return inserted, nil
 }
 
-func (s *SQLite) GetMovie(ctx context.Context, id int64) (*storage.Movie, error) {
-	stmt := sqlite.
-		SELECT(
-			table.Movie.AllColumns,
-			table.MovieTransition.AllColumns).
-		FROM(
-			table.Movie.INNER_JOIN(
-				table.MovieTransition,
-				table.Movie.ID.EQ(table.MovieTransition.MovieID))).
-		WHERE(
-			table.Movie.ID.EQ(sqlite.Int(id)).
-				AND(table.MovieTransition.MostRecent.EQ(sqlite.Bool(true))),
-		)
-
-	movie := new(storage.Movie)
-	err := stmt.QueryContext(ctx, s.db, movie)
-	return movie, err
+func (s *SQLite) GetMovie(ctx context.Context, id int64) (sqlcdb.GetMovieByIDRow, error) {
+	row, err := s.Queries.GetMovieByID(ctx, id)
+	if err != nil {
+		return sqlcdb.GetMovieByIDRow{}, mapQueryErr(err, "failed to get movie")
+	}
+	return row, nil
 }
 
-func (s *SQLite) GetMovieByMovieFileID(ctx context.Context, fileID int64) (*storage.Movie, error) {
-	stmt := sqlite.
-		SELECT(
-			table.Movie.AllColumns,
-			table.MovieTransition.AllColumns).
-		FROM(
-			table.Movie.INNER_JOIN(
-				table.MovieTransition,
-				table.Movie.ID.EQ(table.MovieTransition.MovieID))).
-		WHERE(
-			table.Movie.MovieFileID.EQ(sqlite.Int(fileID)).
-				AND(table.MovieTransition.MostRecent.EQ(sqlite.Bool(true))),
-		)
-
-	movie := new(storage.Movie)
-	err := stmt.QueryContext(ctx, s.db, movie)
-	return movie, err
+func (s *SQLite) GetMovieByMovieFileID(ctx context.Context, fileID int64) (sqlcdb.GetMovieByFileIDRow, error) {
+	row, err := s.Queries.GetMovieByFileID(ctx, sql.NullInt64{Int64: fileID, Valid: true})
+	if err != nil {
+		return sqlcdb.GetMovieByFileIDRow{}, mapQueryErr(err, "failed to get movie by file id")
+	}
+	return row, nil
 }
 
-// ListMovies lists the stored movies
-func (s *SQLite) ListMovies(ctx context.Context) ([]*storage.Movie, error) {
-	movies := make([]*storage.Movie, 0)
-	stmt := sqlite.
-		SELECT(
-			table.Movie.AllColumns,
-			table.MovieTransition.ToState,
-			table.MovieTransition.DownloadClientID,
-			table.MovieTransition.DownloadID,
-			table.MovieTransition.MostRecent).
-		FROM(
-			table.Movie.
-				INNER_JOIN(table.MovieTransition, table.Movie.ID.EQ(table.MovieTransition.MovieID)).
-				LEFT_JOIN(table.MovieMetadata, table.Movie.MovieMetadataID.EQ(table.MovieMetadata.ID))).
-		WHERE(
-			table.MovieTransition.MostRecent.EQ(sqlite.Bool(true))).
-		ORDER_BY(table.MovieMetadata.Title.ASC())
-
-	err := stmt.QueryContext(ctx, s.db, &movies)
-	return movies, err
+// ListMovies lists the stored movies ordered by metadata title.
+func (s *SQLite) ListMovies(ctx context.Context) ([]sqlcdb.ListMoviesRow, error) {
+	rows, err := s.Queries.ListMovies(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return rows, nil
 }
 
-func (s *SQLite) ListMoviesByState(ctx context.Context, state storage.MovieState) ([]*storage.Movie, error) {
-	stmt := sqlite.
-		SELECT(
-			table.Movie.AllColumns,
-			table.MovieTransition.ToState,
-			table.MovieTransition.DownloadClientID,
-			table.MovieTransition.DownloadID).
-		FROM(
-			table.Movie.INNER_JOIN(
-				table.MovieTransition,
-				table.Movie.ID.EQ(table.MovieTransition.MovieID))).
-		WHERE(
-			table.MovieTransition.MostRecent.EQ(sqlite.Bool(true)).
-				AND(table.MovieTransition.ToState.EQ(sqlite.String(string(state))))).
-		ORDER_BY(table.Movie.Added.ASC())
+// ListMoviesByState lists movies whose current state is one of the given
+// states. Calling it with no states applies no state filter.
+func (s *SQLite) ListMoviesByState(ctx context.Context, states ...storage.MovieState) ([]sqlcdb.ListMoviesByStatesRow, error) {
+	params := sqlcdb.ListMoviesByStatesParams{
+		States: make([]string, 0, len(states)),
+	}
+	for _, state := range states {
+		if state == storage.MovieStateNew {
+			params.States = nil
+			break
+		}
+		params.States = append(params.States, string(state))
+	}
+	if len(params.States) > 0 {
+		params.StatesAny = sql.NullString{String: params.States[0], Valid: true}
+	}
 
-	movies := make([]*storage.Movie, 0)
-	err := stmt.QueryContext(ctx, s.db, &movies)
-	return movies, err
+	rows, err := s.Queries.ListMoviesByStates(ctx, params)
+	if err != nil {
+		return nil, err
+	}
+	return rows, nil
 }
 
 // DeleteMovie removes a movie by id
 func (s *SQLite) DeleteMovie(ctx context.Context, id int64) error {
-	stmt := table.Movie.DELETE().WHERE(table.Movie.ID.EQ(sqlite.Int64(id))).RETURNING(table.Movie.ID)
-	_, err := s.handleDelete(ctx, stmt)
-	if err != nil {
-		return err
-	}
-	return nil
+	return s.Queries.DeleteMovie(ctx, id)
 }
 
 // UpdateMovieMovieFileID updates the movie file id for a movie
 func (s *SQLite) UpdateMovieMovieFileID(ctx context.Context, id int64, fileID int64) error {
-	stmt := table.Movie.UPDATE().
-		SET(table.Movie.MovieFileID.SET(sqlite.Int64(fileID))).WHERE(table.Movie.ID.EQ(sqlite.Int64(id)))
-	_, err := s.handleStatement(ctx, stmt)
-	return err
+	return s.Queries.UpdateMovieMovieFileID(ctx, sqlcdb.UpdateMovieMovieFileIDParams{
+		MovieFileID: sql.NullInt64{Int64: fileID, Valid: true},
+		ID:          id,
+	})
 }
 
-// UpdateMovie updates fields on a movie
-func (s *SQLite) UpdateMovie(ctx context.Context, movie model.Movie, where ...sqlite.BoolExpression) error {
-	stmt := table.Movie.UPDATE(table.Movie.Monitored).MODEL(movie)
-	for _, w := range where {
-		stmt = stmt.WHERE(w)
-	}
-	_, err := stmt.ExecContext(ctx, s.db)
-	return err
+// UpdateMovieByID updates fields on a movie identified by id.
+// Legacy parity: only the monitored column is persisted.
+func (s *SQLite) UpdateMovieByID(ctx context.Context, id int64, movie sqlcdb.Movie) error {
+	return s.Queries.UpdateMovieMonitored(ctx, sqlcdb.UpdateMovieMonitoredParams{
+		Monitored: movie.Monitored,
+		ID:        id,
+	})
 }
 
 // UpdateMovieQualityProfile updates only the quality profile id for a movie
-func (s *SQLite) UpdateMovieQualityProfile(ctx context.Context, id int64, qualityProfileID int32) error {
-	stmt := table.Movie.UPDATE().
-		SET(table.Movie.QualityProfileID.SET(sqlite.Int32(qualityProfileID))).
-		WHERE(table.Movie.ID.EQ(sqlite.Int64(id)))
-	_, err := s.handleStatement(ctx, stmt)
-	return err
+func (s *SQLite) UpdateMovieQualityProfile(ctx context.Context, id int64, qualityProfileID int64) error {
+	return s.Queries.UpdateMovieQualityProfileID(ctx, sqlcdb.UpdateMovieQualityProfileIDParams{
+		QualityProfileID: qualityProfileID,
+		ID:               id,
+	})
 }
 
-// UpdateMovieState updates the transition state of a movie. Metadata is optional and can be nil
+// UpdateMovieState updates the transition state of a movie. Metadata is
+// optional and can be nil. The demote+insert pair runs in one transaction; on
+// any failure nothing is written.
 func (s *SQLite) UpdateMovieState(ctx context.Context, id int64, state storage.MovieState, metadata *storage.TransitionStateMetadata) error {
-	movie, err := s.GetMovie(ctx, id)
-	if err != nil {
-		return err
-	}
-
-	err = movie.Machine().ToState(state)
-	if err != nil {
-		return err
-	}
-
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
+	defer tx.Rollback()
+	q := s.txQueries(tx)
+	movie, err := q.GetMovieByID(ctx, id)
+	if err != nil {
+		return mapQueryErr(err, "failed to get movie")
+	}
+	if err := storage.MovieState(movie.State).Machine().ToState(state); err != nil {
+		return err
+	}
 
-	previousTransitionStmt := table.MovieTransition.
-		UPDATE().
-		SET(
-			table.MovieTransition.MostRecent.SET(sqlite.Bool(false)),
-			table.MovieTransition.UpdatedAt.SET(sqlite.TimestampExp(sqlite.String(time.Now().Format(timestampFormat))))).
-		WHERE(
-			table.MovieTransition.MovieID.EQ(sqlite.Int(id)).
-				AND(table.MovieTransition.MostRecent.EQ(sqlite.Bool(true)))).
-		RETURNING(table.MovieTransition.AllColumns)
-
-	var previousTransition storage.MovieTransition
-	err = previousTransitionStmt.QueryContext(ctx, tx, &previousTransition)
+	previousSortKey, err := q.DeactivateMovieTransition(ctx, id)
 	if err != nil {
 		tx.Rollback()
 		return err
 	}
 
-	transition := storage.MovieTransition{
-		MovieID:    int32(id),
+	transition := sqlcdb.CreateMovieTransitionParams{
+		MovieID:    id,
+		FromState:  sql.NullString{String: movie.State, Valid: true},
 		ToState:    string(state),
 		MostRecent: true,
-		SortKey:    previousTransition.SortKey + 1,
+		SortKey:    previousSortKey + 1,
 	}
-
 	if metadata != nil {
-		if metadata.DownloadClientID != nil && metadata.DownloadID != nil {
-			transition.DownloadClientID = metadata.DownloadClientID
-			transition.DownloadID = metadata.DownloadID
+		if metadata.DownloadClientID != nil {
+			transition.DownloadClientID = sql.NullInt64{Int64: *metadata.DownloadClientID, Valid: true}
+		}
+		if metadata.DownloadID != nil {
+			transition.DownloadID = sql.NullString{String: *metadata.DownloadID, Valid: true}
 		}
 	}
 
-	newTransitionStmt := table.MovieTransition.
-		INSERT(table.MovieTransition.AllColumns.
-			Except(table.MovieTransition.ID, table.MovieTransition.CreatedAt, table.MovieTransition.UpdatedAt)).
-		MODEL(transition).
-		RETURNING(table.MovieTransition.AllColumns)
-
-	_, err = newTransitionStmt.ExecContext(ctx, tx)
-	if err != nil {
+	if err := q.CreateMovieTransition(ctx, transition); err != nil {
 		tx.Rollback()
 		return err
 	}
@@ -268,58 +204,36 @@ func (s *SQLite) UpdateMovieState(ctx context.Context, id int64, state storage.M
 }
 
 // GetMovieByMetadataID checks if there's a movie already associated with the given metadata id
-func (s *SQLite) GetMovieByMetadataID(ctx context.Context, metadataID int) (*storage.Movie, error) {
-	movie := new(storage.Movie)
-
-	stmt := table.Movie.
-		SELECT(
-			table.Movie.AllColumns,
-			table.MovieTransition.ToState).
-		FROM(
-			table.Movie.INNER_JOIN(
-				table.MovieTransition,
-				table.Movie.ID.EQ(table.MovieTransition.MovieID))).
-		WHERE(
-			table.Movie.MovieMetadataID.EQ(sqlite.Int(int64(metadataID))).
-				AND(table.MovieTransition.MostRecent.EQ(sqlite.Bool(true))),
-		)
-
-	err := stmt.QueryContext(ctx, s.db, movie)
+func (s *SQLite) GetMovieByMetadataID(ctx context.Context, metadataID int64) (sqlcdb.GetMovieByMetadataIDRow, error) {
+	row, err := s.Queries.GetMovieByMetadataID(ctx, sql.NullInt64{Int64: metadataID, Valid: true})
 	if err != nil {
-		if errors.Is(err, qrm.ErrNoRows) {
-			return nil, storage.ErrNotFound
-		}
-		return nil, fmt.Errorf("failed to lookup movie: %w", err)
+		return sqlcdb.GetMovieByMetadataIDRow{}, mapQueryErr(err, "failed to lookup movie")
 	}
-
-	return movie, nil
+	return row, nil
 }
 
 // GetMovieByPath gets a movie by path
-func (s *SQLite) GetMovieByPath(ctx context.Context, path string) (*storage.Movie, error) {
-	stmt := table.Movie.
-		SELECT(
-			table.Movie.AllColumns,
-			table.MovieTransition.ToState,
-			table.MovieTransition.DownloadClientID,
-			table.MovieTransition.DownloadID,
-			table.MovieTransition.MostRecent).
-		FROM(
-			table.Movie.INNER_JOIN(
-				table.MovieTransition,
-				table.Movie.ID.EQ(table.MovieTransition.MovieID))).
-		WHERE(
-			table.Movie.Path.EQ(sqlite.String(path)).
-				AND(table.MovieTransition.MostRecent.EQ(sqlite.Bool(true))))
-
-	movie := new(storage.Movie)
-	err := stmt.QueryContext(ctx, s.db, movie)
-	return movie, err
+func (s *SQLite) GetMovieByPath(ctx context.Context, path string) (sqlcdb.GetMovieByPathRow, error) {
+	row, err := s.Queries.GetMovieByPath(ctx, sql.NullString{String: path, Valid: true})
+	if err != nil {
+		return sqlcdb.GetMovieByPathRow{}, mapQueryErr(err, "failed to lookup movie by path")
+	}
+	return row, nil
 }
 
 // LinkMovieMetadata links a movie with its metadata
-func (s *SQLite) LinkMovieMetadata(ctx context.Context, movieID int64, metadataID int32) error {
-	stmt := table.Movie.UPDATE(table.Movie.MovieMetadataID).SET(metadataID).WHERE(table.Movie.ID.EQ(sqlite.Int64(movieID)))
-	_, err := stmt.Exec(s.db)
-	return err
+func (s *SQLite) LinkMovieMetadata(ctx context.Context, movieID int64, metadataID int64) error {
+	return s.Queries.LinkMovieMetadata(ctx, sqlcdb.LinkMovieMetadataParams{
+		MovieMetadataID: sql.NullInt64{Int64: metadataID, Valid: true},
+		ID:              movieID,
+	})
+}
+
+// mapQueryErr converts sql.ErrNoRows to storage.ErrNotFound at the query
+// boundary, wrapping everything else with the calling context.
+func mapQueryErr(err error, msg string) error {
+	if errors.Is(err, sql.ErrNoRows) {
+		return storage.ErrNotFound
+	}
+	return fmt.Errorf("%s: %w", msg, err)
 }

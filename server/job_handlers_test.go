@@ -1,6 +1,7 @@
 package server
 
 import (
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -14,7 +15,7 @@ import (
 	"github.com/kasuboski/mediaz/pkg/manager"
 	"github.com/kasuboski/mediaz/pkg/storage"
 	storeMocks "github.com/kasuboski/mediaz/pkg/storage/mocks"
-	"github.com/kasuboski/mediaz/pkg/storage/sqlite/schema/gen/model"
+	"github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 	tmdbMocks "github.com/kasuboski/mediaz/pkg/tmdb/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -32,26 +33,26 @@ func TestServer_ListJobs(t *testing.T) {
 		createdAt := time.Now().Add(-1 * time.Hour)
 		updatedAt := time.Now()
 		errorMsg := "test error"
-		jobs := []*storage.Job{
+		jobs := []sqlcdb.ListJobsRow{
 			{
-				Job: model.Job{
+				Job: sqlcdb.Job{
 					ID:        1,
 					Type:      "MovieIndex",
-					CreatedAt: &createdAt,
+					CreatedAt: sql.NullTime{Time: createdAt, Valid: true},
 				},
-				State:     storage.JobStateDone,
-				UpdatedAt: &updatedAt,
-				Error:     nil,
+				State:     string(storage.JobStateDone),
+				UpdatedAt: sql.NullTime{Time: updatedAt, Valid: true},
+				Error:     sql.NullString{},
 			},
 			{
-				Job: model.Job{
+				Job: sqlcdb.Job{
 					ID:        2,
 					Type:      "SeriesReconcile",
-					CreatedAt: &createdAt,
+					CreatedAt: sql.NullTime{Time: createdAt, Valid: true},
 				},
-				State:     storage.JobStateError,
-				UpdatedAt: &updatedAt,
-				Error:     &errorMsg,
+				State:     string(storage.JobStateError),
+				UpdatedAt: sql.NullTime{Time: updatedAt, Valid: true},
+				Error:     sql.NullString{String: errorMsg, Valid: true},
 			},
 		}
 
@@ -106,7 +107,7 @@ func TestServer_ListJobs(t *testing.T) {
 		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
 
 		store.EXPECT().CountJobs(gomock.Any(), gomock.Any()).Return(0, nil)
-		store.EXPECT().ListJobs(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return([]*storage.Job{}, nil)
+		store.EXPECT().ListJobs(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return([]sqlcdb.ListJobsRow{}, nil)
 
 		mgr := manager.New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
 
@@ -167,15 +168,15 @@ func TestServer_GetJob(t *testing.T) {
 
 		createdAt := time.Now().Add(-1 * time.Hour)
 		updatedAt := time.Now()
-		job := &storage.Job{
-			Job: model.Job{
+		job := sqlcdb.GetJobByIDRow{
+			Job: sqlcdb.Job{
 				ID:        42,
 				Type:      "MovieIndex",
-				CreatedAt: &createdAt,
+				CreatedAt: sql.NullTime{Time: createdAt, Valid: true},
 			},
-			State:     storage.JobStateRunning,
-			UpdatedAt: &updatedAt,
-			Error:     nil,
+			State:     string(storage.JobStateRunning),
+			UpdatedAt: sql.NullTime{Time: updatedAt, Valid: true},
+			Error:     sql.NullString{},
 		}
 
 		store.EXPECT().GetJob(gomock.Any(), int64(42)).Return(job, nil)
@@ -232,7 +233,7 @@ func TestServer_GetJob(t *testing.T) {
 		store := storeMocks.NewMockStorage(ctrl)
 		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
 
-		store.EXPECT().GetJob(gomock.Any(), int64(999)).Return(nil, storage.ErrNotFound)
+		store.EXPECT().GetJob(gomock.Any(), int64(999)).Return(sqlcdb.GetJobByIDRow{}, storage.ErrNotFound)
 
 		mgr := manager.New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
 
@@ -262,24 +263,24 @@ func TestServer_CancelJob(t *testing.T) {
 		createdAt := time.Now().Add(-1 * time.Hour)
 		updatedAt := time.Now()
 
-		store.EXPECT().GetJob(gomock.Any(), int64(42)).Return(&storage.Job{
-			Job: model.Job{
+		store.EXPECT().GetJob(gomock.Any(), int64(42)).Return(sqlcdb.GetJobByIDRow{
+			Job: sqlcdb.Job{
 				ID:        42,
 				Type:      "MovieIndex",
-				CreatedAt: &createdAt,
+				CreatedAt: sql.NullTime{Time: createdAt, Valid: true},
 			},
-			State:     storage.JobStateRunning,
-			UpdatedAt: &updatedAt,
+			State:     string(storage.JobStateRunning),
+			UpdatedAt: sql.NullTime{Time: updatedAt, Valid: true},
 		}, nil)
 
-		store.EXPECT().GetJob(gomock.Any(), int64(42)).Return(&storage.Job{
-			Job: model.Job{
+		store.EXPECT().GetJob(gomock.Any(), int64(42)).Return(sqlcdb.GetJobByIDRow{
+			Job: sqlcdb.Job{
 				ID:        42,
 				Type:      "MovieIndex",
-				CreatedAt: &createdAt,
+				CreatedAt: sql.NullTime{Time: createdAt, Valid: true},
 			},
-			State:     storage.JobStateCancelled,
-			UpdatedAt: &updatedAt,
+			State:     string(storage.JobStateCancelled),
+			UpdatedAt: sql.NullTime{Time: updatedAt, Valid: true},
 		}, nil)
 
 		mgr := manager.New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
@@ -332,7 +333,7 @@ func TestServer_CancelJob(t *testing.T) {
 		store := storeMocks.NewMockStorage(ctrl)
 		tmdbMock := tmdbMocks.NewMockITmdb(ctrl)
 
-		store.EXPECT().GetJob(gomock.Any(), int64(999)).Return(nil, storage.ErrNotFound)
+		store.EXPECT().GetJob(gomock.Any(), int64(999)).Return(sqlcdb.GetJobByIDRow{}, storage.ErrNotFound)
 
 		mgr := manager.New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
 
@@ -363,14 +364,14 @@ func TestServer_CreateJob(t *testing.T) {
 		updatedAt := time.Now()
 
 		store.EXPECT().CreateJob(gomock.Any(), gomock.Any(), storage.JobStatePending).Return(int64(1), nil)
-		store.EXPECT().GetJob(gomock.Any(), int64(1)).Return(&storage.Job{
-			Job: model.Job{
+		store.EXPECT().GetJob(gomock.Any(), int64(1)).Return(sqlcdb.GetJobByIDRow{
+			Job: sqlcdb.Job{
 				ID:        1,
 				Type:      "MovieIndex",
-				CreatedAt: &createdAt,
+				CreatedAt: sql.NullTime{Time: createdAt, Valid: true},
 			},
-			State:     storage.JobStatePending,
-			UpdatedAt: &updatedAt,
+			State:     string(storage.JobStatePending),
+			UpdatedAt: sql.NullTime{Time: updatedAt, Valid: true},
 		}, nil)
 
 		mgr := manager.New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
@@ -411,18 +412,18 @@ func TestServer_CreateJob(t *testing.T) {
 		createdAt := time.Now()
 		updatedAt := time.Now()
 
-		existingJob := &storage.Job{
-			Job: model.Job{
+		existingJob := sqlcdb.ListJobsRow{
+			Job: sqlcdb.Job{
 				ID:        5,
 				Type:      "MovieIndex",
-				CreatedAt: &createdAt,
+				CreatedAt: sql.NullTime{Time: createdAt, Valid: true},
 			},
-			State:     storage.JobStatePending,
-			UpdatedAt: &updatedAt,
+			State:     string(storage.JobStatePending),
+			UpdatedAt: sql.NullTime{Time: updatedAt, Valid: true},
 		}
 
 		store.EXPECT().CreateJob(gomock.Any(), gomock.Any(), storage.JobStatePending).Return(int64(0), storage.ErrJobAlreadyPending)
-		store.EXPECT().ListJobs(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return([]*storage.Job{existingJob}, nil)
+		store.EXPECT().ListJobs(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return([]sqlcdb.ListJobsRow{existingJob}, nil)
 
 		mgr := manager.New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
 

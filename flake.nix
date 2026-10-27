@@ -5,7 +5,7 @@
 
   outputs = { self, nixpkgs }:
     let
-      goVersion = 25; # Change this to update the whole stack
+      goVersion = 26; # Change this to update the whole stack
 
       supportedSystems = [ "x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin" ];
       forEachSupportedSystem = f: nixpkgs.lib.genAttrs supportedSystems (system: f {
@@ -42,8 +42,9 @@
             # nix formatter
             nixpkgs-fmt
 
-            # https://github.com/go-jet/jet
-            go-jet
+            # https://github.com/sqlc-dev/sqlc (pinned by flake.lock; must
+            # match the version used to generate pkg/storage/sqlcdb)
+            sqlc
 
             # https://github.com/sqlite/sqlite
             sqlite
