@@ -264,10 +264,7 @@ func TestServer_DeleteIndexer(t *testing.T) {
 		router.HandleFunc("/indexers/{id}", s.DeleteIndexer()).Methods("DELETE")
 		router.ServeHTTP(rr, req)
 
-		// Deleting a nonexistent row is typically a no-op in SQLite but
-		// the handler returns 500 if the manager returns any error.
-		// With real SQLite this succeeds silently, so expect 200.
-		assert.Equal(t, http.StatusOK, rr.Code)
+		assert.Equal(t, http.StatusNotFound, rr.Code)
 	})
 }
 

@@ -133,7 +133,7 @@ func TestMovieFailureFollowup_MissingPreservesRowAndHistory(t *testing.T) {
 			require.NoError(t, err)
 			source := indexerMock.NewMockIndexerSource(ctrl)
 			factory := indexerMock.NewMockFactory(ctrl)
-			source.EXPECT().ListIndexers(ctx).Return([]indexer.SourceIndexer{{ID: 1, Name: "indexer", Priority: 1}}, nil)
+			source.EXPECT().ListIndexers(ctx).Return([]indexer.SourceIndexer{{ID: indexer.ProwlarrID(1), Name: "indexer", Priority: 1}}, nil)
 			factory.EXPECT().NewIndexerSource(gomock.Any()).Return(source, nil)
 			injected := errors.New("injected search failure")
 			var release *prowlarr.ReleaseResource
@@ -154,7 +154,7 @@ func TestMovieFailureFollowup_MissingPreservesRowAndHistory(t *testing.T) {
 				if scenario == "indexer search error" {
 					searchErr = injected
 				}
-				source.EXPECT().Search(gomock.Any(), int32(1), MovieCategories, indexer.SearchOptions{Query: "test movie", Type: ptr.To(indexer.TypeMovie)}).Return(releases, searchErr)
+				source.EXPECT().Search(gomock.Any(), indexer.ProwlarrID(1), MovieCategories, indexer.SearchOptions{Query: "test movie", Type: ptr.To(indexer.TypeMovie)}).Return(releases, searchErr)
 			}
 			downloads := downloadMock.NewMockFactory(ctrl)
 			dc := downloadMock.NewMockDownloadClient(ctrl)

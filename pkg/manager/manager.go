@@ -413,7 +413,7 @@ func (m MediaManager) AddIndexer(ctx context.Context, request AddIndexerRequest)
 	return m.indexerService.AddIndexer(ctx, request)
 }
 
-func (m MediaManager) UpdateIndexer(ctx context.Context, id int64, request UpdateIndexerRequest) (IndexerResponse, error) {
+func (m MediaManager) UpdateIndexer(ctx context.Context, id indexer.RowID, request UpdateIndexerRequest) (IndexerResponse, error) {
 	return m.indexerService.UpdateIndexer(ctx, id, request)
 }
 
@@ -453,7 +453,7 @@ func (m MediaManager) RefreshAllIndexerSources(ctx context.Context) error {
 	return m.indexerService.RefreshAllIndexerSources(ctx)
 }
 
-func (m MediaManager) SearchIndexers(ctx context.Context, indexers []int64, categories []int32, opts indexer.SearchOptions) ([]*prowlarr.ReleaseResource, error) {
+func (m MediaManager) SearchIndexers(ctx context.Context, indexers []indexer.RowID, categories []int32, opts indexer.SearchOptions) ([]*prowlarr.ReleaseResource, error) {
 	return m.indexerService.SearchIndexers(ctx, indexers, categories, opts)
 }
 

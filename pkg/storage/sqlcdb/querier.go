@@ -71,7 +71,7 @@ type Querier interface {
 	DeleteEpisode(ctx context.Context, id int64) error
 	DeleteEpisodeFile(ctx context.Context, id int64) error
 	DeleteEpisodeMetadata(ctx context.Context, id int64) error
-	DeleteIndexer(ctx context.Context, id int64) error
+	DeleteIndexer(ctx context.Context, id int64) (int64, error)
 	DeleteIndexerSource(ctx context.Context, id int64) error
 	DeleteIndexersBySourceID(ctx context.Context, indexerSourceID sql.NullInt64) error
 	DeleteJob(ctx context.Context, id int64) error
@@ -106,7 +106,6 @@ type Querier interface {
 	GetEpisodeMetadataByTmdbID(ctx context.Context, tmdbID int64) (EpisodeMetadatum, error)
 	GetEpisodeMetadataIDByTmdbID(ctx context.Context, tmdbID int64) (int64, error)
 	GetEpisodeTransitionItems(ctx context.Context, arg GetEpisodeTransitionItemsParams) ([]GetEpisodeTransitionItemsRow, error)
-	GetIndexerBySourceAndName(ctx context.Context, arg GetIndexerBySourceAndNameParams) (Indexer, error)
 	GetIndexerSource(ctx context.Context, id int64) (IndexerSource, error)
 	GetJobByID(ctx context.Context, id int64) (GetJobByIDRow, error)
 	// Job queries. Entity reads join the most recent job_transition via
@@ -194,7 +193,7 @@ type Querier interface {
 	UpdateDownloadClient(ctx context.Context, arg UpdateDownloadClientParams) error
 	UpdateEpisodeEpisodeFileID(ctx context.Context, arg UpdateEpisodeEpisodeFileIDParams) error
 	UpdateEpisodeFile(ctx context.Context, arg UpdateEpisodeFileParams) error
-	UpdateIndexer(ctx context.Context, arg UpdateIndexerParams) error
+	UpdateIndexer(ctx context.Context, arg UpdateIndexerParams) (int64, error)
 	UpdateIndexerSource(ctx context.Context, arg UpdateIndexerSourceParams) error
 	UpdateMovieMetadataQuery(ctx context.Context, arg UpdateMovieMetadataQueryParams) error
 	UpdateMovieMonitored(ctx context.Context, arg UpdateMovieMonitoredParams) error

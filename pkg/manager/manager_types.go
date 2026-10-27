@@ -1,6 +1,7 @@
 package manager
 
 import (
+	"github.com/kasuboski/mediaz/pkg/indexer"
 	sqlcdb "github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 )
 
@@ -164,11 +165,11 @@ type AddSeriesRequest struct {
 }
 
 type IndexerResponse struct {
-	ID       int64  `json:"id"`
-	Name     string `json:"name"`
-	Source   string `json:"source"`
-	Priority int64  `json:"priority"`
-	URI      string `json:"uri"`
+	ID       indexer.RowID `json:"id"`
+	Name     string        `json:"name"`
+	Source   string        `json:"source"`
+	Priority int64         `json:"priority"`
+	URI      string        `json:"uri"`
 }
 
 // AddIndexerRequest wraps a storage Indexer model to create a new indexer.
@@ -185,9 +186,9 @@ type UpdateIndexerRequest struct {
 }
 
 // DeleteIndexerRequest identifies an indexer to delete by ID.
-// ID must be provided; callers should confirm existence before deletion to avoid silent no-ops.
+// ID is a SQLite row ID, never a Prowlarr ID. Source-managed rows cannot be deleted here.
 type DeleteIndexerRequest struct {
-	ID *int64 `json:"id" yaml:"id" validate:"required,gt=0"`
+	ID *indexer.RowID `json:"id" yaml:"id" validate:"required,gt=0"`
 }
 
 // SeasonResult represents a season with metadata for API responses.

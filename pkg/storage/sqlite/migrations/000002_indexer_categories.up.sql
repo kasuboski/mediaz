@@ -1,0 +1,1 @@
+ALTER TABLE indexer ADD COLUMN categories TEXT NOT NULL DEFAULT '{"movie":[],"tv":[]}';

@@ -100,7 +100,7 @@ func (p *ProwlarrIndexerSource) ListIndexers(ctx context.Context) ([]SourceIndex
 		}
 
 		indexers = append(indexers, SourceIndexer{
-			ID:         *pi.ID,
+			ID:         ProwlarrID(*pi.ID),
 			Name:       name,
 			URI:        uri,
 			Priority:   *pi.Priority,
@@ -112,7 +112,7 @@ func (p *ProwlarrIndexerSource) ListIndexers(ctx context.Context) ([]SourceIndex
 	return indexers, nil
 }
 
-func (p *ProwlarrIndexerSource) Search(ctx context.Context, indexerID int32, categories []int32, opts SearchOptions) ([]*prowlarr.ReleaseResource, error) {
+func (p *ProwlarrIndexerSource) Search(ctx context.Context, indexerID ProwlarrID, categories []int32, opts SearchOptions) ([]*prowlarr.ReleaseResource, error) {
 	log := logger.FromCtx(ctx)
 
 	query := opts.Query
@@ -123,10 +123,10 @@ func (p *ProwlarrIndexerSource) Search(ctx context.Context, indexerID int32, cat
 		}
 	}
 
-	log.Debug("searching indexer", zap.Int32("indexer_id", indexerID), zap.String("query", query))
+	log.Debug("searching indexer", zap.Int32("indexer_id", int32(indexerID)), zap.String("query", query))
 
 	resp, err := p.client.GetAPIV1Search(ctx, &prowlarr.GetAPIV1SearchParams{
-		IndexerIds: &[]int32{indexerID},
+		IndexerIds: &[]int32{int32(indexerID)},
 		Query:      &query,
 		Categories: &categories,
 		Limit:      ptr.To(int32(100)),

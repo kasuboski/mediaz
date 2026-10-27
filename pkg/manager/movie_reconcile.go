@@ -18,7 +18,6 @@ import (
 )
 
 var (
-	// TODO: these are specific per indexer it seems.. need to store categories with the indexer
 	MovieCategories = []int32{2000}
 	TVCategories    = []int32{5000}
 )
@@ -261,7 +260,7 @@ func (m MediaManager) reconcileMissingMovie(ctx context.Context, movie sqlcdb.Li
 		Type:  ptr.To(indexer.TypeMovie),
 	})
 	if err != nil {
-		log.Warn("some indexer sources failed during movie search", zap.Int64s("indexers", indexerIDs), zap.Error(err))
+		log.Warn("some indexer sources failed during movie search", zap.Any("indexers", indexerIDs), zap.Error(err))
 		if len(releases) == 0 {
 			return err
 		}

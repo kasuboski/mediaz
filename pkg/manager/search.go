@@ -40,7 +40,7 @@ func (m MediaManager) executeSearch(ctx context.Context, snapshot *ReconcileSnap
 
 	indexerIDs := snapshot.GetIndexerIDs()
 	log.Debug("searching indexers",
-		zap.Int64s("indexer_ids", indexerIDs),
+		zap.Any("indexer_ids", indexerIDs),
 		zap.Int32s("categories", categories))
 
 	releases, err := m.indexerService.SearchIndexers(ctx, indexerIDs, categories, opts)
