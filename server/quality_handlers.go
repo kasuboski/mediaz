@@ -124,8 +124,10 @@ func (s Server) ListQualityProfiles() http.HandlerFunc {
 		case "movie":
 			profiles, err = s.manager.ListMovieQualityProfiles(r.Context())
 		case "series":
+			mediaType = "episode"
 			profiles, err = s.manager.ListEpisodeQualityProfiles(r.Context())
 		default:
+			mediaType = ""
 			profiles, err = s.manager.ListQualityProfiles(r.Context())
 		}
 
@@ -133,7 +135,7 @@ func (s Server) ListQualityProfiles() http.HandlerFunc {
 			s.respondError(r, w, http.StatusInternalServerError, err)
 			return
 		}
-		response, err := s.profilesDTO(r.Context(), profiles)
+		response, err := s.profilesDTO(r.Context(), profiles, mediaType)
 		if err != nil {
 			s.respondError(r, w, http.StatusInternalServerError, err)
 			return

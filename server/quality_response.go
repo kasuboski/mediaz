@@ -12,13 +12,24 @@ func (s Server) profileDTO(ctx context.Context, profile sqlcdb.QualityProfile) (
 	}
 	return qualityProfileDTO(profile, rows), nil
 }
-func (s Server) profilesDTO(ctx context.Context, profiles []sqlcdb.QualityProfile) ([]qualityProfileResponse, error) {
+func (s Server) profilesDTO(ctx context.Context, profiles []sqlcdb.QualityProfile, mediaType string) ([]qualityProfileResponse, error) {
 	rows, err := s.manager.ListQualityProfileRows(ctx, 0)
 	if err != nil {
 		return nil, err
 	}
 	if profiles == nil {
 		return nil, nil
+	}
+	if mediaType != "" {
+		// Filter before both profile presentation and DTO assembly so only
+		// matching definitions determine ordering, as in the original join.
+		matching := rows[:0]
+		for _, row := range rows {
+			if row.QualityDefinition.MediaType == mediaType {
+				matching = append(matching, row)
+			}
+		}
+		rows = matching
 	}
 	// Preserve the historical presentation order: profiles first encountered in
 	// the quality rows (descending minimum size), then profiles without items.
