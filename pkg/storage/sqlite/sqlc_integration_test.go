@@ -453,6 +453,7 @@ func TestSqlcIntegration_IndexerSourceCascadeRollbackAtomicity(t *testing.T) {
 	wantChildren := []sqlcdb.Indexer{
 		{
 			ID:              1,
+			Categories:      "[]",
 			Name:            "nzbgeek",
 			Priority:        25,
 			Uri:             "https://api.nzbgeek",
@@ -461,6 +462,7 @@ func TestSqlcIntegration_IndexerSourceCascadeRollbackAtomicity(t *testing.T) {
 		},
 		{
 			ID:              2,
+			Categories:      "[]",
 			Name:            "dzp",
 			Priority:        50,
 			Uri:             "https://api.dognzb.cr",

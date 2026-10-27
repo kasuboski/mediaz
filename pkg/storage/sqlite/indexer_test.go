@@ -21,11 +21,12 @@ func TestIndexerStorage(t *testing.T) {
 
 	apikey := "supersecret"
 	create := sqlcdb.Indexer{
-		ID:       1,
-		Name:     "Index",
-		Priority: 20,
-		Uri:      "http://here",
-		ApiKey:   sql.NullString{String: apikey, Valid: true},
+		ID:         1,
+		Name:       "Index",
+		Priority:   20,
+		Uri:        "http://here",
+		ApiKey:     sql.NullString{String: apikey, Valid: true},
+		Categories: "[]",
 	}
 	res, err := store.CreateIndexer(ctx, create)
 	assert.Nil(t, err)
@@ -79,6 +80,7 @@ func TestCreateIndexerConflictRefreshesFields(t *testing.T) {
 		Priority:        25,
 		Uri:             "http://prowlarr",
 		IndexerSourceID: sql.NullInt64{Int64: sourceID, Valid: true},
+		Categories:      "[2000]",
 	}
 
 	id, err := store.CreateIndexer(ctx, create)
@@ -89,6 +91,7 @@ func TestCreateIndexerConflictRefreshesFields(t *testing.T) {
 	create.Priority = 99
 	create.Uri = "https://prowlarr.updated"
 	create.ApiKey = sql.NullString{String: "refreshed-key", Valid: true}
+	create.Categories = "[2040]"
 	existingID, err := store.CreateIndexer(ctx, create)
 	require.NoError(t, err)
 	assert.Equal(t, id, existingID)
@@ -118,10 +121,11 @@ func TestUpdateIndexer(t *testing.T) {
 
 	apiKey := "original-key"
 	id, err := store.CreateIndexer(ctx, sqlcdb.Indexer{
-		Name:     "indexer",
-		Priority: 25,
-		Uri:      "http://here",
-		ApiKey:   sql.NullString{String: apiKey, Valid: true},
+		Name:       "indexer",
+		Priority:   25,
+		Uri:        "http://here",
+		ApiKey:     sql.NullString{String: apiKey, Valid: true},
+		Categories: "[2040]",
 	})
 	require.NoError(t, err)
 
@@ -141,6 +145,7 @@ func TestUpdateIndexer(t *testing.T) {
 	assert.Equal(t, "http://there", indexers[0].Uri)
 	require.True(t, indexers[0].ApiKey.Valid)
 	assert.Equal(t, "original-key", indexers[0].ApiKey.String)
+	assert.Equal(t, "[2040]", indexers[0].Categories, "omitting categories preserves stored categories")
 
 	// Updating with an API key replaces it.
 	newKey := "new-key"

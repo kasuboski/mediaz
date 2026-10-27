@@ -11,12 +11,13 @@ import (
 )
 
 const createIndexer = `-- name: CreateIndexer :one
-INSERT INTO indexer (name, priority, uri, api_key, indexer_source_id)
-VALUES (?, ?, ?, ?, ?)
+INSERT INTO indexer (name, priority, uri, api_key, indexer_source_id, categories)
+VALUES (?, ?, ?, ?, ?, ?)
 ON CONFLICT (indexer_source_id, name) DO UPDATE SET
  priority = excluded.priority,
  uri = excluded.uri,
- api_key = COALESCE(excluded.api_key, indexer.api_key)
+ api_key = COALESCE(excluded.api_key, indexer.api_key),
+ categories = excluded.categories
 RETURNING id
 `
 
@@ -26,6 +27,7 @@ type CreateIndexerParams struct {
 	Uri             string
 	ApiKey          sql.NullString
 	IndexerSourceID sql.NullInt64
+	Categories      string
 }
 
 func (q *Queries) CreateIndexer(ctx context.Context, arg CreateIndexerParams) (int64, error) {
@@ -35,6 +37,7 @@ func (q *Queries) CreateIndexer(ctx context.Context, arg CreateIndexerParams) (i
 		arg.Uri,
 		arg.ApiKey,
 		arg.IndexerSourceID,
+		arg.Categories,
 	)
 	var id int64
 	err := row.Scan(&id)
@@ -57,7 +60,8 @@ SELECT
     priority,
     uri,
     api_key,
-    indexer_source_id
+    indexer_source_id,
+    categories
 FROM indexer
 WHERE indexer_source_id IS ?
   AND name = ?
@@ -78,6 +82,7 @@ func (q *Queries) GetIndexerBySourceAndName(ctx context.Context, arg GetIndexerB
 		&i.Uri,
 		&i.ApiKey,
 		&i.IndexerSourceID,
+		&i.Categories,
 	)
 	return i, err
 }
@@ -89,7 +94,8 @@ SELECT
     priority,
     uri,
     api_key,
-    indexer_source_id
+    indexer_source_id,
+    categories
 FROM indexer
 ORDER BY priority DESC, id
 `
@@ -110,6 +116,7 @@ func (q *Queries) ListIndexers(ctx context.Context) ([]Indexer, error) {
 			&i.Uri,
 			&i.ApiKey,
 			&i.IndexerSourceID,
+			&i.Categories,
 		); err != nil {
 			return nil, err
 		}
@@ -127,19 +134,21 @@ func (q *Queries) ListIndexers(ctx context.Context) ([]Indexer, error) {
 const updateIndexer = `-- name: UpdateIndexer :exec
 UPDATE indexer
 SET
-    name = ?,
-    priority = ?,
-    uri = ?,
-    api_key = COALESCE(?, api_key)
-WHERE id = ?
+    name = ?1,
+    priority = ?2,
+    uri = ?3,
+    api_key = COALESCE(?4, api_key),
+    categories = COALESCE(NULLIF(CAST(?5 AS TEXT), ''), categories)
+WHERE id = ?6
 `
 
 type UpdateIndexerParams struct {
-	Name     string
-	Priority int64
-	Uri      string
-	ApiKey   sql.NullString
-	ID       int64
+	Name       string
+	Priority   int64
+	Uri        string
+	ApiKey     sql.NullString
+	Categories string
+	ID         int64
 }
 
 func (q *Queries) UpdateIndexer(ctx context.Context, arg UpdateIndexerParams) error {
@@ -148,6 +157,7 @@ func (q *Queries) UpdateIndexer(ctx context.Context, arg UpdateIndexerParams) er
 		arg.Priority,
 		arg.Uri,
 		arg.ApiKey,
+		arg.Categories,
 		arg.ID,
 	)
 	return err

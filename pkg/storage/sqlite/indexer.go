@@ -7,12 +7,16 @@ import (
 
 // CreateIndexer upserts an indexer by source and name, returning its stable id.
 func (s *SQLite) CreateIndexer(ctx context.Context, indexer sqlcdb.Indexer) (int64, error) {
+	if indexer.Categories == "" {
+		indexer.Categories = "[]"
+	}
 	return s.Queries.CreateIndexer(ctx, sqlcdb.CreateIndexerParams{
 		Name:            indexer.Name,
 		Priority:        indexer.Priority,
 		Uri:             indexer.Uri,
 		ApiKey:          indexer.ApiKey,
 		IndexerSourceID: indexer.IndexerSourceID,
+		Categories:      indexer.Categories,
 	})
 }
 
@@ -20,11 +24,12 @@ func (s *SQLite) CreateIndexer(ctx context.Context, indexer sqlcdb.Indexer) (int
 // key untouched (COALESCE in the query).
 func (s *SQLite) UpdateIndexer(ctx context.Context, id int64, indexer sqlcdb.Indexer) error {
 	return s.Queries.UpdateIndexer(ctx, sqlcdb.UpdateIndexerParams{
-		Name:     indexer.Name,
-		Priority: indexer.Priority,
-		Uri:      indexer.Uri,
-		ApiKey:   indexer.ApiKey,
-		ID:       id,
+		Name:       indexer.Name,
+		Priority:   indexer.Priority,
+		Uri:        indexer.Uri,
+		ApiKey:     indexer.ApiKey,
+		Categories: indexer.Categories,
+		ID:         id,
 	})
 }
 

@@ -58,7 +58,7 @@ func TestBootstrap_FreshFileDatabase(t *testing.T) {
 
 	version, dirty, err := s.GetMigrationVersion()
 	require.NoError(t, err)
-	assert.Equal(t, uint(1), version)
+	assert.Equal(t, uint(2), version)
 	assert.False(t, dirty)
 
 	assertSeedData(t, s.db)
@@ -89,7 +89,7 @@ func TestBootstrap_DoubleNewIsIdempotent(t *testing.T) {
 
 	version, dirty, err := s2.GetMigrationVersion()
 	require.NoError(t, err)
-	assert.Equal(t, uint(1), version)
+	assert.Equal(t, uint(2), version)
 	assert.False(t, dirty)
 }
 

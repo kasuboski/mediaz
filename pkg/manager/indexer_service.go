@@ -3,6 +3,7 @@ package manager
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
@@ -92,6 +93,7 @@ func (is IndexerService) listIndexersInternal(ctx context.Context) ([]sqlcdb.Ind
 				Priority:        int64(idx.Priority),
 				Uri:             idx.URI,
 				ApiKey:          sql.NullString{},
+				Categories:      categoriesJSON(categoryIDs(idx.Categories)),
 			})
 		}
 	}
@@ -338,6 +340,19 @@ func (is IndexerService) RefreshIndexerSource(ctx context.Context, id int64) err
 		return err
 	}
 
+	for _, idx := range indexers {
+		categories := categoryIDs(idx.Categories)
+		if _, err := is.indexerStorage.CreateIndexer(ctx, sqlcdb.Indexer{
+			Name:            idx.Name,
+			Priority:        int64(idx.Priority),
+			Uri:             idx.URI,
+			IndexerSourceID: sql.NullInt64{Int64: id, Valid: true},
+			Categories:      categoriesJSON(categories),
+		}); err != nil {
+			return fmt.Errorf("failed to persist indexer %q: %w", idx.Name, err)
+		}
+	}
+
 	sourceURI := sourceConfig.Scheme + "://" + sourceConfig.Host
 
 	is.indexerCache.Set(id, indexerCacheEntry{
@@ -460,11 +475,38 @@ func (is IndexerService) searchIndexerSource(ctx context.Context, sourceID int64
 	}
 
 	var sourceReleases []*prowlarr.ReleaseResource
+	cached, _ := is.indexerCache.Get(sourceID)
+	categoriesByID := make(map[int32][]int32, len(cached.Indexers))
+	for _, idx := range cached.Indexers {
+		categoriesByID[idx.ID] = categoryIDs(idx.Categories)
+	}
+	storedIndexers, err := is.indexerStorage.ListIndexers(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list stored indexers: %w", err)
+	}
+	for _, idx := range cached.Indexers {
+		for _, stored := range storedIndexers {
+			if stored.IndexerSourceID.Valid && stored.IndexerSourceID.Int64 == sourceID && stored.Name == idx.Name {
+				if stored.Categories != "" {
+					var categories []int32
+					if err := json.Unmarshal([]byte(stored.Categories), &categories); err != nil {
+						return nil, fmt.Errorf("failed to decode categories for indexer %q: %w", idx.Name, err)
+					}
+					categoriesByID[idx.ID] = categories
+				}
+				break
+			}
+		}
+	}
 	for _, indexerID := range indexerIDs {
 		if indexerID < 0 || indexerID > math.MaxInt32 {
 			return nil, fmt.Errorf("indexer ID %d exceeds the Prowlarr API range", indexerID)
 		}
-		releases, err := source.Search(ctx, int32(indexerID), categories, opts)
+		indexerCategories := categoriesByID[int32(indexerID)]
+		if len(indexerCategories) == 0 {
+			indexerCategories = categories
+		}
+		releases, err := source.Search(ctx, int32(indexerID), indexerCategories, opts)
 		if err != nil {
 			log.Error("indexer search failed",
 				zap.Int64("indexerID", indexerID),
@@ -475,6 +517,27 @@ func (is IndexerService) searchIndexerSource(ctx context.Context, sourceID int64
 	}
 
 	return sourceReleases, nil
+}
+
+func categoryIDs(categories []prowlarr.IndexerCategory) []int32 {
+	var ids []int32
+	for _, category := range categories {
+		if category.ID != nil {
+			ids = append(ids, *category.ID)
+		}
+		if subcategories, err := category.SubCategories.Get(); err == nil {
+			ids = append(ids, categoryIDs(subcategories)...)
+		}
+	}
+	return ids
+}
+
+func categoriesJSON(categories []int32) string {
+	if categories == nil {
+		categories = []int32{}
+	}
+	encoded, _ := json.Marshal(categories)
+	return string(encoded)
 }
 
 func toIndexerResponse(idx sqlcdb.Indexer) IndexerResponse {

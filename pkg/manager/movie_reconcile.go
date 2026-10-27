@@ -18,7 +18,6 @@ import (
 )
 
 var (
-	// TODO: these are specific per indexer it seems.. need to store categories with the indexer
 	MovieCategories = []int32{2000}
 	TVCategories    = []int32{5000}
 )

@@ -70,6 +70,7 @@ type Indexer struct {
 	Uri             string
 	ApiKey          sql.NullString
 	IndexerSourceID sql.NullInt64
+	Categories      string
 }
 
 type IndexerSource struct {

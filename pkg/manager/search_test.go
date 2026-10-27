@@ -264,6 +264,7 @@ func TestMediaManager_SearchForSeason(t *testing.T) {
 		mockIndexerSource.EXPECT().ListIndexers(gomock.Any()).Return([]indexer.SourceIndexer{
 			{ID: 1, Name: "test-indexer", Priority: 1},
 		}, nil)
+		store.EXPECT().CreateIndexer(gomock.Any(), gomock.Any()).Return(int64(1), nil)
 
 		m := New(nil, indexerFactory, nil, store, downloadFactory, config.Manager{}, config.Config{})
 		require.NoError(t, m.RefreshIndexerSource(context.Background(), 1))
@@ -409,6 +410,7 @@ func TestMediaManager_prepareSearchSnapshot(t *testing.T) {
 		mockIndexerSource.EXPECT().ListIndexers(gomock.Any()).Return([]indexer.SourceIndexer{
 			{ID: 1, Name: "test-indexer", Priority: 1},
 		}, nil)
+		store.EXPECT().CreateIndexer(gomock.Any(), gomock.Any()).Return(int64(1), nil)
 
 		m := New(nil, indexerFactory, nil, store, nil, config.Manager{}, config.Config{})
 		require.NoError(t, m.RefreshIndexerSource(context.Background(), 1))

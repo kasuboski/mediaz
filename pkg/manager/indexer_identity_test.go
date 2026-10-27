@@ -23,7 +23,7 @@ func TestSnapshotIndexerIdentityAboveSDKRange(t *testing.T) {
 func TestSearchIndexerIdentityDoesNotAliasExternalID(t *testing.T) {
 	ctx := context.Background()
 	ctrl := gomock.NewController(t)
-	service, _, sources, factory := newTestIndexerService(ctrl)
+	service, indexers, sources, factory := newTestIndexerService(ctrl)
 	const localID int64 = (1 << 32) + 1
 	const sourceID int64 = 1 << 40
 	service.indexerCache.Set(sourceID, indexerCacheEntry{Indexers: []indexer.SourceIndexer{{ID: 1, Name: "external"}}})
@@ -38,6 +38,7 @@ func TestSearchIndexerIdentityDoesNotAliasExternalID(t *testing.T) {
 	sources.EXPECT().GetIndexerSource(gomock.Any(), sourceID).Return(config, nil)
 	source := indexerMocks.NewMockIndexerSource(ctrl)
 	factory.EXPECT().NewIndexerSource(config).Return(source, nil)
+	indexers.EXPECT().ListIndexers(gomock.Any()).Return(nil, nil)
 	expected := []*prowlarr.ReleaseResource{{}}
 	source.EXPECT().Search(gomock.Any(), int32(1), []int32{2000}, indexer.SearchOptions{Query: "movie"}).Return(expected, nil).Times(1)
 	snapshot = newReconcileSnapshot([]sqlcdb.Indexer{{ID: localID}, {ID: 1}}, nil)
