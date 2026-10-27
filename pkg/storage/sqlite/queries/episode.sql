@@ -71,6 +71,18 @@ WHERE
     )
 ORDER BY e.season_id ASC, e.episode_number ASC, e.id ASC;
 
+-- name: ListEpisodesBySeasonIDs :many
+SELECT
+    sqlc.embed(e),
+    et.to_state AS state,
+    et.download_id,
+    et.download_client_id,
+    et.is_entire_season_download
+FROM episode AS e
+INNER JOIN episode_transition AS et ON e.id = et.episode_id AND et.most_recent = 1
+WHERE e.season_id IN (sqlc.slice('season_ids'))
+ORDER BY e.season_id ASC, e.episode_number ASC, e.id ASC;
+
 -- name: GetEpisodeByEpisodeFileID :one
 SELECT
     sqlc.embed(e),

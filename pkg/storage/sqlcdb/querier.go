@@ -163,6 +163,7 @@ type Querier interface {
 	// states_any is a NULL guard: when NULL no state constraint applies; when set,
 	// the states slice constrains the current transition state (any length).
 	ListEpisodes(ctx context.Context, arg ListEpisodesParams) ([]ListEpisodesRow, error)
+	ListEpisodesBySeasonIDs(ctx context.Context, seasonIds []int64) ([]ListEpisodesBySeasonIDsRow, error)
 	ListErrorJobs(ctx context.Context, cutoffDatetime sql.NullTime) ([]ListErrorJobsRow, error)
 	ListIndexerSources(ctx context.Context) ([]IndexerSource, error)
 	ListIndexers(ctx context.Context) ([]Indexer, error)
@@ -181,6 +182,7 @@ type Querier interface {
 	ListQualityProfiles(ctx context.Context) ([]QualityProfile, error)
 	ListQualityProfilesByMediaType(ctx context.Context, mediaType string) ([]QualityProfile, error)
 	ListRunningJobs(ctx context.Context) ([]ListRunningJobsRow, error)
+	ListSeasonMetadataByIDs(ctx context.Context, ids []int64) ([]SeasonMetadatum, error)
 	ListSeasonMetadataBySeriesMetadataID(ctx context.Context, seriesMetadataID int64) ([]SeasonMetadatum, error)
 	// states_any is a NULL guard: when NULL no state constraint applies; when set,
 	// the states slice constrains the current transition state (any length).

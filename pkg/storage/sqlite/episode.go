@@ -3,6 +3,7 @@ package sqlite
 import (
 	"context"
 	"database/sql"
+	"sort"
 
 	"github.com/kasuboski/mediaz/pkg/storage"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
@@ -100,6 +101,31 @@ func (s *SQLite) ListEpisodes(ctx context.Context, filter storage.EpisodeFilter)
 	if err != nil {
 		return nil, mapQueryErr(err, "failed to list episodes")
 	}
+	return rows, nil
+}
+
+// ListEpisodesBySeasonIDs returns episodes for multiple seasons in stable season/episode order.
+func (s *SQLite) ListEpisodesBySeasonIDs(ctx context.Context, seasonIDs []int64) ([]sqlcdb.ListEpisodesBySeasonIDsRow, error) {
+	seasonIDs = uniqueSortedIDs(seasonIDs)
+	rows := make([]sqlcdb.ListEpisodesBySeasonIDsRow, 0)
+	for start := 0; start < len(seasonIDs); start += sqliteBindLimit {
+		end := min(start+sqliteBindLimit, len(seasonIDs))
+		batch, err := s.Queries.ListEpisodesBySeasonIDs(ctx, seasonIDs[start:end])
+		if err != nil {
+			return nil, mapQueryErr(err, "failed to list episodes by season ids")
+		}
+		rows = append(rows, batch...)
+	}
+	sort.Slice(rows, func(i, j int) bool {
+		a, b := rows[i].Episode, rows[j].Episode
+		if a.SeasonID != b.SeasonID {
+			return a.SeasonID < b.SeasonID
+		}
+		if a.EpisodeNumber != b.EpisodeNumber {
+			return a.EpisodeNumber < b.EpisodeNumber
+		}
+		return a.ID < b.ID
+	})
 	return rows, nil
 }
 

@@ -208,6 +208,11 @@ FROM
 WHERE
     id = ?;
 
+-- name: ListSeasonMetadataByIDs :many
+SELECT id, series_metadata_id, number, tmdb_id, title, overview, air_date
+FROM season_metadata
+WHERE id IN (sqlc.slice('ids'));
+
 -- name: GetSeasonMetadataByTmdbID :one
 SELECT
     id,
