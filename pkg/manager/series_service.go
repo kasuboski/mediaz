@@ -512,22 +512,41 @@ func (s SeriesService) ListEpisodesForSeason(ctx context.Context, tmdbID int64, 
 		return nil, err
 	}
 
+	// Load metadata and episodes once, then use them for matching and duplicate selection.
+	metadataIDs := make([]int64, 0, len(seasons))
+	seasonIDs := make([]int64, 0, len(seasons))
+	for _, season := range seasons {
+		seasonIDs = append(seasonIDs, season.Season.ID)
+		if season.Season.SeasonMetadataID.Valid {
+			metadataIDs = append(metadataIDs, season.Season.SeasonMetadataID.Int64)
+		}
+	}
+	metas, err := s.seriesMetaStorage.ListSeasonMetadataByIDs(ctx, metadataIDs)
+	metadataFailed := err != nil
+	if metadataFailed {
+		log.Error("failed to batch list season metadata", zap.Error(err))
+		metas = nil
+	}
+	metaByID := make(map[int64]sqlcdb.SeasonMetadatum, len(metas))
+	for _, meta := range metas {
+		metaByID[meta.ID] = meta
+	}
 	// Find the season that matches the requested season number
 	var candidateSeasons []sqlcdb.ListSeasonsRow
 	var candidateMetas []*sqlcdb.SeasonMetadatum
 
 	for _, season := range seasons {
 		// Check if season has metadata with the right number
-		if season.Season.SeasonMetadataID.Valid {
-			meta, err := s.seriesMetaStorage.GetSeasonMetadataByID(ctx, season.Season.SeasonMetadataID.Int64)
-			if err == nil && meta.Number == int64(seasonNumber) {
+		if !metadataFailed && season.Season.SeasonMetadataID.Valid {
+			meta, ok := metaByID[season.Season.SeasonMetadataID.Int64]
+			if ok && meta.Number == int64(seasonNumber) {
 				candidateSeasons = append(candidateSeasons, season)
 				candidateMetas = append(candidateMetas, &meta)
 			}
 		}
 	}
 
-	// If no seasons found with metadata, fall back to season_number matching
+	// If metadata is unavailable or has no match, fall back to stored season number.
 	if len(candidateSeasons) == 0 {
 		for _, season := range seasons {
 			if season.Season.SeasonNumber == int64(seasonNumber) {
@@ -542,6 +561,19 @@ func (s SeriesService) ListEpisodesForSeason(ctx context.Context, tmdbID int64, 
 		return nil, fmt.Errorf("season %d not found for series %d", seasonNumber, tmdbID)
 	}
 
+	seasonIDs = seasonIDs[:0]
+	for _, season := range candidateSeasons {
+		seasonIDs = append(seasonIDs, season.Season.ID)
+	}
+	episodeRows, err := s.seriesStorage.ListEpisodesBySeasonIDs(ctx, seasonIDs)
+	if err != nil {
+		return nil, err
+	}
+	episodeCount := make(map[int64]int, len(candidateSeasons))
+	for _, row := range episodeRows {
+		episodeCount[row.Episode.SeasonID]++
+	}
+
 	// If we have multiple candidates, prefer the one with episodes
 	var targetSeason *sqlcdb.ListSeasonsRow
 	var seasonMeta *sqlcdb.SeasonMetadatum
@@ -552,9 +584,7 @@ func (s SeriesService) ListEpisodesForSeason(ctx context.Context, tmdbID int64, 
 	} else {
 		// Multiple candidates - check which one has episodes
 		for i, season := range candidateSeasons {
-			seasonIDInt := season.Season.ID
-			episodes, err := s.seriesStorage.ListEpisodes(ctx, storage.EpisodeFilter{SeasonID: &seasonIDInt})
-			if err == nil && len(episodes) > 0 {
+			if episodeCount[season.Season.ID] > 0 {
 				targetSeason = &candidateSeasons[i]
 				seasonMeta = candidateMetas[i]
 				break
@@ -568,12 +598,19 @@ func (s SeriesService) ListEpisodesForSeason(ctx context.Context, tmdbID int64, 
 		}
 	}
 
-	// Query episodes for this season
-	targetSeasonID := targetSeason.Season.ID
-	episodes, err := s.seriesStorage.ListEpisodes(ctx, storage.EpisodeFilter{SeasonID: &targetSeasonID})
-	if err != nil {
-		log.Error("failed to list episodes", zap.Error(err), zap.Int64("seasonID", targetSeason.Season.ID))
-		return nil, err
+	// Reuse the rows loaded for all seasons, selecting only this season's episodes.
+	episodes := make([]sqlcdb.ListEpisodesRow, 0, episodeCount[targetSeason.Season.ID])
+	for _, row := range episodeRows {
+		if row.Episode.SeasonID != targetSeason.Season.ID {
+			continue
+		}
+		episodes = append(episodes, sqlcdb.ListEpisodesRow{
+			Episode:                row.Episode,
+			State:                  row.State,
+			DownloadID:             row.DownloadID,
+			DownloadClientID:       row.DownloadClientID,
+			IsEntireSeasonDownload: row.IsEntireSeasonDownload,
+		})
 	}
 
 	// Determine season number for response
@@ -771,6 +808,38 @@ func (s SeriesService) getSeasonsWithEpisodes(ctx context.Context, seriesID int6
 		return nil, err
 	}
 
+	// Preload all linked season metadata and episode rows in two batch queries.
+	seasonMetadataIDs := make([]int64, 0, len(seasons))
+	seasonIDs := make([]int64, 0, len(seasons))
+	for _, season := range seasons {
+		seasonIDs = append(seasonIDs, season.Season.ID)
+		if season.Season.SeasonMetadataID.Valid {
+			seasonMetadataIDs = append(seasonMetadataIDs, season.Season.SeasonMetadataID.Int64)
+		}
+	}
+	seasonMetadata, err := s.seriesMetaStorage.ListSeasonMetadataByIDs(ctx, seasonMetadataIDs)
+	if err != nil {
+		log.Error("failed to batch list season metadata", zap.Error(err))
+		return nil, fmt.Errorf("batch list season metadata: %w", err)
+	}
+	seasonMetadataByID := make(map[int64]sqlcdb.SeasonMetadatum, len(seasonMetadata))
+	for _, meta := range seasonMetadata {
+		seasonMetadataByID[meta.ID] = meta
+	}
+	episodeRows, err := s.seriesStorage.ListEpisodesBySeasonIDs(ctx, seasonIDs)
+	if err != nil {
+		log.Error("failed to batch list episodes", zap.Error(err))
+		return nil, fmt.Errorf("batch list episodes: %w", err)
+	}
+	episodesBySeasonID := make(map[int64][]sqlcdb.ListEpisodesRow, len(seasons))
+	allEpisodes := make([]sqlcdb.ListEpisodesRow, 0, len(episodeRows))
+	for _, row := range episodeRows {
+		episode := sqlcdb.ListEpisodesRow{Episode: row.Episode, State: row.State, DownloadID: row.DownloadID, DownloadClientID: row.DownloadClientID, IsEntireSeasonDownload: row.IsEntireSeasonDownload}
+		episodesBySeasonID[row.Episode.SeasonID] = append(episodesBySeasonID[row.Episode.SeasonID], episode)
+		allEpisodes = append(allEpisodes, episode)
+	}
+	allEpisodeMetadata := s.preloadEpisodeMetadata(ctx, allEpisodes)
+
 	// Transform to response format with metadata and episodes
 	var results []SeasonResult
 	for _, season := range seasons {
@@ -780,18 +849,19 @@ func (s SeriesService) getSeasonsWithEpisodes(ctx context.Context, seriesID int6
 			continue
 		}
 
-		seasonMeta, err := s.seriesMetaStorage.GetSeasonMetadataByID(ctx, season.Season.SeasonMetadataID.Int64)
-		if err != nil {
-			log.Error("failed to get season metadata", zap.Error(err), zap.Int64("seasonMetadataID", season.Season.SeasonMetadataID.Int64))
+		seasonMeta, ok := seasonMetadataByID[season.Season.SeasonMetadataID.Int64]
+		if !ok {
+			log.Error("failed to get season metadata", zap.Int64("seasonMetadataID", season.Season.SeasonMetadataID.Int64))
 			continue
 		}
 
-		// Get episodes for this season
-		episodes, err := s.getEpisodesForSeason(ctx, season.Season.ID, season.Season.SeriesID, seasonMeta.Number)
-		if err != nil {
-			log.Debug("failed to get episodes for season", zap.Error(err), zap.Int64("seasonID", season.Season.ID))
-			// Continue with empty episodes array
-			episodes = []EpisodeResult{}
+		episodes := make([]EpisodeResult, 0, len(episodesBySeasonID[season.Season.ID]))
+		for _, episode := range episodesBySeasonID[season.Season.ID] {
+			var episodeMeta *sqlcdb.EpisodeMetadatum
+			if episode.Episode.EpisodeMetadataID.Valid {
+				episodeMeta = allEpisodeMetadata[episode.Episode.EpisodeMetadataID.Int64]
+			}
+			episodes = append(episodes, buildEpisodeResult(episode, episodeMeta, season.Season.SeriesID, seasonMeta.Number))
 		}
 
 		result := SeasonResult{

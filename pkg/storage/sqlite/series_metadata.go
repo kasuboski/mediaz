@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"sort"
 
 	"github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 )
@@ -135,6 +136,33 @@ func (s *SQLite) GetSeasonMetadataByID(ctx context.Context, id int64) (sqlcdb.Se
 	return row, nil
 }
 
+func uniqueSortedIDs(ids []int64) []int64 {
+	ids = append([]int64(nil), ids...)
+	sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
+	unique := ids[:0]
+	for _, id := range ids {
+		if len(unique) == 0 || unique[len(unique)-1] != id {
+			unique = append(unique, id)
+		}
+	}
+	return unique
+}
+
+// ListSeasonMetadataByIDs lists season metadata rows by primary key.
+func (s *SQLite) ListSeasonMetadataByIDs(ctx context.Context, ids []int64) ([]sqlcdb.SeasonMetadatum, error) {
+	ids = uniqueSortedIDs(ids)
+	rows := make([]sqlcdb.SeasonMetadatum, 0)
+	for start := 0; start < len(ids); start += sqliteBindLimit {
+		end := min(start+sqliteBindLimit, len(ids))
+		batch, err := s.Queries.ListSeasonMetadataByIDs(ctx, ids[start:end])
+		if err != nil {
+			return nil, fmt.Errorf("failed to list season metadata: %w", err)
+		}
+		rows = append(rows, batch...)
+	}
+	return rows, nil
+}
+
 // GetSeasonMetadataByTmdbID get a season metadata by tmdb id
 func (s *SQLite) GetSeasonMetadataByTmdbID(ctx context.Context, tmdbID int64) (sqlcdb.SeasonMetadatum, error) {
 	row, err := s.Queries.GetSeasonMetadataByTmdbID(ctx, tmdbID)
@@ -179,9 +207,15 @@ func (s *SQLite) ListEpisodeMetadataBySeasonMetadataID(ctx context.Context, seas
 
 // ListEpisodeMetadataByIDs lists all episode metadata for the given ids
 func (s *SQLite) ListEpisodeMetadataByIDs(ctx context.Context, ids []int64) ([]sqlcdb.EpisodeMetadatum, error) {
-	rows, err := s.Queries.ListEpisodeMetadataByIDs(ctx, ids)
-	if err != nil {
-		return nil, fmt.Errorf("failed to list episode metadata: %w", err)
+	ids = uniqueSortedIDs(ids)
+	rows := make([]sqlcdb.EpisodeMetadatum, 0)
+	for start := 0; start < len(ids); start += sqliteBindLimit {
+		end := min(start+sqliteBindLimit, len(ids))
+		batch, err := s.Queries.ListEpisodeMetadataByIDs(ctx, ids[start:end])
+		if err != nil {
+			return nil, fmt.Errorf("failed to list episode metadata: %w", err)
+		}
+		rows = append(rows, batch...)
 	}
 	return rows, nil
 }

@@ -485,6 +485,53 @@ func (q *Queries) ListEpisodeMetadataBySeasonMetadataID(ctx context.Context, sea
 	return items, nil
 }
 
+const listSeasonMetadataByIDs = `-- name: ListSeasonMetadataByIDs :many
+SELECT id, series_metadata_id, number, tmdb_id, title, overview, air_date
+FROM season_metadata
+WHERE id IN (/*SLICE:ids*/?)
+`
+
+func (q *Queries) ListSeasonMetadataByIDs(ctx context.Context, ids []int64) ([]SeasonMetadatum, error) {
+	query := listSeasonMetadataByIDs
+	var queryParams []interface{}
+	if len(ids) > 0 {
+		for _, v := range ids {
+			queryParams = append(queryParams, v)
+		}
+		query = strings.Replace(query, "/*SLICE:ids*/?", strings.Repeat(",?", len(ids))[1:], 1)
+	} else {
+		query = strings.Replace(query, "/*SLICE:ids*/?", "NULL", 1)
+	}
+	rows, err := q.db.QueryContext(ctx, query, queryParams...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SeasonMetadatum
+	for rows.Next() {
+		var i SeasonMetadatum
+		if err := rows.Scan(
+			&i.ID,
+			&i.SeriesMetadataID,
+			&i.Number,
+			&i.TmdbID,
+			&i.Title,
+			&i.Overview,
+			&i.AirDate,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listSeasonMetadataBySeriesMetadataID = `-- name: ListSeasonMetadataBySeriesMetadataID :many
 SELECT
     id,

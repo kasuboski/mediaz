@@ -1428,6 +1428,21 @@ func (mr *MockStorageMockRecorder) ListEpisodes(ctx, filter any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListEpisodes", reflect.TypeOf((*MockStorage)(nil).ListEpisodes), ctx, filter)
 }
 
+// ListEpisodesBySeasonIDs mocks base method.
+func (m *MockStorage) ListEpisodesBySeasonIDs(ctx context.Context, seasonIDs []int64) ([]sqlcdb.ListEpisodesBySeasonIDsRow, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListEpisodesBySeasonIDs", ctx, seasonIDs)
+	ret0, _ := ret[0].([]sqlcdb.ListEpisodesBySeasonIDsRow)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListEpisodesBySeasonIDs indicates an expected call of ListEpisodesBySeasonIDs.
+func (mr *MockStorageMockRecorder) ListEpisodesBySeasonIDs(ctx, seasonIDs any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListEpisodesBySeasonIDs", reflect.TypeOf((*MockStorage)(nil).ListEpisodesBySeasonIDs), ctx, seasonIDs)
+}
+
 // ListErrorJobs mocks base method.
 func (m *MockStorage) ListErrorJobs(ctx context.Context, cutoffDatetime sql.NullTime) ([]sqlcdb.ListErrorJobsRow, error) {
 	m.ctrl.T.Helper()
@@ -1641,6 +1656,21 @@ func (m *MockStorage) ListRunningJobs(ctx context.Context) ([]sqlcdb.ListRunning
 func (mr *MockStorageMockRecorder) ListRunningJobs(ctx any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListRunningJobs", reflect.TypeOf((*MockStorage)(nil).ListRunningJobs), ctx)
+}
+
+// ListSeasonMetadataByIDs mocks base method.
+func (m *MockStorage) ListSeasonMetadataByIDs(ctx context.Context, ids []int64) ([]sqlcdb.SeasonMetadatum, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListSeasonMetadataByIDs", ctx, ids)
+	ret0, _ := ret[0].([]sqlcdb.SeasonMetadatum)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListSeasonMetadataByIDs indicates an expected call of ListSeasonMetadataByIDs.
+func (mr *MockStorageMockRecorder) ListSeasonMetadataByIDs(ctx, ids any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListSeasonMetadataByIDs", reflect.TypeOf((*MockStorage)(nil).ListSeasonMetadataByIDs), ctx, ids)
 }
 
 // ListSeasonMetadataBySeriesMetadataID mocks base method.
@@ -3431,6 +3461,21 @@ func (mr *MockSeriesStorageMockRecorder) ListEpisodes(ctx, filter any) *gomock.C
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListEpisodes", reflect.TypeOf((*MockSeriesStorage)(nil).ListEpisodes), ctx, filter)
 }
 
+// ListEpisodesBySeasonIDs mocks base method.
+func (m *MockSeriesStorage) ListEpisodesBySeasonIDs(ctx context.Context, seasonIDs []int64) ([]sqlcdb.ListEpisodesBySeasonIDsRow, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListEpisodesBySeasonIDs", ctx, seasonIDs)
+	ret0, _ := ret[0].([]sqlcdb.ListEpisodesBySeasonIDsRow)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListEpisodesBySeasonIDs indicates an expected call of ListEpisodesBySeasonIDs.
+func (mr *MockSeriesStorageMockRecorder) ListEpisodesBySeasonIDs(ctx, seasonIDs any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListEpisodesBySeasonIDs", reflect.TypeOf((*MockSeriesStorage)(nil).ListEpisodesBySeasonIDs), ctx, seasonIDs)
+}
+
 // ListSeasons mocks base method.
 func (m *MockSeriesStorage) ListSeasons(ctx context.Context, filter storage.SeasonFilter) ([]sqlcdb.ListSeasonsRow, error) {
 	m.ctrl.T.Helper()
@@ -3788,6 +3833,21 @@ func (m *MockSeriesMetadataStorage) ListEpisodeMetadataBySeasonMetadataID(ctx co
 func (mr *MockSeriesMetadataStorageMockRecorder) ListEpisodeMetadataBySeasonMetadataID(ctx, seasonMetadataID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListEpisodeMetadataBySeasonMetadataID", reflect.TypeOf((*MockSeriesMetadataStorage)(nil).ListEpisodeMetadataBySeasonMetadataID), ctx, seasonMetadataID)
+}
+
+// ListSeasonMetadataByIDs mocks base method.
+func (m *MockSeriesMetadataStorage) ListSeasonMetadataByIDs(ctx context.Context, ids []int64) ([]sqlcdb.SeasonMetadatum, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListSeasonMetadataByIDs", ctx, ids)
+	ret0, _ := ret[0].([]sqlcdb.SeasonMetadatum)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListSeasonMetadataByIDs indicates an expected call of ListSeasonMetadataByIDs.
+func (mr *MockSeriesMetadataStorageMockRecorder) ListSeasonMetadataByIDs(ctx, ids any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListSeasonMetadataByIDs", reflect.TypeOf((*MockSeriesMetadataStorage)(nil).ListSeasonMetadataByIDs), ctx, ids)
 }
 
 // ListSeasonMetadataBySeriesMetadataID mocks base method.

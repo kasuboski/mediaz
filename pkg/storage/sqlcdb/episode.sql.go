@@ -326,6 +326,71 @@ func (q *Queries) ListEpisodes(ctx context.Context, arg ListEpisodesParams) ([]L
 	return items, nil
 }
 
+const listEpisodesBySeasonIDs = `-- name: ListEpisodesBySeasonIDs :many
+SELECT
+    e.id, e.season_id, e.episode_number, e.monitored, e.episode_metadata_id, e.episode_file_id,
+    et.to_state AS state,
+    et.download_id,
+    et.download_client_id,
+    et.is_entire_season_download
+FROM episode AS e
+INNER JOIN episode_transition AS et ON e.id = et.episode_id AND et.most_recent = 1
+WHERE e.season_id IN (/*SLICE:season_ids*/?)
+ORDER BY e.season_id ASC, e.episode_number ASC, e.id ASC
+`
+
+type ListEpisodesBySeasonIDsRow struct {
+	Episode                Episode
+	State                  string
+	DownloadID             sql.NullString
+	DownloadClientID       sql.NullInt64
+	IsEntireSeasonDownload sql.NullBool
+}
+
+func (q *Queries) ListEpisodesBySeasonIDs(ctx context.Context, seasonIds []int64) ([]ListEpisodesBySeasonIDsRow, error) {
+	query := listEpisodesBySeasonIDs
+	var queryParams []interface{}
+	if len(seasonIds) > 0 {
+		for _, v := range seasonIds {
+			queryParams = append(queryParams, v)
+		}
+		query = strings.Replace(query, "/*SLICE:season_ids*/?", strings.Repeat(",?", len(seasonIds))[1:], 1)
+	} else {
+		query = strings.Replace(query, "/*SLICE:season_ids*/?", "NULL", 1)
+	}
+	rows, err := q.db.QueryContext(ctx, query, queryParams...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListEpisodesBySeasonIDsRow
+	for rows.Next() {
+		var i ListEpisodesBySeasonIDsRow
+		if err := rows.Scan(
+			&i.Episode.ID,
+			&i.Episode.SeasonID,
+			&i.Episode.EpisodeNumber,
+			&i.Episode.Monitored,
+			&i.Episode.EpisodeMetadataID,
+			&i.Episode.EpisodeFileID,
+			&i.State,
+			&i.DownloadID,
+			&i.DownloadClientID,
+			&i.IsEntireSeasonDownload,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const updateEpisodeEpisodeFileID = `-- name: UpdateEpisodeEpisodeFileID :exec
 UPDATE
     episode

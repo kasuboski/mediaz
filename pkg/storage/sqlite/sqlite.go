@@ -39,6 +39,9 @@ func (s *SQLite) txQueries(tx *sql.Tx) *sqlcdb.Queries {
 var seedSQL string
 
 const (
+	// Keep IN-clause batches below SQLite's historical 999-variable limit.
+	sqliteBindLimit = 900
+
 	timestampFormat = "2006-01-02 15:04:05"
 
 	// inMemoryPath selects a private in-memory SQLite database.

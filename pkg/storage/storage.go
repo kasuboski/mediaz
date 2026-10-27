@@ -314,6 +314,7 @@ type SeriesStorage interface {
 	CreateEpisode(ctx context.Context, episode sqlcdb.Episode, initialState EpisodeState) (int64, error)
 	DeleteEpisode(ctx context.Context, id int64) error
 	ListEpisodes(ctx context.Context, filter EpisodeFilter) ([]sqlcdb.ListEpisodesRow, error)
+	ListEpisodesBySeasonIDs(ctx context.Context, seasonIDs []int64) ([]sqlcdb.ListEpisodesBySeasonIDsRow, error)
 	UpdateEpisodeEpisodeFileID(ctx context.Context, id int64, fileID int64) error
 	UpdateEpisodeState(ctx context.Context, id int64, state EpisodeState, metadata *TransitionStateMetadata) error
 	LinkEpisodeMetadata(ctx context.Context, episodeID int64, seasonID int64, episodeMetadataID int64) error
@@ -339,6 +340,7 @@ type SeriesMetadataStorage interface {
 	DeleteSeasonMetadata(ctx context.Context, id int64) error
 	ListSeasonMetadataBySeriesMetadataID(ctx context.Context, seriesMetadataID int64) ([]sqlcdb.SeasonMetadatum, error)
 	GetSeasonMetadataByID(ctx context.Context, id int64) (sqlcdb.SeasonMetadatum, error)
+	ListSeasonMetadataByIDs(ctx context.Context, ids []int64) ([]sqlcdb.SeasonMetadatum, error)
 	GetSeasonMetadataByTmdbID(ctx context.Context, tmdbID int64) (sqlcdb.SeasonMetadatum, error)
 
 	CreateEpisodeMetadata(ctx context.Context, episodeMeta sqlcdb.EpisodeMetadatum) (int64, error)
