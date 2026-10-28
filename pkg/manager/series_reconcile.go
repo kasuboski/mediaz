@@ -986,16 +986,27 @@ func (m MediaManager) ReconcileDiscoveredEpisodes(ctx context.Context, snapshot 
 	if len(episodes) == 0 {
 		return nil
 	}
-	// Read filename evidence once for the batch, not once per unresolved episode.
-	fileRows, err := m.seriesStorage.ListEpisodeFiles(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to load discovered episode files: %w", err)
+	// Linked series do not need file evidence. Cache either the result or error
+	// on first use so an evidence failure cannot block their reconciliation.
+	var filesLoaded bool
+	var filesByFolder map[string][]string
+	var filesErr error
+	loadFiles := func() (map[string][]string, error) {
+		if !filesLoaded {
+			filesLoaded = true
+			rows, err := m.seriesStorage.ListEpisodeFiles(ctx)
+			if err != nil {
+				filesErr = fmt.Errorf("failed to load discovered episode files: %w", err)
+			} else {
+				filesByFolder = seriesDiscoveryFiles(rows, m.config.Library.TVDir)
+			}
+		}
+		return filesByFolder, filesErr
 	}
-	filesByFolder := seriesDiscoveryFiles(fileRows)
 	attempts := make(map[int64]error)
 	for _, episode := range episodes {
 		log.Debug("reconciling discovered episode", zap.Any("episode", episode.Episode.ID))
-		err = m.reconcileDiscoveredEpisodeWithEvidence(ctx, snapshot, episode, filesByFolder, attempts)
+		err = m.reconcileDiscoveredEpisodeWithEvidence(ctx, snapshot, episode, loadFiles, attempts)
 		if err != nil {
 			log.Error("failed to reconcile discovered episode", zap.Error(err))
 			continue
@@ -1010,7 +1021,7 @@ func (m MediaManager) reconcileDiscoveredEpisode(ctx context.Context, snapshot *
 	return m.reconcileDiscoveredEpisodeWithEvidence(ctx, snapshot, episode, nil, nil)
 }
 
-func (m MediaManager) reconcileDiscoveredEpisodeWithEvidence(ctx context.Context, snapshot *ReconcileSnapshot, episode sqlcdb.ListEpisodesRow, filesByFolder map[string][]string, attempts map[int64]error) error {
+func (m MediaManager) reconcileDiscoveredEpisodeWithEvidence(ctx context.Context, snapshot *ReconcileSnapshot, episode sqlcdb.ListEpisodesRow, loadFiles func() (map[string][]string, error), attempts map[int64]error) error {
 	log := logger.FromCtx(ctx).With("reconcile loop", "discovered", "episode id", episode.Episode.ID)
 
 	log.Debug("starting episode reconciliation", zap.Int64("episode_id", episode.Episode.ID))
@@ -1037,8 +1048,13 @@ func (m MediaManager) reconcileDiscoveredEpisodeWithEvidence(ctx context.Context
 		if prior, tried := attempts[series.Series.ID]; tried && prior != nil {
 			return nil // Leave all episodes of the same unresolved series discovered.
 		}
-		if filesByFolder != nil {
-			err = m.linkSeriesMetadata(ctx, series, log, filesByFolder[series.Series.Path.String])
+		if loadFiles != nil {
+			filesByFolder, loadErr := loadFiles()
+			err = loadErr
+			if err == nil {
+				// Pass empty evidence explicitly to avoid the standalone loader.
+				err = m.linkSeriesMetadata(ctx, series, log, filesByFolder[series.Series.Path.String])
+			}
 		} else {
 			err = m.linkSeriesMetadata(ctx, series, log)
 		}
@@ -1194,14 +1210,32 @@ func (m MediaManager) reconcileDiscoveredEpisodeWithEvidence(ctx context.Context
 
 // seriesDiscoveryFiles groups stored relative paths by their exact series folder,
 // including files inside Season directories and excluding unrelated prefix names.
-func seriesDiscoveryFiles(rows []sqlcdb.EpisodeFile) map[string][]string {
+func seriesDiscoveryFiles(rows []sqlcdb.EpisodeFile, tvRoot string) map[string][]string {
 	byFolder := make(map[string][]string)
 	for _, row := range rows {
 		path := row.RelativePath
 		if !path.Valid {
 			path = row.OriginalFilePath
+			if path.Valid && filepath.IsAbs(path.String) {
+				if tvRoot == "" {
+					continue // No trusted root for an absolute original path.
+				}
+				root, err := filepath.Abs(tvRoot)
+				if err != nil {
+					continue
+				}
+				relative, err := filepath.Rel(root, path.String)
+				if err != nil {
+					continue
+				}
+				path.String = relative
+			}
 		}
-		if !path.Valid || !filepath.IsLocal(path.String) || filepath.Dir(path.String) == "." {
+		if !path.Valid || !filepath.IsLocal(path.String) {
+			continue
+		}
+		path.String = filepath.Clean(path.String)
+		if filepath.Dir(path.String) == "." {
 			continue
 		}
 		folder := library.EpisodeFileFromPath(path.String).SeriesName
@@ -1220,7 +1254,7 @@ func (m MediaManager) linkSeriesMetadata(ctx context.Context, series sqlcdb.GetS
 		if err != nil {
 			return fmt.Errorf("failed to load episode filename evidence: %w", err)
 		}
-		files = seriesDiscoveryFiles(rows)[folder]
+		files = seriesDiscoveryFiles(rows, m.config.Library.TVDir)[folder]
 	}
 	evidence, err := ParseDiscoveryEvidence(folder, files, true)
 	if err != nil {

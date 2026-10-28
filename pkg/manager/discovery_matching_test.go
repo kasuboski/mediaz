@@ -79,23 +79,23 @@ func TestDiscoveryExplicitIDScopeAndConflicts(t *testing.T) {
 		folder  string
 		files   []string
 		tv      bool
-		wantID  int
+		want    DiscoveryEvidence
 		wantErr bool
 	}{
-		{"Film {tmdb-42}", []string{"Film {tmdb-42}.mkv"}, false, 42, false},
-		{"Film {tmdb-42}", []string{"Film {tmdb-43}.mkv"}, false, 0, true},
-		{"Film {tmdb-0}", nil, false, 0, true},
-		{"Film (2019) [1984]", nil, false, 0, true},
-		{"Film {tmdb-9999999999999999999999999}", nil, false, 0, true},
-		{"Show {tmdb-42}", []string{"Show.S01E01.{tmdb-999}.mkv"}, true, 42, false},
-		{"Show {tmdb-42}", []string{"Show.{tmdb-43}.S01E01.mkv"}, true, 0, true},
+		{"Film {tmdb-42}", []string{"Film {tmdb-42}.mkv"}, false, DiscoveryEvidence{Title: "Film", Query: "Film", TMDBID: 42, names: []string{"Film", "Film"}}, false},
+		{"Film {tmdb-42}", []string{"Film {tmdb-43}.mkv"}, false, DiscoveryEvidence{}, true},
+		{"Film {tmdb-0}", nil, false, DiscoveryEvidence{}, true},
+		{"Film (2019) [1984]", nil, false, DiscoveryEvidence{}, true},
+		{"Film {tmdb-9999999999999999999999999}", nil, false, DiscoveryEvidence{}, true},
+		{"Show {tmdb-42}", []string{"Show.S01E01.{tmdb-999}.mkv"}, true, DiscoveryEvidence{Title: "Show", Query: "Show", TMDBID: 42, names: []string{"Show", "Show"}}, false},
+		{"Show {tmdb-42}", []string{"Show.{tmdb-43}.S01E01.mkv"}, true, DiscoveryEvidence{}, true},
 	} {
 		evidence, err := ParseDiscoveryEvidence(tc.folder, tc.files, tc.tv)
 		if tc.wantErr {
 			require.Error(t, err)
 		} else {
 			require.NoError(t, err)
-			require.Equal(t, tc.wantID, evidence.TMDBID)
+			require.Equal(t, tc.want, evidence)
 		}
 	}
 }
