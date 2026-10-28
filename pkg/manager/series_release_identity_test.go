@@ -26,6 +26,8 @@ func TestSeriesReleaseIdentity(t *testing.T) {
 		{"pack title prefix collision", "Brothers", "Step.Brothers.S01.1080p", nil, nil, nil, true, true},
 		{"pack title suffix collision", "Brothers", "Brothers.Resolution.S01.1080p", nil, nil, nil, true, true},
 		{"episode apostrophe", "Schitt's Creek", "Schitts.Creek.S01E02.1080p", nil, nil, nil, false, false},
+		{"episode decomposed release", "Amélie", "AME\u0301LIE.S01E02.1080p", nil, nil, nil, false, false},
+		{"pack combining mark distinguishes titles", "Q\u0301", "Q.S01.1080p", nil, nil, nil, true, true},
 		{"episode year", "The Flash", "The.Flash.2014.S01E02.1080p", nil, nil, nil, false, false},
 		{"episode wrong year", "The Flash", "The.Flash.1990.S01E02.1080p", nil, nil, nil, false, true},
 		{"pack wrong year", "The Flash", "The.Flash.1990.S01.1080p", nil, nil, nil, true, true},

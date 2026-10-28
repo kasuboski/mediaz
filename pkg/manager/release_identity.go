@@ -7,6 +7,7 @@ import (
 	"unicode"
 
 	"github.com/kasuboski/mediaz/pkg/prowlarr"
+	"golang.org/x/text/unicode/norm"
 )
 
 var (
@@ -17,14 +18,14 @@ var (
 	movieReleaseGroup      = regexp.MustCompile(`-([[:alnum:]][[:alnum:]_.-]*)$`)
 )
 
-// normalizeReleaseIdentity preserves title words and digits, but ignores release
-// separators and punctuation. Apostrophes are removed rather than splitting a
-// word, so "Ocean's" and "Oceans" compare equally.
+// normalizeReleaseIdentity NFC-normalizes title letters, marks and digits, but
+// ignores release separators and punctuation. Apostrophes are removed rather
+// than splitting a word, so "Ocean's" and "Oceans" compare equally.
 func normalizeReleaseIdentity(s string) string {
 	var b strings.Builder
 	space := true
-	for _, r := range strings.ToLower(s) {
-		if unicode.IsLetter(r) || unicode.IsDigit(r) {
+	for _, r := range strings.ToLower(norm.NFC.String(s)) {
+		if unicode.IsLetter(r) || unicode.IsDigit(r) || unicode.IsMark(r) {
 			b.WriteRune(r)
 			space = false
 		} else if r != '\'' && r != '’' && !space {
