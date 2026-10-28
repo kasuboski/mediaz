@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"path/filepath"
 	"slices"
 
 	"github.com/kasuboski/mediaz/pkg/download"
@@ -413,37 +414,49 @@ func (m MediaManager) reconcileDiscoveredMovie(ctx context.Context, movie sqlcdb
 		return nil
 	}
 
-	searchTerm, year := pathToSearchTermWithYear(movie.Movie.Path.String)
-	if year == nil {
-		log.Debug("no year found from path")
-	}
-
-	searchResp, err := m.SearchMovie(ctx, searchTerm)
-	if err != nil {
-		return fmt.Errorf("failed to search for movie: %w", err)
-	}
-
-	if len(searchResp.Results) == 0 {
-		log.Warn("no results found for movie", zap.String("path", movie.Movie.Path.String), zap.String("search_term", searchTerm))
-		return nil
-	}
-
-	result := findMatchingMovieResult(searchResp.Results, year)
-
-	if result == nil {
-		if year != nil {
-			log.Warn("no matching result found for movie", zap.String("path", movie.Movie.Path.String), zap.String("search_term", searchTerm), zap.Int32("year", *year))
-		} else {
-			log.Warn("no matching result found for movie", zap.String("path", movie.Movie.Path.String), zap.String("search_term", searchTerm))
+	folder := movie.Movie.Path.String
+	files := []string{}
+	if movie.Movie.MovieFileID.Valid {
+		rows, err := m.movieStorage.GetMovieFilesByMovieName(ctx, folder)
+		if err != nil && !errors.Is(err, storage.ErrNotFound) {
+			return fmt.Errorf("failed to load movie filename evidence: %w", err)
 		}
+		for _, row := range rows {
+			p := row.RelativePath
+			if p.Valid && filepath.IsLocal(p.String) && filepath.Dir(p.String) == folder {
+				files = append(files, p.String)
+			}
+		}
+	}
+	evidence, err := ParseDiscoveryEvidence(folder, files, false)
+	if err != nil {
+		log.Warn("invalid movie identity evidence", zap.Error(err))
 		return nil
 	}
 
-	if result.ID == nil {
-		return fmt.Errorf("movie result has no ID")
+	tmdbID := evidence.TMDBID
+	if tmdbID == 0 {
+		if evidence.Query == "" {
+			log.Warn("no movie title or explicit ID in discovery evidence", zap.String("path", folder))
+			return nil
+		}
+		searchResp, err := m.SearchMovie(ctx, evidence.Query)
+		if err != nil {
+			return fmt.Errorf("failed to search for movie: %w", err)
+		}
+		if searchResp == nil {
+			log.Warn("movie search returned no response", zap.String("path", folder))
+			return nil
+		}
+		match := MatchDiscoveryCandidate(evidence, searchResp.Results, false)
+		if match.Status != DiscoveryMatched {
+			log.Warn("movie search did not uniquely identify a candidate", zap.String("path", folder), zap.String("status", string(match.Status)))
+			return nil
+		}
+		tmdbID = *match.Candidate.ID
 	}
 
-	metadata, err := m.GetMovieMetadata(ctx, int64(*result.ID))
+	metadata, err := m.GetMovieMetadata(ctx, int64(tmdbID))
 	if err != nil {
 		return fmt.Errorf("failed to get movie metadata: %w", err)
 	}
@@ -452,6 +465,8 @@ func (m MediaManager) reconcileDiscoveredMovie(ctx context.Context, movie sqlcdb
 	if err == nil {
 		log.Warn("metadata already linked to another movie, skipping", zap.Int64("metadata_id", metadata.ID), zap.Int64("existing_movie_id", existingMovie.Movie.ID), zap.String("path", movie.Movie.Path.String))
 		return nil
+	} else if !errors.Is(err, storage.ErrNotFound) {
+		return fmt.Errorf("failed to check existing metadata link: %w", err)
 	}
 
 	err = m.movieStorage.LinkMovieMetadata(ctx, movie.Movie.ID, metadata.ID)

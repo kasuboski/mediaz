@@ -1,7 +1,6 @@
 package manager
 
 import (
-	"fmt"
 	"strings"
 	"time"
 
@@ -15,28 +14,6 @@ func initialSeriesState(firstAirDate *time.Time) storage.SeriesState {
 		return storage.SeriesStateUnreleased
 	}
 	return storage.SeriesStateMissing
-}
-
-// findMatchingSeriesResult picks the first series search result, or one whose first air date year matches.
-func findMatchingSeriesResult(results []*SearchMediaResult, year *int32) *SearchMediaResult {
-	if len(results) == 0 {
-		return nil
-	}
-
-	if year == nil {
-		return results[0]
-	}
-
-	for _, r := range results {
-		if r.FirstAirDate != nil && len(*r.FirstAirDate) >= 4 {
-			resultYear := (*r.FirstAirDate)[:4]
-			if resultYear == fmt.Sprintf("%d", *year) {
-				return r
-			}
-		}
-	}
-
-	return nil
 }
 
 // getSeasonRuntime sums episode runtimes, estimating missing values from the average.
