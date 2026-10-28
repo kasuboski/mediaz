@@ -46,8 +46,12 @@ func Test_Manager_reconcileMissingMovie(t *testing.T) {
 	makeRelease := func(id, seeders int32, size int64, title string, protocol prowlarr.DownloadProtocol) *prowlarr.ReleaseResource {
 		return &prowlarr.ReleaseResource{ID: &id, Title: nullable.NewNullableWithValue(title), Size: &size, Seeders: nullable.NewNullableWithValue(seeders), Protocol: &protocol}
 	}
-	wantRelease := makeRelease(123, 23, 23*1024*1024*1024, "test movie", prowlarr.DownloadProtocolTorrent)
+	wantRelease := makeRelease(123, 23, 23*1024*1024*1024, "translated movie title", prowlarr.DownloadProtocolTorrent)
+	wantRelease.ImdbID = ptr.To(int32(123456))
+	conflictingRelease := makeRelease(126, 99, 23*1024*1024*1024, "test movie", prowlarr.DownloadProtocolTorrent)
+	conflictingRelease.ImdbID = ptr.To(int32(654321))
 	releases := []*prowlarr.ReleaseResource{
+		conflictingRelease,
 		makeRelease(124, 15, 23*1024*1024*1024, "test movie", prowlarr.DownloadProtocolTorrent),
 		wantRelease,
 		makeRelease(125, 10, 1024*1024*1024, "test movie - very small", prowlarr.DownloadProtocolTorrent),
@@ -69,7 +73,7 @@ func Test_Manager_reconcileMissingMovie(t *testing.T) {
 	factory.EXPECT().NewDownloadClient(client).Return(dc, nil)
 	dc.EXPECT().Add(ctx, download.AddRequest{Release: wantRelease}).Return(download.Status{ID: "123", Name: "test download"}, nil)
 
-	metadataID, err := store.CreateMovieMetadata(ctx, sqlcdb.MovieMetadatum{TmdbID: 1234, Title: "test movie", Runtime: 120})
+	metadataID, err := store.CreateMovieMetadata(ctx, sqlcdb.MovieMetadatum{TmdbID: 1234, ImdbID: sql.NullString{String: "tt0123456", Valid: true}, Title: "test movie", Runtime: 120})
 	require.NoError(t, err)
 	movieID, err := store.CreateMovie(ctx, sqlcdb.Movie{Monitored: 1, QualityProfileID: 1, Path: sql.NullString{String: "test movie", Valid: true}, MovieMetadataID: sql.NullInt64{Int64: metadataID, Valid: true}}, storage.MovieStateMissing)
 	require.NoError(t, err)
