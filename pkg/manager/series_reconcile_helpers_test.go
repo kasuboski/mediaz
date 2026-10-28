@@ -4,11 +4,9 @@ import (
 	"database/sql"
 	"testing"
 
-	"github.com/kasuboski/mediaz/pkg/ptr"
 	"github.com/kasuboski/mediaz/pkg/storage"
 	sqlcdb "github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func Test_getSeasonRuntime(t *testing.T) {
@@ -317,97 +315,6 @@ func TestDetermineSeasonStateWithCounts(t *testing.T) {
 			counts, state := determineSeasonState(tt.episodes)
 			assert.Equal(t, tt.expectedState, state)
 			assert.Equal(t, tt.expectedCounts, counts)
-		})
-	}
-}
-
-func Test_findMatchingSeriesResult(t *testing.T) {
-	air2024 := "2024-01-15"
-	air2004 := "2004-09-22"
-
-	tests := []struct {
-		name     string
-		year     *int32
-		results  []*SearchMediaResult
-		expected *SearchMediaResult
-	}{
-		{
-			name: "no year - returns first result",
-			year: nil,
-			results: []*SearchMediaResult{
-				{ID: ptr.To(1), Name: ptr.To("Battlestar Galactica"), FirstAirDate: &air2004},
-				{ID: ptr.To(2), Name: ptr.To("Battlestar Galactica"), FirstAirDate: &air2024},
-			},
-			expected: &SearchMediaResult{ID: ptr.To(1), Name: ptr.To("Battlestar Galactica"), FirstAirDate: &air2004},
-		},
-		{
-			name: "year matches first result",
-			year: ptr.To(int32(2004)),
-			results: []*SearchMediaResult{
-				{ID: ptr.To(1), Name: ptr.To("Battlestar Galactica"), FirstAirDate: &air2004},
-				{ID: ptr.To(2), Name: ptr.To("Battlestar Galactica"), FirstAirDate: &air2024},
-			},
-			expected: &SearchMediaResult{ID: ptr.To(1), Name: ptr.To("Battlestar Galactica"), FirstAirDate: &air2004},
-		},
-		{
-			name: "year matches second result",
-			year: ptr.To(int32(2024)),
-			results: []*SearchMediaResult{
-				{ID: ptr.To(1), Name: ptr.To("Battlestar Galactica"), FirstAirDate: &air2004},
-				{ID: ptr.To(2), Name: ptr.To("Battlestar Galactica"), FirstAirDate: &air2024},
-			},
-			expected: &SearchMediaResult{ID: ptr.To(2), Name: ptr.To("Battlestar Galactica"), FirstAirDate: &air2024},
-		},
-		{
-			name: "year not found in results",
-			year: ptr.To(int32(2025)),
-			results: []*SearchMediaResult{
-				{ID: ptr.To(1), Name: ptr.To("Battlestar Galactica"), FirstAirDate: &air2004},
-				{ID: ptr.To(2), Name: ptr.To("Battlestar Galactica"), FirstAirDate: &air2024},
-			},
-			expected: nil,
-		},
-		{
-			name: "result with nil air date",
-			year: ptr.To(int32(2024)),
-			results: []*SearchMediaResult{
-				{ID: ptr.To(1), Name: ptr.To("Show"), FirstAirDate: nil},
-				{ID: ptr.To(2), Name: ptr.To("Show"), FirstAirDate: &air2024},
-			},
-			expected: &SearchMediaResult{ID: ptr.To(2), Name: ptr.To("Show"), FirstAirDate: &air2024},
-		},
-		{
-			name: "all results have nil air dates",
-			year: ptr.To(int32(2024)),
-			results: []*SearchMediaResult{
-				{ID: ptr.To(1), Name: ptr.To("Show"), FirstAirDate: nil},
-				{ID: ptr.To(2), Name: ptr.To("Show"), FirstAirDate: nil},
-			},
-			expected: nil,
-		},
-		{
-			name:     "empty results",
-			year:     ptr.To(int32(2024)),
-			results:  []*SearchMediaResult{},
-			expected: nil,
-		},
-		{
-			name:     "nil results",
-			year:     ptr.To(int32(2024)),
-			results:  nil,
-			expected: nil,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := findMatchingSeriesResult(tt.results, tt.year)
-			if tt.expected == nil {
-				assert.Nil(t, result)
-				return
-			}
-			require.NotNil(t, result)
-			assert.Equal(t, tt.expected, result)
 		})
 	}
 }

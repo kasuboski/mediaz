@@ -100,8 +100,11 @@ func Test_Manager_reconcileDiscoveredMovie(t *testing.T) {
 	}{
 		{name: "single result", results: `[{"id":1234,"title":"test movie"}]`, path: "test movie", wantLink: true},
 		{name: "no results", results: `[]`, path: "test movie"},
-		{name: "multiple results", results: `[{"id":1234,"title":"test movie 1"},{"id":5678,"title":"test movie 2"}]`, path: "test movie", wantLink: true},
-		{name: "already linked", results: `[{"id":1234,"title":"test movie"}]`, path: "test movie duplicate", alreadyLinked: true},
+		{name: "unrelated results", results: `[{"id":1234,"title":"another movie"},{"id":5678,"title":"something else"}]`, path: "test movie"},
+		{name: "unique exact title not first", results: `[{"id":1234,"title":"another movie"},{"id":5678,"title":"test movie"}]`, path: "test movie", wantLink: true},
+		{name: "same-name results are ambiguous", results: `[{"id":1234,"title":"test movie"},{"id":5678,"title":"test movie"}]`, path: "test movie"},
+		{name: "nil and invalid IDs", results: `[{"id":0,"title":"test movie"},{"title":"test movie"}]`, path: "test movie"},
+		{name: "already linked", results: `[{"id":1234,"title":"test movie"}]`, path: "test movie", alreadyLinked: true},
 		{name: "has metadata", path: "test movie", hasMetadata: true},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
@@ -118,7 +121,11 @@ func Test_Manager_reconcileDiscoveredMovie(t *testing.T) {
 			} else {
 				httpClient.EXPECT().Do(gomock.Any()).Return(&http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(`{"results":` + tt.results + `}`))}, nil)
 				if tt.wantLink || tt.alreadyLinked {
-					store.EXPECT().GetMovieMetadataByTmdbID(ctx, int64(1234)).Return(sqlcdb.MovieMetadatum{ID: 120}, nil)
+					metadataTmdbID := int64(1234)
+					if tt.name == "unique exact title not first" {
+						metadataTmdbID = 5678
+					}
+					store.EXPECT().GetMovieMetadataByTmdbID(ctx, metadataTmdbID).Return(sqlcdb.MovieMetadatum{ID: 120}, nil)
 					if tt.alreadyLinked {
 						store.EXPECT().GetMovieByMetadataID(ctx, int64(120)).Return(sqlcdb.GetMovieByMetadataIDRow{Movie: sqlcdb.Movie{ID: 1}}, nil)
 					} else {

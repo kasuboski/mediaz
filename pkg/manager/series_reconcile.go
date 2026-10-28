@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"path/filepath"
 	"slices"
 
 	"github.com/kasuboski/mediaz/pkg/download"
@@ -982,9 +983,19 @@ func (m MediaManager) ReconcileDiscoveredEpisodes(ctx context.Context, snapshot 
 		return nil
 	}
 
+	if len(episodes) == 0 {
+		return nil
+	}
+	// Read filename evidence once for the batch, not once per unresolved episode.
+	fileRows, err := m.seriesStorage.ListEpisodeFiles(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to load discovered episode files: %w", err)
+	}
+	filesByFolder := seriesDiscoveryFiles(fileRows)
+	attempts := make(map[int64]error)
 	for _, episode := range episodes {
 		log.Debug("reconciling discovered episode", zap.Any("episode", episode.Episode.ID))
-		err = m.reconcileDiscoveredEpisode(ctx, snapshot, episode)
+		err = m.reconcileDiscoveredEpisodeWithEvidence(ctx, snapshot, episode, filesByFolder, attempts)
 		if err != nil {
 			log.Error("failed to reconcile discovered episode", zap.Error(err))
 			continue
@@ -996,6 +1007,10 @@ func (m MediaManager) ReconcileDiscoveredEpisodes(ctx context.Context, snapshot 
 }
 
 func (m MediaManager) reconcileDiscoveredEpisode(ctx context.Context, snapshot *ReconcileSnapshot, episode sqlcdb.ListEpisodesRow) error {
+	return m.reconcileDiscoveredEpisodeWithEvidence(ctx, snapshot, episode, nil, nil)
+}
+
+func (m MediaManager) reconcileDiscoveredEpisodeWithEvidence(ctx context.Context, snapshot *ReconcileSnapshot, episode sqlcdb.ListEpisodesRow, filesByFolder map[string][]string, attempts map[int64]error) error {
 	log := logger.FromCtx(ctx).With("reconcile loop", "discovered", "episode id", episode.Episode.ID)
 
 	log.Debug("starting episode reconciliation", zap.Int64("episode_id", episode.Episode.ID))
@@ -1019,7 +1034,17 @@ func (m MediaManager) reconcileDiscoveredEpisode(ctx context.Context, snapshot *
 
 	// Step 1: Ensure series has metadata
 	if !series.Series.SeriesMetadataID.Valid {
-		err = m.linkSeriesMetadata(ctx, series, log)
+		if prior, tried := attempts[series.Series.ID]; tried && prior != nil {
+			return nil // Leave all episodes of the same unresolved series discovered.
+		}
+		if filesByFolder != nil {
+			err = m.linkSeriesMetadata(ctx, series, log, filesByFolder[series.Series.Path.String])
+		} else {
+			err = m.linkSeriesMetadata(ctx, series, log)
+		}
+		if attempts != nil {
+			attempts[series.Series.ID] = err
+		}
 		if err != nil {
 			log.Warn("failed to link series metadata, skipping episode reconciliation", zap.Error(err))
 			return nil // Skip this episode rather than fail
@@ -1167,33 +1192,70 @@ func (m MediaManager) reconcileDiscoveredEpisode(ctx context.Context, snapshot *
 	return nil
 }
 
-func (m MediaManager) linkSeriesMetadata(ctx context.Context, series sqlcdb.GetSeriesRow, log *zap.SugaredLogger) error {
-	searchTerm, year := pathToSearchTermWithYear(series.Series.Path.String)
-	searchResp, err := m.SearchTV(ctx, searchTerm)
+// seriesDiscoveryFiles groups stored relative paths by their exact series folder,
+// including files inside Season directories and excluding unrelated prefix names.
+func seriesDiscoveryFiles(rows []sqlcdb.EpisodeFile) map[string][]string {
+	byFolder := make(map[string][]string)
+	for _, row := range rows {
+		path := row.RelativePath
+		if !path.Valid {
+			path = row.OriginalFilePath
+		}
+		if !path.Valid || !filepath.IsLocal(path.String) || filepath.Dir(path.String) == "." {
+			continue
+		}
+		folder := library.EpisodeFileFromPath(path.String).SeriesName
+		byFolder[folder] = append(byFolder[folder], path.String)
+	}
+	return byFolder
+}
+
+func (m MediaManager) linkSeriesMetadata(ctx context.Context, series sqlcdb.GetSeriesRow, log *zap.SugaredLogger, filenameEvidence ...[]string) error {
+	folder := series.Series.Path.String
+	var files []string
+	if len(filenameEvidence) > 0 {
+		files = filenameEvidence[0]
+	} else {
+		rows, err := m.seriesStorage.ListEpisodeFiles(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to load episode filename evidence: %w", err)
+		}
+		files = seriesDiscoveryFiles(rows)[folder]
+	}
+	evidence, err := ParseDiscoveryEvidence(folder, files, true)
 	if err != nil {
-		return fmt.Errorf("failed to search for TV show: %w", err)
+		return fmt.Errorf("invalid series identity evidence: %w", err)
 	}
-
-	if len(searchResp.Results) == 0 {
-		log.Warn("no results found for TV show", zap.String("path", series.Series.Path.String), zap.String("search_term", searchTerm))
-		return fmt.Errorf("no TMDB results found for series")
+	tmdbID := evidence.TMDBID
+	if tmdbID == 0 {
+		if evidence.Query == "" {
+			return fmt.Errorf("no series title or explicit ID in discovery evidence")
+		}
+		resp, err := m.SearchTV(ctx, evidence.Query)
+		if err != nil {
+			return fmt.Errorf("failed to search for TV show: %w", err)
+		}
+		if resp == nil {
+			return fmt.Errorf("no TMDB results found for series")
+		}
+		match := MatchDiscoveryCandidate(evidence, resp.Results, true)
+		if match.Status != DiscoveryMatched {
+			log.Warn("TV search did not uniquely identify series", zap.String("path", folder), zap.String("status", string(match.Status)))
+			return fmt.Errorf("TV series identity is %s", match.Status)
+		}
+		tmdbID = *match.Candidate.ID
 	}
-
-	result := findMatchingSeriesResult(searchResp.Results, year)
-	if result == nil {
-		log.Warn("no results matched year", zap.String("path", series.Series.Path.String), zap.String("search_term", searchTerm), zap.Int32("year", *year))
-		return fmt.Errorf("no TMDB results matched year %d for series", *year)
-	}
-
-	if result.ID == nil {
-		return fmt.Errorf("TV show result has no ID")
-	}
-
-	seriesMetadata, err := m.GetSeriesMetadata(ctx, int64(*result.ID))
+	seriesMetadata, err := m.GetSeriesMetadata(ctx, int64(tmdbID))
 	if err != nil {
 		return fmt.Errorf("failed to get series metadata: %w", err)
 	}
-
+	other, err := m.seriesStorage.GetSeriesByMetadataID(ctx, seriesMetadata.ID)
+	if err == nil && other.Series.ID != series.Series.ID {
+		return fmt.Errorf("metadata already linked to another series")
+	}
+	if err != nil && !errors.Is(err, storage.ErrNotFound) {
+		return fmt.Errorf("failed checking existing series metadata link: %w", err)
+	}
 	err = m.seriesStorage.LinkSeriesMetadata(ctx, int64(series.Series.ID), seriesMetadata.ID)
 	if err != nil {
 		return fmt.Errorf("failed to link series metadata: %w", err)
