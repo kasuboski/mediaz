@@ -1,1 +1,1 @@
-{"response":{"failures":[{"type":"job","id":2,"title":"IndexerSync","subtitle":"","state":"error","failedAt":"<timestamp>","error":"","retryable":true}]}}
+{"response":{"failures":[{"type":"job","id":2,"title":"IndexerSync","subtitle":"","state":"error","failedAt":"<timestamp>","error":"","retryable":true}],"pagination":{"page":1,"pageSize":50,"totalItems":1,"totalPages":1}}}

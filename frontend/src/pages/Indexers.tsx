@@ -1,5 +1,8 @@
-import { useState } from 'react';
-import { useIndexers, useIndexerSources, useDeleteIndexerSource, useRefreshIndexerSource } from '@/lib/queries';
+import { useEffect, useState } from 'react';
+import { usePagedIndexers, useIndexerSources, useDeleteIndexerSource, useRefreshIndexerSource } from '@/lib/queries';
+import { usePagination } from '@/hooks/use-pagination';
+import { PageSizeSelector } from '@/components/ui/page-size-selector';
+import { PaginationControls } from '@/components/ui/pagination-controls';
 import type { IndexerSource } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -11,7 +14,17 @@ import { toast } from 'sonner';
 import { IndexerSourceDialog } from '@/components/IndexerSourceDialog';
 
 export default function Indexers() {
-  const { data: indexers, isLoading: indexersLoading, error: indexersError } = useIndexers();
+  const pagination = usePagination({ storageKey: 'indexers', defaultPageSize: 50 });
+  const { data: indexerPage, isLoading: indexersLoading, error: indexersError, refetch: refetchIndexers } = usePagedIndexers({ page: pagination.page, pageSize: pagination.pageSize });
+  const indexers = indexerPage?.items ?? [];
+  const totalIndexers = indexerPage?.pagination.totalItems ?? 0;
+  const totalIndexerPages = indexerPage?.pagination.totalPages ?? 0;
+
+  useEffect(() => {
+    if (indexerPage && pagination.page > Math.max(1, totalIndexerPages)) {
+      pagination.setPage(Math.max(1, totalIndexerPages));
+    }
+  }, [indexerPage, pagination.page, pagination.setPage, totalIndexerPages]);
   const { data: sources, isLoading: sourcesLoading, error: sourcesError, refetch: refetchSources } = useIndexerSources();
   const deleteSource = useDeleteIndexerSource();
   const refreshSource = useRefreshIndexerSource();
@@ -197,12 +210,16 @@ export default function Indexers() {
               <div className="text-center">
                 <p className="font-semibold text-destructive mb-1">Failed to load indexers</p>
                 <p className="text-sm text-muted-foreground">{indexersError.message}</p>
+                <Button onClick={() => refetchIndexers()} variant="outline" size="sm" className="mt-4">
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Try Again
+                </Button>
               </div>
             </CardContent>
           </Card>
         )}
 
-        {!indexersLoading && !indexersError && (!indexers || indexers.length === 0) && (
+        {!indexersLoading && !indexersError && totalIndexers === 0 && (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12">
               <ScanSearch className="h-12 w-12 text-muted-foreground mb-4" />
@@ -212,11 +229,11 @@ export default function Indexers() {
           </Card>
         )}
 
-        {!indexersLoading && !indexersError && indexers && indexers.length > 0 && (
+        {!indexersLoading && !indexersError && totalIndexers > 0 && (
           <Card>
             <CardHeader>
               <CardTitle>Available Indexers</CardTitle>
-              <CardDescription>{indexers.length} indexer{indexers.length !== 1 ? 's' : ''} from configured sources</CardDescription>
+              <CardDescription>{totalIndexers} indexer{totalIndexers !== 1 ? 's' : ''} from configured sources</CardDescription>
             </CardHeader>
             <CardContent>
               <Table>
@@ -239,6 +256,13 @@ export default function Indexers() {
                   ))}
                 </TableBody>
               </Table>
+              <div className="mt-6 flex flex-wrap items-center justify-between gap-4">
+                <span className="text-sm text-muted-foreground">
+                  Showing {(pagination.page - 1) * pagination.pageSize + 1}–{Math.min(pagination.page * pagination.pageSize, totalIndexers)} of {totalIndexers} indexers
+                </span>
+                <PageSizeSelector value={pagination.pageSize} onChange={pagination.setPageSize} />
+                <PaginationControls currentPage={pagination.page} totalPages={totalIndexerPages} onPageChange={pagination.setPage} />
+              </div>
             </CardContent>
           </Card>
         )}

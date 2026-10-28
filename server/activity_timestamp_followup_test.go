@@ -13,6 +13,7 @@ import (
 
 	"github.com/kasuboski/mediaz/config"
 	"github.com/kasuboski/mediaz/pkg/manager"
+	"github.com/kasuboski/mediaz/pkg/pagination"
 	"github.com/kasuboski/mediaz/pkg/storage"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 	mediaSqlite "github.com/kasuboski/mediaz/pkg/storage/sqlite"
@@ -94,7 +95,11 @@ func TestActivityTimestampFollowupSequenceOneUTC(t *testing.T) {
 
 	service := manager.NewJobService(store, store, store, config.Manager{}, nil)
 	before := time.Now()
-	active, err := service.GetActiveActivity(ctx)
+	active, err := service.GetActiveActivity(ctx, manager.ActiveActivityParams{
+		Movies: pagination.Params{Page: 1, PageSize: 50},
+		Series: pagination.Params{Page: 1, PageSize: 50},
+		Jobs:   pagination.Params{Page: 1, PageSize: 50},
+	})
 	require.NoError(t, err)
 	after := time.Now()
 	require.Len(t, active.Movies, 1)
@@ -103,6 +108,12 @@ func TestActivityTimestampFollowupSequenceOneUTC(t *testing.T) {
 		require.Contains(t, []string{activityFollowupDuration(before.Sub(stamp)), activityFollowupDuration(after.Sub(stamp))}, duration)
 	}
 	require.Equal(t, &manager.ActiveActivityResponse{
+		Counts: manager.ActiveActivityCounts{Movies: 1, Series: 1, Jobs: 0, Total: 2},
+		Pagination: manager.ActiveActivityPagination{
+			Movies: pagination.Meta{Page: 1, PageSize: 50, TotalItems: 1, TotalPages: 1},
+			Series: pagination.Meta{Page: 1, PageSize: 50, TotalItems: 1, TotalPages: 1},
+			Jobs:   pagination.Meta{Page: 1, PageSize: 50, TotalItems: 0, TotalPages: 0},
+		},
 		Movies: []*manager.ActiveMovie{{ID: movieID, TMDBID: 31001, Title: "Fixed UTC Movie", State: "downloading", StateSince: stamp, Duration: active.Movies[0].Duration}},
 		Series: []*manager.ActiveSeries{{ID: seasonID, TMDBID: 32001, Title: "Fixed UTC Series", State: "downloading", StateSince: stamp, Duration: active.Series[0].Duration}},
 		Jobs:   []*manager.ActiveJob{},

@@ -2,18 +2,32 @@ package server
 
 import (
 	"net/http"
+	"sort"
+
+	"github.com/kasuboski/mediaz/pkg/pagination"
 
 	"github.com/kasuboski/mediaz/pkg/manager"
 )
 
 func (s Server) ListIndexerSources() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		params, err := ParsePaginationParams(r)
+		if err != nil {
+			s.respondError(r, w, http.StatusBadRequest, err)
+			return
+		}
 		sources, err := s.manager.ListIndexerSources(r.Context())
 		if err != nil {
 			s.respondError(r, w, http.StatusInternalServerError, err)
 			return
 		}
-		s.respond(r, w, http.StatusOK, sources)
+		sort.Slice(sources, func(i, j int) bool {
+			if sources[i].Name != sources[j].Name {
+				return sources[i].Name < sources[j].Name
+			}
+			return sources[i].ID < sources[j].ID
+		})
+		s.respond(r, w, http.StatusOK, pagination.Page(sources, params))
 	}
 }
 

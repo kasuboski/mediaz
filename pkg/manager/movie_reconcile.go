@@ -440,7 +440,7 @@ func (m MediaManager) reconcileDiscoveredMovie(ctx context.Context, movie sqlcdb
 			log.Warn("no movie title or explicit ID in discovery evidence", zap.String("path", folder))
 			return nil
 		}
-		searchResp, err := m.SearchMovie(ctx, evidence.Query)
+		searchResp, err := m.SearchMovie(ctx, evidence.Query, 1)
 		if err != nil {
 			return fmt.Errorf("failed to search for movie: %w", err)
 		}

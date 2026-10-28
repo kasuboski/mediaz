@@ -10,6 +10,53 @@ import (
 	"database/sql"
 )
 
+const countDownloadingMovies = `-- name: CountDownloadingMovies :one
+SELECT COUNT(*) FROM movie m INNER JOIN movie_transition mt ON m.id=mt.movie_id AND mt.most_recent=1
+INNER JOIN movie_metadata mm ON m.movie_metadata_id=mm.id WHERE mt.to_state='downloading'
+`
+
+func (q *Queries) CountDownloadingMovies(ctx context.Context) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countDownloadingMovies)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countDownloadingSeries = `-- name: CountDownloadingSeries :one
+SELECT COUNT(*) FROM season se INNER JOIN season_transition st ON se.id=st.season_id AND st.most_recent=1
+INNER JOIN series ser ON se.series_id=ser.id LEFT JOIN series_metadata sm ON ser.series_metadata_id=sm.id WHERE st.to_state='downloading'
+`
+
+func (q *Queries) CountDownloadingSeries(ctx context.Context) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countDownloadingSeries)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countErrorJobs = `-- name: CountErrorJobs :one
+SELECT COUNT(*) FROM job j INNER JOIN job_transition jt ON j.id=jt.job_id AND jt.most_recent=1
+WHERE jt.to_state='error' AND julianday(jt.updated_at) IS NOT NULL AND julianday(jt.updated_at) > julianday(?1)
+`
+
+func (q *Queries) CountErrorJobs(ctx context.Context, cutoffDatetime interface{}) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countErrorJobs, cutoffDatetime)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countRunningJobs = `-- name: CountRunningJobs :one
+SELECT COUNT(*) FROM job j INNER JOIN job_transition jt ON j.id=jt.job_id AND jt.most_recent=1 WHERE jt.to_state='running'
+`
+
+func (q *Queries) CountRunningJobs(ctx context.Context) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countRunningJobs)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const countTransitionsByDate = `-- name: CountTransitionsByDate :one
 SELECT (
     SELECT COUNT(*) FROM movie_transition AS mt
@@ -48,6 +95,93 @@ func (q *Queries) CountTransitionsByDate(ctx context.Context, arg CountTransitio
 	var total int64
 	err := row.Scan(&total)
 	return total, err
+}
+
+const getActivityTimelinePage = `-- name: GetActivityTimelinePage :many
+WITH all_items AS (
+    SELECT mt.id, 'movie' AS entity_type, m.id AS entity_id, mt.to_state, mt.from_state, mt.created_at, mm.title AS entity_title
+    FROM movie_transition mt
+    INNER JOIN movie m ON m.id = mt.movie_id
+    INNER JOIN movie_metadata mm ON m.movie_metadata_id = mm.id
+    WHERE mt.created_at >= DATETIME(?3) AND mt.created_at <= DATETIME(?4) AND mt.most_recent = 1
+    UNION ALL
+    SELECT st.id, 'season', s.id, st.to_state, st.from_state, st.created_at, sm.title
+    FROM season_transition st
+    INNER JOIN season s ON s.id = st.season_id
+    INNER JOIN series ser ON s.series_id = ser.id
+    INNER JOIN series_metadata sm ON ser.series_metadata_id = sm.id
+    WHERE st.created_at >= DATETIME(?3) AND st.created_at <= DATETIME(?4) AND st.most_recent = 1
+    UNION ALL
+    SELECT et.id, 'episode', e.id, et.to_state, et.from_state, et.created_at, sm.title
+    FROM episode_transition et
+    INNER JOIN episode e ON e.id = et.episode_id
+    INNER JOIN season s ON e.season_id = s.id
+    INNER JOIN series ser ON s.series_id = ser.id
+    INNER JOIN series_metadata sm ON ser.series_metadata_id = sm.id
+    WHERE et.created_at >= DATETIME(?3) AND et.created_at <= DATETIME(?4) AND et.most_recent = 1
+    UNION ALL
+    SELECT jt.id, 'job', j.id, jt.to_state, jt.from_state, jt.created_at, j.type
+    FROM job_transition jt
+    INNER JOIN job j ON j.id = jt.job_id
+    WHERE jt.created_at >= DATETIME(?3) AND jt.created_at <= DATETIME(?4) AND jt.most_recent = 1
+)
+SELECT id, entity_type, entity_id, to_state, from_state, created_at, entity_title
+FROM all_items
+ORDER BY created_at DESC, entity_type ASC, id DESC
+LIMIT COALESCE(NULLIF(?2, 0), -1) OFFSET ?1
+`
+
+type GetActivityTimelinePageParams struct {
+	Offs  int64
+	Lim   interface{}
+	Start interface{}
+	End   interface{}
+}
+
+type GetActivityTimelinePageRow struct {
+	ID          int64
+	EntityType  string
+	EntityID    int64
+	ToState     string
+	FromState   sql.NullString
+	CreatedAt   sql.NullTime
+	EntityTitle string
+}
+
+func (q *Queries) GetActivityTimelinePage(ctx context.Context, arg GetActivityTimelinePageParams) ([]GetActivityTimelinePageRow, error) {
+	rows, err := q.db.QueryContext(ctx, getActivityTimelinePage,
+		arg.Offs,
+		arg.Lim,
+		arg.Start,
+		arg.End,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetActivityTimelinePageRow
+	for rows.Next() {
+		var i GetActivityTimelinePageRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.EntityType,
+			&i.EntityID,
+			&i.ToState,
+			&i.FromState,
+			&i.CreatedAt,
+			&i.EntityTitle,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getEntityTransitionsEpisode = `-- name: GetEntityTransitionsEpisode :many
@@ -862,6 +996,71 @@ func (q *Queries) ListDownloadingMovies(ctx context.Context) ([]ListDownloadingM
 	return items, nil
 }
 
+const listDownloadingMoviesPage = `-- name: ListDownloadingMoviesPage :many
+SELECT m.id, mm.tmdb_id, mm.title, mm.year, mm.images, mt.to_state, mt.sort_key, mt.created_at, mt.download_id,
+ dc.id AS dc_id, dc.host AS dc_host, dc.port AS dc_port
+FROM movie m INNER JOIN movie_transition mt ON m.id=mt.movie_id AND mt.most_recent=1
+INNER JOIN movie_metadata mm ON m.movie_metadata_id=mm.id LEFT JOIN download_client dc ON mt.download_client_id=dc.id
+WHERE mt.to_state='downloading' ORDER BY mt.sort_key DESC, mt.id DESC LIMIT ?2 OFFSET ?1
+`
+
+type ListDownloadingMoviesPageParams struct {
+	Offs int64
+	Lim  int64
+}
+
+type ListDownloadingMoviesPageRow struct {
+	ID         int64
+	TmdbID     int64
+	Title      string
+	Year       sql.NullInt64
+	Images     string
+	ToState    string
+	SortKey    int64
+	CreatedAt  sql.NullTime
+	DownloadID sql.NullString
+	DcID       sql.NullInt64
+	DcHost     sql.NullString
+	DcPort     sql.NullInt64
+}
+
+// Bounded Activity queries. Counts intentionally share each page query's predicates.
+func (q *Queries) ListDownloadingMoviesPage(ctx context.Context, arg ListDownloadingMoviesPageParams) ([]ListDownloadingMoviesPageRow, error) {
+	rows, err := q.db.QueryContext(ctx, listDownloadingMoviesPage, arg.Offs, arg.Lim)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListDownloadingMoviesPageRow
+	for rows.Next() {
+		var i ListDownloadingMoviesPageRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.TmdbID,
+			&i.Title,
+			&i.Year,
+			&i.Images,
+			&i.ToState,
+			&i.SortKey,
+			&i.CreatedAt,
+			&i.DownloadID,
+			&i.DcID,
+			&i.DcHost,
+			&i.DcPort,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listDownloadingSeries = `-- name: ListDownloadingSeries :many
 SELECT
     se.id,
@@ -938,6 +1137,71 @@ func (q *Queries) ListDownloadingSeries(ctx context.Context) ([]ListDownloadingS
 	return items, nil
 }
 
+const listDownloadingSeriesPage = `-- name: ListDownloadingSeriesPage :many
+SELECT se.id, sm.tmdb_id, sm.title, sm.poster_path, st.to_state, st.sort_key, st.created_at, st.download_id,
+ se.season_number, dc.id AS dc_id, dc.host AS dc_host, dc.port AS dc_port
+FROM season se INNER JOIN season_transition st ON se.id=st.season_id AND st.most_recent=1
+INNER JOIN series ser ON se.series_id=ser.id LEFT JOIN series_metadata sm ON ser.series_metadata_id=sm.id
+LEFT JOIN download_client dc ON st.download_client_id=dc.id WHERE st.to_state='downloading'
+ORDER BY st.sort_key DESC, st.id DESC LIMIT ?2 OFFSET ?1
+`
+
+type ListDownloadingSeriesPageParams struct {
+	Offs int64
+	Lim  int64
+}
+
+type ListDownloadingSeriesPageRow struct {
+	ID           int64
+	TmdbID       sql.NullInt64
+	Title        sql.NullString
+	PosterPath   sql.NullString
+	ToState      string
+	SortKey      int64
+	CreatedAt    sql.NullTime
+	DownloadID   sql.NullString
+	SeasonNumber int64
+	DcID         sql.NullInt64
+	DcHost       sql.NullString
+	DcPort       sql.NullInt64
+}
+
+func (q *Queries) ListDownloadingSeriesPage(ctx context.Context, arg ListDownloadingSeriesPageParams) ([]ListDownloadingSeriesPageRow, error) {
+	rows, err := q.db.QueryContext(ctx, listDownloadingSeriesPage, arg.Offs, arg.Lim)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListDownloadingSeriesPageRow
+	for rows.Next() {
+		var i ListDownloadingSeriesPageRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.TmdbID,
+			&i.Title,
+			&i.PosterPath,
+			&i.ToState,
+			&i.SortKey,
+			&i.CreatedAt,
+			&i.DownloadID,
+			&i.SeasonNumber,
+			&i.DcID,
+			&i.DcHost,
+			&i.DcPort,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listErrorJobs = `-- name: ListErrorJobs :many
 SELECT
     j.id,
@@ -949,7 +1213,8 @@ FROM job AS j
 INNER JOIN job_transition AS jt ON j.id = jt.job_id AND jt.most_recent = 1
 WHERE
     jt.to_state = 'error'
-    AND jt.updated_at >= ?1  -- noqa: RF02
+    AND julianday(jt.updated_at) IS NOT NULL
+    AND julianday(jt.updated_at) > julianday(?1)  -- noqa: RF02
 ORDER BY jt.updated_at DESC, j.id DESC
 `
 
@@ -961,7 +1226,7 @@ type ListErrorJobsRow struct {
 	UpdatedAt sql.NullTime
 }
 
-func (q *Queries) ListErrorJobs(ctx context.Context, cutoffDatetime sql.NullTime) ([]ListErrorJobsRow, error) {
+func (q *Queries) ListErrorJobs(ctx context.Context, cutoffDatetime interface{}) ([]ListErrorJobsRow, error) {
 	rows, err := q.db.QueryContext(ctx, listErrorJobs, cutoffDatetime)
 	if err != nil {
 		return nil, err
@@ -970,6 +1235,55 @@ func (q *Queries) ListErrorJobs(ctx context.Context, cutoffDatetime sql.NullTime
 	var items []ListErrorJobsRow
 	for rows.Next() {
 		var i ListErrorJobsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Type,
+			&i.ToState,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listErrorJobsPage = `-- name: ListErrorJobsPage :many
+SELECT j.id,j.type,jt.to_state,j.created_at,jt.updated_at FROM job j INNER JOIN job_transition jt ON j.id=jt.job_id AND jt.most_recent=1
+WHERE jt.to_state='error' AND julianday(jt.updated_at) IS NOT NULL AND julianday(jt.updated_at) > julianday(?1)
+ORDER BY jt.updated_at DESC,j.id DESC LIMIT ?3 OFFSET ?2
+`
+
+type ListErrorJobsPageParams struct {
+	CutoffDatetime interface{}
+	Offs           int64
+	Lim            int64
+}
+
+type ListErrorJobsPageRow struct {
+	ID        int64
+	Type      string
+	ToState   string
+	CreatedAt sql.NullTime
+	UpdatedAt sql.NullTime
+}
+
+func (q *Queries) ListErrorJobsPage(ctx context.Context, arg ListErrorJobsPageParams) ([]ListErrorJobsPageRow, error) {
+	rows, err := q.db.QueryContext(ctx, listErrorJobsPage, arg.CutoffDatetime, arg.Offs, arg.Lim)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListErrorJobsPageRow
+	for rows.Next() {
+		var i ListErrorJobsPageRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.Type,
@@ -1020,6 +1334,53 @@ func (q *Queries) ListRunningJobs(ctx context.Context) ([]ListRunningJobsRow, er
 	var items []ListRunningJobsRow
 	for rows.Next() {
 		var i ListRunningJobsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Type,
+			&i.ToState,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listRunningJobsPage = `-- name: ListRunningJobsPage :many
+SELECT j.id,j.type,jt.to_state,j.created_at,jt.updated_at FROM job j INNER JOIN job_transition jt ON j.id=jt.job_id AND jt.most_recent=1
+WHERE jt.to_state='running' ORDER BY j.created_at DESC,j.id DESC LIMIT ?2 OFFSET ?1
+`
+
+type ListRunningJobsPageParams struct {
+	Offs int64
+	Lim  int64
+}
+
+type ListRunningJobsPageRow struct {
+	ID        int64
+	Type      string
+	ToState   string
+	CreatedAt sql.NullTime
+	UpdatedAt sql.NullTime
+}
+
+func (q *Queries) ListRunningJobsPage(ctx context.Context, arg ListRunningJobsPageParams) ([]ListRunningJobsPageRow, error) {
+	rows, err := q.db.QueryContext(ctx, listRunningJobsPage, arg.Offs, arg.Lim)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListRunningJobsPageRow
+	for rows.Next() {
+		var i ListRunningJobsPageRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.Type,

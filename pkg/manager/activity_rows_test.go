@@ -51,12 +51,12 @@ func TestActivityEmptyPublicCollections(t *testing.T) {
 	timeline, err := svc.GetActivityTimeline(ctx, 1, pagination.Params{})
 	require.NoError(t, err)
 	assert.Equal(t, &TimelineResponse{Timeline: []*TimelineEntry{}, Transitions: []*TransitionItem{}}, timeline)
-	active, err := svc.GetActiveActivity(ctx)
+	active, err := svc.GetActiveActivity(ctx, ActivePaginationParams{Movies: pagination.Params{Page: 1, PageSize: 50}, Series: pagination.Params{Page: 1, PageSize: 50}, Jobs: pagination.Params{Page: 1, PageSize: 50}})
 	require.NoError(t, err)
-	assert.Equal(t, &ActiveActivityResponse{Movies: []*ActiveMovie{}, Series: []*ActiveSeries{}, Jobs: []*ActiveJob{}}, active)
-	history, err := svc.GetEntityTransitionHistory(ctx, "movie", 999)
+	assert.Equal(t, &ActiveActivityResponse{Movies: []*ActiveMovie{}, Series: []*ActiveSeries{}, Jobs: []*ActiveJob{}, Pagination: ActiveActivityPagination{Movies: pagination.Meta{Page: 1, PageSize: 50, TotalItems: 0, TotalPages: 0}, Series: pagination.Meta{Page: 1, PageSize: 50, TotalItems: 0, TotalPages: 0}, Jobs: pagination.Meta{Page: 1, PageSize: 50, TotalItems: 0, TotalPages: 0}}}, active)
+	history, err := svc.GetEntityTransitionHistory(ctx, "movie", 999, pagination.Params{Page: 1, PageSize: 50})
 	require.NoError(t, err)
-	assert.Equal(t, &HistoryResponse{History: []*HistoryEntry{}}, history)
+	assert.Equal(t, &HistoryResponse{History: []*HistoryEntry{}, Pagination: pagination.Meta{Page: 1, PageSize: 50, TotalItems: 0, TotalPages: 0}}, history)
 }
 
 func TestActivityActiveRowsUseTransitionTimestamps(t *testing.T) {

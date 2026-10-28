@@ -1,1 +1,1 @@
-{"response":[{"path":"/tv/Golden Series (2020)","tmdbID":22001,"title":"Golden Series","poster_path":"/series-poster.jpg","year":2020,"state":"missing"}]}
+{"response":{"items":[{"path":"/tv/Golden Series (2020)","tmdbID":22001,"title":"Golden Series","poster_path":"/series-poster.jpg","year":2020,"state":"missing"}],"pagination":{"page":1,"pageSize":50,"totalItems":1,"totalPages":1},"byState":{"missing":1}}}

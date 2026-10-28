@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useJobs, useTriggerJob, useCancelJob, useConfig } from "@/lib/queries";
 import { type Job, type JobType, type JobState } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -117,15 +118,13 @@ function JobStateBadge({ state }: { state: JobState }) {
  */
 export default function Jobs() {
   const pagination = usePagination({
-    defaultPageSize: 10,
+    defaultPageSize: 50,
     defaultPage: 1,
     storageKey: 'jobs-pagination',
   });
 
   const { data, isLoading, error, refetch } = useJobs(
-    pagination.pageSize > 0
-      ? { page: pagination.page, pageSize: pagination.pageSize }
-      : undefined
+    { page: pagination.page, pageSize: Math.max(1, pagination.pageSize) }
   );
   const { data: config } = useConfig();
   const triggerJob = useTriggerJob();
@@ -161,6 +160,12 @@ export default function Jobs() {
   };
 
   const jobs = data?.jobs || [];
+
+  useEffect(() => {
+    if (data?.pagination && pagination.page > Math.max(1, data.pagination.totalPages)) {
+      pagination.setPage(Math.max(1, data.pagination.totalPages));
+    }
+  }, [data?.pagination, pagination.page, pagination.setPage]);
 
   return (
     <div className="container mx-auto px-6 py-8">
@@ -320,7 +325,7 @@ export default function Jobs() {
       )}
 
       {/* Jobs Table */}
-      {!isLoading && !error && jobs.length > 0 && (
+      {!isLoading && !error && (jobs.length > 0 || !!data?.pagination) && (
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>History</CardTitle>

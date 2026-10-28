@@ -19,7 +19,17 @@ func isMovieAlreadyExists(err error) bool {
 // ListMovies lists movies on disk
 func (s Server) ListMovies() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		movies, err := s.manager.ListMoviesInLibrary(r.Context())
+		params, err := ParsePaginationParams(r)
+		if err != nil {
+			s.respondError(r, w, http.StatusBadRequest, err)
+			return
+		}
+		states, err := movieStates(r)
+		if err != nil {
+			s.respondError(r, w, http.StatusBadRequest, err)
+			return
+		}
+		movies, err := s.manager.ListMoviesInLibrary(r.Context(), params, states)
 		if err != nil {
 			s.respondError(r, w, http.StatusInternalServerError, err)
 			return

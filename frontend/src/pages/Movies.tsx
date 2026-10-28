@@ -2,7 +2,7 @@ import { MediaGrid } from "@/components/media/MediaGrid";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { MediaStateTabs } from "@/components/media/MediaStateTabs";
 import { useLibraryMovies } from "@/lib/queries";
-import { useConfigurableMediaStateFilter } from "@/hooks/use-configurable-media-state-filter";
+import { useLibraryUrlState } from "@/hooks/use-library-url-state";
 import { movieFilterConfig } from "@/config/media-filter-configs";
 import {
   DropdownMenu,
@@ -15,11 +15,20 @@ import { MoreVertical, RefreshCw } from "lucide-react";
 import { metadataApi } from "@/lib/api";
 import { toast } from "sonner";
 import { useState } from "react";
+import React from "react";
+import { PaginationControls } from "@/components/ui/pagination-controls";
+import { PageSizeSelector } from "@/components/ui/page-size-selector";
 
 export default function Movies() {
-  const { data: movies = [], isLoading, error } = useLibraryMovies();
-  const { filter, setFilter, counts, filteredItems: filteredMovies } =
-    useConfigurableMediaStateFilter(movies, movieFilterConfig);
+  const { page, pageSize, state: filter, setPage, setState: setFilter, setPageSize: setSize } = useLibraryUrlState(movieFilterConfig.filters);
+  const states = movieFilterConfig.filterMappings[filter as keyof typeof movieFilterConfig.filterMappings].states;
+  const { data, isLoading, error, refetch } = useLibraryMovies({ page, pageSize, states });
+  React.useEffect(() => {
+    const lastPage = Math.max(1, data?.pagination.totalPages ?? 1);
+    if (data && page > lastPage) setPage(lastPage, true);
+  }, [data, page, setPage]);
+  const movies = data?.items ?? [];
+  const counts = { all: Object.values(data?.byState ?? {}).reduce((a,b) => a+b,0), missing: data?.byState.missing ?? 0, available: (data?.byState.discovered ?? 0)+(data?.byState.downloaded ?? 0), unreleased: data?.byState.unreleased ?? 0, downloading: data?.byState.downloading ?? 0 };
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const handleRefreshMetadata = async () => {
@@ -46,6 +55,7 @@ export default function Movies() {
           <p className="text-muted-foreground">
             {error instanceof Error ? error.message : 'An unknown error occurred'}
           </p>
+          <Button className="mt-4" onClick={() => refetch()}>Retry</Button>
         </div>
       </div>
     );
@@ -87,7 +97,12 @@ export default function Movies() {
           availableFilters={movieFilterConfig.filters}
           mediaType="movie"
         >
-          <MediaGrid items={filteredMovies} />
+          {movies.length === 0 ? <p className="py-12 text-center text-muted-foreground">{filter === 'all' ? 'Your movie library is empty.' : 'No movies match this filter.'}</p> : <MediaGrid items={movies} />}
+          <div className="mt-6 flex flex-wrap items-center justify-between gap-4">
+            <span className="text-sm text-muted-foreground">{data?.pagination.totalItems ? `Showing ${(page - 1) * pageSize + 1}–${Math.min(page * pageSize, data.pagination.totalItems)} of ${data.pagination.totalItems} matching movies` : '0 matching movies'}</span>
+            <PageSizeSelector value={pageSize} onChange={setSize} />
+            <PaginationControls currentPage={page} totalPages={data?.pagination.totalPages ?? 0} onPageChange={setPage} />
+          </div>
         </MediaStateTabs>
       )}
     </div>

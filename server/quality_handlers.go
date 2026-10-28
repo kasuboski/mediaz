@@ -1,7 +1,11 @@
 package server
 
 import (
+	"fmt"
 	"net/http"
+	"sort"
+
+	"github.com/kasuboski/mediaz/pkg/pagination"
 
 	"github.com/kasuboski/mediaz/pkg/manager"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
@@ -10,12 +14,41 @@ import (
 // ListQualityDefinitions lists all stored quality definitions
 func (s Server) ListQualityDefinitions() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		params, err := ParsePaginationParams(r)
+		if err != nil {
+			s.respondError(r, w, http.StatusBadRequest, err)
+			return
+		}
+		mediaType := r.URL.Query().Get("type")
+		switch mediaType {
+		case "", "movie":
+		case "series":
+			mediaType = "episode"
+		default:
+			s.respondError(r, w, http.StatusBadRequest, fmt.Errorf("invalid type: must be movie or series"))
+			return
+		}
 		result, err := s.manager.ListQualityDefinitions(r.Context())
 		if err != nil {
 			s.respondError(r, w, http.StatusInternalServerError, err)
 			return
 		}
-		s.respond(r, w, http.StatusOK, qualityDefinitionsDTO(result))
+		if mediaType != "" {
+			filtered := result[:0]
+			for _, definition := range result {
+				if definition.MediaType == mediaType {
+					filtered = append(filtered, definition)
+				}
+			}
+			result = filtered
+		}
+		sort.Slice(result, func(i, j int) bool {
+			if result[i].Name != result[j].Name {
+				return result[i].Name < result[j].Name
+			}
+			return result[i].ID < result[j].ID
+		})
+		s.respond(r, w, http.StatusOK, pagination.Page(qualityDefinitionsDTO(result), params))
 	}
 }
 
@@ -115,10 +148,14 @@ func (s Server) GetQualityProfile() http.HandlerFunc {
 // ListQualityProfiles lists all quality profiles
 func (s Server) ListQualityProfiles() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		params, err := ParsePaginationParams(r)
+		if err != nil {
+			s.respondError(r, w, http.StatusBadRequest, err)
+			return
+		}
 		mediaType := r.URL.Query().Get("type")
 
 		var profiles []sqlcdb.QualityProfile
-		var err error
 
 		switch mediaType {
 		case "movie":
@@ -135,12 +172,18 @@ func (s Server) ListQualityProfiles() http.HandlerFunc {
 			s.respondError(r, w, http.StatusInternalServerError, err)
 			return
 		}
+		sort.Slice(profiles, func(i, j int) bool {
+			if profiles[i].Name != profiles[j].Name {
+				return profiles[i].Name < profiles[j].Name
+			}
+			return profiles[i].ID < profiles[j].ID
+		})
 		response, err := s.profilesDTO(r.Context(), profiles, mediaType)
 		if err != nil {
 			s.respondError(r, w, http.StatusInternalServerError, err)
 			return
 		}
-		s.respond(r, w, http.StatusOK, response)
+		s.respond(r, w, http.StatusOK, pagination.Page(response, params))
 	}
 }
 

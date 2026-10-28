@@ -13,7 +13,17 @@ import (
 // ListTVShows lists tv shows on disk
 func (s Server) ListTVShows() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		shows, err := s.manager.ListShowsInLibrary(r.Context())
+		params, err := ParsePaginationParams(r)
+		if err != nil {
+			s.respondError(r, w, http.StatusBadRequest, err)
+			return
+		}
+		states, err := seriesStates(r)
+		if err != nil {
+			s.respondError(r, w, http.StatusBadRequest, err)
+			return
+		}
+		shows, err := s.manager.ListShowsInLibrary(r.Context(), params, states)
 		if err != nil {
 			s.respondError(r, w, http.StatusInternalServerError, err)
 			return

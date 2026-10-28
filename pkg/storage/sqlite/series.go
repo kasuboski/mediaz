@@ -3,6 +3,8 @@ package sqlite
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
+	"fmt"
 
 	"github.com/kasuboski/mediaz/pkg/storage"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
@@ -121,6 +123,36 @@ func (s *SQLite) ListSeries(ctx context.Context, filter storage.SeriesFilter) ([
 		return nil, mapQueryErr(err, "failed to list series")
 	}
 	return rows, nil
+}
+
+// ListLibraryShows lists metadata-backed series in stable title/id order.
+func (s *SQLite) ListLibraryShows(ctx context.Context, offset, limit int, states []storage.SeriesState) ([]sqlcdb.ListLibraryShowsRow, error) {
+	if offset < 0 || limit <= 0 {
+		return nil, fmt.Errorf("invalid library pagination: offset %d, limit %d", offset, limit)
+	}
+	stateStrings := make([]string, 0, len(states))
+	for _, state := range states {
+		stateStrings = append(stateStrings, string(state))
+	}
+	encoded, err := json.Marshal(stateStrings)
+	if err != nil {
+		return nil, err
+	}
+	return s.Queries.ListLibraryShows(ctx, sqlcdb.ListLibraryShowsParams{Offset: int64(offset), Limit: int64(limit), States: string(encoded)})
+}
+func (s *SQLite) CountLibraryShows(ctx context.Context, states []storage.SeriesState) (int64, error) {
+	stateStrings := make([]string, 0, len(states))
+	for _, state := range states {
+		stateStrings = append(stateStrings, string(state))
+	}
+	encoded, err := json.Marshal(stateStrings)
+	if err != nil {
+		return 0, err
+	}
+	return s.Queries.CountLibraryShows(ctx, string(encoded))
+}
+func (s *SQLite) CountLibraryShowsByState(ctx context.Context) ([]sqlcdb.CountLibraryShowsByStateRow, error) {
+	return s.Queries.CountLibraryShowsByState(ctx)
 }
 
 // UpdateSeriesState updates the transition state of a series. The demote and

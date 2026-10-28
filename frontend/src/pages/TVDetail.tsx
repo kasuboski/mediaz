@@ -1,4 +1,4 @@
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { Calendar, Tv, Users, Film, Play, MoreVertical, RefreshCw, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -123,6 +123,8 @@ const SeasonContent = ({ season }: { season: SeasonResult }) => {
 export default function TVDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
+  const returnTo = (location.state?.returnTo as string | undefined) ?? '/series';
   const queryClient = useQueryClient();
   const [showRequestModal, setShowRequestModal] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -169,9 +171,12 @@ export default function TVDetail() {
     setIsDeleting(true);
     try {
       await tvApi.deleteSeries(show.id, deleteDirectory);
-      await queryClient.invalidateQueries({ queryKey: ['tv', 'library'] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['tv', 'library'] }),
+        queryClient.invalidateQueries({ queryKey: ['library-stats'] }),
+      ]);
       toast.success(deleteDirectory ? "Series and directory deleted" : "Series deleted from library");
-      navigate("/series");
+      navigate(returnTo);
     } catch (error) {
       toast.error("Failed to delete series");
       console.error(error);

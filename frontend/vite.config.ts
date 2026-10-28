@@ -7,6 +7,10 @@ export default defineConfig(({ mode }) => {
 	const apiHost = mode === "production" ? "" : "http://localhost:8080";
 
 	return {
+		test: {
+			environment: "jsdom",
+			setupFiles: "./src/test-setup.ts",
+		},
 		base: mode === "production" ? "/static/" : "/",
 		define: {
 			"import.meta.env.VITE_API_HOST": JSON.stringify(apiHost),

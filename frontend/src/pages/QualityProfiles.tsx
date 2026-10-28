@@ -1,5 +1,8 @@
-import { useState } from 'react';
-import { useQualityProfiles, useDeleteQualityProfile, useQualityDefinitions, useDeleteQualityDefinition } from '@/lib/queries';
+import { useEffect, useState } from 'react';
+import { usePagedQualityProfiles, usePagedQualityDefinitions, useDeleteQualityProfile, useDeleteQualityDefinition } from '@/lib/queries';
+import { usePagination } from '@/hooks/use-pagination';
+import { PageSizeSelector } from '@/components/ui/page-size-selector';
+import { PaginationControls } from '@/components/ui/pagination-controls';
 import type { QualityProfile, QualityDefinition } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,8 +18,17 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 
 export default function QualityProfiles() {
   const [mediaType, setMediaType] = useState<'movie' | 'series'>('movie');
-  const { data: profiles, isLoading: profilesLoading, error: profilesError, refetch: refetchProfiles } = useQualityProfiles(mediaType);
-  const { data: definitions, isLoading: definitionsLoading, error: definitionsError, refetch: refetchDefinitions } = useQualityDefinitions();
+  const profilePagination = usePagination({ storageKey: 'quality-profiles' });
+  const definitionPagination = usePagination({ storageKey: 'quality-definitions' });
+  const { data: profilePage, isLoading: profilesLoading, error: profilesError, refetch: refetchProfiles } = usePagedQualityProfiles({ page: profilePagination.page, pageSize: profilePagination.pageSize }, mediaType);
+  const { data: definitionPage, isLoading: definitionsLoading, error: definitionsError, refetch: refetchDefinitions } = usePagedQualityDefinitions({ page: definitionPagination.page, pageSize: definitionPagination.pageSize }, mediaType);
+  const profiles = profilePage?.items ?? [];
+  const definitions = definitionPage?.items ?? [];
+
+  useEffect(() => {
+    if (profilePage && profilePagination.page > Math.max(1, profilePage.pagination.totalPages)) profilePagination.setPage(Math.max(1, profilePage.pagination.totalPages));
+    if (definitionPage && definitionPagination.page > Math.max(1, definitionPage.pagination.totalPages)) definitionPagination.setPage(Math.max(1, definitionPage.pagination.totalPages));
+  }, [profilePage, definitionPage, profilePagination.page, definitionPagination.page]);
 
   const deleteProfile = useDeleteQualityProfile();
   const deleteDefinition = useDeleteQualityDefinition();
@@ -101,10 +113,6 @@ export default function QualityProfiles() {
     }
   };
 
-  const filteredDefinitions = definitions?.filter(d =>
-    d.MediaType === (mediaType === 'series' ? 'episode' : 'movie')
-  ) || [];
-
   return (
     <div className="container mx-auto px-6 py-8">
       <div className="mb-8">
@@ -114,7 +122,7 @@ export default function QualityProfiles() {
         </p>
       </div>
 
-      <Tabs value={mediaType} onValueChange={(v) => setMediaType(v as 'movie' | 'series')}>
+      <Tabs value={mediaType} onValueChange={(v) => { profilePagination.setPage(1); definitionPagination.setPage(1); setMediaType(v as 'movie' | 'series'); }}>
         <TabsList className="mb-4">
           <TabsTrigger value="movie">Movies</TabsTrigger>
           <TabsTrigger value="series">TV Series</TabsTrigger>
@@ -150,7 +158,7 @@ export default function QualityProfiles() {
                 </div>
               )}
 
-              {!profilesLoading && !profilesError && (!profiles || profiles.length === 0) && (
+              {!profilesLoading && !profilesError && profiles.length === 0 && (
                 <div className="flex flex-col items-center justify-center py-12">
                   <Layers className="h-12 w-12 text-muted-foreground mb-4" />
                   <p className="text-lg font-semibold text-foreground mb-2">No profiles configured</p>
@@ -161,7 +169,7 @@ export default function QualityProfiles() {
                 </div>
               )}
 
-              {!profilesLoading && !profilesError && profiles && profiles.length > 0 && (
+              {!profilesLoading && !profilesError && profiles.length > 0 && (
                 <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
                   {profiles.map((profile) => (
                     <Card key={profile.id}>
@@ -237,6 +245,13 @@ export default function QualityProfiles() {
                   ))}
                 </div>
               )}
+              {!profilesLoading && !profilesError && profilePage && profilePage.pagination.totalItems > 0 && (
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                  <span className="text-sm text-muted-foreground">Showing {(profilePagination.page - 1) * profilePagination.pageSize + 1}–{Math.min(profilePagination.page * profilePagination.pageSize, profilePage.pagination.totalItems)} of {profilePage.pagination.totalItems} profiles</span>
+                  <PageSizeSelector value={profilePagination.pageSize} onChange={profilePagination.setPageSize} options={[25, 50, 100]} />
+                  <PaginationControls currentPage={profilePagination.page} totalPages={profilePage.pagination.totalPages} onPageChange={profilePagination.setPage} />
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -269,7 +284,7 @@ export default function QualityProfiles() {
                 </div>
               )}
 
-              {!definitionsLoading && !definitionsError && filteredDefinitions.length === 0 && (
+              {!definitionsLoading && !definitionsError && definitions.length === 0 && (
                 <div className="flex flex-col items-center justify-center py-12">
                   <Layers className="h-12 w-12 text-muted-foreground mb-4" />
                   <p className="text-lg font-semibold text-foreground mb-2">No definitions available</p>
@@ -280,9 +295,9 @@ export default function QualityProfiles() {
                 </div>
               )}
 
-              {!definitionsLoading && !definitionsError && filteredDefinitions.length > 0 && (
+              {!definitionsLoading && !definitionsError && definitions.length > 0 && (
                 <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-                  {filteredDefinitions.map((def) => (
+                  {definitions.map((def) => (
                     <Card key={def.ID}>
                       <CardContent className="p-4">
                         <div className="flex items-start justify-between mb-2">
@@ -315,6 +330,13 @@ export default function QualityProfiles() {
                       </CardContent>
                     </Card>
                   ))}
+                </div>
+              )}
+              {!definitionsLoading && !definitionsError && definitionPage && definitionPage.pagination.totalItems > 0 && (
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                  <span className="text-sm text-muted-foreground">Showing {definitions.length ? (definitionPagination.page - 1) * definitionPagination.pageSize + 1 : 0}–{definitions.length ? Math.min(definitionPagination.page * definitionPagination.pageSize, definitionPage.pagination.totalItems) : 0} of {definitionPage.pagination.totalItems} definitions</span>
+                  <PageSizeSelector value={definitionPagination.pageSize} onChange={definitionPagination.setPageSize} options={[25, 50, 100]} />
+                  <PaginationControls currentPage={definitionPagination.page} totalPages={definitionPage.pagination.totalPages} onPageChange={definitionPagination.setPage} />
                 </div>
               )}
             </CardContent>

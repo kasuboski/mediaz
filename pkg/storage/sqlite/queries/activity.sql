@@ -71,8 +71,47 @@ FROM job AS j
 INNER JOIN job_transition AS jt ON j.id = jt.job_id AND jt.most_recent = 1
 WHERE
     jt.to_state = 'error'
-    AND jt.updated_at >= sqlc.arg(cutoff_datetime)  -- noqa: RF02
+    AND julianday(jt.updated_at) IS NOT NULL
+    AND julianday(jt.updated_at) > julianday(sqlc.arg(cutoff_datetime))  -- noqa: RF02
 ORDER BY jt.updated_at DESC, j.id DESC;
+
+-- Bounded Activity queries. Counts intentionally share each page query's predicates.
+-- name: ListDownloadingMoviesPage :many
+SELECT m.id, mm.tmdb_id, mm.title, mm.year, mm.images, mt.to_state, mt.sort_key, mt.created_at, mt.download_id,
+ dc.id AS dc_id, dc.host AS dc_host, dc.port AS dc_port
+FROM movie m INNER JOIN movie_transition mt ON m.id=mt.movie_id AND mt.most_recent=1
+INNER JOIN movie_metadata mm ON m.movie_metadata_id=mm.id LEFT JOIN download_client dc ON mt.download_client_id=dc.id
+WHERE mt.to_state='downloading' ORDER BY mt.sort_key DESC, mt.id DESC LIMIT sqlc.arg(lim) OFFSET sqlc.arg(offs);
+
+-- name: CountDownloadingMovies :one
+SELECT COUNT(*) FROM movie m INNER JOIN movie_transition mt ON m.id=mt.movie_id AND mt.most_recent=1
+INNER JOIN movie_metadata mm ON m.movie_metadata_id=mm.id WHERE mt.to_state='downloading';
+
+-- name: ListDownloadingSeriesPage :many
+SELECT se.id, sm.tmdb_id, sm.title, sm.poster_path, st.to_state, st.sort_key, st.created_at, st.download_id,
+ se.season_number, dc.id AS dc_id, dc.host AS dc_host, dc.port AS dc_port
+FROM season se INNER JOIN season_transition st ON se.id=st.season_id AND st.most_recent=1
+INNER JOIN series ser ON se.series_id=ser.id LEFT JOIN series_metadata sm ON ser.series_metadata_id=sm.id
+LEFT JOIN download_client dc ON st.download_client_id=dc.id WHERE st.to_state='downloading'
+ORDER BY st.sort_key DESC, st.id DESC LIMIT sqlc.arg(lim) OFFSET sqlc.arg(offs);
+
+-- name: CountDownloadingSeries :one
+SELECT COUNT(*) FROM season se INNER JOIN season_transition st ON se.id=st.season_id AND st.most_recent=1
+INNER JOIN series ser ON se.series_id=ser.id LEFT JOIN series_metadata sm ON ser.series_metadata_id=sm.id WHERE st.to_state='downloading';
+
+-- name: ListRunningJobsPage :many
+SELECT j.id,j.type,jt.to_state,j.created_at,jt.updated_at FROM job j INNER JOIN job_transition jt ON j.id=jt.job_id AND jt.most_recent=1
+WHERE jt.to_state='running' ORDER BY j.created_at DESC,j.id DESC LIMIT sqlc.arg(lim) OFFSET sqlc.arg(offs);
+-- name: CountRunningJobs :one
+SELECT COUNT(*) FROM job j INNER JOIN job_transition jt ON j.id=jt.job_id AND jt.most_recent=1 WHERE jt.to_state='running';
+
+-- name: ListErrorJobsPage :many
+SELECT j.id,j.type,jt.to_state,j.created_at,jt.updated_at FROM job j INNER JOIN job_transition jt ON j.id=jt.job_id AND jt.most_recent=1
+WHERE jt.to_state='error' AND julianday(jt.updated_at) IS NOT NULL AND julianday(jt.updated_at) > julianday(sqlc.arg(cutoff_datetime))
+ORDER BY jt.updated_at DESC,j.id DESC LIMIT sqlc.arg(lim) OFFSET sqlc.arg(offs);
+-- name: CountErrorJobs :one
+SELECT COUNT(*) FROM job j INNER JOIN job_transition jt ON j.id=jt.job_id AND jt.most_recent=1
+WHERE jt.to_state='error' AND julianday(jt.updated_at) IS NOT NULL AND julianday(jt.updated_at) > julianday(sqlc.arg(cutoff_datetime));
 
 -- name: CountTransitionsByDate :one
 SELECT (
@@ -147,6 +186,39 @@ WHERE
     AND jt.most_recent = 1
 GROUP BY STRFTIME('%Y-%m-%d', jt.created_at)
 ORDER BY date;
+
+-- name: GetActivityTimelinePage :many
+WITH all_items AS (
+    SELECT mt.id, 'movie' AS entity_type, m.id AS entity_id, mt.to_state, mt.from_state, mt.created_at, mm.title AS entity_title
+    FROM movie_transition mt
+    INNER JOIN movie m ON m.id = mt.movie_id
+    INNER JOIN movie_metadata mm ON m.movie_metadata_id = mm.id
+    WHERE mt.created_at >= DATETIME(sqlc.arg('start')) AND mt.created_at <= DATETIME(sqlc.arg('end')) AND mt.most_recent = 1
+    UNION ALL
+    SELECT st.id, 'season', s.id, st.to_state, st.from_state, st.created_at, sm.title
+    FROM season_transition st
+    INNER JOIN season s ON s.id = st.season_id
+    INNER JOIN series ser ON s.series_id = ser.id
+    INNER JOIN series_metadata sm ON ser.series_metadata_id = sm.id
+    WHERE st.created_at >= DATETIME(sqlc.arg('start')) AND st.created_at <= DATETIME(sqlc.arg('end')) AND st.most_recent = 1
+    UNION ALL
+    SELECT et.id, 'episode', e.id, et.to_state, et.from_state, et.created_at, sm.title
+    FROM episode_transition et
+    INNER JOIN episode e ON e.id = et.episode_id
+    INNER JOIN season s ON e.season_id = s.id
+    INNER JOIN series ser ON s.series_id = ser.id
+    INNER JOIN series_metadata sm ON ser.series_metadata_id = sm.id
+    WHERE et.created_at >= DATETIME(sqlc.arg('start')) AND et.created_at <= DATETIME(sqlc.arg('end')) AND et.most_recent = 1
+    UNION ALL
+    SELECT jt.id, 'job', j.id, jt.to_state, jt.from_state, jt.created_at, j.type
+    FROM job_transition jt
+    INNER JOIN job j ON j.id = jt.job_id
+    WHERE jt.created_at >= DATETIME(sqlc.arg('start')) AND jt.created_at <= DATETIME(sqlc.arg('end')) AND jt.most_recent = 1
+)
+SELECT id, entity_type, entity_id, to_state, from_state, created_at, entity_title
+FROM all_items
+ORDER BY created_at DESC, entity_type ASC, id DESC
+LIMIT COALESCE(NULLIF(sqlc.arg('lim'), 0), -1) OFFSET sqlc.arg('offs');
 
 -- name: GetMovieTransitionItems :many
 SELECT

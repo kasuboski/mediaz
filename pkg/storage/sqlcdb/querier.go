@@ -10,7 +10,20 @@ import (
 )
 
 type Querier interface {
+	CountDownloadingMovies(ctx context.Context) (int64, error)
+	CountDownloadingSeries(ctx context.Context) (int64, error)
+	CountEpisodeHistory(ctx context.Context, entityID int64) (int64, error)
+	CountErrorJobs(ctx context.Context, cutoffDatetime interface{}) (int64, error)
+	CountJobHistory(ctx context.Context, entityID int64) (int64, error)
 	CountJobs(ctx context.Context, arg CountJobsParams) (int64, error)
+	CountLibraryMovies(ctx context.Context, states string) (int64, error)
+	CountLibraryMoviesByState(ctx context.Context) ([]CountLibraryMoviesByStateRow, error)
+	CountLibraryShows(ctx context.Context, states string) (int64, error)
+	CountLibraryShowsByState(ctx context.Context) ([]CountLibraryShowsByStateRow, error)
+	CountMovieHistory(ctx context.Context, entityID int64) (int64, error)
+	CountRunningJobs(ctx context.Context) (int64, error)
+	CountSeasonHistory(ctx context.Context, entityID int64) (int64, error)
+	CountSeriesHistory(ctx context.Context, entityID int64) (int64, error)
 	CountTransitionsByDate(ctx context.Context, arg CountTransitionsByDateParams) (int64, error)
 	CreateDownloadClient(ctx context.Context, arg CreateDownloadClientParams) (int64, error)
 	// TV episode queries. Entity reads join the most recent episode_transition via
@@ -91,6 +104,7 @@ type Querier interface {
 	DemoteEpisodeTransition(ctx context.Context, episodeID int64) (int64, error)
 	DemoteSeasonTransition(ctx context.Context, seasonID int64) (int64, error)
 	DemoteSeriesTransition(ctx context.Context, seriesID int64) (int64, error)
+	GetActivityTimelinePage(ctx context.Context, arg GetActivityTimelinePageParams) ([]GetActivityTimelinePageRow, error)
 	GetDownloadClient(ctx context.Context, id int64) (DownloadClient, error)
 	GetEntityTransitionsEpisode(ctx context.Context, entityID int64) ([]GetEntityTransitionsEpisodeRow, error)
 	GetEntityTransitionsJob(ctx context.Context, entityID int64) ([]GetEntityTransitionsJobRow, error)
@@ -101,6 +115,7 @@ type Querier interface {
 	GetEpisodeByID(ctx context.Context, id int64) (GetEpisodeByIDRow, error)
 	GetEpisodeFile(ctx context.Context, id int64) (EpisodeFile, error)
 	GetEpisodeFileByID(ctx context.Context, id int64) ([]EpisodeFile, error)
+	GetEpisodeHistoryPage(ctx context.Context, arg GetEpisodeHistoryPageParams) ([]GetEpisodeHistoryPageRow, error)
 	GetEpisodeMetadataByID(ctx context.Context, id int64) (EpisodeMetadatum, error)
 	GetEpisodeMetadataBySeasonAndNumber(ctx context.Context, arg GetEpisodeMetadataBySeasonAndNumberParams) (EpisodeMetadatum, error)
 	GetEpisodeMetadataByTmdbID(ctx context.Context, tmdbID int64) (EpisodeMetadatum, error)
@@ -114,6 +129,7 @@ type Querier interface {
 	// duplicate/skip across pages (A4). The demote statement stamps updated_at
 	// with CURRENT_TIMESTAMP (UTC) - no application-formatted timestamps (B5).
 	GetJobByTypeAndState(ctx context.Context, arg GetJobByTypeAndStateParams) (GetJobByTypeAndStateRow, error)
+	GetJobHistoryPage(ctx context.Context, arg GetJobHistoryPageParams) ([]GetJobHistoryPageRow, error)
 	GetJobTransitionItems(ctx context.Context, arg GetJobTransitionItemsParams) ([]GetJobTransitionItemsRow, error)
 	GetJobTransitionsByDate(ctx context.Context, arg GetJobTransitionsByDateParams) ([]GetJobTransitionsByDateRow, error)
 	GetLibraryStatsByState(ctx context.Context) ([]GetLibraryStatsByStateRow, error)
@@ -122,6 +138,8 @@ type Querier interface {
 	GetMovieByMetadataID(ctx context.Context, movieMetadataID sql.NullInt64) (GetMovieByMetadataIDRow, error)
 	GetMovieByPath(ctx context.Context, path sql.NullString) (GetMovieByPathRow, error)
 	GetMovieFilesByMovieName(ctx context.Context, path sql.NullString) ([]MovieFile, error)
+	// Per-entity history pages: window over complete history before paging.
+	GetMovieHistoryPage(ctx context.Context, arg GetMovieHistoryPageParams) ([]GetMovieHistoryPageRow, error)
 	GetMovieMetadataByID(ctx context.Context, id int64) (MovieMetadatum, error)
 	GetMovieMetadataByTmdbID(ctx context.Context, tmdbID int64) (MovieMetadatum, error)
 	GetMovieTransitionItems(ctx context.Context, arg GetMovieTransitionItemsParams) ([]GetMovieTransitionItemsRow, error)
@@ -132,12 +150,14 @@ type Querier interface {
 	GetQualityProfileItem(ctx context.Context, id int64) (QualityProfileItem, error)
 	GetSeasonByID(ctx context.Context, id int64) (GetSeasonByIDRow, error)
 	GetSeasonBySeriesIDAndNumber(ctx context.Context, arg GetSeasonBySeriesIDAndNumberParams) (GetSeasonBySeriesIDAndNumberRow, error)
+	GetSeasonHistoryPage(ctx context.Context, arg GetSeasonHistoryPageParams) ([]GetSeasonHistoryPageRow, error)
 	GetSeasonMetadataByID(ctx context.Context, id int64) (SeasonMetadatum, error)
 	GetSeasonMetadataByTmdbID(ctx context.Context, tmdbID int64) (SeasonMetadatum, error)
 	GetSeasonMetadataIDByTmdbID(ctx context.Context, tmdbID int64) (int64, error)
 	GetSeasonTransitionItems(ctx context.Context, arg GetSeasonTransitionItemsParams) ([]GetSeasonTransitionItemsRow, error)
 	// Flexible lookup: each nullable param that is set constrains the match.
 	GetSeries(ctx context.Context, arg GetSeriesParams) (GetSeriesRow, error)
+	GetSeriesHistoryPage(ctx context.Context, arg GetSeriesHistoryPageParams) ([]GetSeriesHistoryPageRow, error)
 	GetSeriesMetadataByID(ctx context.Context, id int64) (SeriesMetadatum, error)
 	GetSeriesMetadataByTmdbID(ctx context.Context, tmdbID int64) (SeriesMetadatum, error)
 	GetSeriesMetadataIDByTmdbID(ctx context.Context, tmdbID int64) (int64, error)
@@ -155,7 +175,10 @@ type Querier interface {
 	// "zero limit = unlimited" COALESCE pattern, collapsing the old separate
 	// NoLimit queries. Date range params are named consistently.
 	ListDownloadingMovies(ctx context.Context) ([]ListDownloadingMoviesRow, error)
+	// Bounded Activity queries. Counts intentionally share each page query's predicates.
+	ListDownloadingMoviesPage(ctx context.Context, arg ListDownloadingMoviesPageParams) ([]ListDownloadingMoviesPageRow, error)
 	ListDownloadingSeries(ctx context.Context) ([]ListDownloadingSeriesRow, error)
+	ListDownloadingSeriesPage(ctx context.Context, arg ListDownloadingSeriesPageParams) ([]ListDownloadingSeriesPageRow, error)
 	ListEnabledIndexerSources(ctx context.Context) ([]IndexerSource, error)
 	ListEpisodeFiles(ctx context.Context) ([]EpisodeFile, error)
 	ListEpisodeMetadataByIDs(ctx context.Context, ids []int64) ([]EpisodeMetadatum, error)
@@ -164,12 +187,16 @@ type Querier interface {
 	// the states slice constrains the current transition state (any length).
 	ListEpisodes(ctx context.Context, arg ListEpisodesParams) ([]ListEpisodesRow, error)
 	ListEpisodesBySeasonIDs(ctx context.Context, seasonIds []int64) ([]ListEpisodesBySeasonIDsRow, error)
-	ListErrorJobs(ctx context.Context, cutoffDatetime sql.NullTime) ([]ListErrorJobsRow, error)
+	ListErrorJobs(ctx context.Context, cutoffDatetime interface{}) ([]ListErrorJobsRow, error)
+	ListErrorJobsPage(ctx context.Context, arg ListErrorJobsPageParams) ([]ListErrorJobsPageRow, error)
 	ListIndexerSources(ctx context.Context) ([]IndexerSource, error)
 	ListIndexers(ctx context.Context) ([]Indexer, error)
 	// Stable pagination: created_at DESC with id DESC tie-break (CURRENT_TIMESTAMP
 	// has 1-second resolution). lim = 0 means unlimited.
 	ListJobs(ctx context.Context, arg ListJobsParams) ([]ListJobsRow, error)
+	// Library reads deliberately require metadata so paging/counts reflect visible library entries.
+	ListLibraryMovies(ctx context.Context, arg ListLibraryMoviesParams) ([]ListLibraryMoviesRow, error)
+	ListLibraryShows(ctx context.Context, arg ListLibraryShowsParams) ([]ListLibraryShowsRow, error)
 	ListMovieFiles(ctx context.Context) ([]MovieFile, error)
 	ListMovieMetadata(ctx context.Context) ([]MovieMetadatum, error)
 	ListMovies(ctx context.Context) ([]ListMoviesRow, error)
@@ -182,6 +209,7 @@ type Querier interface {
 	ListQualityProfiles(ctx context.Context) ([]QualityProfile, error)
 	ListQualityProfilesByMediaType(ctx context.Context, mediaType string) ([]QualityProfile, error)
 	ListRunningJobs(ctx context.Context) ([]ListRunningJobsRow, error)
+	ListRunningJobsPage(ctx context.Context, arg ListRunningJobsPageParams) ([]ListRunningJobsPageRow, error)
 	ListSeasonMetadataByIDs(ctx context.Context, ids []int64) ([]SeasonMetadatum, error)
 	ListSeasonMetadataBySeriesMetadataID(ctx context.Context, seriesMetadataID int64) ([]SeasonMetadatum, error)
 	// states_any is a NULL guard: when NULL no state constraint applies; when set,

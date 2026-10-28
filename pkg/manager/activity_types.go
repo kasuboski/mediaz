@@ -1,12 +1,40 @@
 package manager
 
-import "time"
+import (
+	"time"
+
+	"github.com/kasuboski/mediaz/pkg/pagination"
+)
 
 type ActiveActivityResponse struct {
-	Movies []*ActiveMovie  `json:"movies"`
-	Series []*ActiveSeries `json:"series"`
-	Jobs   []*ActiveJob    `json:"jobs"`
+	Movies     []*ActiveMovie           `json:"movies"`
+	Series     []*ActiveSeries          `json:"series"`
+	Jobs       []*ActiveJob             `json:"jobs"`
+	Counts     ActiveActivityCounts     `json:"counts"`
+	Pagination ActiveActivityPagination `json:"pagination"`
 }
+
+type ActiveActivityCounts struct {
+	Movies int `json:"movies"`
+	Series int `json:"series"`
+	Jobs   int `json:"jobs"`
+	Total  int `json:"total"`
+}
+
+type ActiveActivityPagination struct {
+	Movies pagination.Meta `json:"movies"`
+	Series pagination.Meta `json:"series"`
+	Jobs   pagination.Meta `json:"jobs"`
+}
+
+type ActiveActivityParams struct {
+	Movies pagination.Params
+	Series pagination.Params
+	Jobs   pagination.Params
+}
+
+// ActivePaginationParams keeps the independently requested active-list pages together.
+type ActivePaginationParams = ActiveActivityParams
 
 type ActiveMovie struct {
 	ID             int64               `json:"id"`
@@ -56,7 +84,8 @@ type EpisodeInfo struct {
 }
 
 type FailuresResponse struct {
-	Failures []*FailureItem `json:"failures"`
+	Failures   []*FailureItem  `json:"failures"`
+	Pagination pagination.Meta `json:"pagination"`
 }
 
 type FailureItem struct {
@@ -109,8 +138,9 @@ type TransitionItem struct {
 }
 
 type HistoryResponse struct {
-	Entity  *EntityInfo     `json:"entity"`
-	History []*HistoryEntry `json:"history"`
+	Entity     *EntityInfo     `json:"entity"`
+	History    []*HistoryEntry `json:"history"`
+	Pagination pagination.Meta `json:"pagination"`
 }
 
 type EntityInfo struct {

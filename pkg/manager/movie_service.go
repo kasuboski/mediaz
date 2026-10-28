@@ -8,6 +8,7 @@ import (
 
 	"github.com/kasuboski/mediaz/pkg/library"
 	"github.com/kasuboski/mediaz/pkg/logger"
+	"github.com/kasuboski/mediaz/pkg/pagination"
 	"github.com/kasuboski/mediaz/pkg/storage"
 	sqlcdb "github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 	"github.com/kasuboski/mediaz/pkg/tmdb"
@@ -193,14 +194,14 @@ func (s *MovieService) UpdateMovieQualityProfile(ctx context.Context, movieID in
 // ---------------------------------------------------------------------------
 
 // SearchMovie queries TMDB for a movie matching the given query.
-func (s *MovieService) SearchMovie(ctx context.Context, query string) (*SearchMediaResponse, error) {
+func (s *MovieService) SearchMovie(ctx context.Context, query string, page int32) (*SearchMediaResponse, error) {
 	log := logger.FromCtx(ctx)
 	if query == "" {
 		log.Debug("search movie query is empty", zap.String("query", query))
 		return nil, errors.New("query is empty")
 	}
 
-	res, err := s.tmdb.SearchMovie(ctx, &tmdb.SearchMovieParams{Query: query})
+	res, err := s.tmdb.SearchMovie(ctx, &tmdb.SearchMovieParams{Query: query, Page: &page})
 	if err != nil {
 		log.Error("search movie failed request", zap.Error(err))
 		return nil, err
@@ -286,34 +287,37 @@ func (s *MovieService) GetMovieDetailByTMDBID(ctx context.Context, tmdbID int64)
 // Listing
 // ---------------------------------------------------------------------------
 
-// ListMoviesInLibrary returns all tracked movies enriched with metadata.
-func (s *MovieService) ListMoviesInLibrary(ctx context.Context) ([]LibraryMovie, error) {
-	all, err := s.movieStorage.ListMovies(ctx)
+// ListMoviesInLibrary returns one database-paged library slice and aggregate state counts.
+func (s *MovieService) ListMoviesInLibrary(ctx context.Context, params pagination.Params, states []storage.MovieState) (LibraryMoviesResponse, error) {
+	offset, limit := params.CalculateOffsetLimit()
+	rows, err := s.movieStorage.ListLibraryMovies(ctx, offset, limit, states)
 	if err != nil {
-		return nil, err
+		return LibraryMoviesResponse{}, err
 	}
-	movies := filterAndMap(all, func(mp sqlcdb.ListMoviesRow) (LibraryMovie, bool) {
-		// Skip movies without metadata - they haven't been reconciled yet
-		if !mp.Movie.MovieMetadataID.Valid {
-			return LibraryMovie{}, false
+	total, err := s.movieStorage.CountLibraryMovies(ctx, states)
+	if err != nil {
+		return LibraryMoviesResponse{}, err
+	}
+	counts, err := s.movieStorage.CountLibraryMoviesByState(ctx)
+	if err != nil {
+		return LibraryMoviesResponse{}, err
+	}
+	items := make([]LibraryMovie, 0, len(rows))
+	for _, row := range rows {
+		item := LibraryMovie{TMDBID: row.MovieMetadatum.TmdbID, Title: row.MovieMetadatum.Title, PosterPath: row.MovieMetadatum.Images, State: row.State}
+		if row.Movie.Path.Valid {
+			item.Path = row.Movie.Path.String
 		}
-		lm := LibraryMovie{State: mp.State}
-		if mp.Movie.Path.Valid {
-			lm.Path = mp.Movie.Path.String
+		if row.MovieMetadatum.Year.Valid {
+			item.Year = int32(row.MovieMetadatum.Year.Int64)
 		}
-		meta, err := s.metadataProvider.GetMovieMetadataByID(ctx, mp.Movie.MovieMetadataID.Int64)
-		if err != nil || meta == nil {
-			return LibraryMovie{}, false
-		}
-		lm.TMDBID = meta.TmdbID
-		lm.Title = meta.Title
-		lm.PosterPath = meta.Images
-		if meta.Year.Valid {
-			lm.Year = int32(meta.Year.Int64)
-		}
-		return lm, true
-	})
-	return movies, nil
+		items = append(items, item)
+	}
+	byState := make(map[string]int64, len(counts))
+	for _, count := range counts {
+		byState[count.State] = count.Count
+	}
+	return LibraryMoviesResponse{Items: items, Pagination: params.BuildMeta(int(total)), ByState: byState}, nil
 }
 
 // nullI32Out converts a nullable int64 to an optional int32.

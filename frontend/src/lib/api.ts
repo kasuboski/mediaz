@@ -86,6 +86,7 @@ export interface MovieDetailResult {
  * Transformed movie detail data for the MovieDetail component
  */
 export interface MovieDetail {
+  id?: number;
   tmdbID: number;
   imdbID?: string;
   title: string;
@@ -159,6 +160,7 @@ export interface TVDetailResult {
 }
 
 export interface TVDetail {
+  id?: number;
   tmdbID: number;
   title: string;
   originalTitle?: string;
@@ -374,10 +376,32 @@ function transformTVDetailResult(result: TVDetailResult): TVDetail {
   };
 }
 
+export interface LibraryPaginationParams {
+  page: number;
+  pageSize: number;
+  states?: readonly string[];
+}
+
+export interface LibraryPage<T> {
+  items: T[];
+  pagination: PaginationMeta;
+  byState: Record<string, number>;
+}
+
+export interface LibraryMediaPage extends Omit<LibraryPage<MediaItem>, 'items'> {
+  items: MediaItem[];
+}
+
+function libraryParams(params: LibraryPaginationParams): string {
+  const query = new URLSearchParams({ page: String(params.page), pageSize: String(params.pageSize) });
+  [...new Set(params.states ?? [])].sort().forEach(state => query.append('state', state));
+  return `?${query.toString()}`;
+}
+
 export const moviesApi = {
-  async getLibraryMovies(): Promise<MediaItem[]> {
-    const movies = await apiRequest<LibraryMovie[] | null>('/library/movies');
-    return (movies ?? []).map(transformLibraryMovieToMediaItem);
+  async getLibraryMovies(params: LibraryPaginationParams): Promise<LibraryMediaPage> {
+    const result = await apiRequest<LibraryPage<LibraryMovie>>(`/library/movies${libraryParams(params)}`);
+    return { ...result, items: result.items.map(transformLibraryMovieToMediaItem) };
   },
   async getMovieDetail(tmdbID: number): Promise<MovieDetail> {
     const result = await apiRequest<MovieDetailResult>(`/movie/${tmdbID}`);
@@ -437,9 +461,9 @@ export interface EpisodeResult {
 }
 
 export const tvApi = {
-  async getLibraryShows(): Promise<MediaItem[]> {
-    const shows = await apiRequest<LibraryShow[] | null>('/library/tv');
-    return (shows ?? []).map(transformLibraryShowToMediaItem);
+  async getLibraryShows(params: LibraryPaginationParams): Promise<LibraryMediaPage> {
+    const result = await apiRequest<LibraryPage<LibraryShow>>(`/library/tv${libraryParams(params)}`);
+    return { ...result, items: result.items.map(transformLibraryShowToMediaItem) };
   },
   async getTVDetail(tmdbID: number): Promise<TVDetail> {
     const result = await apiRequest<TVDetailResult>(`/tv/${tmdbID}`);
@@ -574,35 +598,29 @@ function transformSearchResultToMediaItem(
 }
 
 // Search API
+export interface MediaSearchPage {
+  items: MediaItem[];
+  pagination: PaginationMeta;
+}
+
+function transformSearchPage(response: SearchMediaResponse, mediaType: 'movie' | 'tv'): MediaSearchPage {
+  return {
+    items: (response.results ?? []).map(result => transformSearchResultToMediaItem(result, mediaType)).filter((item): item is MediaItem => item !== null),
+    pagination: { page: response.page ?? 1, pageSize: 20, totalItems: response.total_results ?? 0, totalPages: response.total_pages ?? 0 },
+  };
+}
+
 export const searchApi = {
-  async searchMovies(query: string): Promise<MediaItem[]> {
-    if (!query.trim()) {
-      return [];
-    }
-    const response = await apiRequest<SearchMediaResponse>(
-      `/discover/movie?query=${encodeURIComponent(query.trim())}`
-    );
-    if (!response.results) {
-      return [];
-    }
-    return response.results
-      .map((result) => transformSearchResultToMediaItem(result, "movie"))
-      .filter((item): item is MediaItem => item !== null);
+  async searchMoviesPage(query: string, page: number): Promise<MediaSearchPage> {
+    const params = new URLSearchParams({ query: query.trim(), page: String(page) });
+    return transformSearchPage(await apiRequest<SearchMediaResponse>(`/discover/movie?${params}`), 'movie');
   },
-  async searchTV(query: string): Promise<MediaItem[]> {
-    if (!query.trim()) {
-      return [];
-    }
-    const response = await apiRequest<SearchMediaResponse>(
-      `/discover/tv?query=${encodeURIComponent(query.trim())}`
-    );
-    if (!response.results) {
-      return [];
-    }
-    return response.results
-      .map((result) => transformSearchResultToMediaItem(result, "tv"))
-      .filter((item): item is MediaItem => item !== null);
+  async searchTVPage(query: string, page: number): Promise<MediaSearchPage> {
+    const params = new URLSearchParams({ query: query.trim(), page: String(page) });
+    return transformSearchPage(await apiRequest<SearchMediaResponse>(`/discover/tv?${params}`), 'tv');
   },
+  async searchMovies(query: string): Promise<MediaItem[]> { return (await this.searchMoviesPage(query, 1)).items; },
+  async searchTV(query: string): Promise<MediaItem[]> { return (await this.searchTVPage(query, 1)).items; },
 };
 
 /**
@@ -640,6 +658,28 @@ export interface PaginationMeta {
   pageSize: number;
   totalItems: number;
   totalPages: number;
+}
+
+export interface PagedResponse<T> { items: T[]; pagination: PaginationMeta }
+
+async function fetchAllPages<T>(fetchPage: (params: PaginationParams) => Promise<PagedResponse<T>>): Promise<T[]> {
+  const all: T[] = [];
+  let page = 1;
+  while (true) {
+    const result = await fetchPage({ page, pageSize: 100 });
+    all.push(...result.items);
+    if (page >= result.pagination.totalPages) return all;
+    page++;
+  }
+}
+
+function positive(value: number | undefined, fallback: number): number {
+  return Number.isFinite(value) && value! > 0 ? Math.floor(value!) : fallback;
+}
+
+function pageParams(params: PaginationParams = {}): string {
+  const query = new URLSearchParams({ page: String(params.page ?? 1), pageSize: String(params.pageSize ?? 50) });
+  return `?${query}`;
 }
 
 export interface JobListResponse {
@@ -712,9 +752,8 @@ export interface UpdateDownloadClientRequest extends CreateDownloadClientRequest
 }
 
 export const downloadClientsApi = {
-  async listClients(): Promise<DownloadClient[]> {
-    return apiRequest<DownloadClient[]>('/download/clients');
-  },
+  async getDownloadClientsPage(params: PaginationParams = {}): Promise<PagedResponse<DownloadClient>> { return apiRequest<PagedResponse<DownloadClient>>(`/download/clients${pageParams(params)}`); },
+  async listClients(): Promise<DownloadClient[]> { return fetchAllPages(params => downloadClientsApi.getDownloadClientsPage(params)); },
 
   async getClient(id: number): Promise<DownloadClient> {
     return apiRequest<DownloadClient>(`/download/clients/${id}`);
@@ -764,9 +803,8 @@ export interface IndexerRequest {
 }
 
 export const indexersApi = {
-  async list(): Promise<Indexer[]> {
-    return apiRequest<Indexer[]>('/indexers');
-  },
+  async getIndexersPage(params: PaginationParams = {}): Promise<PagedResponse<Indexer>> { return apiRequest<PagedResponse<Indexer>>(`/indexers${pageParams(params)}`); },
+  async list(): Promise<Indexer[]> { return fetchAllPages(params => indexersApi.getIndexersPage(params)); },
 
   async create(request: IndexerRequest): Promise<Indexer> {
     return apiRequest<Indexer>('/indexers', {
@@ -820,9 +858,8 @@ export interface UpdateIndexerSourceRequest {
 }
 
 export const indexerSourcesApi = {
-  async list(): Promise<IndexerSource[]> {
-    return apiRequest<IndexerSource[]>('/indexer-sources');
-  },
+  async getIndexerSourcesPage(params: PaginationParams = {}): Promise<PagedResponse<IndexerSource>> { return apiRequest<PagedResponse<IndexerSource>>(`/indexer-sources${pageParams(params)}`); },
+  async list(): Promise<IndexerSource[]> { return fetchAllPages(params => indexerSourcesApi.getIndexerSourcesPage(params)); },
 
   async create(request: AddIndexerSourceRequest): Promise<IndexerSource> {
     return apiRequest<IndexerSource>('/indexer-sources', {
@@ -866,12 +903,12 @@ export const indexerSourcesApi = {
  * Quality Profiles API
  */
 export const qualityProfilesApi = {
-  async listProfiles(mediaType?: 'movie' | 'series'): Promise<QualityProfile[]> {
-    const endpoint = mediaType
-      ? `/quality/profiles?type=${mediaType}`
-      : '/quality/profiles';
-    return apiRequest<QualityProfile[]>(endpoint);
+  async getQualityProfilesPage(params: PaginationParams = {}, mediaType?: 'movie' | 'series'): Promise<PagedResponse<QualityProfile>> {
+    const query = new URLSearchParams({ page: String(params.page ?? 1), pageSize: String(params.pageSize ?? 50) });
+    if (mediaType) query.set('type', mediaType);
+    return apiRequest<PagedResponse<QualityProfile>>(`/quality/profiles?${query}`);
   },
+  async listProfiles(mediaType?: 'movie' | 'series'): Promise<QualityProfile[]> { return fetchAllPages(params => qualityProfilesApi.getQualityProfilesPage(params, mediaType)); },
 
   async getProfile(id: number): Promise<QualityProfile> {
     return apiRequest<QualityProfile>(`/quality/profiles/${id}`);
@@ -902,9 +939,12 @@ export const qualityProfilesApi = {
  * Quality Definitions API
  */
 export const qualityDefinitionsApi = {
-  async listDefinitions(): Promise<QualityDefinition[]> {
-    return apiRequest<QualityDefinition[]>('/quality/definitions');
+  async getQualityDefinitionsPage(params: PaginationParams = {}, type?: 'movie' | 'series'): Promise<PagedResponse<QualityDefinition>> {
+    const query = new URLSearchParams({ page: String(params.page ?? 1), pageSize: String(params.pageSize ?? 50) });
+    if (type) query.set('type', type);
+    return apiRequest<PagedResponse<QualityDefinition>>(`/quality/definitions?${query}`);
   },
+  async listDefinitions(): Promise<QualityDefinition[]> { return fetchAllPages(params => qualityDefinitionsApi.getQualityDefinitionsPage(params)); },
 
   async getDefinition(id: number): Promise<QualityDefinition> {
     return apiRequest<QualityDefinition>(`/quality/definitions/${id}`);
@@ -996,10 +1036,20 @@ export interface ActiveJob {
   duration: string;
 }
 
+export interface ActivePaginationParams {
+  moviesPage?: number;
+  seriesPage?: number;
+  jobsPage?: number;
+  page?: number;
+  pageSize?: number;
+}
+
 export interface ActiveActivityResponse {
   movies: ActiveMovie[];
   series: ActiveSeries[];
   jobs: ActiveJob[];
+  counts: { movies: number; series: number; jobs: number; total: number };
+  pagination: { movies: PaginationMeta; series: PaginationMeta; jobs: PaginationMeta };
 }
 
 export interface FailureItem {
@@ -1015,6 +1065,7 @@ export interface FailureItem {
 
 export interface FailuresResponse {
   failures: FailureItem[];
+  pagination: PaginationMeta;
 }
 
 export interface MovieCounts {
@@ -1079,18 +1130,26 @@ export interface HistoryEntry {
 export interface HistoryResponse {
   entity: EntityInfo;
   history: HistoryEntry[];
+  pagination: PaginationMeta;
 }
 
 /**
  * Activity API for monitoring downloads, jobs, and system activity
  */
 export const activityApi = {
-  async getActiveActivity(): Promise<ActiveActivityResponse> {
-    return apiRequest<ActiveActivityResponse>('/activity/active');
+  async getActiveActivity(params: ActivePaginationParams = {}, signal?: AbortSignal): Promise<ActiveActivityResponse> {
+    const fallback = params.page ?? 1;
+    const query = new URLSearchParams({
+      moviesPage: String(positive(params.moviesPage, fallback)),
+      seriesPage: String(positive(params.seriesPage, fallback)),
+      jobsPage: String(positive(params.jobsPage, fallback)),
+      pageSize: String(positive(params.pageSize, 50)),
+    });
+    return apiRequest<ActiveActivityResponse>(`/activity/active?${query}`, { signal });
   },
 
-  async getRecentFailures(hours: number = 24): Promise<FailureItem[]> {
-    return apiRequest<FailureItem[]>(`/activity/failures?hours=${hours}`);
+  async getRecentFailures(hours = 24, params: PaginationParams = {}, signal?: AbortSignal): Promise<FailuresResponse> {
+    return apiRequest<FailuresResponse>(`/activity/failures?hours=${hours}&${pageParams(params).slice(1)}`, { signal });
   },
 
   async getActivityTimeline(days: number = 1, page: number = 1, pageSize: number = 20): Promise<TimelineResponse> {
@@ -1100,7 +1159,7 @@ export const activityApi = {
     return apiRequest<TimelineResponse>(`/activity/timeline?${params.toString()}`);
   },
 
-  async getEntityHistory(entityType: string, entityId: number): Promise<HistoryResponse> {
-    return apiRequest<HistoryResponse>(`/activity/history/${entityType}/${entityId}`);
+  async getEntityHistory(entityType: string, entityId: number, params: PaginationParams = {}, signal?: AbortSignal): Promise<HistoryResponse> {
+    return apiRequest<HistoryResponse>(`/activity/history/${entityType}/${entityId}${pageParams(params)}`, { signal });
   },
 };

@@ -17,7 +17,15 @@ func TestHTTPQualityProfilesMixedMediaFiltering(t *testing.T) {
 	// Keep the seeded profiles intact and verify their responses remain unchanged.
 	baseline := make(map[string][]qualityProfileResponse)
 	for _, query := range []string{"", "?type=movie", "?type=series"} {
-		baseline[query] = httpDatabaseResponse[[]qualityProfileResponse](t, app, http.MethodGet, path+query, "", http.StatusOK)
+		baseline[query] = httpDatabaseResponse[struct {
+			Items      []qualityProfileResponse `json:"items"`
+			Pagination struct {
+				Page       int `json:"page"`
+				PageSize   int `json:"pageSize"`
+				TotalItems int `json:"totalItems"`
+				TotalPages int `json:"totalPages"`
+			} `json:"pagination"`
+		}](t, app, http.MethodGet, path+query, "", http.StatusOK).Items
 		for _, p := range baseline[query] {
 			for _, q := range p.Qualities {
 				require.Less(t, q.MinSize, float64(10000))
@@ -73,7 +81,20 @@ func TestHTTPQualityProfilesMixedMediaFiltering(t *testing.T) {
 			if tc.query == "" {
 				want = append(want, empty)
 			}
-			require.Equal(t, want, httpDatabaseResponse[[]qualityProfileResponse](t, app, http.MethodGet, path+tc.query, "", http.StatusOK))
+			got := httpDatabaseResponse[struct {
+				Items      []qualityProfileResponse `json:"items"`
+				Pagination struct {
+					Page       int `json:"page"`
+					PageSize   int `json:"pageSize"`
+					TotalItems int `json:"totalItems"`
+					TotalPages int `json:"totalPages"`
+				} `json:"pagination"`
+			}](t, app, http.MethodGet, path+tc.query, "", http.StatusOK)
+			require.Equal(t, want, got.Items)
+			require.Equal(t, 1, got.Pagination.Page)
+			require.Equal(t, 50, got.Pagination.PageSize)
+			require.Equal(t, len(want), got.Pagination.TotalItems)
+			require.Equal(t, 1, got.Pagination.TotalPages)
 		})
 	}
 	for _, p := range []qualityProfileResponse{a, b, empty} {

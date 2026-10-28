@@ -53,8 +53,10 @@ func TestServer_ListQualityDefinitions(t *testing.T) {
 		err = json.Unmarshal(rr.Body.Bytes(), &response)
 		require.NoError(t, err)
 
-		defList, ok := response.Response.([]any)
-		require.True(t, ok, "Response should be an array")
+		page, ok := response.Response.(map[string]any)
+		require.True(t, ok, "Response should be a paginated object")
+		defList, ok := page["items"].([]any)
+		require.True(t, ok, "items should be an array")
 		// Default schema seeds quality definitions
 		assert.NotEmpty(t, defList)
 
@@ -94,8 +96,10 @@ func TestServer_ListQualityDefinitions(t *testing.T) {
 		err = json.Unmarshal(rr.Body.Bytes(), &response)
 		require.NoError(t, err)
 
-		defList, ok := response.Response.([]any)
-		require.True(t, ok, "Response should be an array")
+		page, ok := response.Response.(map[string]any)
+		require.True(t, ok, "Response should be a paginated object")
+		defList, ok := page["items"].([]any)
+		require.True(t, ok, "items should be an array")
 
 		// Find our created definition by name (unique to avoid colliding with seeded defaults)
 		var found map[string]any
@@ -495,8 +499,10 @@ func TestServer_ListQualityProfiles(t *testing.T) {
 		err = json.Unmarshal(rr.Body.Bytes(), &response)
 		require.NoError(t, err)
 
-		profileList, ok := response.Response.([]any)
-		require.True(t, ok, "Response should be an array")
+		page, ok := response.Response.(map[string]any)
+		require.True(t, ok, "Response should be a paginated object")
+		profileList, ok := page["items"].([]any)
+		require.True(t, ok, "items should be an array")
 		assert.NotEmpty(t, profileList)
 
 		first := profileList[0].(map[string]any)

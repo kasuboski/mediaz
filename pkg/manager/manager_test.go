@@ -17,6 +17,7 @@ import (
 	"github.com/kasuboski/mediaz/config"
 	"github.com/kasuboski/mediaz/pkg/library"
 	mockLibrary "github.com/kasuboski/mediaz/pkg/library/mocks"
+	"github.com/kasuboski/mediaz/pkg/pagination"
 	"github.com/kasuboski/mediaz/pkg/prowlarr"
 	"github.com/kasuboski/mediaz/pkg/ptr"
 	"github.com/kasuboski/mediaz/pkg/storage"
@@ -281,93 +282,59 @@ func TestIndexMovieLibrary(t *testing.T) {
 
 func TestListShowsInLibrary(t *testing.T) {
 	ctx := context.Background()
+	params := pagination.Params{Page: 1, PageSize: 20}
+	states := []storage.SeriesState{storage.SeriesStateDiscovered}
 
-	t.Run("no shows in library", func(t *testing.T) {
+	t.Run("empty library", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		store := storageMocks.NewMockStorage(ctrl)
 		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
 
-		store.EXPECT().ListSeries(ctx, gomock.Any()).Return([]sqlcdb.ListSeriesRow{}, nil)
+		store.EXPECT().ListLibraryShows(ctx, 0, 20, states).Return([]sqlcdb.ListLibraryShowsRow{}, nil)
+		store.EXPECT().CountLibraryShows(ctx, states).Return(int64(0), nil)
+		store.EXPECT().CountLibraryShowsByState(ctx).Return([]sqlcdb.CountLibraryShowsByStateRow{}, nil)
 
-		shows, err := m.ListShowsInLibrary(ctx)
+		got, err := m.ListShowsInLibrary(ctx, params, states)
 		require.NoError(t, err)
-		assert.Empty(t, shows)
+		assert.Equal(t, LibraryShowsResponse{
+			Items: []LibraryShow{}, Pagination: params.BuildMeta(0), ByState: map[string]int64{},
+		}, got)
 	})
 
-	t.Run("shows with metadata", func(t *testing.T) {
+	t.Run("joined metadata and counts", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		store := storageMocks.NewMockStorage(ctrl)
 		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
-
-		metadataID := int32(1)
-		path := "Show 1"
-		series := sqlcdb.ListSeriesRow{
-			Series: sqlcdb.Series{
-				SeriesMetadataID: sql.NullInt64{Int64: int64(metadataID), Valid: true},
-				Path:             sql.NullString{String: path, Valid: true},
+		firstAirDate, err := time.Parse("2006-01-02", "2020-07-15")
+		require.NoError(t, err)
+		row := sqlcdb.ListLibraryShowsRow{
+			Series: sqlcdb.Series{Path: sql.NullString{String: "Show 1", Valid: true}},
+			SeriesMetadatum: sqlcdb.SeriesMetadatum{
+				TmdbID: 321, Title: "Test Series", PosterPath: sql.NullString{String: "poster.jpg", Valid: true},
+				FirstAirDate: sql.NullTime{Time: firstAirDate, Valid: true},
 			},
 			State: string(storage.SeriesStateDiscovered),
 		}
+		store.EXPECT().ListLibraryShows(ctx, 0, 20, states).Return([]sqlcdb.ListLibraryShowsRow{row}, nil)
+		store.EXPECT().CountLibraryShows(ctx, states).Return(int64(3), nil)
+		store.EXPECT().CountLibraryShowsByState(ctx).Return([]sqlcdb.CountLibraryShowsByStateRow{{State: "discovered", Count: 2}, {State: "downloaded", Count: 1}}, nil)
 
-		seriesMetadata := sqlcdb.SeriesMetadatum{
-			ID:             1,
-			TmdbID:         321,
-			Title:          "Test Series",
-			Status:         "Continuing",
-			PosterPath:     sql.NullString{String: "poster.jpg", Valid: true},
-			ExternalIds:    sql.NullString{},
-			WatchProviders: sql.NullString{},
-		}
-
-		store.EXPECT().ListSeries(ctx, gomock.Any()).Return([]sqlcdb.ListSeriesRow{series}, nil)
-		store.EXPECT().GetSeriesMetadataByID(ctx, gomock.Any()).Return(seriesMetadata, nil)
-
-		shows, err := m.ListShowsInLibrary(ctx)
+		got, err := m.ListShowsInLibrary(ctx, params, states)
 		require.NoError(t, err)
-		require.Len(t, shows, 1)
-
-		expected := LibraryShow{
-			Path:       path,
-			TMDBID:     seriesMetadata.TmdbID,
-			Title:      seriesMetadata.Title,
-			PosterPath: seriesMetadata.PosterPath.String,
-		}
-		assert.Equal(t, expected.Path, shows[0].Path)
-		assert.Equal(t, expected.TMDBID, shows[0].TMDBID)
-		assert.Equal(t, expected.Title, shows[0].Title)
-		assert.Equal(t, expected.PosterPath, shows[0].PosterPath)
+		assert.Equal(t, LibraryShowsResponse{
+			Items:      []LibraryShow{{Path: "Show 1", TMDBID: 321, Title: "Test Series", PosterPath: "poster.jpg", Year: 2020, State: "discovered"}},
+			Pagination: params.BuildMeta(3), ByState: map[string]int64{"discovered": 2, "downloaded": 1},
+		}, got)
 	})
 
-	t.Run("shows without metadata are filtered out", func(t *testing.T) {
+	t.Run("joined query error", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		store := storageMocks.NewMockStorage(ctrl)
 		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
-
-		path := "Show 1"
-		series := sqlcdb.ListSeriesRow{
-			Series: sqlcdb.Series{
-				Path: sql.NullString{String: path, Valid: true},
-			},
-			State: string(storage.SeriesStateDiscovered),
-		}
-
-		store.EXPECT().ListSeries(ctx, gomock.Any()).Return([]sqlcdb.ListSeriesRow{series}, nil)
-
-		shows, err := m.ListShowsInLibrary(ctx)
-		require.NoError(t, err)
-		assert.Empty(t, shows, "series without metadata should not be included in library")
-	})
-
-	t.Run("error listing series", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
-		store := storageMocks.NewMockStorage(ctrl)
-		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
-
-		store.EXPECT().ListSeries(ctx, gomock.Any()).Return(nil, errors.New("db error"))
-
-		shows, err := m.ListShowsInLibrary(ctx)
+		store.EXPECT().ListLibraryShows(ctx, 0, 20, states).Return(nil, errors.New("db error"))
+		got, err := m.ListShowsInLibrary(ctx, params, states)
 		assert.Error(t, err)
-		assert.Nil(t, shows)
+		assert.Equal(t, LibraryShowsResponse{}, got)
 	})
 }
 

@@ -3,6 +3,7 @@ package sqlite
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -99,6 +100,36 @@ func (s *SQLite) ListMovies(ctx context.Context) ([]sqlcdb.ListMoviesRow, error)
 		return nil, err
 	}
 	return rows, nil
+}
+
+// ListLibraryMovies lists metadata-backed movies in stable title/id order.
+func (s *SQLite) ListLibraryMovies(ctx context.Context, offset, limit int, states []storage.MovieState) ([]sqlcdb.ListLibraryMoviesRow, error) {
+	if offset < 0 || limit <= 0 {
+		return nil, fmt.Errorf("invalid library pagination: offset %d, limit %d", offset, limit)
+	}
+	stateStrings := make([]string, 0, len(states))
+	for _, state := range states {
+		stateStrings = append(stateStrings, string(state))
+	}
+	encoded, err := json.Marshal(stateStrings)
+	if err != nil {
+		return nil, err
+	}
+	return s.Queries.ListLibraryMovies(ctx, sqlcdb.ListLibraryMoviesParams{Offset: int64(offset), Limit: int64(limit), States: string(encoded)})
+}
+func (s *SQLite) CountLibraryMovies(ctx context.Context, states []storage.MovieState) (int64, error) {
+	stateStrings := make([]string, 0, len(states))
+	for _, state := range states {
+		stateStrings = append(stateStrings, string(state))
+	}
+	encoded, err := json.Marshal(stateStrings)
+	if err != nil {
+		return 0, err
+	}
+	return s.Queries.CountLibraryMovies(ctx, string(encoded))
+}
+func (s *SQLite) CountLibraryMoviesByState(ctx context.Context) ([]sqlcdb.CountLibraryMoviesByStateRow, error) {
+	return s.Queries.CountLibraryMoviesByState(ctx)
 }
 
 // ListMoviesByState lists movies whose current state is one of the given

@@ -12,10 +12,12 @@ import (
 	"time"
 
 	mockLibrary "github.com/kasuboski/mediaz/pkg/library/mocks"
+	"github.com/kasuboski/mediaz/pkg/pagination"
 	"github.com/kasuboski/mediaz/pkg/ptr"
 	"github.com/kasuboski/mediaz/pkg/storage"
 	storageMocks "github.com/kasuboski/mediaz/pkg/storage/mocks"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
+	"github.com/kasuboski/mediaz/pkg/tmdb"
 	tmdbMocks "github.com/kasuboski/mediaz/pkg/tmdb/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -619,57 +621,28 @@ func TestMovieService_ListMoviesInLibrary(t *testing.T) {
 	ctx := context.Background()
 	svc, store, _, _ := newTestMovieService(ctrl)
 
-	metadataID := int64(1 << 40)
 	path := "movie1"
-	discoveredMovie := &sqlcdb.ListMoviesRow{
-		Movie: sqlcdb.Movie{
-			MovieMetadataID: sql.NullInt64{Int64: int64(metadataID), Valid: true},
-			Path:            sql.NullString{String: path, Valid: true},
-		},
-		State: string(storage.MovieStateDiscovered),
+	year := int64(2024)
+	movieMetadata := sqlcdb.MovieMetadatum{TmdbID: 123, Title: "Test Movie", Images: "poster.jpg", Year: sql.NullInt64{Int64: year, Valid: true}}
+	rows := []sqlcdb.ListLibraryMoviesRow{
+		{Movie: sqlcdb.Movie{Path: sql.NullString{String: path, Valid: true}}, MovieMetadatum: movieMetadata, State: string(storage.MovieStateDiscovered)},
+		{Movie: sqlcdb.Movie{Path: sql.NullString{String: path, Valid: true}}, MovieMetadatum: movieMetadata, State: string(storage.MovieStateDownloaded)},
 	}
+	params := pagination.Params{Page: 1, PageSize: 50}
+	store.EXPECT().ListLibraryMovies(ctx, 0, 50, []storage.MovieState(nil)).Return(rows, nil)
+	store.EXPECT().CountLibraryMovies(ctx, []storage.MovieState(nil)).Return(int64(2), nil)
+	store.EXPECT().CountLibraryMoviesByState(ctx).Return([]sqlcdb.CountLibraryMoviesByStateRow{{State: "discovered", Count: 1}, {State: "downloaded", Count: 1}}, nil)
 
-	downloadedMovie := &sqlcdb.ListMoviesRow{
-		Movie: sqlcdb.Movie{
-			MovieMetadataID: sql.NullInt64{Int64: int64(metadataID), Valid: true},
-			Path:            sql.NullString{String: path, Valid: true},
-		},
-		State: string(storage.MovieStateDownloaded),
-	}
-
-	year := int32(2024)
-	movieMetadata := &sqlcdb.MovieMetadatum{
-		ID:     metadataID,
-		TmdbID: 123,
-		Title:  "Test Movie",
-		Images: "poster.jpg",
-		Year:   sql.NullInt64{Int64: int64(year), Valid: true},
-	}
-
-	svc.metadataProvider = &mockMovieMetadataProvider{
-		metadata:    movieMetadata,
-		metadataMap: map[int64]*sqlcdb.MovieMetadatum{metadataID: movieMetadata},
-	}
-
-	store.EXPECT().ListMovies(ctx).Return([]sqlcdb.ListMoviesRow{*discoveredMovie, *downloadedMovie}, nil)
-
-	movies, err := svc.ListMoviesInLibrary(ctx)
+	response, err := svc.ListMoviesInLibrary(ctx, params, nil)
 	require.NoError(t, err)
-	assert.Len(t, movies, 2)
-
-	expectedMovie := LibraryMovie{
-		Path:       path,
-		TMDBID:     movieMetadata.TmdbID,
-		Title:      movieMetadata.Title,
-		PosterPath: movieMetadata.Images,
-		Year:       int32(movieMetadata.Year.Int64),
-	}
-
-	expectedDiscovered := expectedMovie
-	expectedDiscovered.State = string(storage.MovieStateDiscovered)
-	expectedDownloaded := expectedMovie
-	expectedDownloaded.State = string(storage.MovieStateDownloaded)
-	assert.Equal(t, []LibraryMovie{expectedDiscovered, expectedDownloaded}, movies)
+	assert.Equal(t, LibraryMoviesResponse{
+		Items: []LibraryMovie{
+			{Path: path, TMDBID: 123, Title: "Test Movie", PosterPath: "poster.jpg", Year: 2024, State: "discovered"},
+			{Path: path, TMDBID: 123, Title: "Test Movie", PosterPath: "poster.jpg", Year: 2024, State: "downloaded"},
+		},
+		Pagination: pagination.Meta{Page: 1, PageSize: 50, TotalItems: 2, TotalPages: 1},
+		ByState:    map[string]int64{"discovered": 1, "downloaded": 1},
+	}, response)
 }
 
 func TestMovieService_ListMoviesInLibrary_Empty(t *testing.T) {
@@ -679,11 +652,14 @@ func TestMovieService_ListMoviesInLibrary_Empty(t *testing.T) {
 	ctx := context.Background()
 	svc, store, _, _ := newTestMovieService(ctrl)
 
-	store.EXPECT().ListMovies(ctx).Return([]sqlcdb.ListMoviesRow{}, nil)
+	params := pagination.Params{Page: 1, PageSize: 50}
+	store.EXPECT().ListLibraryMovies(ctx, 0, 50, []storage.MovieState(nil)).Return([]sqlcdb.ListLibraryMoviesRow{}, nil)
+	store.EXPECT().CountLibraryMovies(ctx, []storage.MovieState(nil)).Return(int64(0), nil)
+	store.EXPECT().CountLibraryMoviesByState(ctx).Return([]sqlcdb.CountLibraryMoviesByStateRow{}, nil)
 
-	movies, err := svc.ListMoviesInLibrary(ctx)
+	response, err := svc.ListMoviesInLibrary(ctx, params, nil)
 	require.NoError(t, err)
-	assert.Empty(t, movies)
+	assert.Equal(t, LibraryMoviesResponse{Items: []LibraryMovie{}, Pagination: pagination.Meta{Page: 1, PageSize: 50}, ByState: map[string]int64{}}, response)
 }
 
 func TestMovieService_ListMoviesInLibrary_SkipsNoMetadata(t *testing.T) {
@@ -693,19 +669,13 @@ func TestMovieService_ListMoviesInLibrary_SkipsNoMetadata(t *testing.T) {
 	ctx := context.Background()
 	svc, store, _, _ := newTestMovieService(ctrl)
 
-	path := "movie1"
-	discoveredMovie := &sqlcdb.ListMoviesRow{
-		Movie: sqlcdb.Movie{
-			Path: sql.NullString{String: path, Valid: true},
-		},
-		State: string(storage.MovieStateDiscovered),
-	}
+	store.EXPECT().ListLibraryMovies(ctx, 0, 50, []storage.MovieState(nil)).Return([]sqlcdb.ListLibraryMoviesRow{}, nil)
+	store.EXPECT().CountLibraryMovies(ctx, []storage.MovieState(nil)).Return(int64(0), nil)
+	store.EXPECT().CountLibraryMoviesByState(ctx).Return([]sqlcdb.CountLibraryMoviesByStateRow{}, nil)
 
-	store.EXPECT().ListMovies(ctx).Return([]sqlcdb.ListMoviesRow{*discoveredMovie}, nil)
-
-	movies, err := svc.ListMoviesInLibrary(ctx)
+	response, err := svc.ListMoviesInLibrary(ctx, pagination.Params{Page: 1, PageSize: 50}, nil)
 	require.NoError(t, err)
-	assert.Empty(t, movies, "movies without metadata should not be included in library")
+	assert.Equal(t, LibraryMoviesResponse{Items: []LibraryMovie{}, Pagination: pagination.Meta{Page: 1, PageSize: 50}, ByState: map[string]int64{}}, response)
 }
 
 func TestMovieService_ListMoviesInLibrary_Error(t *testing.T) {
@@ -715,11 +685,11 @@ func TestMovieService_ListMoviesInLibrary_Error(t *testing.T) {
 	ctx := context.Background()
 	svc, store, _, _ := newTestMovieService(ctrl)
 
-	store.EXPECT().ListMovies(ctx).Return(nil, errors.New("db error"))
+	store.EXPECT().ListLibraryMovies(ctx, 0, 50, []storage.MovieState(nil)).Return(nil, errors.New("db error"))
 
-	movies, err := svc.ListMoviesInLibrary(ctx)
+	response, err := svc.ListMoviesInLibrary(ctx, pagination.Params{Page: 1, PageSize: 50}, nil)
 	assert.Error(t, err)
-	assert.Nil(t, movies)
+	assert.Equal(t, LibraryMoviesResponse{}, response)
 }
 
 // ---------------------------------------------------------------------------
@@ -733,7 +703,7 @@ func TestMovieService_SearchMovie_EmptyQuery(t *testing.T) {
 	ctx := context.Background()
 	svc, _, _, _ := newTestMovieService(ctrl)
 
-	_, err := svc.SearchMovie(ctx, "")
+	_, err := svc.SearchMovie(ctx, "", 1)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "query is empty")
 }
@@ -753,9 +723,14 @@ func TestMovieService_SearchMovie_Success(t *testing.T) {
 		Body:       io.NopCloser(bytes.NewReader(body)),
 	}
 
-	tmdbClient.EXPECT().SearchMovie(ctx, gomock.Any()).Return(httpResponse, nil)
+	tmdbClient.EXPECT().SearchMovie(ctx, gomock.Any()).DoAndReturn(func(_ context.Context, params *tmdb.SearchMovieParams, _ ...tmdb.RequestEditorFn) (*http.Response, error) {
+		assert.Equal(t, "test movie", params.Query)
+		require.NotNil(t, params.Page)
+		assert.Equal(t, int32(2), *params.Page)
+		return httpResponse, nil
+	})
 
-	result, err := svc.SearchMovie(ctx, "test movie")
+	result, err := svc.SearchMovie(ctx, "test movie", 2)
 	require.NoError(t, err)
 	assert.NotNil(t, result)
 }
@@ -769,7 +744,7 @@ func TestMovieService_SearchMovie_TMDBError(t *testing.T) {
 
 	tmdbClient.EXPECT().SearchMovie(ctx, gomock.Any()).Return(nil, errors.New("tmdb error"))
 
-	result, err := svc.SearchMovie(ctx, "test movie")
+	result, err := svc.SearchMovie(ctx, "test movie", 1)
 	require.Error(t, err)
 	assert.Nil(t, result)
 }

@@ -3,6 +3,7 @@ package manager
 import (
 	"context"
 	"database/sql"
+	"github.com/kasuboski/mediaz/pkg/pagination"
 	"github.com/kasuboski/mediaz/pkg/storage"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite"
@@ -28,7 +29,7 @@ func TestGetTransitionsByDate(t *testing.T) {
 		now := time.Now().UTC()
 		resp, err := svc.getTransitionsByDate(ctx, now.Add(-time.Hour), now.Add(time.Hour), 0, 10)
 		require.NoError(t, err)
-		assert.Equal(t, &TimelineResponse{Count: 0}, resp)
+		assert.Equal(t, &TimelineResponse{Transitions: []*TransitionItem{}, Count: 0}, resp)
 	})
 
 	t.Run("returns timeline and transitions with limit", func(t *testing.T) {
@@ -64,9 +65,12 @@ func TestGetTransitionsByDate(t *testing.T) {
 		store := newActivityTestStorage(t, ctx)
 		svc := &JobService{activityStorage: store}
 
-		p := "path/1"
-		_, err := store.CreateMovie(ctx, sqlcdb.Movie{QualityProfileID: 1, Path: sql.NullString{String: p, Valid: true}, Monitored: 1}, storage.MovieStateMissing)
+		movieMetadata, err := store.CreateMovieMetadata(ctx, sqlcdb.MovieMetadatum{TmdbID: 100, Title: "Timeline Movie", Images: "[]"})
 		require.NoError(t, err)
+		p := "path/1"
+		_, err = store.CreateMovie(ctx, sqlcdb.Movie{QualityProfileID: 1, Path: sql.NullString{String: p, Valid: true}, Monitored: 1}, storage.MovieStateMissing)
+		require.NoError(t, err)
+		require.NoError(t, store.LinkMovieMetadata(ctx, 1, movieMetadata))
 		require.NoError(t, store.UpdateMovieState(ctx, 1, storage.MovieStateDownloading, nil))
 
 		_, err = store.CreateJob(ctx, sqlcdb.Job{Type: "rss_sync"}, storage.JobStatePending)
@@ -134,7 +138,7 @@ func TestGetEntityTransitions(t *testing.T) {
 		store := newActivityTestStorage(t, ctx)
 		svc := &JobService{activityStorage: store}
 
-		_, err := svc.getEntityTransitions(ctx, "unknown", 1)
+		_, err := svc.getEntityTransitions(ctx, "unknown", 1, 0, 50)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "unsupported entity type")
 	})
@@ -163,7 +167,7 @@ func TestGetEntityTransitions(t *testing.T) {
 			DownloadClientID: activityInt64Ptr(1), DownloadID: activityStringPtr("dl-100"),
 		}))
 
-		resp, err := svc.getEntityTransitions(ctx, "movie", movieID)
+		resp, err := svc.getEntityTransitions(ctx, "movie", movieID, 0, 50)
 		require.NoError(t, err)
 
 		assert.Equal(t, &EntityInfo{
@@ -171,6 +175,7 @@ func TestGetEntityTransitions(t *testing.T) {
 		}, resp.Entity)
 
 		require.Len(t, resp.History, 2)
+		assert.Equal(t, pagination.Meta{Page: 1, PageSize: 50, TotalItems: 2, TotalPages: 1}, resp.Pagination)
 		assert.Nil(t, resp.History[0].FromState)
 		assert.Equal(t, "missing", resp.History[0].ToState)
 		assert.Equal(t, "downloading", resp.History[1].ToState)
@@ -194,13 +199,14 @@ func TestGetEntityTransitions(t *testing.T) {
 		require.NoError(t, store.LinkSeriesMetadata(ctx, seriesID, 1))
 		require.NoError(t, store.UpdateSeriesState(ctx, seriesID, storage.SeriesStateDiscovered, nil))
 
-		resp, err := svc.getEntityTransitions(ctx, "series", seriesID)
+		resp, err := svc.getEntityTransitions(ctx, "series", seriesID, 0, 50)
 		require.NoError(t, err)
 
 		assert.Equal(t, &EntityInfo{
 			Type: "series", ID: seriesID, Title: "History Series", PosterPath: "/series-poster.jpg",
 		}, resp.Entity)
 		require.Len(t, resp.History, 2)
+		assert.Equal(t, pagination.Meta{Page: 1, PageSize: 50, TotalItems: 2, TotalPages: 1}, resp.Pagination)
 		assert.Equal(t, "discovered", resp.History[1].ToState)
 	})
 
@@ -228,13 +234,14 @@ func TestGetEntityTransitions(t *testing.T) {
 			DownloadClientID: activityInt64Ptr(1), DownloadID: activityStringPtr("dl-season"),
 		}))
 
-		resp, err := svc.getEntityTransitions(ctx, "season", seasonID)
+		resp, err := svc.getEntityTransitions(ctx, "season", seasonID, 0, 50)
 		require.NoError(t, err)
 
 		assert.Equal(t, &EntityInfo{
 			Type: "season", ID: seasonID, Title: "Season Series", PosterPath: "/season-poster.jpg",
 		}, resp.Entity)
 		require.Len(t, resp.History, 2)
+		assert.Equal(t, pagination.Meta{Page: 1, PageSize: 50, TotalItems: 2, TotalPages: 1}, resp.Pagination)
 		assert.Equal(t, "downloading", resp.History[1].ToState)
 		require.NotNil(t, resp.History[1].Metadata)
 		assert.Equal(t, "dl-season", resp.History[1].Metadata.DownloadID)
@@ -249,11 +256,12 @@ func TestGetEntityTransitions(t *testing.T) {
 		require.NoError(t, err)
 		require.NoError(t, store.UpdateJobState(ctx, jobID, storage.JobStateRunning, nil))
 
-		resp, err := svc.getEntityTransitions(ctx, "job", jobID)
+		resp, err := svc.getEntityTransitions(ctx, "job", jobID, 0, 50)
 		require.NoError(t, err)
 
 		assert.Equal(t, &EntityInfo{Type: "job", ID: jobID, Title: "rss_sync"}, resp.Entity)
 		require.Len(t, resp.History, 2)
+		assert.Equal(t, pagination.Meta{Page: 1, PageSize: 50, TotalItems: 2, TotalPages: 1}, resp.Pagination)
 		assert.Equal(t, "running", resp.History[1].ToState)
 	})
 
@@ -276,13 +284,14 @@ func TestGetEntityTransitions(t *testing.T) {
 		require.NoError(t, err)
 		require.NoError(t, store.UpdateEpisodeState(ctx, episodeID, storage.EpisodeStateDownloading, nil))
 
-		resp, err := svc.getEntityTransitions(ctx, "episode", episodeID)
+		resp, err := svc.getEntityTransitions(ctx, "episode", episodeID, 0, 50)
 		require.NoError(t, err)
 
 		assert.Equal(t, &EntityInfo{
 			Type: "episode", ID: episodeID, Title: "Episode Series", PosterPath: "/ep-poster.jpg",
 		}, resp.Entity)
 		require.Len(t, resp.History, 2)
+		assert.Equal(t, pagination.Meta{Page: 1, PageSize: 50, TotalItems: 2, TotalPages: 1}, resp.Pagination)
 		assert.Equal(t, "downloading", resp.History[1].ToState)
 	})
 
@@ -300,10 +309,11 @@ func TestGetEntityTransitions(t *testing.T) {
 		require.NoError(t, store.LinkMovieMetadata(ctx, movieID, 1))
 		require.NoError(t, store.UpdateMovieState(ctx, movieID, storage.MovieStateDownloading, nil))
 
-		resp, err := svc.getEntityTransitions(ctx, "movie", movieID)
+		resp, err := svc.getEntityTransitions(ctx, "movie", movieID, 0, 50)
 		require.NoError(t, err)
 		require.NotNil(t, resp.Entity)
 		require.Len(t, resp.History, 2)
+		assert.Equal(t, pagination.Meta{Page: 1, PageSize: 50, TotalItems: 2, TotalPages: 1}, resp.Pagination)
 		require.NotNil(t, resp.History[1].Metadata)
 		assert.Empty(t, resp.History[1].Metadata.DownloadID)
 	})

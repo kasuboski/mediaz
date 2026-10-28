@@ -2,6 +2,9 @@ package server
 
 import (
 	"net/http"
+	"sort"
+
+	"github.com/kasuboski/mediaz/pkg/pagination"
 
 	"github.com/kasuboski/mediaz/pkg/manager"
 )
@@ -9,12 +12,23 @@ import (
 // ListDownloadClients lists all download clients
 func (s Server) ListDownloadClients() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		params, err := ParsePaginationParams(r)
+		if err != nil {
+			s.respondError(r, w, http.StatusBadRequest, err)
+			return
+		}
 		clients, err := s.manager.ListDownloadClients(r.Context())
 		if err != nil {
 			s.respondError(r, w, http.StatusInternalServerError, err)
 			return
 		}
-		s.respond(r, w, http.StatusOK, downloadClientsDTO(clients))
+		sort.Slice(clients, func(i, j int) bool {
+			if clients[i].Host != clients[j].Host {
+				return clients[i].Host < clients[j].Host
+			}
+			return clients[i].ID < clients[j].ID
+		})
+		s.respond(r, w, http.StatusOK, pagination.Page(downloadClientsDTO(clients), params))
 	}
 }
 

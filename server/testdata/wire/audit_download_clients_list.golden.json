@@ -1,1 +1,1 @@
-{"response":[{"ID":1,"Type":"transmission","Implementation":"TRANSMISSION","Scheme":"http","Host":"dc.local","Port":9091}]}
+{"response":{"items":[{"ID":1,"Type":"transmission","Implementation":"TRANSMISSION","Scheme":"http","Host":"dc.local","Port":9091}],"pagination":{"page":1,"pageSize":50,"totalItems":1,"totalPages":1}}}
