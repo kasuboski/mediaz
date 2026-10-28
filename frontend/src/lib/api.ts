@@ -619,8 +619,6 @@ export const searchApi = {
     const params = new URLSearchParams({ query: query.trim(), page: String(page) });
     return transformSearchPage(await apiRequest<SearchMediaResponse>(`/discover/tv?${params}`), 'tv');
   },
-  async searchMovies(query: string): Promise<MediaItem[]> { return (await this.searchMoviesPage(query, 1)).items; },
-  async searchTV(query: string): Promise<MediaItem[]> { return (await this.searchTVPage(query, 1)).items; },
 };
 
 /**

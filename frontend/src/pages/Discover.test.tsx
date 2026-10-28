@@ -26,6 +26,28 @@ describe('Discover pagination', () => {
     return fetchMock;
   }
 
+  it('shows loading and waits for movie metadata before requesting cold page two', async () => {
+    let resolveMetadata!: (response: Response) => void;
+    const metadataResponse = new Promise<Response>((resolve) => { resolveMetadata = resolve; });
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      const url = new URL(String(input), 'http://localhost');
+      if (url.pathname.includes('movie') && url.searchParams.get('page') === '1') return metadataResponse;
+      const page = Number(url.searchParams.get('page') || 1);
+      return Promise.resolve(new Response(JSON.stringify({ response: { results: [{ id: page, title: `Movie page ${page}`, poster_path: '', release_date: '', media_type: 'movie' }], page, total_results: 45, total_pages: 3 } }), { status: 200, headers: { 'Content-Type': 'application/json' } }));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(<QueryClientProvider client={client}><MemoryRouter initialEntries={['/discover?query=alien&type=movies&page=2']}><Discover /></MemoryRouter></QueryClientProvider>);
+
+    expect(await screen.findByText('Searching...')).toBeInTheDocument();
+    expect(screen.queryByText('No results found')).not.toBeInTheDocument();
+    expect(fetchMock.mock.calls.filter(([input]) => new URL(String(input), 'http://localhost').searchParams.get('page') === '2')).toHaveLength(0);
+
+    resolveMetadata(new Response(JSON.stringify({ response: { results: [{ id: 1, title: 'Movie page 1', poster_path: '', release_date: '', media_type: 'movie' }], page: 1, total_results: 45, total_pages: 3 } }), { status: 200, headers: { 'Content-Type': 'application/json' } }));
+    expect(await screen.findByText('Movie page 2')).toBeInTheDocument();
+    await waitFor(() => expect(fetchMock.mock.calls.some(([input]) => new URL(String(input), 'http://localhost').searchParams.get('page') === '2')).toBe(true));
+  });
+
   it('forwards page two and displays upstream totals', async () => {
     const fetchMock = setup();
     await screen.findByText('Movie page 1');

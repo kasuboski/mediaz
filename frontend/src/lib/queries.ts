@@ -52,9 +52,7 @@ export const queryKeys = {
   },
   search: {
     all: ['search'] as const,
-    movies: (query: string) => [...queryKeys.search.all, 'movies', query] as const,
     moviesPage: (query: string, page: number) => [...queryKeys.search.all, 'movies', query, page] as const,
-    tv: (query: string) => [...queryKeys.search.all, 'tv', query] as const,
     tvPage: (query: string, page: number) => [...queryKeys.search.all, 'tv', query, page] as const,
   },
   jobs: {
@@ -156,31 +154,6 @@ export function useSearchMoviesPage(query: string, page: number, enabled = true)
 export function useSearchTVPage(query: string, page: number, enabled = true) {
   const normalizedQuery = query.trim();
   return useQuery({ queryKey: queryKeys.search.tvPage(normalizedQuery, page), queryFn: () => searchApi.searchTVPage(normalizedQuery, page), enabled: !!normalizedQuery && enabled });
-}
-
-export function useSearchMovies(query: string) {
-  const normalizedQuery = query.trim();
-  return useQuery({
-    queryKey: queryKeys.search.movies(normalizedQuery),
-    queryFn: () => searchApi.searchMovies(normalizedQuery),
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes
-    enabled: !!normalizedQuery, // Only run query if query is provided
-  });
-}
-
-/**
- * Hook to search for TV shows
- */
-export function useSearchTV(query: string) {
-  const normalizedQuery = query.trim();
-  return useQuery({
-    queryKey: queryKeys.search.tv(normalizedQuery),
-    queryFn: () => searchApi.searchTV(normalizedQuery),
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes
-    enabled: !!normalizedQuery, // Only run query if query is provided
-  });
 }
 
 /**

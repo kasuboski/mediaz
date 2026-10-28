@@ -30,7 +30,7 @@ export default function Discover() {
   const tvQuery = useSearchTVPage(query, page, tvPageEnabled);
   const movies = moviesQuery.data?.items ?? [];
   const tvShows = tvQuery.data?.items ?? [];
-  const isLoading = (filter !== "tv" && moviePageEnabled && moviesQuery.isLoading) || (filter !== "movies" && tvPageEnabled && tvQuery.isLoading);
+  const isLoading = (filter !== "tv" && (moviePageEnabled ? moviesQuery.isLoading : page > 1 && !movieFirstPage && movieMetadataQuery.isLoading)) || (filter !== "movies" && (tvPageEnabled ? tvQuery.isLoading : page > 1 && !tvFirstPage && tvMetadataQuery.isLoading));
   const movieError = filter !== "tv" && !!(moviesQuery.error || (page > 1 && movieMetadataQuery.error));
   const tvError = filter !== "movies" && !!(tvQuery.error || (page > 1 && tvMetadataQuery.error));
   const hasError = movieError || tvError;
