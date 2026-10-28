@@ -216,7 +216,7 @@ func (m MediaManager) SearchForSeason(ctx context.Context, seasonID int64) error
 		return err
 	}
 
-	err = m.reconcileMissingSeason(ctx, seriesMetadata.Title, seasonListRow(season), snapshot, qualityProfile, releases)
+	err = m.reconcileMissingSeasonWithMetadata(ctx, seriesMetadata.Title, seasonListRow(season), nil, nil, nil, snapshot, qualityProfile, releases, seriesReleaseIdentity(seriesMetadata))
 	if err != nil {
 		log.Error("failed to reconcile season", zap.Error(err))
 		return err
@@ -298,7 +298,7 @@ func (m MediaManager) SearchForEpisode(ctx context.Context, episodeID int64) err
 		return err
 	}
 
-	_, err = m.reconcileMissingEpisode(ctx, seriesMetadata.Title, seasonNumber, episodeListRow(episode), snapshot, qualityProfile, releases)
+	_, err = m.reconcileMissingEpisodeWithMetadata(ctx, seriesMetadata.Title, seasonNumber, episodeListRow(episode), nil, snapshot, qualityProfile, releases, seriesReleaseIdentity(seriesMetadata))
 	if err != nil {
 		log.Error("failed to reconcile episode", zap.Error(err))
 		return err

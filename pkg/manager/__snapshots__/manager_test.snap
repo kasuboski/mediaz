@@ -211,11 +211,11 @@
 ---
 
 [TestMovieRejectRelease/prefix_match_only - 54]
-[]string{"Brothers.Nest.2018.720p.WEB.H264-DiMEPiECE", "false"}
+[]string{"Brothers.Nest.2018.720p.WEB.H264-DiMEPiECE", "true"}
 ---
 
 [TestMovieRejectRelease/prefix_match_only - 55]
-[]string{"Brothers.Nest.2018.1080p.WEB.H264-DiMEPiECE", "false"}
+[]string{"Brothers.Nest.2018.1080p.WEB.H264-DiMEPiECE", "true"}
 ---
 
 [TestMovieRejectRelease/prefix_match_only - 56]
@@ -227,7 +227,7 @@
 ---
 
 [TestMovieRejectRelease/prefix_match_only - 58]
-[]string{"Brothers.by.Blood.2020.1080p.BluRay.x264-OFT", "false"}
+[]string{"Brothers.by.Blood.2020.1080p.BluRay.x264-OFT", "true"}
 ---
 
 [TestMovieRejectRelease/prefix_match_only - 59]
@@ -439,7 +439,7 @@
 ---
 
 [TestMovieRejectRelease/prefix_match_only - 111]
-[]string{"Brothers.Justice.2010.1080p.BluRay.x264-OFT", "false"}
+[]string{"Brothers.Justice.2010.1080p.BluRay.x264-OFT", "true"}
 ---
 
 [TestMovieRejectRelease/prefix_match_only - 112]

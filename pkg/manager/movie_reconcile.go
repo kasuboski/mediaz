@@ -276,6 +276,10 @@ func (m MediaManager) reconcileMissingMovie(ctx context.Context, movie sqlcdb.Li
 		Runtime:       det.Runtime,
 		Certification: nullStrOut(det.Certification),
 		Studio:        nullStrOut(det.Studio),
+		TmdbID:        det.TmdbID,
+	}
+	if det.ImdbID.Valid {
+		params.IMDbID = det.ImdbID.String
 	}
 	releases = slices.DeleteFunc(releases, RejectMovieReleaseFunc(ctx, params, profile, availableProtocols))
 	log.Debug("releases after rejection", zap.Int("releases", len(releases)))

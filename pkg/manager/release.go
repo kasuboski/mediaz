@@ -18,10 +18,8 @@ import (
 )
 
 var (
-	seasonPackPattern    = regexp.MustCompile(`(?i)(?:S(?:eason)?[\s._-]?\d+|[\s._]Complete[\s._])`)
 	episodeNumberPattern = regexp.MustCompile(`(?i)(?:^|[^a-z0-9])S(\d+)E(\d+)`)
 	episodeCrossPattern  = regexp.MustCompile(`(?i)(?:^|[^a-z0-9])(\d+)x(\d+)`)
-	seasonNumberPattern  = regexp.MustCompile(`(?i)(?:S(?:eason)?[\s._-]?(\d+))`)
 
 	releaseGroupRegex   = regexp.MustCompile(`(?:\s|-)[A-Z0-9]+\[[^\]]+\]`)
 	bracketedYearRegex  = regexp.MustCompile(`[\(\[\{]((?:19|20)\d{2})[\)\]\}]`)
@@ -41,6 +39,8 @@ type ReleaseFilterParams struct {
 	Runtime       int64
 	Certification *string
 	Studio        *string
+	TmdbID        int64
+	IMDbID        string
 }
 
 type SeriesReleaseFilterParams struct {
@@ -48,6 +48,10 @@ type SeriesReleaseFilterParams struct {
 	SeasonNumber  int64
 	EpisodeNumber int64
 	Runtime       int64
+	TmdbID        int64
+	IMDbID        string
+	TVDBID        int64
+	Year          *int32
 }
 
 func RejectMovieReleaseFunc(ctx context.Context, params ReleaseFilterParams, profile []sqlcdb.ListQualityProfileRowsRow, protocolsAvailable map[string]struct{}) func(*prowlarr.ReleaseResource) bool {
@@ -66,30 +70,9 @@ func RejectMovieReleaseFunc(ctx context.Context, params ReleaseFilterParams, pro
 			return true
 		}
 
-		lowerReleaseTitle := strings.ToLower(normalizeSeparators(releaseTitle))
-
-		normalizedTitle := strings.TrimSpace(strings.ToLower(normalizeSeparators(params.Title)))
-		titleMatches := normalizedTitle != "" && strings.HasPrefix(lowerReleaseTitle, normalizedTitle)
-
-		if !titleMatches && params.OriginalTitle != nil {
-			normalizedOriginal := strings.TrimSpace(strings.ToLower(normalizeSeparators(*params.OriginalTitle)))
-			titleMatches = normalizedOriginal != "" && strings.HasPrefix(lowerReleaseTitle, normalizedOriginal)
-		}
-
-		if !titleMatches && params.CleanTitle != nil {
-			normalizedClean := strings.TrimSpace(strings.ToLower(normalizeSeparators(*params.CleanTitle)))
-			titleMatches = normalizedClean != "" && strings.HasPrefix(lowerReleaseTitle, normalizedClean)
-		}
-
-		if !titleMatches {
+		idsMatch, idsConflict := compareReleaseIDs(r, params.TmdbID, params.IMDbID, 0)
+		if idsConflict || (!idsMatch && !movieReleaseTitleMatches(releaseTitle, params)) {
 			return true
-		}
-
-		if params.Year != nil {
-			releaseYear := extractYear(releaseTitle)
-			if releaseYear != nil && *releaseYear != *params.Year {
-				return true
-			}
 		}
 
 		return rejectReleaseFunc(ctx, params.Runtime, profile, protocolsAvailable)(r)
@@ -128,7 +111,7 @@ func extractYear(title string) *int32 {
 
 func RejectSeasonReleaseFunc(ctx context.Context, params SeriesReleaseFilterParams, profile []sqlcdb.ListQualityProfileRowsRow, protocolsAvailable map[string]struct{}) func(*prowlarr.ReleaseResource) bool {
 	return func(r *prowlarr.ReleaseResource) bool {
-		if rejectSeasonReleaseFunc(params.Title, params.SeasonNumber, r) {
+		if rejectSeriesRelease(params, params.SeasonNumber, 0, true, r) {
 			return true
 		}
 		return rejectReleaseFunc(ctx, params.Runtime, profile, protocolsAvailable)(r)
@@ -136,6 +119,10 @@ func RejectSeasonReleaseFunc(ctx context.Context, params SeriesReleaseFilterPara
 }
 
 func rejectSeasonReleaseFunc(seriesTitle string, seasonNumber int64, r *prowlarr.ReleaseResource) bool {
+	return rejectSeriesRelease(SeriesReleaseFilterParams{Title: seriesTitle}, seasonNumber, 0, true, r)
+}
+
+func rejectSeriesRelease(params SeriesReleaseFilterParams, seasonNumber, episodeNumber int64, seasonPack bool, r *prowlarr.ReleaseResource) bool {
 	if r == nil {
 		return true
 	}
@@ -145,34 +132,61 @@ func rejectSeasonReleaseFunc(seriesTitle string, seasonNumber int64, r *prowlarr
 		return true
 	}
 
-	if !seasonPackPattern.MatchString(foundTitle) {
+	if strings.TrimSpace(foundTitle) == "" {
+		return true
+	}
+	matched, conflict := compareReleaseIDs(r, params.TmdbID, params.IMDbID, params.TVDBID)
+	if conflict {
 		return true
 	}
 
-	// we dont want individual episodes here
-	if len(findEpisodeNumbers(foundTitle)) == 3 {
-		return true
-	}
-
-	normalizedSeriesTitle := strings.ToLower(seriesTitle)
-	normalizedReleaseTitle := strings.ToLower(foundTitle)
-
-	if !strings.Contains(normalizedReleaseTitle, normalizedSeriesTitle) {
-		return true
-	}
-
-	matches := seasonNumberPattern.FindStringSubmatch(normalizedReleaseTitle)
-	if len(matches) == 2 {
+	var marker string
+	if seasonPack {
+		// A pack must name a season, and must not be an individual episode.
+		if len(findEpisodeNumbers(foundTitle)) == 3 {
+			return true
+		}
+		matches := seriesSeasonMarker.FindStringSubmatch(foundTitle)
+		if len(matches) != 2 {
+			return true
+		}
 		season, err := strconv.ParseInt(matches[1], 10, 64)
-		return err != nil || season != seasonNumber
+		if err != nil || season != seasonNumber {
+			return true
+		}
+		marker = matches[0]
+	} else {
+		matches := findEpisodeNumbers(foundTitle)
+		if len(matches) != 3 {
+			return true
+		}
+		season, err := strconv.ParseInt(matches[1], 10, 64)
+		if err != nil || season != seasonNumber {
+			return true
+		}
+		episode, err := strconv.ParseInt(matches[2], 10, 64)
+		if err != nil || episode != episodeNumber {
+			return true
+		}
+		marker = matches[0]
 	}
-
-	return true
+	if matched {
+		return false
+	}
+	// Explicit S/E ordinals take priority for validation, but earlier season,
+	// NxM or dimension markers still delimit the series title.
+	boundary := strings.Index(foundTitle, marker)
+	for _, pattern := range []*regexp.Regexp{seriesSeasonMarker, episodeNumberPattern, episodeCrossPattern} {
+		if loc := pattern.FindStringIndex(foundTitle); loc != nil && loc[0] < boundary {
+			boundary = loc[0]
+		}
+	}
+	return !seriesReleaseTitleMatches(params.Title, foundTitle[:boundary], params.Year)
 }
 
 func RejectEpisodeReleaseFunc(ctx context.Context, params SeriesReleaseFilterParams, profile []sqlcdb.ListQualityProfileRowsRow, protocolsAvailable map[string]struct{}) func(*prowlarr.ReleaseResource) bool {
 	return func(r *prowlarr.ReleaseResource) bool {
-		if rejectEpisodeReleaseFunc(params.Title, params.SeasonNumber, params.EpisodeNumber, r) {
+		if rejectSeriesRelease(params, params.SeasonNumber, params.EpisodeNumber, false, r) {
 			return true
 		}
 
@@ -213,39 +227,29 @@ func isVideoResolution(width, height int64) bool {
 }
 
 func rejectEpisodeReleaseFunc(seriesTitle string, seasonNumber, episodeNumber int64, r *prowlarr.ReleaseResource) bool {
-	if r == nil {
+	return rejectSeriesRelease(SeriesReleaseFilterParams{Title: seriesTitle}, seasonNumber, episodeNumber, false, r)
+}
+
+var seriesSeasonMarker = regexp.MustCompile(`(?i)(?:^|[^a-z0-9])s(?:eason)?[ ._-]?(\d+)(?:$|[^a-z0-9])`)
+
+func seriesReleaseTitleMatches(seriesTitle, prefix string, expectedYear *int32) bool {
+	title := normalizeReleaseIdentity(seriesTitle)
+	prefix = normalizeReleaseIdentity(prefix)
+	if title == "" {
+		return false
+	}
+	if prefix == title {
 		return true
 	}
-
-	foundTitle, err := r.Title.Get()
-	if err != nil {
-		return true
+	// Series releases sometimes include the series premiere year before S/E.
+	if strings.HasPrefix(prefix, title+" ") {
+		suffix := strings.TrimPrefix(prefix, title+" ")
+		if len(suffix) == 4 && movieReleaseYear.MatchString(suffix) {
+			year, _ := strconv.ParseInt(suffix, 10, 32)
+			return expectedYear == nil || int32(year) == *expectedYear
+		}
 	}
-
-	normalizedSeriesTitle := strings.ToLower(seriesTitle)
-	normalizedReleaseTitle := strings.ToLower(foundTitle)
-
-	if !strings.Contains(normalizedReleaseTitle, normalizedSeriesTitle) {
-		return true
-	}
-
-	matches := findEpisodeNumbers(normalizedReleaseTitle)
-	if len(matches) != 3 {
-		return true
-	}
-
-	season, err := strconv.ParseInt(matches[1], 10, 64)
-	if err != nil {
-		return true
-	}
-
-	episode, err := strconv.ParseInt(matches[2], 10, 64)
-	if err != nil {
-		return true
-	}
-
-	match := !(season == seasonNumber && episode == episodeNumber)
-	return match
+	return false
 }
 
 // rejectReleaseFunc returns a function that returns true if the given release should be rejected
@@ -264,13 +268,16 @@ func rejectReleaseFunc(ctx context.Context, runtime int64, profile []sqlcdb.List
 			}
 		}
 
-		if r.FileName.IsSpecified() {
+		if r.FileName.IsSpecified() && !r.FileName.IsNull() {
 			_, parsed := parseReleaseFilename(r.FileName.MustGet())
 			if !parsed {
 				return true
 			}
 		}
 
+		if r.Size == nil || *r.Size < 0 {
+			return true
+		}
 		sizeMB := size.BytesToMB(*r.Size)
 
 		// items are assumed to be sorted quality so the highest media quality available is selected
