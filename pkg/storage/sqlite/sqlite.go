@@ -28,6 +28,21 @@ func (s *SQLite) txQueries(tx *sql.Tx) *sqlcdb.Queries {
 	return s.Queries.WithTx(tx)
 }
 
+// withTx commits fn's writes on success and rolls back on error or panic.
+// fn must use the supplied transaction-scoped queries, not s.Queries.
+func (s *SQLite) withTx(ctx context.Context, fn func(*sqlcdb.Queries) error) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	if err := fn(s.txQueries(tx)); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
 // seedSQL is the embedded default data (defaults.sql) applied after
 // migrations. Statements use INSERT OR IGNORE, so rows backed by a key
 // (quality_profile, quality_profile_item) are never duplicated. Seeding is

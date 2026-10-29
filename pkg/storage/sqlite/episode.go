@@ -17,47 +17,38 @@ func (s *SQLite) CreateEpisode(ctx context.Context, episode sqlcdb.Episode, init
 		return 0, err
 	}
 
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return 0, err
-	}
-	q := s.txQueries(tx)
+	var inserted int64
+	err := s.withTx(ctx, func(q *sqlcdb.Queries) error {
+		var err error
+		inserted, err = q.CreateEpisode(ctx, sqlcdb.CreateEpisodeParams{
+			ID:                sql.NullInt64{Int64: episode.ID, Valid: episode.ID != 0},
+			SeasonID:          episode.SeasonID,
+			EpisodeNumber:     episode.EpisodeNumber,
+			Monitored:         episode.Monitored,
+			EpisodeMetadataID: episode.EpisodeMetadataID,
+			EpisodeFileID:     episode.EpisodeFileID,
+		})
+		if err != nil {
+			return err
+		}
 
-	inserted, err := q.CreateEpisode(ctx, sqlcdb.CreateEpisodeParams{
-		ID:                sql.NullInt64{Int64: episode.ID, Valid: episode.ID != 0},
-		SeasonID:          episode.SeasonID,
-		EpisodeNumber:     episode.EpisodeNumber,
-		Monitored:         episode.Monitored,
-		EpisodeMetadataID: episode.EpisodeMetadataID,
-		EpisodeFileID:     episode.EpisodeFileID,
+		current, err := q.GetEpisodeByID(ctx, inserted)
+		if err != nil {
+			return err
+		}
+		// Upserts update the entity, never reset its transition history.
+		if current.State.Valid {
+			return nil
+		}
+
+		return q.InsertEpisodeTransition(ctx, sqlcdb.InsertEpisodeTransitionParams{
+			EpisodeID:  inserted,
+			ToState:    string(initialState),
+			MostRecent: true,
+			SortKey:    1,
+		})
 	})
 	if err != nil {
-		tx.Rollback()
-		return 0, err
-	}
-
-	current, err := q.GetEpisodeByID(ctx, inserted)
-	if err != nil {
-		tx.Rollback()
-		return 0, err
-	}
-	// Upserts update the entity, never reset its transition history.
-	if current.State.Valid {
-		return inserted, tx.Commit()
-	}
-
-	if err := q.InsertEpisodeTransition(ctx, sqlcdb.InsertEpisodeTransitionParams{
-		EpisodeID:  inserted,
-		ToState:    string(initialState),
-		MostRecent: true,
-		SortKey:    1,
-	}); err != nil {
-		tx.Rollback()
-		return 0, err
-	}
-
-	if err := tx.Commit(); err != nil {
-		tx.Rollback()
 		return 0, err
 	}
 
@@ -142,53 +133,43 @@ func (s *SQLite) GetEpisodeByEpisodeFileID(ctx context.Context, fileID int64) (s
 // optional and can be nil. The demote+insert pair runs in one transaction; on
 // any failure nothing is written.
 func (s *SQLite) UpdateEpisodeState(ctx context.Context, id int64, state storage.EpisodeState, metadata *storage.TransitionStateMetadata) error {
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-	q := s.txQueries(tx)
-	episode, err := q.GetEpisodeByID(ctx, id)
-	if err != nil {
-		return mapQueryErr(err, "failed to get episode")
-	}
-	if err := storage.EpisodeState(episode.State.String).Machine().ToState(state); err != nil {
-		return err
-	}
-
-	// Demote the current most recent transition; the query errors when the
-	// episode has no transition, matching the legacy behavior.
-	previousSortKey, err := q.DemoteEpisodeTransition(ctx, id)
-	if err != nil {
-		tx.Rollback()
-		return err
-	}
-
-	transition := sqlcdb.InsertEpisodeTransitionParams{
-		EpisodeID:  id,
-		FromState:  episode.State,
-		ToState:    string(state),
-		MostRecent: true,
-		SortKey:    previousSortKey + 1,
-	}
-	if metadata != nil {
-		if metadata.DownloadClientID != nil {
-			transition.DownloadClientID = sql.NullInt64{Int64: *metadata.DownloadClientID, Valid: true}
+	return s.withTx(ctx, func(q *sqlcdb.Queries) error {
+		episode, err := q.GetEpisodeByID(ctx, id)
+		if err != nil {
+			return mapQueryErr(err, "failed to get episode")
 		}
-		if metadata.DownloadID != nil {
-			transition.DownloadID = sql.NullString{String: *metadata.DownloadID, Valid: true}
+		if err := storage.EpisodeState(episode.State.String).Machine().ToState(state); err != nil {
+			return err
 		}
-		if metadata.IsEntireSeasonDownload != nil {
-			transition.IsEntireSeasonDownload = sql.NullBool{Bool: *metadata.IsEntireSeasonDownload, Valid: true}
+
+		// Demote the current most recent transition; the query errors when the
+		// episode has no transition, matching the legacy behavior.
+		previousSortKey, err := q.DemoteEpisodeTransition(ctx, id)
+		if err != nil {
+			return err
 		}
-	}
 
-	if err := q.InsertEpisodeTransition(ctx, transition); err != nil {
-		tx.Rollback()
-		return err
-	}
+		transition := sqlcdb.InsertEpisodeTransitionParams{
+			EpisodeID:  id,
+			FromState:  episode.State,
+			ToState:    string(state),
+			MostRecent: true,
+			SortKey:    previousSortKey + 1,
+		}
+		if metadata != nil {
+			if metadata.DownloadClientID != nil {
+				transition.DownloadClientID = sql.NullInt64{Int64: *metadata.DownloadClientID, Valid: true}
+			}
+			if metadata.DownloadID != nil {
+				transition.DownloadID = sql.NullString{String: *metadata.DownloadID, Valid: true}
+			}
+			if metadata.IsEntireSeasonDownload != nil {
+				transition.IsEntireSeasonDownload = sql.NullBool{Bool: *metadata.IsEntireSeasonDownload, Valid: true}
+			}
+		}
 
-	return tx.Commit()
+		return q.InsertEpisodeTransition(ctx, transition)
+	})
 }
 
 // UpdateEpisodeEpisodeFileID updates the episode file id for an episode

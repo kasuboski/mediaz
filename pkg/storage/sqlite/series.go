@@ -17,50 +17,41 @@ func (s *SQLite) CreateSeries(ctx context.Context, series sqlcdb.Series, initial
 		return 0, err
 	}
 
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return 0, err
-	}
-	q := s.txQueries(tx)
-
 	var inserted int64
-	if series.Added.Valid && !series.Added.Time.IsZero() {
-		inserted, err = q.CreateSeriesWithAdded(ctx, sqlcdb.CreateSeriesWithAddedParams{
-			Path:              series.Path,
-			Monitored:         series.Monitored,
-			Added:             series.Added,
-			QualityProfileID:  series.QualityProfileID,
-			SeriesMetadataID:  series.SeriesMetadataID,
-			LastSearchTime:    series.LastSearchTime,
-			MonitorNewSeasons: series.MonitorNewSeasons,
+	err := s.withTx(ctx, func(q *sqlcdb.Queries) error {
+		var err error
+		if series.Added.Valid && !series.Added.Time.IsZero() {
+			inserted, err = q.CreateSeriesWithAdded(ctx, sqlcdb.CreateSeriesWithAddedParams{
+				Path:              series.Path,
+				Monitored:         series.Monitored,
+				Added:             series.Added,
+				QualityProfileID:  series.QualityProfileID,
+				SeriesMetadataID:  series.SeriesMetadataID,
+				LastSearchTime:    series.LastSearchTime,
+				MonitorNewSeasons: series.MonitorNewSeasons,
+			})
+		} else {
+			inserted, err = q.CreateSeries(ctx, sqlcdb.CreateSeriesParams{
+				Path:              series.Path,
+				Monitored:         series.Monitored,
+				QualityProfileID:  series.QualityProfileID,
+				SeriesMetadataID:  series.SeriesMetadataID,
+				LastSearchTime:    series.LastSearchTime,
+				MonitorNewSeasons: series.MonitorNewSeasons,
+			})
+		}
+		if err != nil {
+			return err
+		}
+
+		return q.InsertSeriesTransition(ctx, sqlcdb.InsertSeriesTransitionParams{
+			SeriesID:   inserted,
+			ToState:    string(initialState),
+			MostRecent: true,
+			SortKey:    1,
 		})
-	} else {
-		inserted, err = q.CreateSeries(ctx, sqlcdb.CreateSeriesParams{
-			Path:              series.Path,
-			Monitored:         series.Monitored,
-			QualityProfileID:  series.QualityProfileID,
-			SeriesMetadataID:  series.SeriesMetadataID,
-			LastSearchTime:    series.LastSearchTime,
-			MonitorNewSeasons: series.MonitorNewSeasons,
-		})
-	}
+	})
 	if err != nil {
-		tx.Rollback()
-		return 0, err
-	}
-
-	if err := q.InsertSeriesTransition(ctx, sqlcdb.InsertSeriesTransitionParams{
-		SeriesID:   inserted,
-		ToState:    string(initialState),
-		MostRecent: true,
-		SortKey:    1,
-	}); err != nil {
-		tx.Rollback()
-		return 0, err
-	}
-
-	if err := tx.Commit(); err != nil {
-		tx.Rollback()
 		return 0, err
 	}
 
@@ -158,38 +149,28 @@ func (s *SQLite) CountLibraryShowsByState(ctx context.Context) ([]sqlcdb.CountLi
 // UpdateSeriesState updates the transition state of a series. The demote and
 // insert statements run in one transaction; on any failure nothing is written.
 func (s *SQLite) UpdateSeriesState(ctx context.Context, id int64, state storage.SeriesState, metadata *storage.TransitionStateMetadata) error {
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-	q := s.txQueries(tx)
-	series, err := q.GetSeries(ctx, sqlcdb.GetSeriesParams{ID: sql.NullInt64{Int64: id, Valid: true}})
-	if err != nil {
-		return mapQueryErr(err, "failed to get series")
-	}
-	if err := storage.SeriesState(series.State).Machine().ToState(state); err != nil {
-		return err
-	}
+	return s.withTx(ctx, func(q *sqlcdb.Queries) error {
+		series, err := q.GetSeries(ctx, sqlcdb.GetSeriesParams{ID: sql.NullInt64{Int64: id, Valid: true}})
+		if err != nil {
+			return mapQueryErr(err, "failed to get series")
+		}
+		if err := storage.SeriesState(series.State).Machine().ToState(state); err != nil {
+			return err
+		}
 
-	previousSortKey, err := q.DemoteSeriesTransition(ctx, id)
-	if err != nil {
-		tx.Rollback()
-		return err
-	}
+		previousSortKey, err := q.DemoteSeriesTransition(ctx, id)
+		if err != nil {
+			return err
+		}
 
-	if err := q.InsertSeriesTransition(ctx, sqlcdb.InsertSeriesTransitionParams{
-		SeriesID:   id,
-		FromState:  sql.NullString{String: series.State, Valid: true},
-		ToState:    string(state),
-		MostRecent: true,
-		SortKey:    previousSortKey + 1,
-	}); err != nil {
-		tx.Rollback()
-		return err
-	}
-
-	return tx.Commit()
+		return q.InsertSeriesTransition(ctx, sqlcdb.InsertSeriesTransitionParams{
+			SeriesID:   id,
+			FromState:  sql.NullString{String: series.State, Valid: true},
+			ToState:    string(state),
+			MostRecent: true,
+			SortKey:    previousSortKey + 1,
+		})
+	})
 }
 
 // LinkSeriesMetadata links a series with its metadata
