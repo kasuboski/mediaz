@@ -1,5 +1,6 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback } from "react";
 import { useActiveActivity, useRecentFailures, useActivityTimeline } from "@/lib/queries";
+import { usePagination } from "@/hooks/use-pagination";
 import { type ActiveActivityResponse, type FailureItem } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import {
@@ -32,9 +33,13 @@ function formatRelativeTime(dateString: string): string {
 interface ActiveProcessesSectionProps {
   activeData: ActiveActivityResponse | null;
   isLoading: boolean;
+  pages: { movies: number; series: number; jobs: number };
+  pageSize: number;
+  onPageChange: (group: "movies" | "series" | "jobs", page: number) => void;
+  onPageSizeChange: (size: number) => void;
 }
 
-function ActiveProcessesSection({ activeData, isLoading }: ActiveProcessesSectionProps) {
+function ActiveProcessesSection({ activeData, isLoading, pages, pageSize, onPageChange, onPageSizeChange }: ActiveProcessesSectionProps) {
   const [isOpen, setIsOpen] = useState(true);
 
   return (
@@ -51,7 +56,7 @@ function ActiveProcessesSection({ activeData, isLoading }: ActiveProcessesSectio
                 <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
               ) : (
                 <span className="text-sm text-muted-foreground">
-                  {(activeData?.movies?.length ?? 0) + (activeData?.series?.length ?? 0) + (activeData?.jobs?.length ?? 0)} active
+                  {activeData?.counts.total ?? 0} active
                 </span>
               )}
               {isOpen ? <ChevronUp className="h-5 w-5 text-muted-foreground" /> : <ChevronDown className="h-5 w-5 text-muted-foreground" />}
@@ -65,7 +70,7 @@ function ActiveProcessesSection({ activeData, isLoading }: ActiveProcessesSectio
                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
               </div>
             ) : (
-              <ActiveProcessesPanel data={activeData} />
+              <ActiveProcessesPanel data={activeData} pages={pages} pageSize={pageSize} onPageChange={onPageChange} onPageSizeChange={onPageSizeChange} />
             )}
           </CardContent>
         </CollapsibleContent>
@@ -75,14 +80,20 @@ function ActiveProcessesSection({ activeData, isLoading }: ActiveProcessesSectio
 }
 
 interface RecentFailuresSectionProps {
-  failuresData: FailureItem[] | null;
+  failuresData: { failures: FailureItem[]; pagination: { page: number; pageSize: number; totalItems: number; totalPages: number } } | null;
   isLoading: boolean;
+  isError: boolean;
+  onRetry: () => void;
+  page: number;
+  pageSize: number;
+  onPageChange: (page: number) => void;
+  onPageSizeChange: (size: number) => void;
 }
 
-function RecentFailuresSection({ failuresData, isLoading }: RecentFailuresSectionProps) {
+function RecentFailuresSection({ failuresData, isLoading, isError, onRetry, page, pageSize, onPageChange, onPageSizeChange }: RecentFailuresSectionProps) {
   const [isOpen, setIsOpen] = useState(false);
 
-  if (!failuresData?.length && !isLoading) return null;
+  if (!isError && !failuresData?.pagination.totalItems && !isLoading) return null;
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
@@ -98,7 +109,7 @@ function RecentFailuresSection({ failuresData, isLoading }: RecentFailuresSectio
                 <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
               ) : (
                 <span className="text-sm text-muted-foreground">
-                  {failuresData?.length || 0} failures
+                  {failuresData?.pagination.totalItems ?? 0} failures
                 </span>
               )}
               {isOpen ? <ChevronUp className="h-5 w-5 text-muted-foreground" /> : <ChevronDown className="h-5 w-5 text-muted-foreground" />}
@@ -111,9 +122,14 @@ function RecentFailuresSection({ failuresData, isLoading }: RecentFailuresSectio
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
               </div>
-            ) : (
-              <RecentFailuresList failures={failuresData || []} />
-            )}
+            ) : isError ? (
+              <div className="flex items-center justify-between gap-4">
+                <p className="text-sm text-destructive">Could not load recent failures.</p>
+                <Button variant="outline" size="sm" onClick={onRetry}>Retry</Button>
+              </div>
+            ) : failuresData ? (
+              <RecentFailuresList data={failuresData} hours={24} page={page} pageSize={pageSize} onPageChange={onPageChange} onPageSizeChange={onPageSizeChange} />
+            ) : null}
           </CardContent>
         </CollapsibleContent>
       </Card>
@@ -190,18 +206,24 @@ export default function Activity() {
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
   const [selectedDays, setSelectedDays] = useState<number>(1);
   const [page, setPage] = useState<number>(1);
+  const [activeMoviesPage, setActiveMoviesPage] = useState(1);
+  const [activeSeriesPage, setActiveSeriesPage] = useState(1);
+  const [activeJobsPage, setActiveJobsPage] = useState(1);
+  const [activePageSize, setActivePageSize] = useState(50);
+  const failuresPagination = usePagination({ defaultPageSize: 50 });
 
   const {
     data: activeData,
     isLoading: activeLoading,
     refetch: refetchActive,
-  } = useActiveActivity();
+  } = useActiveActivity({ moviesPage: activeMoviesPage, seriesPage: activeSeriesPage, jobsPage: activeJobsPage, pageSize: activePageSize });
 
   const {
     data: failuresData,
     isLoading: failuresLoading,
+    isError: failuresError,
     refetch: refetchFailures,
-  } = useRecentFailures(24);
+  } = useRecentFailures(24, { page: failuresPagination.page, pageSize: failuresPagination.pageSize });
 
   const {
     data: timelineData,
@@ -257,10 +279,20 @@ export default function Activity() {
           <ActiveProcessesSection
             activeData={activeData}
             isLoading={activeLoading}
+            pages={{ movies: activeMoviesPage, series: activeSeriesPage, jobs: activeJobsPage }}
+            pageSize={activePageSize}
+            onPageChange={(group, nextPage) => ({ movies: setActiveMoviesPage, series: setActiveSeriesPage, jobs: setActiveJobsPage })[group](nextPage)}
+            onPageSizeChange={(size) => { setActiveMoviesPage(1); setActiveSeriesPage(1); setActiveJobsPage(1); setActivePageSize(size); }}
           />
           <RecentFailuresSection
             failuresData={failuresData}
             isLoading={failuresLoading}
+            isError={failuresError}
+            onRetry={() => { void refetchFailures(); }}
+            page={failuresPagination.page}
+            pageSize={failuresPagination.pageSize}
+            onPageChange={failuresPagination.setPage}
+            onPageSizeChange={failuresPagination.setPageSize}
           />
           <ActivityTimelineSection
             timelineData={timelineData}

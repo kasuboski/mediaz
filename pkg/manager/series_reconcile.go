@@ -1265,7 +1265,7 @@ func (m MediaManager) linkSeriesMetadata(ctx context.Context, series sqlcdb.GetS
 		if evidence.Query == "" {
 			return fmt.Errorf("no series title or explicit ID in discovery evidence")
 		}
-		resp, err := m.SearchTV(ctx, evidence.Query)
+		resp, err := m.SearchTV(ctx, evidence.Query, 1)
 		if err != nil {
 			return fmt.Errorf("failed to search for TV show: %w", err)
 		}

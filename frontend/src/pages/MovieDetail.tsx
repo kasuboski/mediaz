@@ -1,4 +1,4 @@
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { Calendar, Clock, Star, Globe, ExternalLink, MoreVertical, RefreshCw, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -31,6 +31,8 @@ import { useQueryClient } from "@tanstack/react-query";
 export default function MovieDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
+  const returnTo = (location.state?.returnTo as string | undefined) ?? '/movies';
   const queryClient = useQueryClient();
   const [showRequestModal, setShowRequestModal] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -77,9 +79,12 @@ export default function MovieDetail() {
     setIsDeleting(true);
     try {
       await moviesApi.deleteMovie(movie.id, deleteFiles);
-      await queryClient.invalidateQueries({ queryKey: ['movies', 'library'] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['movies', 'library'] }),
+        queryClient.invalidateQueries({ queryKey: ['library-stats'] }),
+      ]);
       toast.success(deleteFiles ? "Movie and files deleted" : "Movie deleted from library");
-      navigate("/movies");
+      navigate(returnTo);
     } catch (error) {
       toast.error("Failed to delete movie");
       console.error(error);

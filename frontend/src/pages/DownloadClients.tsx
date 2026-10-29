@@ -1,5 +1,8 @@
-import { useState } from 'react';
-import { useDownloadClients, useDeleteDownloadClient } from '@/lib/queries';
+import { useEffect, useState } from 'react';
+import { usePagedDownloadClients, useDeleteDownloadClient } from '@/lib/queries';
+import { usePagination } from '@/hooks/use-pagination';
+import { PageSizeSelector } from '@/components/ui/page-size-selector';
+import { PaginationControls } from '@/components/ui/pagination-controls';
 import type { DownloadClient } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -11,8 +14,16 @@ import { toast } from 'sonner';
 import { DownloadClientDialog } from '@/components/DownloadClientDialog';
 
 export default function DownloadClients() {
-  const { data: clients, isLoading, error, refetch } = useDownloadClients();
+  const pagination = usePagination({ storageKey: 'download-clients' });
+  const { data, isLoading, error, refetch } = usePagedDownloadClients({ page: pagination.page, pageSize: pagination.pageSize });
+  const clients = data?.items;
+  const totalItems = data?.pagination.totalItems ?? 0;
+  const totalPages = data?.pagination.totalPages ?? 0;
   const deleteClient = useDeleteDownloadClient();
+
+  useEffect(() => {
+    if (data && totalPages > 0 && pagination.page > totalPages) pagination.setPage(totalPages);
+  }, [data, totalPages, pagination.page]);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<DownloadClient | null>(null);
@@ -40,6 +51,7 @@ export default function DownloadClients() {
     try {
       await deleteClient.mutateAsync(clientToDelete.ID);
       toast.success('Download client deleted');
+      if (clients?.length === 1 && pagination.page > 1) pagination.setPage(pagination.page - 1);
       setDeleteDialogOpen(false);
       setClientToDelete(null);
     } catch (error) {
@@ -104,7 +116,7 @@ export default function DownloadClients() {
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle>Configured Clients</CardTitle>
+              <CardTitle>Configured Clients ({totalItems})</CardTitle>
               <Button onClick={handleAddClient} className="bg-gradient-primary hover:opacity-90">
                 <Plus className="mr-2 h-4 w-4" />
                 Add Download Client
@@ -152,6 +164,13 @@ export default function DownloadClients() {
                 ))}
               </TableBody>
             </Table>
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-4">
+              <span className="text-sm text-muted-foreground" aria-live="polite">
+                Showing {(pagination.page - 1) * pagination.pageSize + 1}–{Math.min(pagination.page * pagination.pageSize, totalItems)} of {totalItems}
+              </span>
+              <PageSizeSelector value={pagination.pageSize} onChange={pagination.setPageSize} />
+              <PaginationControls currentPage={pagination.page} totalPages={totalPages} onPageChange={pagination.setPage} />
+            </div>
           </CardContent>
         </Card>
       )}

@@ -75,7 +75,17 @@ func TestServer_ListIndexers(t *testing.T) {
 		err = json.Unmarshal(rr.Body.Bytes(), &response)
 		require.NoError(t, err)
 
-		assert.Nil(t, response.Response)
+		page, ok := response.Response.(map[string]any)
+		require.True(t, ok, "Response should be a paginated object")
+		items, ok := page["items"].([]any)
+		require.True(t, ok, "items should be an array")
+		assert.Empty(t, items)
+		pagination, ok := page["pagination"].(map[string]any)
+		require.True(t, ok, "pagination should be an object")
+		assert.Equal(t, float64(0), pagination["totalItems"])
+		assert.Equal(t, float64(0), pagination["totalPages"])
+		assert.Equal(t, float64(1), pagination["page"])
+		assert.Equal(t, float64(50), pagination["pageSize"])
 	})
 
 	t.Run("success - returns indexers", func(t *testing.T) {
@@ -109,9 +119,17 @@ func TestServer_ListIndexers(t *testing.T) {
 		err = json.Unmarshal(rr.Body.Bytes(), &response)
 		require.NoError(t, err)
 
-		indexerList, ok := response.Response.([]any)
-		require.True(t, ok, "Response should be an array")
+		page, ok := response.Response.(map[string]any)
+		require.True(t, ok, "Response should be a paginated object")
+		indexerList, ok := page["items"].([]any)
+		require.True(t, ok, "items should be an array")
 		require.Len(t, indexerList, 2)
+		pagination, ok := page["pagination"].(map[string]any)
+		require.True(t, ok, "pagination should be an object")
+		assert.Equal(t, float64(2), pagination["totalItems"])
+		assert.Equal(t, float64(1), pagination["totalPages"])
+		assert.Equal(t, float64(1), pagination["page"])
+		assert.Equal(t, float64(50), pagination["pageSize"])
 
 		// Collect by name to avoid relying on DB ordering
 		byName := make(map[string]map[string]any)

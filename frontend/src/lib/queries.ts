@@ -28,6 +28,8 @@ import {
   type CreateQualityDefinitionRequest,
   type UpdateQualityDefinitionRequest,
   type PaginationParams,
+  type ActivePaginationParams,
+  type LibraryPaginationParams,
 } from './api';
 
 /**
@@ -36,18 +38,22 @@ import {
 export const queryKeys = {
   movies: {
     all: ['movies'] as const,
-    library: () => [...queryKeys.movies.all, 'library'] as const,
+    library: (params?: LibraryPaginationParams) => params
+      ? ['movies', 'library', { ...params, states: [...new Set(params.states ?? [])].sort() }] as const
+      : ['movies', 'library'] as const,
     detail: (tmdbID: number) => [...queryKeys.movies.all, 'detail', tmdbID] as const,
   },
   tv: {
     all: ['tv'] as const,
-    library: () => ['tv', 'library'] as const,
+    library: (params?: LibraryPaginationParams) => params
+      ? ['tv', 'library', { ...params, states: [...new Set(params.states ?? [])].sort() }] as const
+      : ['tv', 'library'] as const,
     detail: (tmdbID: number) => ['tv', 'detail', tmdbID] as const,
   },
   search: {
     all: ['search'] as const,
-    movies: (query: string) => [...queryKeys.search.all, 'movies', query] as const,
-    tv: (query: string) => [...queryKeys.search.all, 'tv', query] as const,
+    moviesPage: (query: string, page: number) => [...queryKeys.search.all, 'movies', query, page] as const,
+    tvPage: (query: string, page: number) => [...queryKeys.search.all, 'tv', query, page] as const,
   },
   jobs: {
     all: ['jobs'] as const,
@@ -84,29 +90,31 @@ export const queryKeys = {
   },
   activity: {
     all: ['activity'] as const,
-    active: () => [...queryKeys.activity.all, 'active'] as const,
-    failures: (hours: number) => [...queryKeys.activity.all, 'failures', hours] as const,
+    active: (params: ActivePaginationParams = {}) => [...queryKeys.activity.all, 'active', { moviesPage: positivePage(params.moviesPage ?? params.page), seriesPage: positivePage(params.seriesPage ?? params.page), jobsPage: positivePage(params.jobsPage ?? params.page), pageSize: positivePage(params.pageSize, 50) }] as const,
+    failures: (hours?: number, params?: PaginationParams) => hours === undefined
+      ? [...queryKeys.activity.all, 'failures'] as const
+      : [...queryKeys.activity.all, 'failures', hours, positivePage(params?.page), positivePage(params?.pageSize, 50)] as const,
     timeline: (days: number, page: number, pageSize: number) => [...queryKeys.activity.all, 'timeline', days, page, pageSize] as const,
-    history: (entityType: string, entityId: number) => [...queryKeys.activity.all, 'history', entityType, entityId] as const,
+    history: (entityType: string, entityId: number, params: PaginationParams = {}) => [...queryKeys.activity.all, 'history', entityType, entityId, positivePage(params.page), positivePage(params.pageSize, 50)] as const,
   },
 } as const;
 
 /**
  * Hook to fetch library movies
  */
-export function useLibraryMovies() {
+export function useLibraryMovies(params: LibraryPaginationParams) {
   return useQuery({
-    queryKey: queryKeys.movies.library(),
-    queryFn: moviesApi.getLibraryMovies,
+    queryKey: queryKeys.movies.library(params),
+    queryFn: () => moviesApi.getLibraryMovies(params),
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 10 * 60 * 1000, // 10 minutes (formerly cacheTime)
   });
 }
 
-export function useLibraryShows() {
+export function useLibraryShows(params: LibraryPaginationParams) {
   return useQuery({
-    queryKey: queryKeys.tv.library(),
-    queryFn: tvApi.getLibraryShows,
+    queryKey: queryKeys.tv.library(params),
+    queryFn: () => tvApi.getLibraryShows(params),
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
   });
@@ -138,29 +146,14 @@ export function useMovieDetail(tmdbID: number) {
 /**
  * Hook to search for movies
  */
-export function useSearchMovies(query: string) {
+export function useSearchMoviesPage(query: string, page: number, enabled = true) {
   const normalizedQuery = query.trim();
-  return useQuery({
-    queryKey: queryKeys.search.movies(normalizedQuery),
-    queryFn: () => searchApi.searchMovies(normalizedQuery),
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes
-    enabled: !!normalizedQuery, // Only run query if query is provided
-  });
+  return useQuery({ queryKey: queryKeys.search.moviesPage(normalizedQuery, page), queryFn: () => searchApi.searchMoviesPage(normalizedQuery, page), enabled: !!normalizedQuery && enabled });
 }
 
-/**
- * Hook to search for TV shows
- */
-export function useSearchTV(query: string) {
+export function useSearchTVPage(query: string, page: number, enabled = true) {
   const normalizedQuery = query.trim();
-  return useQuery({
-    queryKey: queryKeys.search.tv(normalizedQuery),
-    queryFn: () => searchApi.searchTV(normalizedQuery),
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes
-    enabled: !!normalizedQuery, // Only run query if query is provided
-  });
+  return useQuery({ queryKey: queryKeys.search.tvPage(normalizedQuery, page), queryFn: () => searchApi.searchTVPage(normalizedQuery, page), enabled: !!normalizedQuery && enabled });
 }
 
 /**
@@ -223,6 +216,26 @@ export function useConfig() {
     staleTime: 10 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
   });
+}
+
+export function usePagedDownloadClients(params: PaginationParams) {
+  return useQuery({ queryKey: [...queryKeys.downloadClients.list(), params], queryFn: () => downloadClientsApi.getDownloadClientsPage(params) });
+}
+
+export function usePagedIndexers(params: PaginationParams) {
+  return useQuery({ queryKey: [...queryKeys.indexers.list(), params], queryFn: () => indexersApi.getIndexersPage(params) });
+}
+
+export function usePagedIndexerSources(params: PaginationParams) {
+  return useQuery({ queryKey: [...queryKeys.indexerSources.list(), params], queryFn: () => indexerSourcesApi.getIndexerSourcesPage(params) });
+}
+
+export function usePagedQualityDefinitions(params: PaginationParams, type?: 'movie' | 'series') {
+  return useQuery({ queryKey: [...queryKeys.qualityDefinitions.list(), type, params], queryFn: () => qualityDefinitionsApi.getQualityDefinitionsPage(params, type) });
+}
+
+export function usePagedQualityProfiles(params: PaginationParams, type?: 'movie' | 'series') {
+  return useQuery({ queryKey: [...queryKeys.qualityProfiles.list(type), params], queryFn: () => qualityProfilesApi.getQualityProfilesPage(params, type) });
 }
 
 export function useDownloadClients() {
@@ -519,6 +532,7 @@ export function useAddMovie() {
     mutationFn: (request: AddMovieRequest) => moviesApi.addMovie(request),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.movies.library() });
+      queryClient.invalidateQueries({ queryKey: ['library-stats'] });
       queryClient.invalidateQueries({ queryKey: queryKeys.movies.detail(data.tmdbID) });
     },
   });
@@ -534,6 +548,7 @@ export function useAddSeries() {
     mutationFn: (request: AddSeriesRequest) => tvApi.addSeries(request),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.tv.library() });
+      queryClient.invalidateQueries({ queryKey: ['library-stats'] });
       queryClient.invalidateQueries({ queryKey: queryKeys.tv.detail(data.tmdbID) });
     },
   });
@@ -547,15 +562,19 @@ export function useAddSeries() {
  * Hook to fetch active activity with smart 5s polling
  * Only polls when there are active items (movies + series + jobs > 0)
  */
-export function useActiveActivity() {
+function positivePage(value: number | undefined, fallback = 1): number {
+  return Number.isFinite(value) && value! > 0 ? Math.floor(value!) : fallback;
+}
+
+export function useActiveActivity(params: ActivePaginationParams = {}) {
+  const normalized = { moviesPage: positivePage(params.moviesPage ?? params.page), seriesPage: positivePage(params.seriesPage ?? params.page), jobsPage: positivePage(params.jobsPage ?? params.page), pageSize: positivePage(params.pageSize, 50) };
   return useQuery({
-    queryKey: queryKeys.activity.active(),
-    queryFn: activityApi.getActiveActivity,
+    queryKey: queryKeys.activity.active(normalized),
+    queryFn: ({ signal }) => activityApi.getActiveActivity(normalized, signal),
     refetchInterval: (query) => {
       const data = query.state.data;
       if (!data) return false;
-      const activeCount = data.movies.length + data.series.length + data.jobs.length;
-      return activeCount > 0 ? 5000 : false;
+      return data.counts.total > 0 ? 5000 : false;
     },
     staleTime: 2000,
     gcTime: 5 * 60 * 1000,
@@ -565,10 +584,11 @@ export function useActiveActivity() {
 /**
  * Hook to fetch recent failures with 10min cache
  */
-export function useRecentFailures(hours: number = 24) {
+export function useRecentFailures(hours = 24, params: PaginationParams = {}) {
+  const normalized = { page: positivePage(params.page), pageSize: positivePage(params.pageSize, 50) };
   return useQuery({
-    queryKey: queryKeys.activity.failures(hours),
-    queryFn: () => activityApi.getRecentFailures(hours),
+    queryKey: queryKeys.activity.failures(hours, normalized),
+    queryFn: ({ signal }) => activityApi.getRecentFailures(hours, normalized, signal),
     staleTime: 10 * 60 * 1000,
     gcTime: 15 * 60 * 1000,
   });
@@ -590,10 +610,11 @@ export function useActivityTimeline(days: number = 1, page: number = 1, pageSize
  * Hook to fetch entity history with 10min cache
  * Only enabled when params are provided
  */
-export function useEntityHistory(entityType: string, entityId: number) {
+export function useEntityHistory(entityType: string, entityId: number, params: PaginationParams = {}) {
+  const normalized = { page: positivePage(params.page), pageSize: positivePage(params.pageSize, 50) };
   return useQuery({
-    queryKey: queryKeys.activity.history(entityType, entityId),
-    queryFn: () => activityApi.getEntityHistory(entityType, entityId),
+    queryKey: queryKeys.activity.history(entityType, entityId, normalized),
+    queryFn: ({ signal }) => activityApi.getEntityHistory(entityType, entityId, normalized, signal),
     staleTime: 10 * 60 * 1000,
     gcTime: 15 * 60 * 1000,
     enabled: !!entityType && !!entityId,

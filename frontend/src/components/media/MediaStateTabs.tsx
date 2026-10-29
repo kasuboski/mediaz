@@ -49,9 +49,10 @@ export function MediaStateTabs<
     <Tabs
       value={filter}
       onValueChange={(v) => onFilterChange(v as TFilter)}
-      className="mb-6"
+      className="mb-6 min-w-0 max-w-full"
     >
-      <TabsList>
+      <TabsList className="flex w-full max-w-[calc(100vw-3rem)] justify-start overflow-x-auto">
+
         {availableFilters.map((filterValue) => {
           const config = TAB_CONFIGS[filterValue] || {
             label: filterValue,

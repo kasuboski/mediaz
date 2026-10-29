@@ -126,6 +126,9 @@ type MovieStorage interface {
 	CreateMovie(ctx context.Context, movie sqlcdb.Movie, state MovieState) (int64, error)
 	DeleteMovie(ctx context.Context, id int64) error
 	ListMovies(ctx context.Context) ([]sqlcdb.ListMoviesRow, error)
+	ListLibraryMovies(ctx context.Context, offset, limit int, states []MovieState) ([]sqlcdb.ListLibraryMoviesRow, error)
+	CountLibraryMovies(ctx context.Context, states []MovieState) (int64, error)
+	CountLibraryMoviesByState(ctx context.Context) ([]sqlcdb.CountLibraryMoviesByStateRow, error)
 	// ListMoviesByState filters movies by any combination of current states; a
 	// zero-value MovieState (or no arguments) applies no state filter.
 	ListMoviesByState(ctx context.Context, states ...MovieState) ([]sqlcdb.ListMoviesByStatesRow, error)
@@ -297,6 +300,9 @@ type SeriesStorage interface {
 	CreateSeries(ctx context.Context, series sqlcdb.Series, initialState SeriesState) (int64, error)
 	DeleteSeries(ctx context.Context, id int64) error
 	ListSeries(ctx context.Context, filter SeriesFilter) ([]sqlcdb.ListSeriesRow, error)
+	ListLibraryShows(ctx context.Context, offset, limit int, states []SeriesState) ([]sqlcdb.ListLibraryShowsRow, error)
+	CountLibraryShows(ctx context.Context, states []SeriesState) (int64, error)
+	CountLibraryShowsByState(ctx context.Context) ([]sqlcdb.CountLibraryShowsByStateRow, error)
 	UpdateSeriesState(ctx context.Context, id int64, state SeriesState, metadata *TransitionStateMetadata) error
 	LinkSeriesMetadata(ctx context.Context, seriesID int64, metadataID int64) error
 	UpdateSeriesByID(ctx context.Context, id int64, series sqlcdb.Series) error

@@ -134,7 +134,7 @@ func TestGetActiveActivityWithData(t *testing.T) {
 		require.NoError(t, err)
 		require.NoError(t, store.UpdateJobState(ctx, jobID, storage.JobStateRunning, nil))
 
-		resp, err := svc.GetActiveActivity(ctx)
+		resp, err := svc.GetActiveActivity(ctx, ActivePaginationParams{Movies: pagination.Params{Page: 1, PageSize: 50}, Series: pagination.Params{Page: 1, PageSize: 50}, Jobs: pagination.Params{Page: 1, PageSize: 50}})
 		require.NoError(t, err)
 		require.NotNil(t, resp)
 
@@ -216,9 +216,17 @@ func TestGetActiveActivityWithData(t *testing.T) {
 		require.NoError(t, store.UpdateJobState(ctx, jobID, storage.JobStateRunning, nil))
 		require.NoError(t, store.UpdateJobState(ctx, jobID, storage.JobStateDone, nil))
 
-		resp, err := svc.GetActiveActivity(ctx)
+		resp, err := svc.GetActiveActivity(ctx, ActivePaginationParams{Movies: pagination.Params{Page: 1, PageSize: 50}, Series: pagination.Params{Page: 1, PageSize: 50}, Jobs: pagination.Params{Page: 1, PageSize: 50}})
 		require.NoError(t, err)
-		assert.Equal(t, &ActiveActivityResponse{Movies: []*ActiveMovie{}, Series: []*ActiveSeries{}, Jobs: []*ActiveJob{}}, resp)
+		assert.Equal(t, &ActiveActivityResponse{
+			Movies: []*ActiveMovie{}, Series: []*ActiveSeries{}, Jobs: []*ActiveJob{},
+			Counts: ActiveActivityCounts{},
+			Pagination: ActiveActivityPagination{
+				Movies: pagination.Meta{Page: 1, PageSize: 50},
+				Series: pagination.Meta{Page: 1, PageSize: 50},
+				Jobs:   pagination.Meta{Page: 1, PageSize: 50},
+			},
+		}, resp)
 	})
 }
 
@@ -246,7 +254,7 @@ func TestGetRecentFailuresWindow(t *testing.T) {
 		require.NoError(t, store.UpdateJobState(ctx, doneID, storage.JobStateRunning, nil))
 		require.NoError(t, store.UpdateJobState(ctx, doneID, storage.JobStateDone, nil))
 
-		resp, err := svc.GetRecentFailures(ctx, 24)
+		resp, err := svc.GetRecentFailures(ctx, 24, pagination.Params{Page: 1, PageSize: 50})
 		require.NoError(t, err)
 		require.Len(t, resp.Failures, 1)
 
@@ -268,11 +276,10 @@ func TestGetRecentFailuresWindow(t *testing.T) {
 		require.NoError(t, err)
 		require.NoError(t, store.UpdateJobState(ctx, jobID, storage.JobStateError, activityStringPtr("boom")))
 
-		// The window cutoff is "now"; a failure stamped with 1-second precision
-		// is never strictly after it, so nothing is reported.
-		resp, err := svc.GetRecentFailures(ctx, 0)
-		require.NoError(t, err)
-		assert.Equal(t, &FailuresResponse{Failures: []*FailureItem{}}, resp)
+		// The public API rejects non-positive windows rather than treating an
+		// invalid duration as an empty successful query.
+		_, err = svc.GetRecentFailures(ctx, 0, pagination.Params{Page: 1, PageSize: 50})
+		require.Error(t, err)
 	})
 
 	t.Run("old failures fall outside the window while recent ones are returned", func(t *testing.T) {
@@ -295,7 +302,7 @@ func TestGetRecentFailuresWindow(t *testing.T) {
 		require.NoError(t, store.UpdateJobState(ctx, recentID, storage.JobStateError, activityStringPtr("boom")))
 		after := time.Now().UTC()
 
-		resp, err := svc.GetRecentFailures(ctx, 24)
+		resp, err := svc.GetRecentFailures(ctx, 24, pagination.Params{Page: 1, PageSize: 50})
 		require.NoError(t, err)
 		require.Len(t, resp.Failures, 1)
 		assert.Equal(t, recentID, resp.Failures[0].ID)
@@ -310,9 +317,12 @@ func TestGetRecentFailuresWindow(t *testing.T) {
 		store := newActivityTestStorage(t, ctx)
 		svc := &JobService{activityStorage: store}
 
-		resp, err := svc.GetRecentFailures(ctx, 24)
+		resp, err := svc.GetRecentFailures(ctx, 24, pagination.Params{Page: 1, PageSize: 50})
 		require.NoError(t, err)
-		assert.Equal(t, &FailuresResponse{Failures: []*FailureItem{}}, resp)
+		assert.Equal(t, &FailuresResponse{
+			Failures:   []*FailureItem{},
+			Pagination: pagination.Meta{Page: 1, PageSize: 50},
+		}, resp)
 	})
 }
 
@@ -463,7 +473,7 @@ func TestGetEntityTransitionHistoryWithDuration(t *testing.T) {
 		stampMostRecentTransition(t, db, "movie_transition", "movie_id", movieID, downloadingAt)
 
 		before := time.Now().UTC()
-		resp, err := svc.GetEntityTransitionHistory(ctx, "movie", movieID)
+		resp, err := svc.GetEntityTransitionHistory(ctx, "movie", movieID, pagination.Params{Page: 1, PageSize: 50})
 		after := time.Now().UTC()
 		require.NoError(t, err)
 		require.Len(t, resp.History, 2)

@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Film, Tv, Calendar } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,10 +11,12 @@ interface MediaCardProps {
 
 export function MediaCard({ item }: MediaCardProps) {
   const navigate = useNavigate();
+  const location = useLocation();
   const statusColor = getMediaStateColor(item.state, item.media_type);
 
   const handleClick = () => {
-    navigate(`/${item.media_type}/${item.id}`);
+    const returnTo = `${location.pathname}${location.search}`;
+    navigate(`/${item.media_type}/${item.id}`, { state: { returnTo } });
   };
 
   const getYear = () => {

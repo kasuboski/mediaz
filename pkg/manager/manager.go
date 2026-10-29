@@ -89,8 +89,8 @@ func New(tmbdClient tmdb.ITmdb, indexerFactory indexer.Factory, library library.
 var ErrValidation = errors.New("validation error")
 
 // SearchMovie queries TMDB for a movie
-func (m MediaManager) SearchMovie(ctx context.Context, query string) (*SearchMediaResponse, error) {
-	return m.movieService.SearchMovie(ctx, query)
+func (m MediaManager) SearchMovie(ctx context.Context, query string, page int32) (*SearchMediaResponse, error) {
+	return m.movieService.SearchMovie(ctx, query, page)
 }
 
 // GetMovieDetailByTMDBID retrieves detailed information for a single movie by TMDB ID
@@ -187,25 +187,25 @@ func (m MediaManager) GetLibraryStats(ctx context.Context) (*storage.LibraryStat
 	return m.jobService.GetLibraryStats(ctx)
 }
 
-func (m MediaManager) GetActiveActivity(ctx context.Context) (*ActiveActivityResponse, error) {
-	return m.jobService.GetActiveActivity(ctx)
+func (m MediaManager) GetActiveActivity(ctx context.Context, params ActivePaginationParams) (*ActiveActivityResponse, error) {
+	return m.jobService.GetActiveActivity(ctx, params)
 }
 
-func (m MediaManager) GetRecentFailures(ctx context.Context, hours int) (*FailuresResponse, error) {
-	return m.jobService.GetRecentFailures(ctx, hours)
+func (m MediaManager) GetRecentFailures(ctx context.Context, hours int, params pagination.Params) (*FailuresResponse, error) {
+	return m.jobService.GetRecentFailures(ctx, hours, params)
 }
 
 func (m MediaManager) GetActivityTimeline(ctx context.Context, days int, params pagination.Params) (*TimelineResponse, error) {
 	return m.jobService.GetActivityTimeline(ctx, days, params)
 }
 
-func (m MediaManager) GetEntityTransitionHistory(ctx context.Context, entityType string, entityID int64) (*HistoryResponse, error) {
-	return m.jobService.GetEntityTransitionHistory(ctx, entityType, entityID)
+func (m MediaManager) GetEntityTransitionHistory(ctx context.Context, entityType string, entityID int64, params pagination.Params) (*HistoryResponse, error) {
+	return m.jobService.GetEntityTransitionHistory(ctx, entityType, entityID, params)
 }
 
 // SearchTV queries TMDB for TV shows
-func (m MediaManager) SearchTV(ctx context.Context, query string) (*SearchMediaResponse, error) {
-	return m.seriesService.SearchTV(ctx, query)
+func (m MediaManager) SearchTV(ctx context.Context, query string, page int32) (*SearchMediaResponse, error) {
+	return m.seriesService.SearchTV(ctx, query, page)
 }
 
 func (m MediaManager) GetSeriesDetails(ctx context.Context, tmdbID int64) (sqlcdb.SeriesMetadatum, error) {
@@ -235,13 +235,13 @@ func (m MediaManager) ListIndexers(ctx context.Context) ([]IndexerResponse, erro
 	return m.indexerService.ListIndexers(ctx)
 }
 
-func (m MediaManager) ListShowsInLibrary(ctx context.Context) ([]LibraryShow, error) {
-	return m.seriesService.ListShowsInLibrary(ctx)
+func (m MediaManager) ListShowsInLibrary(ctx context.Context, params pagination.Params, states []storage.SeriesState) (LibraryShowsResponse, error) {
+	return m.seriesService.ListShowsInLibrary(ctx, params, states)
 }
 
 // ListMoviesInLibrary returns library movies enriched with metadata
-func (m MediaManager) ListMoviesInLibrary(ctx context.Context) ([]LibraryMovie, error) {
-	return m.movieService.ListMoviesInLibrary(ctx)
+func (m MediaManager) ListMoviesInLibrary(ctx context.Context, params pagination.Params, states []storage.MovieState) (LibraryMoviesResponse, error) {
+	return m.movieService.ListMoviesInLibrary(ctx, params, states)
 }
 
 func (m MediaManager) Run(ctx context.Context) error {

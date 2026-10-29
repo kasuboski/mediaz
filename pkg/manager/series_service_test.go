@@ -1,10 +1,16 @@
 package manager
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
+	"io"
+	"net/http"
 	"testing"
+
+	"github.com/kasuboski/mediaz/pkg/pagination"
 
 	mockLibrary "github.com/kasuboski/mediaz/pkg/library/mocks"
 	"github.com/kasuboski/mediaz/pkg/ptr"
@@ -142,26 +148,24 @@ func TestSeriesService_ListShowsInLibrary(t *testing.T) {
 	defer ctrl.Finish()
 	ctx := context.Background()
 	svc, store, _, _ := newTestSeriesService(ctrl)
-	store.EXPECT().ListSeries(ctx, storage.SeriesFilter{}).Return([]sqlcdb.ListSeriesRow{{
-		Series: sqlcdb.Series{ID: 1, SeriesMetadataID: sql.NullInt64{Int64: 7, Valid: true}, Path: sql.NullString{String: "Test Show", Valid: true}},
-		State:  string(storage.SeriesStateMissing),
-	}}, nil)
-	store.EXPECT().GetSeriesMetadataByID(ctx, int64(7)).Return(sqlcdb.SeriesMetadatum{
-		ID: 7, TmdbID: 123, Title: "Test Show", PosterPath: sql.NullString{String: "poster.jpg", Valid: true},
-	}, nil)
-	shows, err := svc.ListShowsInLibrary(ctx)
-	require.NoError(t, err)
-	assert.Equal(t, []LibraryShow{{Path: "Test Show", TMDBID: 123, Title: "Test Show", PosterPath: "poster.jpg", State: string(storage.SeriesStateMissing)}}, shows)
-}
+	params := pagination.Params{Page: 2, PageSize: 1}
+	states := []storage.SeriesState{storage.SeriesStateMissing}
+	row := sqlcdb.ListLibraryShowsRow{
+		Series:          sqlcdb.Series{ID: 1, SeriesMetadataID: sql.NullInt64{Int64: 7, Valid: true}, Path: sql.NullString{String: "Test Show", Valid: true}},
+		SeriesMetadatum: sqlcdb.SeriesMetadatum{ID: 7, TmdbID: 123, Title: "Test Show", PosterPath: sql.NullString{String: "poster.jpg", Valid: true}, FirstAirDate: sql.NullTime{}},
+		State:           string(storage.SeriesStateMissing),
+	}
+	store.EXPECT().ListLibraryShows(ctx, 1, 1, states).Return([]sqlcdb.ListLibraryShowsRow{row}, nil)
+	store.EXPECT().CountLibraryShows(ctx, states).Return(int64(2), nil)
+	store.EXPECT().CountLibraryShowsByState(ctx).Return([]sqlcdb.CountLibraryShowsByStateRow{{State: string(storage.SeriesStateMissing), Count: 3}}, nil)
 
-func TestSeriesService_ListShowsInLibrary_SkipsNoMetadata(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-	svc, store, _, _ := newTestSeriesService(ctrl)
-	store.EXPECT().ListSeries(gomock.Any(), storage.SeriesFilter{}).Return([]sqlcdb.ListSeriesRow{{Series: sqlcdb.Series{ID: 1}}}, nil)
-	shows, err := svc.ListShowsInLibrary(context.Background())
+	got, err := svc.ListShowsInLibrary(ctx, params, states)
 	require.NoError(t, err)
-	assert.Empty(t, shows)
+	assert.Equal(t, LibraryShowsResponse{
+		Items:      []LibraryShow{{Path: "Test Show", TMDBID: 123, Title: "Test Show", PosterPath: "poster.jpg", State: string(storage.SeriesStateMissing)}},
+		Pagination: params.BuildMeta(2),
+		ByState:    map[string]int64{string(storage.SeriesStateMissing): 3},
+	}, got)
 }
 
 func TestSeriesService_GetSeriesDetails(t *testing.T) {
@@ -179,9 +183,30 @@ func TestSeriesService_SearchTV_EmptyQuery(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 	svc, _, _, _ := newTestSeriesService(ctrl)
-	_, err := svc.SearchTV(context.Background(), "")
+	_, err := svc.SearchTV(context.Background(), "", 1)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "query is empty")
+}
+
+func TestSeriesService_SearchTV_Success(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	ctx := context.Background()
+	svc, _, tmdbClient, _ := newTestSeriesService(ctrl)
+	body, err := json.Marshal(map[string]interface{}{"page": 2, "total_pages": 3, "total_results": 1, "results": []interface{}{}})
+	require.NoError(t, err)
+	response := &http.Response{StatusCode: http.StatusOK, Status: "200 OK", Body: io.NopCloser(bytes.NewReader(body))}
+	tmdbClient.EXPECT().SearchTv(ctx, gomock.Any()).DoAndReturn(func(_ context.Context, params *tmdb.SearchTvParams, _ ...tmdb.RequestEditorFn) (*http.Response, error) {
+		assert.Equal(t, "test show", params.Query)
+		require.NotNil(t, params.Page)
+		assert.Equal(t, int32(2), *params.Page)
+		return response, nil
+	})
+	got, err := svc.SearchTV(ctx, "test show", 2)
+	require.NoError(t, err)
+	require.NotNil(t, got)
+	require.NotNil(t, got.Page)
+	assert.Equal(t, 2, *got.Page)
 }
 
 func TestNewSeriesService(t *testing.T) {

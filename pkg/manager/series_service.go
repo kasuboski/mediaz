@@ -11,6 +11,7 @@ import (
 
 	"github.com/kasuboski/mediaz/pkg/library"
 	"github.com/kasuboski/mediaz/pkg/logger"
+	"github.com/kasuboski/mediaz/pkg/pagination"
 	"github.com/kasuboski/mediaz/pkg/storage"
 	sqlcdb "github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 	"github.com/kasuboski/mediaz/pkg/tmdb"
@@ -352,14 +353,14 @@ func (s SeriesService) GetSeriesDetails(ctx context.Context, tmdbID int64) (sqlc
 }
 
 // SearchTV queries TMDB for TV shows matching the given query.
-func (s SeriesService) SearchTV(ctx context.Context, query string) (*SearchMediaResponse, error) {
+func (s SeriesService) SearchTV(ctx context.Context, query string, page int32) (*SearchMediaResponse, error) {
 	log := logger.FromCtx(ctx)
 	if query == "" {
 		log.Debug("search tv query is empty", zap.String("query", query))
 		return nil, errors.New("query is empty")
 	}
 
-	res, err := s.tmdb.SearchTv(ctx, &tmdb.SearchTvParams{Query: query})
+	res, err := s.tmdb.SearchTv(ctx, &tmdb.SearchTvParams{Query: query, Page: &page})
 	if err != nil {
 		log.Error("search tv failed request", zap.Error(err))
 		return nil, err
@@ -380,38 +381,40 @@ func (s SeriesService) SearchTV(ctx context.Context, query string) (*SearchMedia
 // Listing
 // ---------------------------------------------------------------------------
 
-// ListShowsInLibrary returns all tracked series enriched with metadata.
-func (s SeriesService) ListShowsInLibrary(ctx context.Context) ([]LibraryShow, error) {
-	series, err := s.seriesStorage.ListSeries(ctx, storage.SeriesFilter{})
+// ListShowsInLibrary returns one database-paged library slice and aggregate state counts.
+func (s SeriesService) ListShowsInLibrary(ctx context.Context, params pagination.Params, states []storage.SeriesState) (LibraryShowsResponse, error) {
+	offset, limit := params.CalculateOffsetLimit()
+	rows, err := s.seriesStorage.ListLibraryShows(ctx, offset, limit, states)
 	if err != nil {
-		return nil, err
+		return LibraryShowsResponse{}, err
 	}
-	var shows []LibraryShow
-	for _, sp := range series {
-		// Skip series without metadata - they haven't been reconciled yet
-		if !sp.Series.SeriesMetadataID.Valid {
-			continue
-		}
-
-		meta, err := s.seriesMetaStorage.GetSeriesMetadataByID(ctx, sp.Series.SeriesMetadataID.Int64)
-		if err != nil {
-			return nil, err
-		}
-		ls := LibraryShow{State: string(sp.State)}
-		if sp.Series.Path.Valid {
-			ls.Path = sp.Series.Path.String
-		}
-		ls.TMDBID = meta.TmdbID
-		ls.Title = meta.Title
-		if meta.PosterPath.Valid {
-			ls.PosterPath = meta.PosterPath.String
-		}
-		if meta.FirstAirDate.Valid {
-			ls.Year = int32(meta.FirstAirDate.Time.Year())
-		}
-		shows = append(shows, ls)
+	total, err := s.seriesStorage.CountLibraryShows(ctx, states)
+	if err != nil {
+		return LibraryShowsResponse{}, err
 	}
-	return shows, nil
+	counts, err := s.seriesStorage.CountLibraryShowsByState(ctx)
+	if err != nil {
+		return LibraryShowsResponse{}, err
+	}
+	items := make([]LibraryShow, 0, len(rows))
+	for _, row := range rows {
+		item := LibraryShow{TMDBID: row.SeriesMetadatum.TmdbID, Title: row.SeriesMetadatum.Title, State: row.State}
+		if row.Series.Path.Valid {
+			item.Path = row.Series.Path.String
+		}
+		if row.SeriesMetadatum.PosterPath.Valid {
+			item.PosterPath = row.SeriesMetadatum.PosterPath.String
+		}
+		if row.SeriesMetadatum.FirstAirDate.Valid {
+			item.Year = int32(row.SeriesMetadatum.FirstAirDate.Time.Year())
+		}
+		items = append(items, item)
+	}
+	byState := make(map[string]int64, len(counts))
+	for _, count := range counts {
+		byState[count.State] = count.Count
+	}
+	return LibraryShowsResponse{Items: items, Pagination: params.BuildMeta(int(total)), ByState: byState}, nil
 }
 
 // ListSeasonsForSeries retrieves all seasons for a TV series by TMDB ID.

@@ -42,6 +42,10 @@ func (s *SQLite) GetJobTransitionsByDate(ctx context.Context, arg sqlcdb.GetJobT
 	return s.Queries.GetJobTransitionsByDate(ctx, arg)
 }
 
+func (s *SQLite) GetActivityTimelinePage(ctx context.Context, arg sqlcdb.GetActivityTimelinePageParams) ([]sqlcdb.GetActivityTimelinePageRow, error) {
+	return s.Queries.GetActivityTimelinePage(ctx, arg)
+}
+
 func (s *SQLite) GetMovieTransitionItems(ctx context.Context, arg sqlcdb.GetMovieTransitionItemsParams) ([]sqlcdb.GetMovieTransitionItemsRow, error) {
 	return s.Queries.GetMovieTransitionItems(ctx, arg)
 }

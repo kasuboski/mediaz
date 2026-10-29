@@ -12,16 +12,18 @@ export interface PageSizeSelectorProps {
   options?: number[];
   label?: string;
   className?: string;
+  allowAll?: boolean;
 }
 
 export function PageSizeSelector({
   value,
   onChange,
-  options = [10, 25, 50, 100],
+  options = [25, 50, 100],
   label = "Items per page",
   className,
+  allowAll = false,
 }: PageSizeSelectorProps) {
-  const allOptions = [0, ...options.filter(o => o > 0)];
+  const allOptions = [...(allowAll ? [0] : []), ...options.filter(o => Number.isSafeInteger(o) && o > 0)];
 
   return (
     <div className={`flex items-center gap-2 ${className || ''}`}>

@@ -12,9 +12,9 @@ export function AppLayout({ children }: AppLayoutProps) {
       <div className="min-h-screen flex w-full bg-background">
         <AppSidebar />
 
-        <div className="flex-1 flex flex-col">
+        <div className="flex min-w-0 flex-1 flex-col">
           <SearchHeader />
-          <main className="flex-1 overflow-auto">{children}</main>
+          <main className="min-w-0 flex-1 overflow-auto">{children}</main>
         </div>
       </div>
     </SidebarProvider>

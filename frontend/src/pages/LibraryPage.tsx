@@ -65,7 +65,9 @@ export default function LibraryPage() {
                     {config?.library.movieDir || "Using default location"}
                   </p>
                   {!config?.library.movieDir && (
-                    <AlertCircle className="h-4 w-4 text-yellow-500" title="Using default or relative path" />
+                    <span title="Using default or relative path" aria-label="Using default or relative path">
+                      <AlertCircle className="h-4 w-4 text-yellow-500" aria-hidden="true" />
+                    </span>
                   )}
                 </div>
               </div>
@@ -77,7 +79,9 @@ export default function LibraryPage() {
                     {config?.library.tvDir || "Using default location"}
                   </p>
                   {!config?.library.tvDir && (
-                    <AlertCircle className="h-4 w-4 text-yellow-500" title="Using default or relative path" />
+                    <span title="Using default or relative path" aria-label="Using default or relative path">
+                      <AlertCircle className="h-4 w-4 text-yellow-500" aria-hidden="true" />
+                    </span>
                   )}
                 </div>
               </div>

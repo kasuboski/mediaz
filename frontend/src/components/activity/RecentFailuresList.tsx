@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/queries';
-import { type FailureItem } from '@/lib/api';
+import { type FailureItem, type PaginationMeta } from '@/lib/api';
+import { PaginationControls } from '@/components/ui/pagination-controls';
+import { PageSizeSelector } from '@/components/ui/page-size-selector';
 import {
   AlertTriangle,
   Server,
@@ -18,7 +20,12 @@ import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 
 interface RecentFailuresListProps {
-  failures: FailureItem[];
+  data: { failures: FailureItem[]; pagination: PaginationMeta };
+  hours: number;
+  page: number;
+  pageSize: number;
+  onPageChange: (page: number) => void;
+  onPageSizeChange: (size: number) => void;
 }
 
 function getFailureIcon(type: string) {
@@ -74,7 +81,10 @@ function FailureCard({ failure }: { failure: FailureItem }) {
     console.log('  - ID:', failure.id);
     console.log('  - Title:', failure.title);
     
-    await queryClient.invalidateQueries({ queryKey: queryKeys.activity.failures(24) });
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: queryKeys.activity.all }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.activity.active() }),
+    ]);
     setIsRetrying(false);
   };
 
@@ -177,8 +187,9 @@ function FailureCard({ failure }: { failure: FailureItem }) {
   );
 }
 
-export function RecentFailuresList({ failures }: RecentFailuresListProps) {
-  if (!failures || failures.length === 0) {
+export function RecentFailuresList({ data, page, pageSize, onPageChange, onPageSizeChange }: RecentFailuresListProps) {
+  const failures = data.failures;
+  if (!data.pagination.totalItems) {
     return (
       <Card className="p-8">
         <div className="flex flex-col items-center justify-center gap-3 text-center">
@@ -194,9 +205,9 @@ export function RecentFailuresList({ failures }: RecentFailuresListProps) {
 
   return (
     <div className="space-y-3">
-      {failures.map((failure) => (
-        <FailureCard key={`${failure.type}-${failure.id}`} failure={failure} />
-      ))}
+      <div className="flex items-center justify-between"><span className="text-sm text-muted-foreground">Showing {data.pagination.totalItems ? (page - 1) * pageSize + 1 : 0}–{Math.min(page * pageSize, data.pagination.totalItems)} of {data.pagination.totalItems}</span><PageSizeSelector value={pageSize} onChange={onPageSizeChange} options={[25, 50, 100]} /></div>
+      {failures.map((failure) => <FailureCard key={`${failure.type}-${failure.id}`} failure={failure} />)}
+      {data.pagination.totalPages > 1 && <div className="flex justify-end"><PaginationControls currentPage={page} totalPages={data.pagination.totalPages} onPageChange={onPageChange} /></div>}
     </div>
   );
 }

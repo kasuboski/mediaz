@@ -2,7 +2,7 @@ import { MediaGrid } from "@/components/media/MediaGrid";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { MediaStateTabs } from "@/components/media/MediaStateTabs";
 import { useLibraryShows } from "@/lib/queries";
-import { useConfigurableMediaStateFilter } from "@/hooks/use-configurable-media-state-filter";
+import { useLibraryUrlState } from "@/hooks/use-library-url-state";
 import { seriesFilterConfig } from "@/config/media-filter-configs";
 import {
   DropdownMenu,
@@ -14,12 +14,20 @@ import { Button } from "@/components/ui/button";
 import { MoreVertical, RefreshCw } from "lucide-react";
 import { metadataApi } from "@/lib/api";
 import { toast } from "sonner";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { PaginationControls } from "@/components/ui/pagination-controls";
+import { PageSizeSelector } from "@/components/ui/page-size-selector";
 
 export default function Series() {
-  const { data: shows = [], isLoading, error } = useLibraryShows();
-  const { filter, setFilter, counts, filteredItems: filteredShows } =
-    useConfigurableMediaStateFilter(shows, seriesFilterConfig);
+  const { page, pageSize, state: filter, setPage, setState: setFilter, setPageSize: setSize } = useLibraryUrlState(seriesFilterConfig.filters);
+  const states = seriesFilterConfig.filterMappings[filter as keyof typeof seriesFilterConfig.filterMappings].states;
+  const { data, isLoading, error, refetch } = useLibraryShows({ page, pageSize, states });
+  useEffect(() => {
+    const lastPage = Math.max(1, data?.pagination.totalPages ?? 1);
+    if (data && page > lastPage) setPage(lastPage, true);
+  }, [data, page, setPage]);
+  const shows = data?.items ?? [];
+  const counts = { all: Object.values(data?.byState ?? {}).reduce((a,b) => a+b,0), missing: data?.byState.missing ?? 0, available: (data?.byState.discovered ?? 0)+(data?.byState.completed ?? 0), unreleased: data?.byState.unreleased ?? 0, downloading: data?.byState.downloading ?? 0, continuing: data?.byState.continuing ?? 0 };
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const handleRefreshMetadata = async () => {
@@ -48,6 +56,7 @@ export default function Series() {
           <p className="text-muted-foreground">
             {error instanceof Error ? error.message : 'An unknown error occurred'}
           </p>
+          <Button className="mt-4" onClick={() => refetch()}>Retry</Button>
         </div>
       </div>
     );
@@ -89,7 +98,12 @@ export default function Series() {
           availableFilters={seriesFilterConfig.filters}
           mediaType="tv"
         >
-          <MediaGrid items={filteredShows} />
+          {shows.length === 0 ? <p className="py-12 text-center text-muted-foreground">{filter === 'all' ? 'Your TV library is empty.' : 'No TV shows match this filter.'}</p> : <MediaGrid items={shows} />}
+          <div className="mt-6 flex flex-wrap items-center justify-between gap-4">
+            <span className="text-sm text-muted-foreground">{data?.pagination.totalItems ? `Showing ${(page - 1) * pageSize + 1}–${Math.min(page * pageSize, data.pagination.totalItems)} of ${data.pagination.totalItems} matching TV shows` : '0 matching TV shows'}</span>
+            <PageSizeSelector value={pageSize} onChange={setSize} />
+            <PaginationControls currentPage={page} totalPages={data?.pagination.totalPages ?? 0} onPageChange={setPage} />
+          </div>
         </MediaStateTabs>
       )}
     </div>

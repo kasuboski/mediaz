@@ -2,6 +2,7 @@ package manager
 
 import (
 	"github.com/kasuboski/mediaz/pkg/indexer"
+	"github.com/kasuboski/mediaz/pkg/pagination"
 	sqlcdb "github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 )
 
@@ -14,6 +15,17 @@ type LibraryShow struct {
 	PosterPath string `json:"poster_path"`
 	Year       int32  `json:"year,omitempty"`
 	State      string `json:"state"`
+}
+
+type LibraryMoviesResponse struct {
+	Items      []LibraryMovie   `json:"items"`
+	Pagination pagination.Meta  `json:"pagination"`
+	ByState    map[string]int64 `json:"byState"`
+}
+type LibraryShowsResponse struct {
+	Items      []LibraryShow    `json:"items"`
+	Pagination pagination.Meta  `json:"pagination"`
+	ByState    map[string]int64 `json:"byState"`
 }
 
 // SearchMediaResponse is the paginated envelope returned by movie and TV search.

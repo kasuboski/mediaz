@@ -19,7 +19,7 @@ export interface CountRule {
  */
 export interface MediaStateFilterConfig<
   TFilter extends string,
-  TCounts extends Record<string, number>
+  TCounts extends { [K in keyof TCounts]: number }
 > {
   filters: readonly TFilter[];
   defaultFilter: TFilter;
@@ -33,7 +33,7 @@ export interface MediaStateFilterConfig<
 export interface UseMediaStateFilterReturn<
   TItem,
   TFilter extends string,
-  TCounts extends Record<string, number>
+  TCounts extends { [K in keyof TCounts]: number }
 > {
   filter: TFilter;
   setFilter: (filter: TFilter) => void;
@@ -52,7 +52,7 @@ export interface UseMediaStateFilterReturn<
 export function useConfigurableMediaStateFilter<
   TItem extends { state?: string },
   TFilter extends string,
-  TCounts extends Record<string, number>
+  TCounts extends { [K in keyof TCounts]: number }
 >(
   items: TItem[],
   config: MediaStateFilterConfig<TFilter, TCounts>
