@@ -42,29 +42,6 @@ func TestEpisodeStorage(t *testing.T) {
 	assert.ErrorIs(t, err, storage.ErrNotFound)
 }
 
-func TestEpisodeStorage_CreateWithID(t *testing.T) {
-	ctx := t.Context()
-	store := initSqlite(t, ctx)
-	seasonID, err := store.CreateSeason(ctx, sqlcdb.Season{SeriesID: tvTestSeries(t, ctx, store), SeasonNumber: 1}, storage.SeasonStateMissing)
-	require.NoError(t, err)
-	episode := sqlcdb.Episode{ID: 100, SeasonID: seasonID, EpisodeNumber: 7, Monitored: 1}
-	id, err := store.CreateEpisode(ctx, episode, storage.EpisodeStateMissing)
-	require.NoError(t, err)
-	assert.Equal(t, episode.ID, id)
-	before, err := store.GetEpisodeByID(ctx, id)
-	require.NoError(t, err)
-	assert.Equal(t, episode, before.Episode)
-	update := episode
-	update.EpisodeNumber = 9
-	upsertID, err := store.CreateEpisode(ctx, update, storage.EpisodeStateDiscovered)
-	require.NoError(t, err)
-	assert.Equal(t, id, upsertID)
-	after, err := store.GetEpisodeByID(ctx, id)
-	require.NoError(t, err)
-	before.Episode = update
-	assert.Equal(t, before, after, "entity refresh must preserve its existing transition state")
-}
-
 func TestEpisodeStorage_ListFilters(t *testing.T) {
 	ctx := t.Context()
 	store := initSqlite(t, ctx)

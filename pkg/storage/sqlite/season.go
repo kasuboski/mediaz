@@ -23,46 +23,37 @@ func (s *SQLite) CreateSeason(ctx context.Context, season sqlcdb.Season, initial
 		return 0, err
 	}
 
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return 0, err
-	}
-	q := s.txQueries(tx)
+	var inserted int64
+	err := s.withTx(ctx, func(q *sqlcdb.Queries) error {
+		var err error
+		inserted, err = q.CreateSeason(ctx, sqlcdb.CreateSeasonParams{
+			ID:               sql.NullInt64{Int64: season.ID, Valid: season.ID != 0},
+			SeriesID:         season.SeriesID,
+			SeasonNumber:     season.SeasonNumber,
+			SeasonMetadataID: season.SeasonMetadataID,
+			Monitored:        season.Monitored,
+		})
+		if err != nil {
+			return err
+		}
 
-	inserted, err := q.CreateSeason(ctx, sqlcdb.CreateSeasonParams{
-		ID:               sql.NullInt64{Int64: season.ID, Valid: season.ID != 0},
-		SeriesID:         season.SeriesID,
-		SeasonNumber:     season.SeasonNumber,
-		SeasonMetadataID: season.SeasonMetadataID,
-		Monitored:        season.Monitored,
+		current, err := q.GetSeasonByID(ctx, inserted)
+		if err != nil {
+			return err
+		}
+		// Upserts update the entity, never reset its transition history.
+		if current.State.Valid {
+			return nil
+		}
+
+		return q.InsertSeasonTransition(ctx, sqlcdb.InsertSeasonTransitionParams{
+			SeasonID:   inserted,
+			ToState:    string(initialState),
+			MostRecent: true,
+			SortKey:    1,
+		})
 	})
 	if err != nil {
-		tx.Rollback()
-		return 0, err
-	}
-
-	current, err := q.GetSeasonByID(ctx, inserted)
-	if err != nil {
-		tx.Rollback()
-		return 0, err
-	}
-	// Upserts update the entity, never reset its transition history.
-	if current.State.Valid {
-		return inserted, tx.Commit()
-	}
-
-	if err := q.InsertSeasonTransition(ctx, sqlcdb.InsertSeasonTransitionParams{
-		SeasonID:   inserted,
-		ToState:    string(initialState),
-		MostRecent: true,
-		SortKey:    1,
-	}); err != nil {
-		tx.Rollback()
-		return 0, err
-	}
-
-	if err := tx.Commit(); err != nil {
-		tx.Rollback()
 		return 0, err
 	}
 
@@ -125,51 +116,41 @@ func (s *SQLite) ListSeasons(ctx context.Context, filter storage.SeasonFilter) (
 // optional and can be nil. The demote+insert pair runs in one transaction; on
 // any failure nothing is written.
 func (s *SQLite) UpdateSeasonState(ctx context.Context, id int64, state storage.SeasonState, metadata *storage.TransitionStateMetadata) error {
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-	q := s.txQueries(tx)
-	season, err := q.GetSeasonByID(ctx, id)
-	if err != nil {
-		return mapQueryErr(err, "failed to get season")
-	}
-	if err := storage.SeasonState(season.State.String).Machine().ToState(state); err != nil {
-		return err
-	}
-
-	// Demote the current most recent transition; the query errors when the
-	// season has no transition, matching the legacy behavior.
-	previousSortKey, err := q.DemoteSeasonTransition(ctx, id)
-	if err != nil {
-		tx.Rollback()
-		return err
-	}
-
-	transition := sqlcdb.InsertSeasonTransitionParams{
-		SeasonID:   id,
-		FromState:  season.State,
-		ToState:    string(state),
-		MostRecent: true,
-		SortKey:    previousSortKey + 1,
-	}
-	if metadata != nil {
-		if metadata.DownloadClientID != nil {
-			transition.DownloadClientID = sql.NullInt64{Int64: *metadata.DownloadClientID, Valid: true}
+	return s.withTx(ctx, func(q *sqlcdb.Queries) error {
+		season, err := q.GetSeasonByID(ctx, id)
+		if err != nil {
+			return mapQueryErr(err, "failed to get season")
 		}
-		if metadata.DownloadID != nil {
-			transition.DownloadID = sql.NullString{String: *metadata.DownloadID, Valid: true}
+		if err := storage.SeasonState(season.State.String).Machine().ToState(state); err != nil {
+			return err
 		}
-		if metadata.IsEntireSeasonDownload != nil {
-			transition.IsEntireSeasonDownload = sql.NullBool{Bool: *metadata.IsEntireSeasonDownload, Valid: true}
+
+		// Demote the current most recent transition; the query errors when the
+		// season has no transition, matching the legacy behavior.
+		previousSortKey, err := q.DemoteSeasonTransition(ctx, id)
+		if err != nil {
+			return err
 		}
-	}
 
-	if err := q.InsertSeasonTransition(ctx, transition); err != nil {
-		tx.Rollback()
-		return err
-	}
+		transition := sqlcdb.InsertSeasonTransitionParams{
+			SeasonID:   id,
+			FromState:  season.State,
+			ToState:    string(state),
+			MostRecent: true,
+			SortKey:    previousSortKey + 1,
+		}
+		if metadata != nil {
+			if metadata.DownloadClientID != nil {
+				transition.DownloadClientID = sql.NullInt64{Int64: *metadata.DownloadClientID, Valid: true}
+			}
+			if metadata.DownloadID != nil {
+				transition.DownloadID = sql.NullString{String: *metadata.DownloadID, Valid: true}
+			}
+			if metadata.IsEntireSeasonDownload != nil {
+				transition.IsEntireSeasonDownload = sql.NullBool{Bool: *metadata.IsEntireSeasonDownload, Valid: true}
+			}
+		}
 
-	return tx.Commit()
+		return q.InsertSeasonTransition(ctx, transition)
+	})
 }

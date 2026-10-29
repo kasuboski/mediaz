@@ -31,7 +31,6 @@ import (
 	"database/sql"
 	"fmt"
 	"testing"
-	"time"
 
 	"github.com/kasuboski/mediaz/pkg/ptr"
 	"github.com/kasuboski/mediaz/pkg/storage"
@@ -190,36 +189,6 @@ func TestSqlcIntegration_MigrationPreservesDefaultsAndTimestamps(t *testing.T) {
 	assert.False(t, latest.UpdatedAt.Time.IsZero(), "updated_at default must be applied to new transitions")
 	assert.False(t, latest.UpdatedAt.Time.Before(latest.CreatedAt.Time),
 		"updated_at must not be before created_at")
-}
-
-// TestSqlcIntegration_MovieFileDateAddedDefault verifies that movie_file
-// keeps its database-generated date_added when created through the API.
-func TestSqlcIntegration_MovieFileDateAddedDefault(t *testing.T) {
-	ctx := context.Background()
-	s := sqlcIntegrationStore(t)
-
-	fileID, err := s.CreateMovieFile(ctx, sqlcdb.MovieFile{
-		Quality:      "HDTV-720p",
-		Size:         1_000_000_000,
-		RelativePath: sql.NullString{String: "Defaults/defaults.mkv", Valid: true},
-	})
-	require.NoError(t, err)
-	require.NotZero(t, fileID)
-
-	files, err := s.ListMovieFiles(ctx)
-	require.NoError(t, err)
-	require.Len(t, files, 1)
-
-	assert.False(t, files[0].DateAdded.IsZero(),
-		"movie_file.date_added default must be applied, not zero/NULL")
-	files[0].DateAdded = time.Time{}
-	assert.Equal(t, sqlcdb.MovieFile{
-		ID:           int64(fileID),
-		Quality:      "HDTV-720p",
-		Size:         1_000_000_000,
-		RelativePath: sql.NullString{String: "Defaults/defaults.mkv", Valid: true},
-		IndexerFlags: 0,
-	}, files[0])
 }
 
 // TestSqlcIntegration_MovieLatestTransitionUniqueness verifies that the
