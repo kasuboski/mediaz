@@ -1,0 +1,39 @@
+{
+  "status": 200,
+  "content_type": "application/xml",
+  "capture_date": "2026-11-02",
+  "expect": {
+    "root": "rss",
+    "item_count": 67,
+    "pagination": [
+      {
+        "offset": "0",
+        "total": "67"
+      }
+    ],
+    "attribute_item_counts": {
+      "category": 67,
+      "comments": 67,
+      "coverurl": 67,
+      "genre": 67,
+      "grabs": 67,
+      "guid": 67,
+      "imdb": 67,
+      "imdbactors": 67,
+      "imdbdirector": 67,
+      "imdbplot": 67,
+      "imdbscore": 67,
+      "imdbtagline": 67,
+      "imdbtitle": 67,
+      "imdbyear": 67,
+      "language": 47,
+      "password": 67,
+      "runtime": 67,
+      "size": 67,
+      "subs": 36,
+      "thumbsdown": 67,
+      "thumbsup": 67,
+      "usenetdate": 67
+    }
+  }
+}

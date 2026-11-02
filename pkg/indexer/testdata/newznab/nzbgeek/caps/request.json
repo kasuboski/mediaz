@@ -1,0 +1,16 @@
+{
+  "method": "GET",
+  "scheme": "https",
+  "host": "indexer.example.invalid",
+  "path": "/api",
+  "query": [
+    [
+      "t",
+      "caps"
+    ],
+    [
+      "apikey",
+      "TEST_API_KEY"
+    ]
+  ]
+}

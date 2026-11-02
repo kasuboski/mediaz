@@ -1,0 +1,11 @@
+{
+  "status": 200,
+  "content_type": "application/xml",
+  "capture_date": "2026-11-02",
+  "expect": {
+    "root": "caps",
+    "item_count": 0,
+    "pagination": [],
+    "attribute_item_counts": {}
+  }
+}

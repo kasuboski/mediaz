@@ -46,3 +46,10 @@ testlib
 
 STATUS.md
 backlog/*
+
+# Private Prowlarr recording lab: configuration, CA keys, and raw traffic
+scripts/prowlarr-capture/.state/
+*.mitm
+*.har
+__pycache__/
+*.pyc

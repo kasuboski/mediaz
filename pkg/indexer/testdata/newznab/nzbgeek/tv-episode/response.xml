@@ -1,0 +1,62 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rss xmlns:atom="http://www.w3.org/2005/Atom" xmlns:newznab="http://www.newznab.com/DTD/2010/feeds/attributes/" version="2.0">
+  <channel>
+    <atom:link href="https://indexer.example.invalid/api" rel="self" type="application/rss+xml" />
+    <title>Sanitized indexer fixture</title>
+    <description>Sanitized indexer fixture</description>
+    <link>https://indexer.example.invalid/</link>
+    <language>en</language>
+    <webMaster>fixture@example.invalid</webMaster>
+    <category>Sanitized indexer fixture</category>
+    <image>
+      <url>https://indexer.example.invalid/logo.png</url>
+    </image>
+    <newznab:response offset="0" total="2" />
+    <item>
+      <title>The.Great.British.Baking.Show.S02E01.Cakes.720p.WEB.h264-PFa</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000479</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000479&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000479</comments>
+      <pubDate>Sat, 07 Mar 2020 00:16:16 +0000</pubDate>
+      <category>TV &gt; HD</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000479&amp;apikey=TEST_API_KEY" length="1108072000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5040" />
+      <newznab:attr name="size" value="1108072000" />
+      <newznab:attr name="guid" value="release-000479" />
+      <newznab:attr name="tvdbid" value="353994" />
+      <newznab:attr name="season" value="S02" />
+      <newznab:attr name="episode" value="E01" />
+      <newznab:attr name="grabs" value="600" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Sat, 07 Mar 2020 00:16:16 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>The.Great.British.Baking.Show.S02E01.Cakes.XviD-AFG</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000497</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000497&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000497</comments>
+      <pubDate>Fri, 06 Mar 2020 23:57:25 +0000</pubDate>
+      <category>TV &gt; SD</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000497&amp;apikey=TEST_API_KEY" length="956641000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5030" />
+      <newznab:attr name="size" value="956641000" />
+      <newznab:attr name="guid" value="release-000497" />
+      <newznab:attr name="tvdbid" value="353994" />
+      <newznab:attr name="season" value="S02" />
+      <newznab:attr name="episode" value="E01" />
+      <newznab:attr name="grabs" value="37" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Fri, 06 Mar 2020 23:57:25 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+  </channel>
+</rss>

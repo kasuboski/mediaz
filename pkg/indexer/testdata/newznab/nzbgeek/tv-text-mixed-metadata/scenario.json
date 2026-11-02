@@ -1,0 +1,33 @@
+{
+  "status": 200,
+  "content_type": "application/xml",
+  "capture_date": "2026-11-02",
+  "expect": {
+    "root": "rss",
+    "item_count": 100,
+    "pagination": [
+      {
+        "offset": "0",
+        "total": "3284"
+      }
+    ],
+    "attribute_item_counts": {
+      "category": 100,
+      "comments": 100,
+      "coverurl": 59,
+      "episode": 59,
+      "grabs": 100,
+      "guid": 100,
+      "language": 34,
+      "password": 100,
+      "rageid": 30,
+      "season": 59,
+      "size": 100,
+      "subs": 25,
+      "thumbsdown": 100,
+      "thumbsup": 100,
+      "tvdbid": 59,
+      "usenetdate": 100
+    }
+  }
+}

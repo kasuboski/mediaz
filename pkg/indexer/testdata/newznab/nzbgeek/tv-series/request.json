@@ -1,0 +1,36 @@
+{
+  "method": "GET",
+  "scheme": "https",
+  "host": "indexer.example.invalid",
+  "path": "/api",
+  "query": [
+    [
+      "t",
+      "tvsearch"
+    ],
+    [
+      "extended",
+      "1"
+    ],
+    [
+      "cat",
+      "5020,5030,5040,5045,5050,5060,5070,5080,5000"
+    ],
+    [
+      "apikey",
+      "TEST_API_KEY"
+    ],
+    [
+      "tvdbid",
+      "353994"
+    ],
+    [
+      "limit",
+      "100"
+    ],
+    [
+      "offset",
+      "0"
+    ]
+  ]
+}
