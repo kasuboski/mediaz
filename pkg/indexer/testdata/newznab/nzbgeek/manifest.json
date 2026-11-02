@@ -1,0 +1,18 @@
+{
+  "format_version": 1,
+  "provider": "nzbgeek",
+  "protocol": "newznab",
+  "source": "captured upstream indexer HTTP responses, not Prowlarr reserialized output",
+  "prowlarr_version": "2.7.0.5723",
+  "scenarios": [
+    "caps",
+    "movie-text",
+    "movie-imdb",
+    "tv-text-mixed-metadata",
+    "tv-text",
+    "tv-series",
+    "tv-season",
+    "tv-episode",
+    "tv-page-two"
+  ]
+}

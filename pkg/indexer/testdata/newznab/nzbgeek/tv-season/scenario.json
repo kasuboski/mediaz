@@ -1,0 +1,30 @@
+{
+  "status": 200,
+  "content_type": "application/xml",
+  "capture_date": "2026-11-02",
+  "expect": {
+    "root": "rss",
+    "item_count": 30,
+    "pagination": [
+      {
+        "offset": "0",
+        "total": "30"
+      }
+    ],
+    "attribute_item_counts": {
+      "category": 30,
+      "comments": 30,
+      "episode": 30,
+      "grabs": 30,
+      "guid": 30,
+      "language": 8,
+      "password": 30,
+      "season": 30,
+      "size": 30,
+      "thumbsdown": 30,
+      "thumbsup": 30,
+      "tvdbid": 30,
+      "usenetdate": 30
+    }
+  }
+}

@@ -1,0 +1,2508 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rss xmlns:atom="http://www.w3.org/2005/Atom" xmlns:newznab="http://www.newznab.com/DTD/2010/feeds/attributes/" version="2.0">
+  <channel>
+    <atom:link href="https://indexer.example.invalid/api" rel="self" type="application/rss+xml" />
+    <title>Sanitized indexer fixture</title>
+    <description>Sanitized indexer fixture</description>
+    <link>https://indexer.example.invalid/</link>
+    <language>en</language>
+    <webMaster>fixture@example.invalid</webMaster>
+    <category>Sanitized indexer fixture</category>
+    <image>
+      <url>https://indexer.example.invalid/logo.png</url>
+    </image>
+    <newznab:response offset="0" total="69" />
+    <item>
+      <title>Step.Brothers.2008.Unrated.2160p.UHD.BluRay.REMUX.HDR.HEVC.Atmos-EPSiLON</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000001</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000001&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000001</comments>
+      <pubDate>Sat, 17 Oct 2026 09:34:09 +0000</pubDate>
+      <category>Movies &gt; UHD</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000001&amp;apikey=TEST_API_KEY" length="55106898000" type="application/x-nzb" />
+      <newznab:attr name="category" value="2000" />
+      <newznab:attr name="category" value="2045" />
+      <newznab:attr name="size" value="55106898000" />
+      <newznab:attr name="guid" value="release-000001" />
+      <newznab:attr name="imdbtitle" value="Step Brothers" />
+      <newznab:attr name="imdb" value="00838283" />
+      <newznab:attr name="imdbtagline" value="Sanitized public metadata" />
+      <newznab:attr name="imdbplot" value="Sanitized public metadata" />
+      <newznab:attr name="imdbscore" value="6.9" />
+      <newznab:attr name="genre" value="Comedy" />
+      <newznab:attr name="imdbyear" value="2008" />
+      <newznab:attr name="imdbdirector" value="Sanitized public metadata" />
+      <newznab:attr name="imdbactors" value="Sanitized public metadata" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000001.jpg" />
+      <newznab:attr name="runtime" value="98 min" />
+      <newznab:attr name="language" value="English" />
+      <newznab:attr name="subs" value="English" />
+      <newznab:attr name="subs" value="Chinese" />
+      <newznab:attr name="subs" value="Czech" />
+      <newznab:attr name="subs" value="Danish" />
+      <newznab:attr name="subs" value="Dutch" />
+      <newznab:attr name="subs" value="Estonian" />
+      <newznab:attr name="subs" value="Finnish" />
+      <newznab:attr name="subs" value="French" />
+      <newznab:attr name="subs" value="German" />
+      <newznab:attr name="subs" value="Greek" />
+      <newznab:attr name="subs" value="Italian" />
+      <newznab:attr name="subs" value="Korean" />
+      <newznab:attr name="subs" value="Lithuanian" />
+      <newznab:attr name="subs" value="Norwegian" />
+      <newznab:attr name="subs" value="Polish" />
+      <newznab:attr name="subs" value="Portuguese" />
+      <newznab:attr name="subs" value="Romanian" />
+      <newznab:attr name="subs" value="Russian" />
+      <newznab:attr name="subs" value="Spanish" />
+      <newznab:attr name="subs" value="Swedish" />
+      <newznab:attr name="subs" value="Thai" />
+      <newznab:attr name="subs" value="Turkish" />
+      <newznab:attr name="subs" value="Ukrainian" />
+      <newznab:attr name="grabs" value="312" />
+      <newznab:attr name="comments" value="1" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Sat, 17 Oct 2026 09:34:09 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Step.Brothers-Uvey.Kardesler.2008.1080p.TVBu.WEB-DL.H.264.DUAL.AAC.20.TSRG</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000003</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000003&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000003</comments>
+      <pubDate>Mon, 31 Aug 2026 14:13:06 +0000</pubDate>
+      <category>Movies &gt; Foreign</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000003&amp;apikey=TEST_API_KEY" length="5124730000" type="application/x-nzb" />
+      <newznab:attr name="category" value="2000" />
+      <newznab:attr name="category" value="2010" />
+      <newznab:attr name="size" value="5124730000" />
+      <newznab:attr name="guid" value="release-000003" />
+      <newznab:attr name="imdbtitle" value="Step Brothers" />
+      <newznab:attr name="imdb" value="00838283" />
+      <newznab:attr name="imdbtagline" value="Sanitized public metadata" />
+      <newznab:attr name="imdbplot" value="Sanitized public metadata" />
+      <newznab:attr name="imdbscore" value="6.9" />
+      <newznab:attr name="genre" value="Comedy" />
+      <newznab:attr name="imdbyear" value="2008" />
+      <newznab:attr name="imdbdirector" value="Sanitized public metadata" />
+      <newznab:attr name="imdbactors" value="Sanitized public metadata" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000003.jpg" />
+      <newznab:attr name="runtime" value="98 min" />
+      <newznab:attr name="grabs" value="480" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Mon, 31 Aug 2026 14:13:06 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Step.Brothers.2008.1080p.HMAX.WEB-DL.DD.5.1.H264-SPWEB</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000005</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000005&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000005</comments>
+      <pubDate>Tue, 14 Jul 2026 18:47:01 +0000</pubDate>
+      <category>Movies &gt; HD</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000005&amp;apikey=TEST_API_KEY" length="7516245000" type="application/x-nzb" />
+      <newznab:attr name="category" value="2000" />
+      <newznab:attr name="category" value="2040" />
+      <newznab:attr name="size" value="7516245000" />
+      <newznab:attr name="guid" value="release-000005" />
+      <newznab:attr name="imdbtitle" value="Step Brothers" />
+      <newznab:attr name="imdb" value="00838283" />
+      <newznab:attr name="imdbtagline" value="Sanitized public metadata" />
+      <newznab:attr name="imdbplot" value="Sanitized public metadata" />
+      <newznab:attr name="imdbscore" value="6.9" />
+      <newznab:attr name="genre" value="Comedy" />
+      <newznab:attr name="imdbyear" value="2008" />
+      <newznab:attr name="imdbdirector" value="Sanitized public metadata" />
+      <newznab:attr name="imdbactors" value="Sanitized public metadata" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000005.jpg" />
+      <newznab:attr name="runtime" value="98 min" />
+      <newznab:attr name="language" value="English" />
+      <newznab:attr name="subs" value="Romanian (RO)" />
+      <newznab:attr name="subs" value="English (US)" />
+      <newznab:attr name="grabs" value="1089" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Tue, 14 Jul 2026 18:47:01 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Step.Brothers.2008.Theatrical.Cut.2160p.MA.WEB-DL.TrueHD.Atmos.7.1.HDR.H.265-TheFarm</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000007</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000007&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000007</comments>
+      <pubDate>Tue, 28 Apr 2026 14:24:16 +0000</pubDate>
+      <category>Movies &gt; UHD</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000007&amp;apikey=TEST_API_KEY" length="26476705000" type="application/x-nzb" />
+      <newznab:attr name="category" value="2000" />
+      <newznab:attr name="category" value="2045" />
+      <newznab:attr name="size" value="26476705000" />
+      <newznab:attr name="guid" value="release-000007" />
+      <newznab:attr name="imdbtitle" value="Step Brothers" />
+      <newznab:attr name="imdb" value="00838283" />
+      <newznab:attr name="imdbtagline" value="Sanitized public metadata" />
+      <newznab:attr name="imdbplot" value="Sanitized public metadata" />
+      <newznab:attr name="imdbscore" value="6.9" />
+      <newznab:attr name="genre" value="Comedy" />
+      <newznab:attr name="imdbyear" value="2008" />
+      <newznab:attr name="imdbdirector" value="Sanitized public metadata" />
+      <newznab:attr name="imdbactors" value="Sanitized public metadata" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000007.jpg" />
+      <newznab:attr name="runtime" value="98 min" />
+      <newznab:attr name="language" value="English" />
+      <newznab:attr name="subs" value="English" />
+      <newznab:attr name="subs" value="Arabic" />
+      <newznab:attr name="subs" value="Bulgarian" />
+      <newznab:attr name="subs" value="Chinese (Simplified)" />
+      <newznab:attr name="subs" value="Chinese (Traditional)" />
+      <newznab:attr name="subs" value="Czech" />
+      <newznab:attr name="subs" value="Danish" />
+      <newznab:attr name="subs" value="Dutch" />
+      <newznab:attr name="subs" value="Estonian" />
+      <newznab:attr name="subs" value="Finnish" />
+      <newznab:attr name="subs" value="French (FR)" />
+      <newznab:attr name="subs" value="German" />
+      <newznab:attr name="subs" value="Greek" />
+      <newznab:attr name="subs" value="Hebrew" />
+      <newznab:attr name="subs" value="Hindi" />
+      <newznab:attr name="subs" value="Hungarian" />
+      <newznab:attr name="subs" value="Icelandic" />
+      <newznab:attr name="subs" value="Indonesian" />
+      <newznab:attr name="subs" value="Italian" />
+      <newznab:attr name="subs" value="Japanese" />
+      <newznab:attr name="subs" value="Korean" />
+      <newznab:attr name="subs" value="Norwegian" />
+      <newznab:attr name="subs" value="Polish" />
+      <newznab:attr name="subs" value="Portuguese (BR)" />
+      <newznab:attr name="subs" value="Portuguese (PT)" />
+      <newznab:attr name="subs" value="Romanian" />
+      <newznab:attr name="subs" value="Russian" />
+      <newznab:attr name="subs" value="Slovak" />
+      <newznab:attr name="subs" value="Slovenian" />
+      <newznab:attr name="subs" value="Spanish (ES)" />
+      <newznab:attr name="subs" value="Spanish (Latin America)" />
+      <newznab:attr name="subs" value="Swedish" />
+      <newznab:attr name="subs" value="Thai" />
+      <newznab:attr name="subs" value="Turkish" />
+      <newznab:attr name="subs" value="Ukrainian" />
+      <newznab:attr name="subs" value="Vietnamese" />
+      <newznab:attr name="grabs" value="452" />
+      <newznab:attr name="comments" value="1" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Tue, 28 Apr 2026 14:24:16 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Step.Brothers.2008.Theatrical.Cut.BluRay.1080p.TrueHD.Atmos.7.1.AVC.HYBRID.REMUX-FraMeSToR</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000009</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000009&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000009</comments>
+      <pubDate>Sat, 18 Apr 2026 15:58:22 +0000</pubDate>
+      <category>Movies &gt; BluRay</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000009&amp;apikey=TEST_API_KEY" length="22427261000" type="application/x-nzb" />
+      <newznab:attr name="category" value="2000" />
+      <newznab:attr name="category" value="2050" />
+      <newznab:attr name="size" value="22427261000" />
+      <newznab:attr name="guid" value="release-000009" />
+      <newznab:attr name="imdbtitle" value="Step Brothers" />
+      <newznab:attr name="imdb" value="00838283" />
+      <newznab:attr name="imdbtagline" value="Sanitized public metadata" />
+      <newznab:attr name="imdbplot" value="Sanitized public metadata" />
+      <newznab:attr name="imdbscore" value="6.9" />
+      <newznab:attr name="genre" value="Comedy" />
+      <newznab:attr name="imdbyear" value="2008" />
+      <newznab:attr name="imdbdirector" value="Sanitized public metadata" />
+      <newznab:attr name="imdbactors" value="Sanitized public metadata" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000009.jpg" />
+      <newznab:attr name="runtime" value="98 min" />
+      <newznab:attr name="language" value="English" />
+      <newznab:attr name="subs" value="English" />
+      <newznab:attr name="subs" value="Arabic" />
+      <newznab:attr name="subs" value="Bulgarian" />
+      <newznab:attr name="subs" value="Chinese" />
+      <newznab:attr name="subs" value="Croatian" />
+      <newznab:attr name="subs" value="Czech" />
+      <newznab:attr name="subs" value="Danish" />
+      <newznab:attr name="subs" value="Dutch" />
+      <newznab:attr name="subs" value="Estonian" />
+      <newznab:attr name="subs" value="Finnish" />
+      <newznab:attr name="subs" value="French" />
+      <newznab:attr name="subs" value="German" />
+      <newznab:attr name="subs" value="Greek" />
+      <newznab:attr name="subs" value="Hebrew" />
+      <newznab:attr name="subs" value="Hindi" />
+      <newznab:attr name="subs" value="Hungarian" />
+      <newznab:attr name="subs" value="Icelandic" />
+      <newznab:attr name="subs" value="Indonesian" />
+      <newznab:attr name="subs" value="Italian" />
+      <newznab:attr name="subs" value="Japanese" />
+      <newznab:attr name="subs" value="Korean" />
+      <newznab:attr name="subs" value="Lithuanian" />
+      <newznab:attr name="subs" value="Norwegian" />
+      <newznab:attr name="subs" value="Polish" />
+      <newznab:attr name="subs" value="Portuguese" />
+      <newznab:attr name="subs" value="Romanian" />
+      <newznab:attr name="subs" value="Russian" />
+      <newznab:attr name="subs" value="Serbian" />
+      <newznab:attr name="subs" value="Slovak" />
+      <newznab:attr name="subs" value="Slovenian" />
+      <newznab:attr name="subs" value="Spanish" />
+      <newznab:attr name="subs" value="Swedish" />
+      <newznab:attr name="subs" value="Thai" />
+      <newznab:attr name="subs" value="Turkish" />
+      <newznab:attr name="subs" value="Ukrainian" />
+      <newznab:attr name="subs" value="Vietnamese" />
+      <newznab:attr name="grabs" value="184" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Sat, 18 Apr 2026 15:58:22 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Step.Brothers.2008.Extended.Cut.PROPER.BluRay.1080p.TrueHD.Atmos.7.1.AVC.HYBRID.REMUX-FraMeSToR</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000011</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000011&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000011</comments>
+      <pubDate>Sat, 18 Apr 2026 15:14:39 +0000</pubDate>
+      <category>Movies &gt; BluRay</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000011&amp;apikey=TEST_API_KEY" length="24199287000" type="application/x-nzb" />
+      <newznab:attr name="category" value="2000" />
+      <newznab:attr name="category" value="2050" />
+      <newznab:attr name="size" value="24199287000" />
+      <newznab:attr name="guid" value="release-000011" />
+      <newznab:attr name="imdbtitle" value="Step Brothers" />
+      <newznab:attr name="imdb" value="00838283" />
+      <newznab:attr name="imdbtagline" value="Sanitized public metadata" />
+      <newznab:attr name="imdbplot" value="Sanitized public metadata" />
+      <newznab:attr name="imdbscore" value="6.9" />
+      <newznab:attr name="genre" value="Comedy" />
+      <newznab:attr name="imdbyear" value="2008" />
+      <newznab:attr name="imdbdirector" value="Sanitized public metadata" />
+      <newznab:attr name="imdbactors" value="Sanitized public metadata" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000011.jpg" />
+      <newznab:attr name="runtime" value="98 min" />
+      <newznab:attr name="language" value="English" />
+      <newznab:attr name="subs" value="English" />
+      <newznab:attr name="subs" value="Arabic" />
+      <newznab:attr name="subs" value="Bulgarian" />
+      <newznab:attr name="subs" value="Chinese" />
+      <newznab:attr name="subs" value="Croatian" />
+      <newznab:attr name="subs" value="Czech" />
+      <newznab:attr name="subs" value="Danish" />
+      <newznab:attr name="subs" value="Dutch" />
+      <newznab:attr name="subs" value="Estonian" />
+      <newznab:attr name="subs" value="Finnish" />
+      <newznab:attr name="subs" value="French" />
+      <newznab:attr name="subs" value="German" />
+      <newznab:attr name="subs" value="Greek" />
+      <newznab:attr name="subs" value="Hebrew" />
+      <newznab:attr name="subs" value="Hindi" />
+      <newznab:attr name="subs" value="Hungarian" />
+      <newznab:attr name="subs" value="Icelandic" />
+      <newznab:attr name="subs" value="Italian" />
+      <newznab:attr name="subs" value="Korean" />
+      <newznab:attr name="subs" value="Lithuanian" />
+      <newznab:attr name="subs" value="Norwegian" />
+      <newznab:attr name="subs" value="Polish" />
+      <newznab:attr name="subs" value="Portuguese" />
+      <newznab:attr name="subs" value="Romanian" />
+      <newznab:attr name="subs" value="Russian" />
+      <newznab:attr name="subs" value="Serbian" />
+      <newznab:attr name="subs" value="Slovak" />
+      <newznab:attr name="subs" value="Slovenian" />
+      <newznab:attr name="subs" value="Spanish" />
+      <newznab:attr name="subs" value="Swedish" />
+      <newznab:attr name="subs" value="Thai" />
+      <newznab:attr name="subs" value="Turkish" />
+      <newznab:attr name="subs" value="Ukrainian" />
+      <newznab:attr name="grabs" value="894" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Sat, 18 Apr 2026 15:14:39 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Step.Brothers.2008.BluRay.2160p.x265.10bit.HDR.2Audios.mUHD-FRDS</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000013</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000013&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000013</comments>
+      <pubDate>Thu, 01 Jan 2026 22:32:47 +0000</pubDate>
+      <category>Movies &gt; UHD</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000013&amp;apikey=TEST_API_KEY" length="31741023000" type="application/x-nzb" />
+      <newznab:attr name="category" value="2000" />
+      <newznab:attr name="category" value="2045" />
+      <newznab:attr name="size" value="31741023000" />
+      <newznab:attr name="guid" value="release-000013" />
+      <newznab:attr name="imdbtitle" value="Step Brothers" />
+      <newznab:attr name="imdb" value="00838283" />
+      <newznab:attr name="imdbtagline" value="Sanitized public metadata" />
+      <newznab:attr name="imdbplot" value="Sanitized public metadata" />
+      <newznab:attr name="imdbscore" value="6.9" />
+      <newznab:attr name="genre" value="Comedy" />
+      <newznab:attr name="imdbyear" value="2008" />
+      <newznab:attr name="imdbdirector" value="Sanitized public metadata" />
+      <newznab:attr name="imdbactors" value="Sanitized public metadata" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000013.jpg" />
+      <newznab:attr name="runtime" value="98 min" />
+      <newznab:attr name="language" value="English" />
+      <newznab:attr name="subs" value="English" />
+      <newznab:attr name="subs" value="Chinese" />
+      <newznab:attr name="grabs" value="771" />
+      <newznab:attr name="comments" value="1" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Thu, 01 Jan 2026 22:32:47 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Step.Brothers.2008.1080p.PMTP.WEB-DL.DDP.5.1.H.264-PiRaTeS</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000015</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000015&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000015</comments>
+      <pubDate>Sat, 06 Dec 2025 05:14:33 +0000</pubDate>
+      <category>Movies &gt; HD</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000015&amp;apikey=TEST_API_KEY" length="3717547000" type="application/x-nzb" />
+      <newznab:attr name="category" value="2000" />
+      <newznab:attr name="category" value="2040" />
+      <newznab:attr name="size" value="3717547000" />
+      <newznab:attr name="guid" value="release-000015" />
+      <newznab:attr name="imdbtitle" value="Step Brothers" />
+      <newznab:attr name="imdb" value="00838283" />
+      <newznab:attr name="imdbtagline" value="Sanitized public metadata" />
+      <newznab:attr name="imdbplot" value="Sanitized public metadata" />
+      <newznab:attr name="imdbscore" value="6.9" />
+      <newznab:attr name="genre" value="Comedy" />
+      <newznab:attr name="imdbyear" value="2008" />
+      <newznab:attr name="imdbdirector" value="Sanitized public metadata" />
+      <newznab:attr name="imdbactors" value="Sanitized public metadata" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000015.jpg" />
+      <newznab:attr name="runtime" value="98 min" />
+      <newznab:attr name="language" value="English" />
+      <newznab:attr name="subs" value="English" />
+      <newznab:attr name="grabs" value="614" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Sat, 06 Dec 2025 05:14:33 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Step.Brothers.2008.1080p.ATVP.PMTP.WEB-DL.DD.5.1.H.264-PiRaTeS</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000017</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000017&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000017</comments>
+      <pubDate>Sat, 06 Dec 2025 05:12:54 +0000</pubDate>
+      <category>Movies &gt; HD</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000017&amp;apikey=TEST_API_KEY" length="5425706000" type="application/x-nzb" />
+      <newznab:attr name="category" value="2000" />
+      <newznab:attr name="category" value="2040" />
+      <newznab:attr name="size" value="5425706000" />
+      <newznab:attr name="guid" value="release-000017" />
+      <newznab:attr name="imdbtitle" value="Step Brothers" />
+      <newznab:attr name="imdb" value="00838283" />
+      <newznab:attr name="imdbtagline" value="Sanitized public metadata" />
+      <newznab:attr name="imdbplot" value="Sanitized public metadata" />
+      <newznab:attr name="imdbscore" value="6.9" />
+      <newznab:attr name="genre" value="Comedy" />
+      <newznab:attr name="imdbyear" value="2008" />
+      <newznab:attr name="imdbdirector" value="Sanitized public metadata" />
+      <newznab:attr name="imdbactors" value="Sanitized public metadata" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000017.jpg" />
+      <newznab:attr name="runtime" value="98 min" />
+      <newznab:attr name="language" value="English" />
+      <newznab:attr name="subs" value="English" />
+      <newznab:attr name="grabs" value="834" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Sat, 06 Dec 2025 05:12:54 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Step.Brothers.2008.720p.PTV.WEB-DL.AAC.2.0.H.264-PiRaTeS</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000019</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000019&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000019</comments>
+      <pubDate>Sat, 06 Dec 2025 05:02:48 +0000</pubDate>
+      <category>Movies &gt; HD</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000019&amp;apikey=TEST_API_KEY" length="1876200000" type="application/x-nzb" />
+      <newznab:attr name="category" value="2000" />
+      <newznab:attr name="category" value="2040" />
+      <newznab:attr name="size" value="1876200000" />
+      <newznab:attr name="guid" value="release-000019" />
+      <newznab:attr name="imdbtitle" value="Step Brothers" />
+      <newznab:attr name="imdb" value="00838283" />
+      <newznab:attr name="imdbtagline" value="Sanitized public metadata" />
+      <newznab:attr name="imdbplot" value="Sanitized public metadata" />
+      <newznab:attr name="imdbscore" value="6.9" />
+      <newznab:attr name="genre" value="Comedy" />
+      <newznab:attr name="imdbyear" value="2008" />
+      <newznab:attr name="imdbdirector" value="Sanitized public metadata" />
+      <newznab:attr name="imdbactors" value="Sanitized public metadata" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000019.jpg" />
+      <newznab:attr name="runtime" value="98 min" />
+      <newznab:attr name="language" value="English" />
+      <newznab:attr name="subs" value="English" />
+      <newznab:attr name="grabs" value="1514" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Sat, 06 Dec 2025 05:02:48 +0000" />
+      <newznab:attr name="thumbsup" value="1" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Step.Brothers.2008.2160p.PMTP.WEB-DL.DDP.5.1.H.265-PiRaTeS</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000021</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000021&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000021</comments>
+      <pubDate>Sat, 06 Dec 2025 04:50:48 +0000</pubDate>
+      <category>Movies &gt; UHD</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000021&amp;apikey=TEST_API_KEY" length="8199815000" type="application/x-nzb" />
+      <newznab:attr name="category" value="2000" />
+      <newznab:attr name="category" value="2045" />
+      <newznab:attr name="size" value="8199815000" />
+      <newznab:attr name="guid" value="release-000021" />
+      <newznab:attr name="imdbtitle" value="Step Brothers" />
+      <newznab:attr name="imdb" value="00838283" />
+      <newznab:attr name="imdbtagline" value="Sanitized public metadata" />
+      <newznab:attr name="imdbplot" value="Sanitized public metadata" />
+      <newznab:attr name="imdbscore" value="6.9" />
+      <newznab:attr name="genre" value="Comedy" />
+      <newznab:attr name="imdbyear" value="2008" />
+      <newznab:attr name="imdbdirector" value="Sanitized public metadata" />
+      <newznab:attr name="imdbactors" value="Sanitized public metadata" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000021.jpg" />
+      <newznab:attr name="runtime" value="98 min" />
+      <newznab:attr name="language" value="English" />
+      <newznab:attr name="subs" value="English" />
+      <newznab:attr name="grabs" value="452" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Sat, 06 Dec 2025 04:50:48 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Step.Brothers.2008.2160p.ATVP.PMTP.WEB-DL.DD.5.1.H.265-PiRaTeS</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000023</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000023&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000023</comments>
+      <pubDate>Sat, 06 Dec 2025 04:43:51 +0000</pubDate>
+      <category>Movies &gt; UHD</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000023&amp;apikey=TEST_API_KEY" length="9561204000" type="application/x-nzb" />
+      <newznab:attr name="category" value="2000" />
+      <newznab:attr name="category" value="2045" />
+      <newznab:attr name="size" value="9561204000" />
+      <newznab:attr name="guid" value="release-000023" />
+      <newznab:attr name="imdbtitle" value="Step Brothers" />
+      <newznab:attr name="imdb" value="00838283" />
+      <newznab:attr name="imdbtagline" value="Sanitized public metadata" />
+      <newznab:attr name="imdbplot" value="Sanitized public metadata" />
+      <newznab:attr name="imdbscore" value="6.9" />
+      <newznab:attr name="genre" value="Comedy" />
+      <newznab:attr name="imdbyear" value="2008" />
+      <newznab:attr name="imdbdirector" value="Sanitized public metadata" />
+      <newznab:attr name="imdbactors" value="Sanitized public metadata" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000023.jpg" />
+      <newznab:attr name="runtime" value="98 min" />
+      <newznab:attr name="language" value="English" />
+      <newznab:attr name="subs" value="English" />
+      <newznab:attr name="grabs" value="806" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Sat, 06 Dec 2025 04:43:51 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Step.Brothers.2008.Unrated.UHD.BluRay.2160p.TrueHD.Atmos.7.1.HEVC.REMUX-FraMeSToR</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000025</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000025&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000025</comments>
+      <pubDate>Tue, 01 Jul 2025 14:45:44 +0000</pubDate>
+      <category>Movies &gt; UHD</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000025&amp;apikey=TEST_API_KEY" length="54477646000" type="application/x-nzb" />
+      <newznab:attr name="category" value="2000" />
+      <newznab:attr name="category" value="2045" />
+      <newznab:attr name="size" value="54477646000" />
+      <newznab:attr name="guid" value="release-000025" />
+      <newznab:attr name="imdbtitle" value="Step Brothers" />
+      <newznab:attr name="imdb" value="00838283" />
+      <newznab:attr name="imdbtagline" value="Sanitized public metadata" />
+      <newznab:attr name="imdbplot" value="Sanitized public metadata" />
+      <newznab:attr name="imdbscore" value="6.9" />
+      <newznab:attr name="genre" value="Comedy" />
+      <newznab:attr name="imdbyear" value="2008" />
+      <newznab:attr name="imdbdirector" value="Sanitized public metadata" />
+      <newznab:attr name="imdbactors" value="Sanitized public metadata" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000025.jpg" />
+      <newznab:attr name="runtime" value="98 min" />
+      <newznab:attr name="language" value="English" />
+      <newznab:attr name="subs" value="English" />
+      <newznab:attr name="subs" value="Chinese" />
+      <newznab:attr name="subs" value="Czech" />
+      <newznab:attr name="subs" value="Danish" />
+      <newznab:attr name="subs" value="Dutch" />
+      <newznab:attr name="subs" value="Estonian" />
+      <newznab:attr name="subs" value="Finnish" />
+      <newznab:attr name="subs" value="French" />
+      <newznab:attr name="subs" value="German" />
+      <newznab:attr name="subs" value="Greek" />
+      <newznab:attr name="subs" value="Italian" />
+      <newznab:attr name="subs" value="Korean" />
+      <newznab:attr name="subs" value="Lithuanian" />
+      <newznab:attr name="subs" value="Norwegian" />
+      <newznab:attr name="subs" value="Polish" />
+      <newznab:attr name="subs" value="Portuguese" />
+      <newznab:attr name="subs" value="Romanian" />
+      <newznab:attr name="subs" value="Russian" />
+      <newznab:attr name="subs" value="Spanish" />
+      <newznab:attr name="subs" value="Swedish" />
+      <newznab:attr name="subs" value="Thai" />
+      <newznab:attr name="subs" value="Turkish" />
+      <newznab:attr name="subs" value="Ukrainian" />
+      <newznab:attr name="grabs" value="3563" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Tue, 01 Jul 2025 14:45:44 +0000" />
+      <newznab:attr name="thumbsup" value="1" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Step.Brothers.2008.DVDSCR.XviD-HEFTY</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000027</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000027&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000027</comments>
+      <pubDate>Fri, 30 May 2025 01:22:29 +0000</pubDate>
+      <category>Movies &gt; SD</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000027&amp;apikey=TEST_API_KEY" length="826101000" type="application/x-nzb" />
+      <newznab:attr name="category" value="2000" />
+      <newznab:attr name="category" value="2030" />
+      <newznab:attr name="size" value="826101000" />
+      <newznab:attr name="guid" value="release-000027" />
+      <newznab:attr name="imdbtitle" value="Step Brothers" />
+      <newznab:attr name="imdb" value="00838283" />
+      <newznab:attr name="imdbtagline" value="Sanitized public metadata" />
+      <newznab:attr name="imdbplot" value="Sanitized public metadata" />
+      <newznab:attr name="imdbscore" value="6.9" />
+      <newznab:attr name="genre" value="Comedy" />
+      <newznab:attr name="imdbyear" value="2008" />
+      <newznab:attr name="imdbdirector" value="Sanitized public metadata" />
+      <newznab:attr name="imdbactors" value="Sanitized public metadata" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000027.jpg" />
+      <newznab:attr name="runtime" value="98 min" />
+      <newznab:attr name="grabs" value="78" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Fri, 30 May 2025 01:22:29 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Step.Brothers.2008.1080p.BluRayRip.EAC3.5.1.x265-Lootera</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000029</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000029&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000029</comments>
+      <pubDate>Thu, 14 Nov 2024 07:28:08 +0000</pubDate>
+      <category>Movies &gt; BluRay</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000029&amp;apikey=TEST_API_KEY" length="2407650000" type="application/x-nzb" />
+      <newznab:attr name="category" value="2000" />
+      <newznab:attr name="category" value="2050" />
+      <newznab:attr name="size" value="2407650000" />
+      <newznab:attr name="guid" value="release-000029" />
+      <newznab:attr name="imdbtitle" value="Step Brothers" />
+      <newznab:attr name="imdb" value="00838283" />
+      <newznab:attr name="imdbtagline" value="Sanitized public metadata" />
+      <newznab:attr name="imdbplot" value="Sanitized public metadata" />
+      <newznab:attr name="imdbscore" value="6.9" />
+      <newznab:attr name="genre" value="Comedy" />
+      <newznab:attr name="imdbyear" value="2008" />
+      <newznab:attr name="imdbdirector" value="Sanitized public metadata" />
+      <newznab:attr name="imdbactors" value="Sanitized public metadata" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000029.jpg" />
+      <newznab:attr name="runtime" value="98 min" />
+      <newznab:attr name="language" value="English" />
+      <newznab:attr name="subs" value="English" />
+      <newznab:attr name="grabs" value="607" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Thu, 14 Nov 2024 07:28:08 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Step.Brothers.2008.Extended.REPACK.1080p.BluRay.DD.7.1.X265-Ralphy</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000031</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000031&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000031</comments>
+      <pubDate>Fri, 25 Oct 2024 20:58:22 +0000</pubDate>
+      <category>Movies &gt; BluRay</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000031&amp;apikey=TEST_API_KEY" length="5092010000" type="application/x-nzb" />
+      <newznab:attr name="category" value="2000" />
+      <newznab:attr name="category" value="2050" />
+      <newznab:attr name="size" value="5092010000" />
+      <newznab:attr name="guid" value="release-000031" />
+      <newznab:attr name="imdbtitle" value="Step Brothers" />
+      <newznab:attr name="imdb" value="00838283" />
+      <newznab:attr name="imdbtagline" value="Sanitized public metadata" />
+      <newznab:attr name="imdbplot" value="Sanitized public metadata" />
+      <newznab:attr name="imdbscore" value="6.9" />
+      <newznab:attr name="genre" value="Comedy" />
+      <newznab:attr name="imdbyear" value="2008" />
+      <newznab:attr name="imdbdirector" value="Sanitized public metadata" />
+      <newznab:attr name="imdbactors" value="Sanitized public metadata" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000031.jpg" />
+      <newznab:attr name="runtime" value="98 min" />
+      <newznab:attr name="language" value="English" />
+      <newznab:attr name="subs" value="English" />
+      <newznab:attr name="subs" value="Arabic" />
+      <newznab:attr name="subs" value="Bulgarian" />
+      <newznab:attr name="subs" value="Croatian" />
+      <newznab:attr name="subs" value="Czech" />
+      <newznab:attr name="subs" value="Danish" />
+      <newznab:attr name="subs" value="Dutch" />
+      <newznab:attr name="subs" value="Estonian" />
+      <newznab:attr name="subs" value="Finnish" />
+      <newznab:attr name="subs" value="French" />
+      <newznab:attr name="subs" value="German" />
+      <newznab:attr name="subs" value="Greek" />
+      <newznab:attr name="subs" value="Unknown (he)" />
+      <newznab:attr name="subs" value="Hindi" />
+      <newznab:attr name="subs" value="Hungarian" />
+      <newznab:attr name="subs" value="Icelandic" />
+      <newznab:attr name="subs" value="Italian" />
+      <newznab:attr name="subs" value="Korean" />
+      <newznab:attr name="subs" value="Lithuanian" />
+      <newznab:attr name="subs" value="Norwegian" />
+      <newznab:attr name="subs" value="Polish" />
+      <newznab:attr name="subs" value="Portuguese" />
+      <newznab:attr name="subs" value="Romanian" />
+      <newznab:attr name="subs" value="Serbian" />
+      <newznab:attr name="subs" value="Slovak" />
+      <newznab:attr name="subs" value="Slovenian" />
+      <newznab:attr name="subs" value="Spanish" />
+      <newznab:attr name="subs" value="Swedish" />
+      <newznab:attr name="subs" value="Thai" />
+      <newznab:attr name="subs" value="Turkish" />
+      <newznab:attr name="subs" value="Ukrainian" />
+      <newznab:attr name="grabs" value="3629" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Fri, 25 Oct 2024 20:58:22 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Step.Brothers.2008.2160p.MA.WEB-DL.DDP5.1.H.265-HHWEB</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000033</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000033&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000033</comments>
+      <pubDate>Sun, 06 Oct 2024 19:09:28 +0000</pubDate>
+      <category>Movies &gt; UHD</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000033&amp;apikey=TEST_API_KEY" length="18648627000" type="application/x-nzb" />
+      <newznab:attr name="category" value="2000" />
+      <newznab:attr name="category" value="2045" />
+      <newznab:attr name="size" value="18648627000" />
+      <newznab:attr name="guid" value="release-000033" />
+      <newznab:attr name="imdbtitle" value="Step Brothers" />
+      <newznab:attr name="imdb" value="00838283" />
+      <newznab:attr name="imdbtagline" value="Sanitized public metadata" />
+      <newznab:attr name="imdbplot" value="Sanitized public metadata" />
+      <newznab:attr name="imdbscore" value="6.9" />
+      <newznab:attr name="genre" value="Comedy" />
+      <newznab:attr name="imdbyear" value="2008" />
+      <newznab:attr name="imdbdirector" value="Sanitized public metadata" />
+      <newznab:attr name="imdbactors" value="Sanitized public metadata" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000033.jpg" />
+      <newznab:attr name="runtime" value="98 min" />
+      <newznab:attr name="language" value="English" />
+      <newznab:attr name="subs" value="English" />
+      <newznab:attr name="grabs" value="621" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Sun, 06 Oct 2024 19:09:28 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Step.Brothers.2008.Unrated.UHD.BluRay.2160p.TrueHD.Atmos.7.1.HEVC.REMUX-FraMeSToR</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000035</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000035&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000035</comments>
+      <pubDate>Thu, 26 Sep 2024 15:02:15 +0000</pubDate>
+      <category>Movies &gt; UHD</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000035&amp;apikey=TEST_API_KEY" length="52815516000" type="application/x-nzb" />
+      <newznab:attr name="category" value="2000" />
+      <newznab:attr name="category" value="2045" />
+      <newznab:attr name="size" value="52815516000" />
+      <newznab:attr name="guid" value="release-000035" />
+      <newznab:attr name="imdbtitle" value="Step Brothers" />
+      <newznab:attr name="imdb" value="00838283" />
+      <newznab:attr name="imdbtagline" value="Sanitized public metadata" />
+      <newznab:attr name="imdbplot" value="Sanitized public metadata" />
+      <newznab:attr name="imdbscore" value="6.9" />
+      <newznab:attr name="genre" value="Comedy" />
+      <newznab:attr name="imdbyear" value="2008" />
+      <newznab:attr name="imdbdirector" value="Sanitized public metadata" />
+      <newznab:attr name="imdbactors" value="Sanitized public metadata" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000035.jpg" />
+      <newznab:attr name="runtime" value="98 min" />
+      <newznab:attr name="language" value="English" />
+      <newznab:attr name="subs" value="English" />
+      <newznab:attr name="subs" value="Chinese" />
+      <newznab:attr name="subs" value="Czech" />
+      <newznab:attr name="subs" value="Danish" />
+      <newznab:attr name="subs" value="Dutch" />
+      <newznab:attr name="subs" value="Estonian" />
+      <newznab:attr name="subs" value="Finnish" />
+      <newznab:attr name="subs" value="French" />
+      <newznab:attr name="subs" value="German" />
+      <newznab:attr name="subs" value="Greek" />
+      <newznab:attr name="subs" value="Italian" />
+      <newznab:attr name="subs" value="Korean" />
+      <newznab:attr name="subs" value="Lithuanian" />
+      <newznab:attr name="subs" value="Norwegian" />
+      <newznab:attr name="subs" value="Polish" />
+      <newznab:attr name="subs" value="Portuguese" />
+      <newznab:attr name="subs" value="Romanian" />
+      <newznab:attr name="subs" value="Russian" />
+      <newznab:attr name="subs" value="Spanish" />
+      <newznab:attr name="subs" value="Swedish" />
+      <newznab:attr name="subs" value="Thai" />
+      <newznab:attr name="subs" value="Turkish" />
+      <newznab:attr name="subs" value="Ukrainian" />
+      <newznab:attr name="grabs" value="1336" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Thu, 26 Sep 2024 15:02:15 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Step.Brothers.2008.Unrated.1080p.BluRay.DDP.5.1.x265-EDGE2020</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000037</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000037&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000037</comments>
+      <pubDate>Wed, 03 Jul 2024 11:40:12 +0000</pubDate>
+      <category>Movies &gt; BluRay</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000037&amp;apikey=TEST_API_KEY" length="4797505000" type="application/x-nzb" />
+      <newznab:attr name="category" value="2000" />
+      <newznab:attr name="category" value="2050" />
+      <newznab:attr name="size" value="4797505000" />
+      <newznab:attr name="guid" value="release-000037" />
+      <newznab:attr name="imdbtitle" value="Step Brothers" />
+      <newznab:attr name="imdb" value="00838283" />
+      <newznab:attr name="imdbtagline" value="Sanitized public metadata" />
+      <newznab:attr name="imdbplot" value="Sanitized public metadata" />
+      <newznab:attr name="imdbscore" value="6.9" />
+      <newznab:attr name="genre" value="Comedy" />
+      <newznab:attr name="imdbyear" value="2008" />
+      <newznab:attr name="imdbdirector" value="Sanitized public metadata" />
+      <newznab:attr name="imdbactors" value="Sanitized public metadata" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000037.jpg" />
+      <newznab:attr name="runtime" value="98 min" />
+      <newznab:attr name="language" value="English" />
+      <newznab:attr name="subs" value="English" />
+      <newznab:attr name="grabs" value="736" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Wed, 03 Jul 2024 11:40:12 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Step.Brothers.2008.Unrated.1080p.BluRay.DDP.5.1.x265-EDGE2020</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000039</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000039&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000039</comments>
+      <pubDate>Wed, 03 Jul 2024 09:10:08 +0000</pubDate>
+      <category>Movies &gt; BluRay</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000039&amp;apikey=TEST_API_KEY" length="4797506000" type="application/x-nzb" />
+      <newznab:attr name="category" value="2000" />
+      <newznab:attr name="category" value="2050" />
+      <newznab:attr name="size" value="4797506000" />
+      <newznab:attr name="guid" value="release-000039" />
+      <newznab:attr name="imdbtitle" value="Step Brothers" />
+      <newznab:attr name="imdb" value="00838283" />
+      <newznab:attr name="imdbtagline" value="Sanitized public metadata" />
+      <newznab:attr name="imdbplot" value="Sanitized public metadata" />
+      <newznab:attr name="imdbscore" value="6.9" />
+      <newznab:attr name="genre" value="Comedy" />
+      <newznab:attr name="imdbyear" value="2008" />
+      <newznab:attr name="imdbdirector" value="Sanitized public metadata" />
+      <newznab:attr name="imdbactors" value="Sanitized public metadata" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000039.jpg" />
+      <newznab:attr name="runtime" value="98 min" />
+      <newznab:attr name="language" value="English" />
+      <newznab:attr name="subs" value="English" />
+      <newznab:attr name="grabs" value="325" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Wed, 03 Jul 2024 09:10:08 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Step.Brothers.2008.Unrated.BluRay.1080p.DDP.5.1.x264-hallowed</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000041</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000041&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000041</comments>
+      <pubDate>Sat, 29 Jun 2024 22:06:40 +0000</pubDate>
+      <category>Movies &gt; BluRay</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000041&amp;apikey=TEST_API_KEY" length="10571421000" type="application/x-nzb" />
+      <newznab:attr name="category" value="2000" />
+      <newznab:attr name="category" value="2050" />
+      <newznab:attr name="size" value="10571421000" />
+      <newznab:attr name="guid" value="release-000041" />
+      <newznab:attr name="imdbtitle" value="Step Brothers" />
+      <newznab:attr name="imdb" value="00838283" />
+      <newznab:attr name="imdbtagline" value="Sanitized public metadata" />
+      <newznab:attr name="imdbplot" value="Sanitized public metadata" />
+      <newznab:attr name="imdbscore" value="6.9" />
+      <newznab:attr name="genre" value="Comedy" />
+      <newznab:attr name="imdbyear" value="2008" />
+      <newznab:attr name="imdbdirector" value="Sanitized public metadata" />
+      <newznab:attr name="imdbactors" value="Sanitized public metadata" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000041.jpg" />
+      <newznab:attr name="runtime" value="98 min" />
+      <newznab:attr name="language" value="English" />
+      <newznab:attr name="subs" value="English" />
+      <newznab:attr name="subs" value="French" />
+      <newznab:attr name="subs" value="Spanish" />
+      <newznab:attr name="subs" value="Chinese" />
+      <newznab:attr name="grabs" value="2102" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Sat, 29 Jun 2024 22:06:40 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Step.Brothers.2008.Unrated.UHD.BluRay.2160p.DDP.7.1.DV.HDR.x265-hallowed</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000043</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000043&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000043</comments>
+      <pubDate>Sat, 29 Jun 2024 21:55:23 +0000</pubDate>
+      <category>Movies &gt; UHD</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000043&amp;apikey=TEST_API_KEY" length="14036616000" type="application/x-nzb" />
+      <newznab:attr name="category" value="2000" />
+      <newznab:attr name="category" value="2045" />
+      <newznab:attr name="size" value="14036616000" />
+      <newznab:attr name="guid" value="release-000043" />
+      <newznab:attr name="imdbtitle" value="Step Brothers" />
+      <newznab:attr name="imdb" value="00838283" />
+      <newznab:attr name="imdbtagline" value="Sanitized public metadata" />
+      <newznab:attr name="imdbplot" value="Sanitized public metadata" />
+      <newznab:attr name="imdbscore" value="6.9" />
+      <newznab:attr name="genre" value="Comedy" />
+      <newznab:attr name="imdbyear" value="2008" />
+      <newznab:attr name="imdbdirector" value="Sanitized public metadata" />
+      <newznab:attr name="imdbactors" value="Sanitized public metadata" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000043.jpg" />
+      <newznab:attr name="runtime" value="98 min" />
+      <newznab:attr name="language" value="English" />
+      <newznab:attr name="subs" value="English" />
+      <newznab:attr name="subs" value="Chinese" />
+      <newznab:attr name="subs" value="Dutch" />
+      <newznab:attr name="subs" value="French" />
+      <newznab:attr name="subs" value="German" />
+      <newznab:attr name="subs" value="Spanish" />
+      <newznab:attr name="grabs" value="1873" />
+      <newznab:attr name="comments" value="1" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Sat, 29 Jun 2024 21:55:23 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Step.Brothers.2008.UNRATED.1080p.BluRay.HEVC.x265.5.1.BONE</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000045</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000045&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000045</comments>
+      <pubDate>Sun, 16 Jun 2024 23:56:56 +0000</pubDate>
+      <category>Movies &gt; BluRay</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000045&amp;apikey=TEST_API_KEY" length="1580158000" type="application/x-nzb" />
+      <newznab:attr name="category" value="2000" />
+      <newznab:attr name="category" value="2050" />
+      <newznab:attr name="size" value="1580158000" />
+      <newznab:attr name="guid" value="release-000045" />
+      <newznab:attr name="imdbtitle" value="Step Brothers" />
+      <newznab:attr name="imdb" value="00838283" />
+      <newznab:attr name="imdbtagline" value="Sanitized public metadata" />
+      <newznab:attr name="imdbplot" value="Sanitized public metadata" />
+      <newznab:attr name="imdbscore" value="6.9" />
+      <newznab:attr name="genre" value="Comedy" />
+      <newznab:attr name="imdbyear" value="2008" />
+      <newznab:attr name="imdbdirector" value="Sanitized public metadata" />
+      <newznab:attr name="imdbactors" value="Sanitized public metadata" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000045.jpg" />
+      <newznab:attr name="runtime" value="98 min" />
+      <newznab:attr name="language" value="English" />
+      <newznab:attr name="subs" value="English" />
+      <newznab:attr name="grabs" value="1258" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Sun, 16 Jun 2024 23:56:56 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Step.Brothers.2008.1080p.UNRATED.DD.7.1.x264-GS88</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000047</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000047&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000047</comments>
+      <pubDate>Tue, 11 Jun 2024 01:09:27 +0000</pubDate>
+      <category>Movies &gt; HD</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000047&amp;apikey=TEST_API_KEY" length="10795729000" type="application/x-nzb" />
+      <newznab:attr name="category" value="2000" />
+      <newznab:attr name="category" value="2040" />
+      <newznab:attr name="size" value="10795729000" />
+      <newznab:attr name="guid" value="release-000047" />
+      <newznab:attr name="imdbtitle" value="Step Brothers" />
+      <newznab:attr name="imdb" value="00838283" />
+      <newznab:attr name="imdbtagline" value="Sanitized public metadata" />
+      <newznab:attr name="imdbplot" value="Sanitized public metadata" />
+      <newznab:attr name="imdbscore" value="6.9" />
+      <newznab:attr name="genre" value="Comedy" />
+      <newznab:attr name="imdbyear" value="2008" />
+      <newznab:attr name="imdbdirector" value="Sanitized public metadata" />
+      <newznab:attr name="imdbactors" value="Sanitized public metadata" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000047.jpg" />
+      <newznab:attr name="runtime" value="98 min" />
+      <newznab:attr name="language" value="English" />
+      <newznab:attr name="subs" value="English" />
+      <newznab:attr name="subs" value="Finnish" />
+      <newznab:attr name="subs" value="French" />
+      <newznab:attr name="subs" value="Greek" />
+      <newznab:attr name="subs" value="Portuguese" />
+      <newznab:attr name="subs" value="Romanian" />
+      <newznab:attr name="subs" value="Spanish" />
+      <newznab:attr name="subs" value="Swedish" />
+      <newznab:attr name="subs" value="Vietnamese" />
+      <newznab:attr name="subs" value="Bulgarian" />
+      <newznab:attr name="subs" value="Arabic" />
+      <newznab:attr name="subs" value="Chinese" />
+      <newznab:attr name="subs" value="Czech" />
+      <newznab:attr name="subs" value="Danish" />
+      <newznab:attr name="grabs" value="315" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Tue, 11 Jun 2024 01:09:27 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Step.Brothers.2008.Extended.1080p.BluRay.DDP.5.1.H.265.-iVy</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000049</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000049&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000049</comments>
+      <pubDate>Tue, 02 Apr 2024 10:37:44 +0000</pubDate>
+      <category>Movies &gt; BluRay</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000049&amp;apikey=TEST_API_KEY" length="3041347000" type="application/x-nzb" />
+      <newznab:attr name="category" value="2000" />
+      <newznab:attr name="category" value="2050" />
+      <newznab:attr name="size" value="3041347000" />
+      <newznab:attr name="guid" value="release-000049" />
+      <newznab:attr name="imdbtitle" value="Step Brothers" />
+      <newznab:attr name="imdb" value="00838283" />
+      <newznab:attr name="imdbtagline" value="Sanitized public metadata" />
+      <newznab:attr name="imdbplot" value="Sanitized public metadata" />
+      <newznab:attr name="imdbscore" value="6.9" />
+      <newznab:attr name="genre" value="Comedy" />
+      <newznab:attr name="imdbyear" value="2008" />
+      <newznab:attr name="imdbdirector" value="Sanitized public metadata" />
+      <newznab:attr name="imdbactors" value="Sanitized public metadata" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000049.jpg" />
+      <newznab:attr name="runtime" value="98 min" />
+      <newznab:attr name="language" value="English" />
+      <newznab:attr name="subs" value="Chinese" />
+      <newznab:attr name="subs" value="English" />
+      <newznab:attr name="subs" value="French" />
+      <newznab:attr name="subs" value="Korean" />
+      <newznab:attr name="subs" value="Portuguese" />
+      <newznab:attr name="subs" value="Spanish" />
+      <newznab:attr name="subs" value="Thai" />
+      <newznab:attr name="grabs" value="856" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Tue, 02 Apr 2024 10:37:44 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Step.Brothers.2008.Extended.1080p.BluRay.DDP.5.1.H.265.-iVy</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000051</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000051&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000051</comments>
+      <pubDate>Fri, 08 Mar 2024 10:06:32 +0000</pubDate>
+      <category>Movies &gt; BluRay</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000051&amp;apikey=TEST_API_KEY" length="2949120000" type="application/x-nzb" />
+      <newznab:attr name="category" value="2000" />
+      <newznab:attr name="category" value="2050" />
+      <newznab:attr name="size" value="2949120000" />
+      <newznab:attr name="guid" value="release-000051" />
+      <newznab:attr name="imdbtitle" value="Step Brothers" />
+      <newznab:attr name="imdb" value="00838283" />
+      <newznab:attr name="imdbtagline" value="Sanitized public metadata" />
+      <newznab:attr name="imdbplot" value="Sanitized public metadata" />
+      <newznab:attr name="imdbscore" value="6.9" />
+      <newznab:attr name="genre" value="Comedy" />
+      <newznab:attr name="imdbyear" value="2008" />
+      <newznab:attr name="imdbdirector" value="Sanitized public metadata" />
+      <newznab:attr name="imdbactors" value="Sanitized public metadata" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000051.jpg" />
+      <newznab:attr name="runtime" value="98 min" />
+      <newznab:attr name="language" value="English" />
+      <newznab:attr name="subs" value="Chinese" />
+      <newznab:attr name="subs" value="English" />
+      <newznab:attr name="subs" value="French" />
+      <newznab:attr name="subs" value="Korean" />
+      <newznab:attr name="subs" value="Portuguese" />
+      <newznab:attr name="subs" value="Spanish" />
+      <newznab:attr name="subs" value="Thai" />
+      <newznab:attr name="grabs" value="525" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Fri, 08 Mar 2024 10:06:32 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Step.Brothers.2008.Extended.1080p.BluRay.DDP.5.1.H.265.-iVy</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000053</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000053&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000053</comments>
+      <pubDate>Fri, 08 Mar 2024 02:17:40 +0000</pubDate>
+      <category>Movies &gt; BluRay</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000053&amp;apikey=TEST_API_KEY" length="3041463000" type="application/x-nzb" />
+      <newznab:attr name="category" value="2000" />
+      <newznab:attr name="category" value="2050" />
+      <newznab:attr name="size" value="3041463000" />
+      <newznab:attr name="guid" value="release-000053" />
+      <newznab:attr name="imdbtitle" value="Step Brothers" />
+      <newznab:attr name="imdb" value="00838283" />
+      <newznab:attr name="imdbtagline" value="Sanitized public metadata" />
+      <newznab:attr name="imdbplot" value="Sanitized public metadata" />
+      <newznab:attr name="imdbscore" value="6.9" />
+      <newznab:attr name="genre" value="Comedy" />
+      <newznab:attr name="imdbyear" value="2008" />
+      <newznab:attr name="imdbdirector" value="Sanitized public metadata" />
+      <newznab:attr name="imdbactors" value="Sanitized public metadata" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000053.jpg" />
+      <newznab:attr name="runtime" value="98 min" />
+      <newznab:attr name="language" value="English" />
+      <newznab:attr name="subs" value="Chinese" />
+      <newznab:attr name="subs" value="English" />
+      <newznab:attr name="subs" value="French" />
+      <newznab:attr name="subs" value="Korean" />
+      <newznab:attr name="subs" value="Portuguese" />
+      <newznab:attr name="subs" value="Spanish" />
+      <newznab:attr name="subs" value="Thai" />
+      <newznab:attr name="grabs" value="789" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Fri, 08 Mar 2024 02:17:40 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Step.Brothers.EXTENDED.2008.UNRATED.BluRay.1080p.AVC.TrueHD.5.1.REMUX-FraMeSToR</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000055</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000055&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000055</comments>
+      <pubDate>Thu, 18 Jan 2024 20:22:37 +0000</pubDate>
+      <category>Movies &gt; BluRay</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000055&amp;apikey=TEST_API_KEY" length="20665595000" type="application/x-nzb" />
+      <newznab:attr name="category" value="2000" />
+      <newznab:attr name="category" value="2050" />
+      <newznab:attr name="size" value="20665595000" />
+      <newznab:attr name="guid" value="release-000055" />
+      <newznab:attr name="imdbtitle" value="Step Brothers" />
+      <newznab:attr name="imdb" value="00838283" />
+      <newznab:attr name="imdbtagline" value="Sanitized public metadata" />
+      <newznab:attr name="imdbplot" value="Sanitized public metadata" />
+      <newznab:attr name="imdbscore" value="6.9" />
+      <newznab:attr name="genre" value="Comedy" />
+      <newznab:attr name="imdbyear" value="2008" />
+      <newznab:attr name="imdbdirector" value="Sanitized public metadata" />
+      <newznab:attr name="imdbactors" value="Sanitized public metadata" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000055.jpg" />
+      <newznab:attr name="runtime" value="98 min" />
+      <newznab:attr name="language" value="English" />
+      <newznab:attr name="subs" value="English" />
+      <newznab:attr name="subs" value="French" />
+      <newznab:attr name="subs" value="Spanish" />
+      <newznab:attr name="subs" value="Portuguese" />
+      <newznab:attr name="subs" value="Chinese" />
+      <newznab:attr name="subs" value="Korean" />
+      <newznab:attr name="subs" value="Thai" />
+      <newznab:attr name="grabs" value="1123" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Thu, 18 Jan 2024 20:22:37 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Step.Brothers.2008.Unrated.1080p.BluRay.Remux.TrueHD.5.1</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000057</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000057&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000057</comments>
+      <pubDate>Sat, 23 Dec 2023 16:40:23 +0000</pubDate>
+      <category>Movies &gt; BluRay</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000057&amp;apikey=TEST_API_KEY" length="20977969000" type="application/x-nzb" />
+      <newznab:attr name="category" value="2000" />
+      <newznab:attr name="category" value="2050" />
+      <newznab:attr name="size" value="20977969000" />
+      <newznab:attr name="guid" value="release-000057" />
+      <newznab:attr name="imdbtitle" value="Step Brothers" />
+      <newznab:attr name="imdb" value="00838283" />
+      <newznab:attr name="imdbtagline" value="Sanitized public metadata" />
+      <newznab:attr name="imdbplot" value="Sanitized public metadata" />
+      <newznab:attr name="imdbscore" value="6.9" />
+      <newznab:attr name="genre" value="Comedy" />
+      <newznab:attr name="imdbyear" value="2008" />
+      <newznab:attr name="imdbdirector" value="Sanitized public metadata" />
+      <newznab:attr name="imdbactors" value="Sanitized public metadata" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000057.jpg" />
+      <newznab:attr name="runtime" value="98 min" />
+      <newznab:attr name="language" value="English" />
+      <newznab:attr name="subs" value="English" />
+      <newznab:attr name="subs" value="French" />
+      <newznab:attr name="subs" value="Spanish" />
+      <newznab:attr name="grabs" value="1950" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Sat, 23 Dec 2023 16:40:23 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Step.Brothers.2008.1080p.PCOK.WEB-DL.AAC.2.0.H.264-PiRaTeS</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000059</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000059&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000059</comments>
+      <pubDate>Mon, 20 Nov 2023 04:11:07 +0000</pubDate>
+      <category>Movies &gt; HD</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000059&amp;apikey=TEST_API_KEY" length="5836945000" type="application/x-nzb" />
+      <newznab:attr name="category" value="2000" />
+      <newznab:attr name="category" value="2040" />
+      <newznab:attr name="size" value="5836945000" />
+      <newznab:attr name="guid" value="release-000059" />
+      <newznab:attr name="imdbtitle" value="Step Brothers" />
+      <newznab:attr name="imdb" value="00838283" />
+      <newznab:attr name="imdbtagline" value="Sanitized public metadata" />
+      <newznab:attr name="imdbplot" value="Sanitized public metadata" />
+      <newznab:attr name="imdbscore" value="6.9" />
+      <newznab:attr name="genre" value="Comedy" />
+      <newznab:attr name="imdbyear" value="2008" />
+      <newznab:attr name="imdbdirector" value="Sanitized public metadata" />
+      <newznab:attr name="imdbactors" value="Sanitized public metadata" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000059.jpg" />
+      <newznab:attr name="runtime" value="98 min" />
+      <newznab:attr name="language" value="English" />
+      <newznab:attr name="subs" value="English" />
+      <newznab:attr name="grabs" value="3107" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Mon, 20 Nov 2023 04:11:07 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Step.Brothers.2008.UNRATED.1080p.BluRay.H264.AAC</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000061</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000061&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000061</comments>
+      <pubDate>Mon, 04 Sep 2023 09:56:43 +0000</pubDate>
+      <category>Movies &gt; BluRay</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000061&amp;apikey=TEST_API_KEY" length="2378357000" type="application/x-nzb" />
+      <newznab:attr name="category" value="2000" />
+      <newznab:attr name="category" value="2050" />
+      <newznab:attr name="size" value="2378357000" />
+      <newznab:attr name="guid" value="release-000061" />
+      <newznab:attr name="imdbtitle" value="Step Brothers" />
+      <newznab:attr name="imdb" value="00838283" />
+      <newznab:attr name="imdbtagline" value="Sanitized public metadata" />
+      <newznab:attr name="imdbplot" value="Sanitized public metadata" />
+      <newznab:attr name="imdbscore" value="6.9" />
+      <newznab:attr name="genre" value="Comedy" />
+      <newznab:attr name="imdbyear" value="2008" />
+      <newznab:attr name="imdbdirector" value="Sanitized public metadata" />
+      <newznab:attr name="imdbactors" value="Sanitized public metadata" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000061.jpg" />
+      <newznab:attr name="runtime" value="98 min" />
+      <newznab:attr name="grabs" value="720" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Mon, 04 Sep 2023 09:56:43 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Step.Brothers.2008.UNRATED.1080p.BluRay.H264.AAC</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000063</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000063&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000063</comments>
+      <pubDate>Mon, 04 Sep 2023 08:00:26 +0000</pubDate>
+      <category>Movies &gt; BluRay</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000063&amp;apikey=TEST_API_KEY" length="2378357000" type="application/x-nzb" />
+      <newznab:attr name="category" value="2000" />
+      <newznab:attr name="category" value="2050" />
+      <newznab:attr name="size" value="2378357000" />
+      <newznab:attr name="guid" value="release-000063" />
+      <newznab:attr name="imdbtitle" value="Step Brothers" />
+      <newznab:attr name="imdb" value="00838283" />
+      <newznab:attr name="imdbtagline" value="Sanitized public metadata" />
+      <newznab:attr name="imdbplot" value="Sanitized public metadata" />
+      <newznab:attr name="imdbscore" value="6.9" />
+      <newznab:attr name="genre" value="Comedy" />
+      <newznab:attr name="imdbyear" value="2008" />
+      <newznab:attr name="imdbdirector" value="Sanitized public metadata" />
+      <newznab:attr name="imdbactors" value="Sanitized public metadata" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000063.jpg" />
+      <newznab:attr name="runtime" value="98 min" />
+      <newznab:attr name="grabs" value="460" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Mon, 04 Sep 2023 08:00:26 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Step.Brothers.2008.UNRATED.1080p.BluRay.x265</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000065</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000065&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000065</comments>
+      <pubDate>Tue, 15 Aug 2023 18:24:49 +0000</pubDate>
+      <category>Movies &gt; BluRay</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000065&amp;apikey=TEST_API_KEY" length="1943113000" type="application/x-nzb" />
+      <newznab:attr name="category" value="2000" />
+      <newznab:attr name="category" value="2050" />
+      <newznab:attr name="size" value="1943113000" />
+      <newznab:attr name="guid" value="release-000065" />
+      <newznab:attr name="imdbtitle" value="Step Brothers" />
+      <newznab:attr name="imdb" value="00838283" />
+      <newznab:attr name="imdbtagline" value="Sanitized public metadata" />
+      <newznab:attr name="imdbplot" value="Sanitized public metadata" />
+      <newznab:attr name="imdbscore" value="6.9" />
+      <newznab:attr name="genre" value="Comedy" />
+      <newznab:attr name="imdbyear" value="2008" />
+      <newznab:attr name="imdbdirector" value="Sanitized public metadata" />
+      <newznab:attr name="imdbactors" value="Sanitized public metadata" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000065.jpg" />
+      <newznab:attr name="runtime" value="98 min" />
+      <newznab:attr name="grabs" value="856" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Tue, 15 Aug 2023 18:24:49 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Step.Brothers.2008.UNRATED.1080p.BluRay.x265</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000067</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000067&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000067</comments>
+      <pubDate>Tue, 15 Aug 2023 17:18:22 +0000</pubDate>
+      <category>Movies &gt; BluRay</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000067&amp;apikey=TEST_API_KEY" length="1943113000" type="application/x-nzb" />
+      <newznab:attr name="category" value="2000" />
+      <newznab:attr name="category" value="2050" />
+      <newznab:attr name="size" value="1943113000" />
+      <newznab:attr name="guid" value="release-000067" />
+      <newznab:attr name="imdbtitle" value="Step Brothers" />
+      <newznab:attr name="imdb" value="00838283" />
+      <newznab:attr name="imdbtagline" value="Sanitized public metadata" />
+      <newznab:attr name="imdbplot" value="Sanitized public metadata" />
+      <newznab:attr name="imdbscore" value="6.9" />
+      <newznab:attr name="genre" value="Comedy" />
+      <newznab:attr name="imdbyear" value="2008" />
+      <newznab:attr name="imdbdirector" value="Sanitized public metadata" />
+      <newznab:attr name="imdbactors" value="Sanitized public metadata" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000067.jpg" />
+      <newznab:attr name="runtime" value="98 min" />
+      <newznab:attr name="grabs" value="567" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Tue, 15 Aug 2023 17:18:22 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Step.Brothers.2008.UNRATED.1080p.BluRay.x265-LAMA</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000069</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000069&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000069</comments>
+      <pubDate>Thu, 30 Mar 2023 07:28:23 +0000</pubDate>
+      <category>Movies &gt; BluRay</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000069&amp;apikey=TEST_API_KEY" length="1943113000" type="application/x-nzb" />
+      <newznab:attr name="category" value="2000" />
+      <newznab:attr name="category" value="2050" />
+      <newznab:attr name="size" value="1943113000" />
+      <newznab:attr name="guid" value="release-000069" />
+      <newznab:attr name="imdbtitle" value="Step Brothers" />
+      <newznab:attr name="imdb" value="00838283" />
+      <newznab:attr name="imdbtagline" value="Sanitized public metadata" />
+      <newznab:attr name="imdbplot" value="Sanitized public metadata" />
+      <newznab:attr name="imdbscore" value="6.9" />
+      <newznab:attr name="genre" value="Comedy" />
+      <newznab:attr name="imdbyear" value="2008" />
+      <newznab:attr name="imdbdirector" value="Sanitized public metadata" />
+      <newznab:attr name="imdbactors" value="Sanitized public metadata" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000069.jpg" />
+      <newznab:attr name="runtime" value="98 min" />
+      <newznab:attr name="grabs" value="1669" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Thu, 30 Mar 2023 07:28:23 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Step.Brothers.UNRATED.720p.BluRay.x264-iNFAMOUS</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000071</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000071&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000071</comments>
+      <pubDate>Wed, 30 Mar 2022 20:47:24 +0000</pubDate>
+      <category>Movies &gt; BluRay</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000071&amp;apikey=TEST_API_KEY" length="5173644000" type="application/x-nzb" />
+      <newznab:attr name="category" value="2000" />
+      <newznab:attr name="category" value="2050" />
+      <newznab:attr name="size" value="5173644000" />
+      <newznab:attr name="guid" value="release-000071" />
+      <newznab:attr name="imdbtitle" value="Step Brothers" />
+      <newznab:attr name="imdb" value="00838283" />
+      <newznab:attr name="imdbtagline" value="Sanitized public metadata" />
+      <newznab:attr name="imdbplot" value="Sanitized public metadata" />
+      <newznab:attr name="imdbscore" value="6.9" />
+      <newznab:attr name="genre" value="Comedy" />
+      <newznab:attr name="imdbyear" value="2008" />
+      <newznab:attr name="imdbdirector" value="Sanitized public metadata" />
+      <newznab:attr name="imdbactors" value="Sanitized public metadata" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000071.jpg" />
+      <newznab:attr name="runtime" value="98 min" />
+      <newznab:attr name="language" value="English" />
+      <newznab:attr name="subs" value="English" />
+      <newznab:attr name="grabs" value="129" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Wed, 30 Mar 2022 20:47:24 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Step.Brothers.EXTENDED.2008.UNRATED.BluRay.1080p.AVC.TrueHD.5.1.REMUX-FraMeSToR</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000073</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000073&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000073</comments>
+      <pubDate>Wed, 30 Mar 2022 14:17:48 +0000</pubDate>
+      <category>Movies &gt; BluRay</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000073&amp;apikey=TEST_API_KEY" length="20665595000" type="application/x-nzb" />
+      <newznab:attr name="category" value="2000" />
+      <newznab:attr name="category" value="2050" />
+      <newznab:attr name="size" value="20665595000" />
+      <newznab:attr name="guid" value="release-000073" />
+      <newznab:attr name="imdbtitle" value="Step Brothers" />
+      <newznab:attr name="imdb" value="00838283" />
+      <newznab:attr name="imdbtagline" value="Sanitized public metadata" />
+      <newznab:attr name="imdbplot" value="Sanitized public metadata" />
+      <newznab:attr name="imdbscore" value="6.9" />
+      <newznab:attr name="genre" value="Comedy" />
+      <newznab:attr name="imdbyear" value="2008" />
+      <newznab:attr name="imdbdirector" value="Sanitized public metadata" />
+      <newznab:attr name="imdbactors" value="Sanitized public metadata" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000073.jpg" />
+      <newznab:attr name="runtime" value="98 min" />
+      <newznab:attr name="language" value="English" />
+      <newznab:attr name="subs" value="English" />
+      <newznab:attr name="subs" value="French" />
+      <newznab:attr name="subs" value="Spanish" />
+      <newznab:attr name="subs" value="Portuguese" />
+      <newznab:attr name="subs" value="Chinese" />
+      <newznab:attr name="subs" value="Korean" />
+      <newznab:attr name="subs" value="Thai" />
+      <newznab:attr name="grabs" value="1597" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Wed, 30 Mar 2022 14:17:48 +0000" />
+      <newznab:attr name="thumbsup" value="1" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Step.Brothers.2008.UNRATED.MULTi.2160p.UHD.BluRay.x265-SESKAPiLE</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000075</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000075&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000075</comments>
+      <pubDate>Wed, 26 Jan 2022 08:53:19 +0000</pubDate>
+      <category>Movies &gt; UHD</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000075&amp;apikey=TEST_API_KEY" length="27278263000" type="application/x-nzb" />
+      <newznab:attr name="category" value="2000" />
+      <newznab:attr name="category" value="2045" />
+      <newznab:attr name="size" value="27278263000" />
+      <newznab:attr name="guid" value="release-000075" />
+      <newznab:attr name="imdbtitle" value="Step Brothers" />
+      <newznab:attr name="imdb" value="00838283" />
+      <newznab:attr name="imdbtagline" value="Sanitized public metadata" />
+      <newznab:attr name="imdbplot" value="Sanitized public metadata" />
+      <newznab:attr name="imdbscore" value="6.9" />
+      <newznab:attr name="genre" value="Comedy" />
+      <newznab:attr name="imdbyear" value="2008" />
+      <newznab:attr name="imdbdirector" value="Sanitized public metadata" />
+      <newznab:attr name="imdbactors" value="Sanitized public metadata" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000075.jpg" />
+      <newznab:attr name="runtime" value="98 min" />
+      <newznab:attr name="language" value="English" />
+      <newznab:attr name="language" value="French" />
+      <newznab:attr name="subs" value="French" />
+      <newznab:attr name="subs" value="English" />
+      <newznab:attr name="grabs" value="2951" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Wed, 26 Jan 2022 08:53:19 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Step.Brothers.UNRATED.2008.1080p.BluRay.H264.ACC.5.1.BADASSMEDIA</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000077</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000077&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000077</comments>
+      <pubDate>Mon, 15 Nov 2021 11:51:38 +0000</pubDate>
+      <category>Movies &gt; BluRay</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000077&amp;apikey=TEST_API_KEY" length="3240154000" type="application/x-nzb" />
+      <newznab:attr name="category" value="2000" />
+      <newznab:attr name="category" value="2050" />
+      <newznab:attr name="size" value="3240154000" />
+      <newznab:attr name="guid" value="release-000077" />
+      <newznab:attr name="imdbtitle" value="Step Brothers" />
+      <newznab:attr name="imdb" value="00838283" />
+      <newznab:attr name="imdbtagline" value="Sanitized public metadata" />
+      <newznab:attr name="imdbplot" value="Sanitized public metadata" />
+      <newznab:attr name="imdbscore" value="6.9" />
+      <newznab:attr name="genre" value="Comedy" />
+      <newznab:attr name="imdbyear" value="2008" />
+      <newznab:attr name="imdbdirector" value="Sanitized public metadata" />
+      <newznab:attr name="imdbactors" value="Sanitized public metadata" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000077.jpg" />
+      <newznab:attr name="runtime" value="98 min" />
+      <newznab:attr name="grabs" value="3005" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Mon, 15 Nov 2021 11:51:38 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Step.Brothers.2008.EXTENDED.UNRATED.BluRay.1080p.AVC.TrueHD.5.1.REMUX-FraMeSToR</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000079</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000079&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000079</comments>
+      <pubDate>Fri, 12 Nov 2021 09:22:46 +0000</pubDate>
+      <category>Movies &gt; BluRay</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000079&amp;apikey=TEST_API_KEY" length="20665595000" type="application/x-nzb" />
+      <newznab:attr name="category" value="2000" />
+      <newznab:attr name="category" value="2050" />
+      <newznab:attr name="size" value="20665595000" />
+      <newznab:attr name="guid" value="release-000079" />
+      <newznab:attr name="imdbtitle" value="Step Brothers" />
+      <newznab:attr name="imdb" value="00838283" />
+      <newznab:attr name="imdbtagline" value="Sanitized public metadata" />
+      <newznab:attr name="imdbplot" value="Sanitized public metadata" />
+      <newznab:attr name="imdbscore" value="6.9" />
+      <newznab:attr name="genre" value="Comedy" />
+      <newznab:attr name="imdbyear" value="2008" />
+      <newznab:attr name="imdbdirector" value="Sanitized public metadata" />
+      <newznab:attr name="imdbactors" value="Sanitized public metadata" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000079.jpg" />
+      <newznab:attr name="runtime" value="98 min" />
+      <newznab:attr name="language" value="English" />
+      <newznab:attr name="subs" value="English" />
+      <newznab:attr name="subs" value="French" />
+      <newznab:attr name="subs" value="Spanish" />
+      <newznab:attr name="subs" value="Portuguese" />
+      <newznab:attr name="subs" value="Chinese" />
+      <newznab:attr name="subs" value="Korean" />
+      <newznab:attr name="subs" value="Thai" />
+      <newznab:attr name="grabs" value="937" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Fri, 12 Nov 2021 09:22:46 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Step.Brothers.2008.UNRATED.MULTi.2160p.UHD.BluRay.x265-SESKAPiLE</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000081</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000081&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000081</comments>
+      <pubDate>Mon, 13 Sep 2021 23:52:38 +0000</pubDate>
+      <category>Movies &gt; UHD</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000081&amp;apikey=TEST_API_KEY" length="27278263000" type="application/x-nzb" />
+      <newznab:attr name="category" value="2000" />
+      <newznab:attr name="category" value="2045" />
+      <newznab:attr name="size" value="27278263000" />
+      <newznab:attr name="guid" value="release-000081" />
+      <newznab:attr name="imdbtitle" value="Step Brothers" />
+      <newznab:attr name="imdb" value="00838283" />
+      <newznab:attr name="imdbtagline" value="Sanitized public metadata" />
+      <newznab:attr name="imdbplot" value="Sanitized public metadata" />
+      <newznab:attr name="imdbscore" value="6.9" />
+      <newznab:attr name="genre" value="Comedy" />
+      <newznab:attr name="imdbyear" value="2008" />
+      <newznab:attr name="imdbdirector" value="Sanitized public metadata" />
+      <newznab:attr name="imdbactors" value="Sanitized public metadata" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000081.jpg" />
+      <newznab:attr name="runtime" value="98 min" />
+      <newznab:attr name="language" value="English" />
+      <newznab:attr name="language" value="French" />
+      <newznab:attr name="subs" value="French" />
+      <newznab:attr name="subs" value="English" />
+      <newznab:attr name="grabs" value="924" />
+      <newznab:attr name="comments" value="1" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Mon, 13 Sep 2021 23:52:38 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="1" />
+    </item>
+    <item>
+      <title>Step.Brothers.EXTENDED.2008.UNRATED.BluRay.1080p.AVC.TrueHD.5.1.REMUX-FraMeSToR</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000083</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000083&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000083</comments>
+      <pubDate>Mon, 13 Sep 2021 22:26:08 +0000</pubDate>
+      <category>Movies &gt; BluRay</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000083&amp;apikey=TEST_API_KEY" length="20665595000" type="application/x-nzb" />
+      <newznab:attr name="category" value="2000" />
+      <newznab:attr name="category" value="2050" />
+      <newznab:attr name="size" value="20665595000" />
+      <newznab:attr name="guid" value="release-000083" />
+      <newznab:attr name="imdbtitle" value="Step Brothers" />
+      <newznab:attr name="imdb" value="00838283" />
+      <newznab:attr name="imdbtagline" value="Sanitized public metadata" />
+      <newznab:attr name="imdbplot" value="Sanitized public metadata" />
+      <newznab:attr name="imdbscore" value="6.9" />
+      <newznab:attr name="genre" value="Comedy" />
+      <newznab:attr name="imdbyear" value="2008" />
+      <newznab:attr name="imdbdirector" value="Sanitized public metadata" />
+      <newznab:attr name="imdbactors" value="Sanitized public metadata" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000083.jpg" />
+      <newznab:attr name="runtime" value="98 min" />
+      <newznab:attr name="language" value="English" />
+      <newznab:attr name="subs" value="English" />
+      <newznab:attr name="subs" value="French" />
+      <newznab:attr name="subs" value="Spanish" />
+      <newznab:attr name="subs" value="Portuguese" />
+      <newznab:attr name="subs" value="Chinese" />
+      <newznab:attr name="subs" value="Korean" />
+      <newznab:attr name="subs" value="Thai" />
+      <newznab:attr name="grabs" value="465" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Mon, 13 Sep 2021 22:26:08 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Step.Brothers.2008.Unrated.1080p.BluRay.x264.AC3-CAPTCHA</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000085</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000085&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000085</comments>
+      <pubDate>Mon, 13 Sep 2021 04:05:36 +0000</pubDate>
+      <category>Movies &gt; BluRay</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000085&amp;apikey=TEST_API_KEY" length="4727420000" type="application/x-nzb" />
+      <newznab:attr name="category" value="2000" />
+      <newznab:attr name="category" value="2050" />
+      <newznab:attr name="size" value="4727420000" />
+      <newznab:attr name="guid" value="release-000085" />
+      <newznab:attr name="imdbtitle" value="Step Brothers" />
+      <newznab:attr name="imdb" value="00838283" />
+      <newznab:attr name="imdbtagline" value="Sanitized public metadata" />
+      <newznab:attr name="imdbplot" value="Sanitized public metadata" />
+      <newznab:attr name="imdbscore" value="6.9" />
+      <newznab:attr name="genre" value="Comedy" />
+      <newznab:attr name="imdbyear" value="2008" />
+      <newznab:attr name="imdbdirector" value="Sanitized public metadata" />
+      <newznab:attr name="imdbactors" value="Sanitized public metadata" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000085.jpg" />
+      <newznab:attr name="runtime" value="98 min" />
+      <newznab:attr name="grabs" value="3424" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Mon, 13 Sep 2021 04:05:36 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="1" />
+    </item>
+    <item>
+      <title>Step.Brothers.2008.UNRATED.720p.BluRay.x264-iNFAMOUS</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000087</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000087&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000087</comments>
+      <pubDate>Sun, 08 Aug 2021 02:36:21 +0000</pubDate>
+      <category>Movies &gt; BluRay</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000087&amp;apikey=TEST_API_KEY" length="5173644000" type="application/x-nzb" />
+      <newznab:attr name="category" value="2000" />
+      <newznab:attr name="category" value="2050" />
+      <newznab:attr name="size" value="5173644000" />
+      <newznab:attr name="guid" value="release-000087" />
+      <newznab:attr name="imdbtitle" value="Step Brothers" />
+      <newznab:attr name="imdb" value="00838283" />
+      <newznab:attr name="imdbtagline" value="Sanitized public metadata" />
+      <newznab:attr name="imdbplot" value="Sanitized public metadata" />
+      <newznab:attr name="imdbscore" value="6.9" />
+      <newznab:attr name="genre" value="Comedy" />
+      <newznab:attr name="imdbyear" value="2008" />
+      <newznab:attr name="imdbdirector" value="Sanitized public metadata" />
+      <newznab:attr name="imdbactors" value="Sanitized public metadata" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000087.jpg" />
+      <newznab:attr name="runtime" value="98 min" />
+      <newznab:attr name="language" value="English" />
+      <newznab:attr name="subs" value="English" />
+      <newznab:attr name="grabs" value="1892" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Sun, 08 Aug 2021 02:36:21 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Step.Brothers.UNRATED.1080p.BluRay.x264-HD1080</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000089</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000089&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000089</comments>
+      <pubDate>Fri, 06 Aug 2021 12:19:01 +0000</pubDate>
+      <category>Movies &gt; BluRay</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000089&amp;apikey=TEST_API_KEY" length="8971933000" type="application/x-nzb" />
+      <newznab:attr name="category" value="2000" />
+      <newznab:attr name="category" value="2050" />
+      <newznab:attr name="size" value="8971933000" />
+      <newznab:attr name="guid" value="release-000089" />
+      <newznab:attr name="imdbtitle" value="Step Brothers" />
+      <newznab:attr name="imdb" value="00838283" />
+      <newznab:attr name="imdbtagline" value="Sanitized public metadata" />
+      <newznab:attr name="imdbplot" value="Sanitized public metadata" />
+      <newznab:attr name="imdbscore" value="6.9" />
+      <newznab:attr name="genre" value="Comedy" />
+      <newznab:attr name="imdbyear" value="2008" />
+      <newznab:attr name="imdbdirector" value="Sanitized public metadata" />
+      <newznab:attr name="imdbactors" value="Sanitized public metadata" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000089.jpg" />
+      <newznab:attr name="runtime" value="98 min" />
+      <newznab:attr name="language" value="English" />
+      <newznab:attr name="subs" value="English" />
+      <newznab:attr name="grabs" value="134" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Fri, 06 Aug 2021 12:19:01 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Step.Brothers.Unrated.2008.BluRay.1080p.DTS.x264.Dxva-EuReKA-AsRequested</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000091</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000091&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000091</comments>
+      <pubDate>Thu, 09 Jul 2020 07:35:43 +0000</pubDate>
+      <category>Movies &gt; BluRay</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000091&amp;apikey=TEST_API_KEY" length="11573465000" type="application/x-nzb" />
+      <newznab:attr name="category" value="2000" />
+      <newznab:attr name="category" value="2050" />
+      <newznab:attr name="size" value="11573465000" />
+      <newznab:attr name="guid" value="release-000091" />
+      <newznab:attr name="imdbtitle" value="Step Brothers" />
+      <newznab:attr name="imdb" value="00838283" />
+      <newznab:attr name="imdbtagline" value="Sanitized public metadata" />
+      <newznab:attr name="imdbplot" value="Sanitized public metadata" />
+      <newznab:attr name="imdbscore" value="6.9" />
+      <newznab:attr name="genre" value="Comedy" />
+      <newznab:attr name="imdbyear" value="2008" />
+      <newznab:attr name="imdbdirector" value="Sanitized public metadata" />
+      <newznab:attr name="imdbactors" value="Sanitized public metadata" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000091.jpg" />
+      <newznab:attr name="runtime" value="98 min" />
+      <newznab:attr name="grabs" value="5064" />
+      <newznab:attr name="comments" value="1" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Thu, 09 Jul 2020 07:35:43 +0000" />
+      <newznab:attr name="thumbsup" value="2" />
+      <newznab:attr name="thumbsdown" value="3" />
+    </item>
+    <item>
+      <title>Step.Brothers.2008.Unrated.1080p.Blu-ray.Remux.AVC.Atmos-KRaLiMaRKo-AsRequested</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000093</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000093&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000093</comments>
+      <pubDate>Thu, 09 Jul 2020 07:13:08 +0000</pubDate>
+      <category>Movies &gt; BluRay</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000093&amp;apikey=TEST_API_KEY" length="24499559000" type="application/x-nzb" />
+      <newznab:attr name="category" value="2000" />
+      <newznab:attr name="category" value="2050" />
+      <newznab:attr name="size" value="24499559000" />
+      <newznab:attr name="guid" value="release-000093" />
+      <newznab:attr name="imdbtitle" value="Step Brothers" />
+      <newznab:attr name="imdb" value="00838283" />
+      <newznab:attr name="imdbtagline" value="Sanitized public metadata" />
+      <newznab:attr name="imdbplot" value="Sanitized public metadata" />
+      <newznab:attr name="imdbscore" value="6.9" />
+      <newznab:attr name="genre" value="Comedy" />
+      <newznab:attr name="imdbyear" value="2008" />
+      <newznab:attr name="imdbdirector" value="Sanitized public metadata" />
+      <newznab:attr name="imdbactors" value="Sanitized public metadata" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000093.jpg" />
+      <newznab:attr name="runtime" value="98 min" />
+      <newznab:attr name="grabs" value="5719" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Thu, 09 Jul 2020 07:13:08 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="3" />
+    </item>
+    <item>
+      <title>Step.Brothers.2008.BluRay.1080p.x264.DTS-WiKi-AsRequested</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000095</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000095&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000095</comments>
+      <pubDate>Thu, 09 Jul 2020 05:24:25 +0000</pubDate>
+      <category>Movies &gt; BluRay</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000095&amp;apikey=TEST_API_KEY" length="9247406000" type="application/x-nzb" />
+      <newznab:attr name="category" value="2000" />
+      <newznab:attr name="category" value="2050" />
+      <newznab:attr name="size" value="9247406000" />
+      <newznab:attr name="guid" value="release-000095" />
+      <newznab:attr name="imdbtitle" value="Step Brothers" />
+      <newznab:attr name="imdb" value="00838283" />
+      <newznab:attr name="imdbtagline" value="Sanitized public metadata" />
+      <newznab:attr name="imdbplot" value="Sanitized public metadata" />
+      <newznab:attr name="imdbscore" value="6.9" />
+      <newznab:attr name="genre" value="Comedy" />
+      <newznab:attr name="imdbyear" value="2008" />
+      <newznab:attr name="imdbdirector" value="Sanitized public metadata" />
+      <newznab:attr name="imdbactors" value="Sanitized public metadata" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000095.jpg" />
+      <newznab:attr name="runtime" value="98 min" />
+      <newznab:attr name="grabs" value="5223" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Thu, 09 Jul 2020 05:24:25 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="1" />
+    </item>
+    <item>
+      <title>Step.Brothers.2008.1080p.BluRay.x264-HD1080-AsRequested</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000097</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000097&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000097</comments>
+      <pubDate>Thu, 09 Jul 2020 04:38:27 +0000</pubDate>
+      <category>Movies &gt; BluRay</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000097&amp;apikey=TEST_API_KEY" length="9247908000" type="application/x-nzb" />
+      <newznab:attr name="category" value="2000" />
+      <newznab:attr name="category" value="2050" />
+      <newznab:attr name="size" value="9247908000" />
+      <newznab:attr name="guid" value="release-000097" />
+      <newznab:attr name="imdbtitle" value="Step Brothers" />
+      <newznab:attr name="imdb" value="00838283" />
+      <newznab:attr name="imdbtagline" value="Sanitized public metadata" />
+      <newznab:attr name="imdbplot" value="Sanitized public metadata" />
+      <newznab:attr name="imdbscore" value="6.9" />
+      <newznab:attr name="genre" value="Comedy" />
+      <newznab:attr name="imdbyear" value="2008" />
+      <newznab:attr name="imdbdirector" value="Sanitized public metadata" />
+      <newznab:attr name="imdbactors" value="Sanitized public metadata" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000097.jpg" />
+      <newznab:attr name="runtime" value="98 min" />
+      <newznab:attr name="grabs" value="4522" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Thu, 09 Jul 2020 04:38:27 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="1" />
+    </item>
+    <item>
+      <title>Step.Brothers.2008.1080p.BluRay.UNRATED.Plus.Comm.DD.5.1.x264-MaG-AsRequested</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000099</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000099&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000099</comments>
+      <pubDate>Thu, 09 Jul 2020 03:35:30 +0000</pubDate>
+      <category>Movies &gt; BluRay</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000099&amp;apikey=TEST_API_KEY" length="8105091000" type="application/x-nzb" />
+      <newznab:attr name="category" value="2000" />
+      <newznab:attr name="category" value="2050" />
+      <newznab:attr name="size" value="8105091000" />
+      <newznab:attr name="guid" value="release-000099" />
+      <newznab:attr name="imdbtitle" value="Step Brothers" />
+      <newznab:attr name="imdb" value="00838283" />
+      <newznab:attr name="imdbtagline" value="Sanitized public metadata" />
+      <newznab:attr name="imdbplot" value="Sanitized public metadata" />
+      <newznab:attr name="imdbscore" value="6.9" />
+      <newznab:attr name="genre" value="Comedy" />
+      <newznab:attr name="imdbyear" value="2008" />
+      <newznab:attr name="imdbdirector" value="Sanitized public metadata" />
+      <newznab:attr name="imdbactors" value="Sanitized public metadata" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000099.jpg" />
+      <newznab:attr name="runtime" value="98 min" />
+      <newznab:attr name="grabs" value="5621" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Thu, 09 Jul 2020 03:35:30 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="1" />
+    </item>
+    <item>
+      <title>Step.Brothers.2008.Unrated.BluRay.10Bit.1080p.DD5.1.H265-d3g-AsRequested</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000101</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000101&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000101</comments>
+      <pubDate>Tue, 24 Dec 2019 12:02:44 +0000</pubDate>
+      <category>Movies &gt; BluRay</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000101&amp;apikey=TEST_API_KEY" length="2158317000" type="application/x-nzb" />
+      <newznab:attr name="category" value="2000" />
+      <newznab:attr name="category" value="2050" />
+      <newznab:attr name="size" value="2158317000" />
+      <newznab:attr name="guid" value="release-000101" />
+      <newznab:attr name="imdbtitle" value="Step Brothers" />
+      <newznab:attr name="imdb" value="00838283" />
+      <newznab:attr name="imdbtagline" value="Sanitized public metadata" />
+      <newznab:attr name="imdbplot" value="Sanitized public metadata" />
+      <newznab:attr name="imdbscore" value="6.9" />
+      <newznab:attr name="genre" value="Comedy" />
+      <newznab:attr name="imdbyear" value="2008" />
+      <newznab:attr name="imdbdirector" value="Sanitized public metadata" />
+      <newznab:attr name="imdbactors" value="Sanitized public metadata" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000101.jpg" />
+      <newznab:attr name="runtime" value="98 min" />
+      <newznab:attr name="language" value="English" />
+      <newznab:attr name="grabs" value="4534" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Tue, 24 Dec 2019 12:02:44 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="4" />
+    </item>
+    <item>
+      <title>Step.Brothers.2008.1080p.BluRay.UNRATED.Plus.Comm.DD.5.1.x264-MaG-AsRequested</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000103</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000103&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000103</comments>
+      <pubDate>Tue, 24 Dec 2019 05:37:55 +0000</pubDate>
+      <category>Movies &gt; BluRay</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000103&amp;apikey=TEST_API_KEY" length="7858784000" type="application/x-nzb" />
+      <newznab:attr name="category" value="2000" />
+      <newznab:attr name="category" value="2050" />
+      <newznab:attr name="size" value="7858784000" />
+      <newznab:attr name="guid" value="release-000103" />
+      <newznab:attr name="imdbtitle" value="Step Brothers" />
+      <newznab:attr name="imdb" value="00838283" />
+      <newznab:attr name="imdbtagline" value="Sanitized public metadata" />
+      <newznab:attr name="imdbplot" value="Sanitized public metadata" />
+      <newznab:attr name="imdbscore" value="6.9" />
+      <newznab:attr name="genre" value="Comedy" />
+      <newznab:attr name="imdbyear" value="2008" />
+      <newznab:attr name="imdbdirector" value="Sanitized public metadata" />
+      <newznab:attr name="imdbactors" value="Sanitized public metadata" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000103.jpg" />
+      <newznab:attr name="runtime" value="98 min" />
+      <newznab:attr name="grabs" value="4869" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Tue, 24 Dec 2019 05:37:55 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="3" />
+    </item>
+    <item>
+      <title>Step.Brothers.EXTENDED.2008.UNRATED.BluRay.1080p.AVC.TrueHD.5.1.REMUX-FraMeSToR-AsRequested</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000105</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000105&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000105</comments>
+      <pubDate>Tue, 24 Dec 2019 05:01:38 +0000</pubDate>
+      <category>Movies &gt; BluRay</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000105&amp;apikey=TEST_API_KEY" length="20634237000" type="application/x-nzb" />
+      <newznab:attr name="category" value="2000" />
+      <newznab:attr name="category" value="2050" />
+      <newznab:attr name="size" value="20634237000" />
+      <newznab:attr name="guid" value="release-000105" />
+      <newznab:attr name="imdbtitle" value="Step Brothers" />
+      <newznab:attr name="imdb" value="00838283" />
+      <newznab:attr name="imdbtagline" value="Sanitized public metadata" />
+      <newznab:attr name="imdbplot" value="Sanitized public metadata" />
+      <newznab:attr name="imdbscore" value="6.9" />
+      <newznab:attr name="genre" value="Comedy" />
+      <newznab:attr name="imdbyear" value="2008" />
+      <newznab:attr name="imdbdirector" value="Sanitized public metadata" />
+      <newznab:attr name="imdbactors" value="Sanitized public metadata" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000105.jpg" />
+      <newznab:attr name="runtime" value="98 min" />
+      <newznab:attr name="grabs" value="2186" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Tue, 24 Dec 2019 05:01:38 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="1" />
+    </item>
+    <item>
+      <title>Step.Brothers.2008.Extended.UNRATED.1080p.BDRip.AC3.x265.10bit-MarkII</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000107</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000107&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000107</comments>
+      <pubDate>Thu, 28 Nov 2019 13:06:17 +0000</pubDate>
+      <category>Movies &gt; HD</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000107&amp;apikey=TEST_API_KEY" length="2226301000" type="application/x-nzb" />
+      <newznab:attr name="category" value="2000" />
+      <newznab:attr name="category" value="2040" />
+      <newznab:attr name="size" value="2226301000" />
+      <newznab:attr name="guid" value="release-000107" />
+      <newznab:attr name="imdbtitle" value="Step Brothers" />
+      <newznab:attr name="imdb" value="00838283" />
+      <newznab:attr name="imdbtagline" value="Sanitized public metadata" />
+      <newznab:attr name="imdbplot" value="Sanitized public metadata" />
+      <newznab:attr name="imdbscore" value="6.9" />
+      <newznab:attr name="genre" value="Comedy" />
+      <newznab:attr name="imdbyear" value="2008" />
+      <newznab:attr name="imdbdirector" value="Sanitized public metadata" />
+      <newznab:attr name="imdbactors" value="Sanitized public metadata" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000107.jpg" />
+      <newznab:attr name="runtime" value="98 min" />
+      <newznab:attr name="grabs" value="5043" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Thu, 28 Nov 2019 13:06:17 +0000" />
+      <newznab:attr name="thumbsup" value="1" />
+      <newznab:attr name="thumbsdown" value="2" />
+    </item>
+    <item>
+      <title>Step.Brothers.2008.UNRATED.BluRay.1080p.TrueHD.5.1.x264-BluEvo-AsRequested</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000109</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000109&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000109</comments>
+      <pubDate>Sun, 01 Sep 2019 01:40:02 +0000</pubDate>
+      <category>Movies &gt; BluRay</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000109&amp;apikey=TEST_API_KEY" length="14923164000" type="application/x-nzb" />
+      <newznab:attr name="category" value="2000" />
+      <newznab:attr name="category" value="2050" />
+      <newznab:attr name="size" value="14923164000" />
+      <newznab:attr name="guid" value="release-000109" />
+      <newznab:attr name="imdbtitle" value="Step Brothers" />
+      <newznab:attr name="imdb" value="00838283" />
+      <newznab:attr name="imdbtagline" value="Sanitized public metadata" />
+      <newznab:attr name="imdbplot" value="Sanitized public metadata" />
+      <newznab:attr name="imdbscore" value="6.9" />
+      <newznab:attr name="genre" value="Comedy" />
+      <newznab:attr name="imdbyear" value="2008" />
+      <newznab:attr name="imdbdirector" value="Sanitized public metadata" />
+      <newznab:attr name="imdbactors" value="Sanitized public metadata" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000109.jpg" />
+      <newznab:attr name="runtime" value="98 min" />
+      <newznab:attr name="language" value="English" />
+      <newznab:attr name="grabs" value="6072" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Sun, 01 Sep 2019 01:40:02 +0000" />
+      <newznab:attr name="thumbsup" value="1" />
+      <newznab:attr name="thumbsdown" value="1" />
+    </item>
+    <item>
+      <title>Step.Brothers.2008.1080p.BluRay.UNRATED.Plus.Comm.DD.5.1.x264-MaG-Obfuscated</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000111</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000111&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000111</comments>
+      <pubDate>Fri, 08 Jun 2018 18:43:21 +0000</pubDate>
+      <category>Movies &gt; BluRay</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000111&amp;apikey=TEST_API_KEY" length="8056455000" type="application/x-nzb" />
+      <newznab:attr name="category" value="2000" />
+      <newznab:attr name="category" value="2050" />
+      <newznab:attr name="size" value="8056455000" />
+      <newznab:attr name="guid" value="release-000111" />
+      <newznab:attr name="imdbtitle" value="Step Brothers" />
+      <newznab:attr name="imdb" value="00838283" />
+      <newznab:attr name="imdbtagline" value="Sanitized public metadata" />
+      <newznab:attr name="imdbplot" value="Sanitized public metadata" />
+      <newznab:attr name="imdbscore" value="6.9" />
+      <newznab:attr name="genre" value="Comedy" />
+      <newznab:attr name="imdbyear" value="2008" />
+      <newznab:attr name="imdbdirector" value="Sanitized public metadata" />
+      <newznab:attr name="imdbactors" value="Sanitized public metadata" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000111.jpg" />
+      <newznab:attr name="runtime" value="98 min" />
+      <newznab:attr name="language" value="English" />
+      <newznab:attr name="grabs" value="6897" />
+      <newznab:attr name="comments" value="1" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Fri, 08 Jun 2018 18:43:21 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="9" />
+    </item>
+    <item>
+      <title>Step.Brothers.2008.Unrated.720p.BluRay.x264-HiDt-Obfuscated</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000113</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000113&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000113</comments>
+      <pubDate>Fri, 18 May 2018 00:56:14 +0000</pubDate>
+      <category>Movies &gt; BluRay</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000113&amp;apikey=TEST_API_KEY" length="5047339000" type="application/x-nzb" />
+      <newznab:attr name="category" value="2000" />
+      <newznab:attr name="category" value="2050" />
+      <newznab:attr name="size" value="5047339000" />
+      <newznab:attr name="guid" value="release-000113" />
+      <newznab:attr name="imdbtitle" value="Step Brothers" />
+      <newznab:attr name="imdb" value="00838283" />
+      <newznab:attr name="imdbtagline" value="Sanitized public metadata" />
+      <newznab:attr name="imdbplot" value="Sanitized public metadata" />
+      <newznab:attr name="imdbscore" value="6.9" />
+      <newznab:attr name="genre" value="Comedy" />
+      <newznab:attr name="imdbyear" value="2008" />
+      <newznab:attr name="imdbdirector" value="Sanitized public metadata" />
+      <newznab:attr name="imdbactors" value="Sanitized public metadata" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000113.jpg" />
+      <newznab:attr name="runtime" value="98 min" />
+      <newznab:attr name="language" value="English" />
+      <newznab:attr name="grabs" value="5094" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Fri, 18 May 2018 00:56:14 +0000" />
+      <newznab:attr name="thumbsup" value="2" />
+      <newznab:attr name="thumbsdown" value="7" />
+    </item>
+    <item>
+      <title>Step_Brothers.2008.1080.bluray.ac3-NoGroup</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000115</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000115&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000115</comments>
+      <pubDate>Tue, 18 Jul 2017 22:52:03 +0000</pubDate>
+      <category>Movies &gt; BluRay</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000115&amp;apikey=TEST_API_KEY" length="9981500000" type="application/x-nzb" />
+      <newznab:attr name="category" value="2000" />
+      <newznab:attr name="category" value="2050" />
+      <newznab:attr name="size" value="9981500000" />
+      <newznab:attr name="guid" value="release-000115" />
+      <newznab:attr name="imdbtitle" value="Step Brothers" />
+      <newznab:attr name="imdb" value="00838283" />
+      <newznab:attr name="imdbtagline" value="Sanitized public metadata" />
+      <newznab:attr name="imdbplot" value="Sanitized public metadata" />
+      <newznab:attr name="imdbscore" value="6.9" />
+      <newznab:attr name="genre" value="Comedy" />
+      <newznab:attr name="imdbyear" value="2008" />
+      <newznab:attr name="imdbdirector" value="Sanitized public metadata" />
+      <newznab:attr name="imdbactors" value="Sanitized public metadata" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000115.jpg" />
+      <newznab:attr name="runtime" value="98 min" />
+      <newznab:attr name="language" value="English" />
+      <newznab:attr name="grabs" value="4633" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Tue, 18 Jul 2017 22:52:03 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="8" />
+    </item>
+    <item>
+      <title>Frangins.malgr&amp;amp;233;.eux.2008.FRENCH.720p.x264</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000135</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000135&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000135</comments>
+      <pubDate>Wed, 25 Jan 2017 00:11:00 +0000</pubDate>
+      <category>Movies &gt; Foreign</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000135&amp;apikey=TEST_API_KEY" length="5381202000" type="application/x-nzb" />
+      <newznab:attr name="category" value="2000" />
+      <newznab:attr name="category" value="2010" />
+      <newznab:attr name="size" value="5381202000" />
+      <newznab:attr name="guid" value="release-000135" />
+      <newznab:attr name="imdbtitle" value="Step Brothers" />
+      <newznab:attr name="imdb" value="00838283" />
+      <newznab:attr name="imdbtagline" value="Sanitized public metadata" />
+      <newznab:attr name="imdbplot" value="Sanitized public metadata" />
+      <newznab:attr name="imdbscore" value="6.9" />
+      <newznab:attr name="genre" value="Comedy" />
+      <newznab:attr name="imdbyear" value="2008" />
+      <newznab:attr name="imdbdirector" value="Sanitized public metadata" />
+      <newznab:attr name="imdbactors" value="Sanitized public metadata" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000135.jpg" />
+      <newznab:attr name="runtime" value="98 min" />
+      <newznab:attr name="language" value="French" />
+      <newznab:attr name="grabs" value="121" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Wed, 25 Jan 2017 00:11:00 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Step.Brothers.2008.DVDRip.h264.AC3-MaG-Obfuscated</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000117</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000117&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000117</comments>
+      <pubDate>Tue, 13 Sep 2016 16:32:42 +0000</pubDate>
+      <category>Movies &gt; SD</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000117&amp;apikey=TEST_API_KEY" length="2015611000" type="application/x-nzb" />
+      <newznab:attr name="category" value="2000" />
+      <newznab:attr name="category" value="2030" />
+      <newznab:attr name="size" value="2015611000" />
+      <newznab:attr name="guid" value="release-000117" />
+      <newznab:attr name="imdbtitle" value="Step Brothers" />
+      <newznab:attr name="imdb" value="00838283" />
+      <newznab:attr name="imdbtagline" value="Sanitized public metadata" />
+      <newznab:attr name="imdbplot" value="Sanitized public metadata" />
+      <newznab:attr name="imdbscore" value="6.9" />
+      <newznab:attr name="genre" value="Comedy" />
+      <newznab:attr name="imdbyear" value="2008" />
+      <newznab:attr name="imdbdirector" value="Sanitized public metadata" />
+      <newznab:attr name="imdbactors" value="Sanitized public metadata" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000117.jpg" />
+      <newznab:attr name="runtime" value="98 min" />
+      <newznab:attr name="language" value="English" />
+      <newznab:attr name="grabs" value="2084" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Tue, 13 Sep 2016 16:32:42 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="1" />
+    </item>
+    <item>
+      <title>Step.Brothers.Extended.2008.UNRATED.BluRay.1080p.AVC.TrueHD.5.1.Remux-FRAMESTOR</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000119</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000119&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000119</comments>
+      <pubDate>Thu, 07 Jan 2016 03:24:32 +0000</pubDate>
+      <category>Movies &gt; BluRay</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000119&amp;apikey=TEST_API_KEY" length="23422611000" type="application/x-nzb" />
+      <newznab:attr name="category" value="2000" />
+      <newznab:attr name="category" value="2050" />
+      <newznab:attr name="size" value="23422611000" />
+      <newznab:attr name="guid" value="release-000119" />
+      <newznab:attr name="imdbtitle" value="Step Brothers" />
+      <newznab:attr name="imdb" value="00838283" />
+      <newznab:attr name="imdbtagline" value="Sanitized public metadata" />
+      <newznab:attr name="imdbplot" value="Sanitized public metadata" />
+      <newznab:attr name="imdbscore" value="6.9" />
+      <newznab:attr name="genre" value="Comedy" />
+      <newznab:attr name="imdbyear" value="2008" />
+      <newznab:attr name="imdbdirector" value="Sanitized public metadata" />
+      <newznab:attr name="imdbactors" value="Sanitized public metadata" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000119.jpg" />
+      <newznab:attr name="runtime" value="98 min" />
+      <newznab:attr name="grabs" value="4153" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Thu, 07 Jan 2016 03:24:32 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="4" />
+    </item>
+    <item>
+      <title>Step.Brothers.2008.720p.BDRip.x264-NGP</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000121</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000121&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000121</comments>
+      <pubDate>Mon, 16 Mar 2015 03:49:56 +0000</pubDate>
+      <category>Movies &gt; SD</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000121&amp;apikey=TEST_API_KEY" length="1175302000" type="application/x-nzb" />
+      <newznab:attr name="category" value="2000" />
+      <newznab:attr name="category" value="2030" />
+      <newznab:attr name="size" value="1175302000" />
+      <newznab:attr name="guid" value="release-000121" />
+      <newznab:attr name="imdbtitle" value="Step Brothers" />
+      <newznab:attr name="imdb" value="00838283" />
+      <newznab:attr name="imdbtagline" value="Sanitized public metadata" />
+      <newznab:attr name="imdbplot" value="Sanitized public metadata" />
+      <newznab:attr name="imdbscore" value="6.9" />
+      <newznab:attr name="genre" value="Comedy" />
+      <newznab:attr name="imdbyear" value="2008" />
+      <newznab:attr name="imdbdirector" value="Sanitized public metadata" />
+      <newznab:attr name="imdbactors" value="Sanitized public metadata" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000121.jpg" />
+      <newznab:attr name="runtime" value="98 min" />
+      <newznab:attr name="language" value="English" />
+      <newznab:attr name="grabs" value="3213" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Mon, 16 Mar 2015 03:49:56 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="3" />
+    </item>
+    <item>
+      <title>Step Brothers 2008 720p BDRip x264-NGP</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000123</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000123&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000123</comments>
+      <pubDate>Mon, 16 Mar 2015 03:49:56 +0000</pubDate>
+      <category>Movies &gt; SD</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000123&amp;apikey=TEST_API_KEY" length="1175302000" type="application/x-nzb" />
+      <newznab:attr name="category" value="2000" />
+      <newznab:attr name="category" value="2030" />
+      <newznab:attr name="size" value="1175302000" />
+      <newznab:attr name="guid" value="release-000123" />
+      <newznab:attr name="imdbtitle" value="Step Brothers" />
+      <newznab:attr name="imdb" value="00838283" />
+      <newznab:attr name="imdbtagline" value="Sanitized public metadata" />
+      <newznab:attr name="imdbplot" value="Sanitized public metadata" />
+      <newznab:attr name="imdbscore" value="6.9" />
+      <newznab:attr name="genre" value="Comedy" />
+      <newznab:attr name="imdbyear" value="2008" />
+      <newznab:attr name="imdbdirector" value="Sanitized public metadata" />
+      <newznab:attr name="imdbactors" value="Sanitized public metadata" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000123.jpg" />
+      <newznab:attr name="runtime" value="98 min" />
+      <newznab:attr name="language" value="English" />
+      <newznab:attr name="grabs" value="2861" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Mon, 16 Mar 2015 03:49:56 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="1" />
+    </item>
+    <item>
+      <title>Step.Brothers.2008.UNRATED.720p.BDRip.AC3.x264-MacGuffin-Obfuscated</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000125</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000125&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000125</comments>
+      <pubDate>Fri, 29 Nov 2013 15:43:05 +0000</pubDate>
+      <category>Movies &gt; HD</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000125&amp;apikey=TEST_API_KEY" length="3363507000" type="application/x-nzb" />
+      <newznab:attr name="category" value="2000" />
+      <newznab:attr name="category" value="2040" />
+      <newznab:attr name="size" value="3363507000" />
+      <newznab:attr name="guid" value="release-000125" />
+      <newznab:attr name="imdbtitle" value="Step Brothers" />
+      <newznab:attr name="imdb" value="00838283" />
+      <newznab:attr name="imdbtagline" value="Sanitized public metadata" />
+      <newznab:attr name="imdbplot" value="Sanitized public metadata" />
+      <newznab:attr name="imdbscore" value="6.9" />
+      <newznab:attr name="genre" value="Comedy" />
+      <newznab:attr name="imdbyear" value="2008" />
+      <newznab:attr name="imdbdirector" value="Sanitized public metadata" />
+      <newznab:attr name="imdbactors" value="Sanitized public metadata" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000125.jpg" />
+      <newznab:attr name="runtime" value="98 min" />
+      <newznab:attr name="language" value="English" />
+      <newznab:attr name="grabs" value="5253" />
+      <newznab:attr name="comments" value="2" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Fri, 29 Nov 2013 15:43:05 +0000" />
+      <newznab:attr name="thumbsup" value="5" />
+      <newznab:attr name="thumbsdown" value="3" />
+    </item>
+    <item>
+      <title>2008 Stiefbrueder XVID ohne PW</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000137</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000137&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000137</comments>
+      <pubDate>Wed, 01 May 2013 22:12:59 +0000</pubDate>
+      <category>Movies &gt; SD</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000137&amp;apikey=TEST_API_KEY" length="800765000" type="application/x-nzb" />
+      <newznab:attr name="category" value="2000" />
+      <newznab:attr name="category" value="2030" />
+      <newznab:attr name="size" value="800765000" />
+      <newznab:attr name="guid" value="release-000137" />
+      <newznab:attr name="imdbtitle" value="Step Brothers" />
+      <newznab:attr name="imdb" value="00838283" />
+      <newznab:attr name="imdbtagline" value="Sanitized public metadata" />
+      <newznab:attr name="imdbplot" value="Sanitized public metadata" />
+      <newznab:attr name="imdbscore" value="6.9" />
+      <newznab:attr name="genre" value="Comedy" />
+      <newznab:attr name="imdbyear" value="2008" />
+      <newznab:attr name="imdbdirector" value="Sanitized public metadata" />
+      <newznab:attr name="imdbactors" value="Sanitized public metadata" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000137.jpg" />
+      <newznab:attr name="runtime" value="98 min" />
+      <newznab:attr name="grabs" value="88" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Wed, 01 May 2013 22:12:59 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Step.Brothers.UNRATED.720p.BluRay.x264-iNFAMOUS</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000127</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000127&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000127</comments>
+      <pubDate>Sat, 07 Jan 2012 10:02:10 +0000</pubDate>
+      <category>Movies &gt; BluRay</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000127&amp;apikey=TEST_API_KEY" length="5204296000" type="application/x-nzb" />
+      <newznab:attr name="category" value="2000" />
+      <newznab:attr name="category" value="2050" />
+      <newznab:attr name="size" value="5204296000" />
+      <newznab:attr name="guid" value="release-000127" />
+      <newznab:attr name="imdbtitle" value="Step Brothers" />
+      <newznab:attr name="imdb" value="00838283" />
+      <newznab:attr name="imdbtagline" value="Sanitized public metadata" />
+      <newznab:attr name="imdbplot" value="Sanitized public metadata" />
+      <newznab:attr name="imdbscore" value="6.9" />
+      <newznab:attr name="genre" value="Comedy" />
+      <newznab:attr name="imdbyear" value="2008" />
+      <newznab:attr name="imdbdirector" value="Sanitized public metadata" />
+      <newznab:attr name="imdbactors" value="Sanitized public metadata" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000127.jpg" />
+      <newznab:attr name="runtime" value="98 min" />
+      <newznab:attr name="language" value="English" />
+      <newznab:attr name="grabs" value="1780" />
+      <newznab:attr name="comments" value="1" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Sat, 07 Jan 2012 10:02:10 +0000" />
+      <newznab:attr name="thumbsup" value="1" />
+      <newznab:attr name="thumbsdown" value="3" />
+    </item>
+    <item>
+      <title>Step.Brothers.UNRATED.DVDRip.XviD-DiAMOND</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000129</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000129&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000129</comments>
+      <pubDate>Sun, 20 Nov 2011 21:18:12 +0000</pubDate>
+      <category>Movies &gt; SD</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000129&amp;apikey=TEST_API_KEY" length="799594000" type="application/x-nzb" />
+      <newznab:attr name="category" value="2000" />
+      <newznab:attr name="category" value="2030" />
+      <newznab:attr name="size" value="799594000" />
+      <newznab:attr name="guid" value="release-000129" />
+      <newznab:attr name="imdbtitle" value="Step Brothers" />
+      <newznab:attr name="imdb" value="00838283" />
+      <newznab:attr name="imdbtagline" value="Sanitized public metadata" />
+      <newznab:attr name="imdbplot" value="Sanitized public metadata" />
+      <newznab:attr name="imdbscore" value="6.9" />
+      <newznab:attr name="genre" value="Comedy" />
+      <newznab:attr name="imdbyear" value="2008" />
+      <newznab:attr name="imdbdirector" value="Sanitized public metadata" />
+      <newznab:attr name="imdbactors" value="Sanitized public metadata" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000129.jpg" />
+      <newznab:attr name="runtime" value="98 min" />
+      <newznab:attr name="grabs" value="1132" />
+      <newznab:attr name="comments" value="1" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Sun, 20 Nov 2011 21:18:12 +0000" />
+      <newznab:attr name="thumbsup" value="1" />
+      <newznab:attr name="thumbsdown" value="5" />
+    </item>
+    <item>
+      <title>Step.Brothers.UNRATED.DVDRip.XviD-DiAMOND</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000131</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000131&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000131</comments>
+      <pubDate>Mon, 15 Aug 2011 12:11:41 +0000</pubDate>
+      <category>Movies &gt; SD</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000131&amp;apikey=TEST_API_KEY" length="797475000" type="application/x-nzb" />
+      <newznab:attr name="category" value="2000" />
+      <newznab:attr name="category" value="2030" />
+      <newznab:attr name="size" value="797475000" />
+      <newznab:attr name="guid" value="release-000131" />
+      <newznab:attr name="imdbtitle" value="Step Brothers" />
+      <newznab:attr name="imdb" value="00838283" />
+      <newznab:attr name="imdbtagline" value="Sanitized public metadata" />
+      <newznab:attr name="imdbplot" value="Sanitized public metadata" />
+      <newznab:attr name="imdbscore" value="6.9" />
+      <newznab:attr name="genre" value="Comedy" />
+      <newznab:attr name="imdbyear" value="2008" />
+      <newznab:attr name="imdbdirector" value="Sanitized public metadata" />
+      <newznab:attr name="imdbactors" value="Sanitized public metadata" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000131.jpg" />
+      <newznab:attr name="runtime" value="98 min" />
+      <newznab:attr name="grabs" value="1099" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Mon, 15 Aug 2011 12:11:41 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="3" />
+    </item>
+    <item>
+      <title>Step Brothers 2008 Unrated 720p BluRay x264-HiDt</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000133</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000133&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000133</comments>
+      <pubDate>Sat, 16 Apr 2011 06:38:27 +0000</pubDate>
+      <category>Movies &gt; BluRay</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000133&amp;apikey=TEST_API_KEY" length="5407565000" type="application/x-nzb" />
+      <newznab:attr name="category" value="2000" />
+      <newznab:attr name="category" value="2050" />
+      <newznab:attr name="size" value="5407565000" />
+      <newznab:attr name="guid" value="release-000133" />
+      <newznab:attr name="imdbtitle" value="Step Brothers" />
+      <newznab:attr name="imdb" value="00838283" />
+      <newznab:attr name="imdbtagline" value="Sanitized public metadata" />
+      <newznab:attr name="imdbplot" value="Sanitized public metadata" />
+      <newznab:attr name="imdbscore" value="6.9" />
+      <newznab:attr name="genre" value="Comedy" />
+      <newznab:attr name="imdbyear" value="2008" />
+      <newznab:attr name="imdbdirector" value="Sanitized public metadata" />
+      <newznab:attr name="imdbactors" value="Sanitized public metadata" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000133.jpg" />
+      <newznab:attr name="runtime" value="98 min" />
+      <newznab:attr name="language" value="English" />
+      <newznab:attr name="grabs" value="5214" />
+      <newznab:attr name="comments" value="2" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Sat, 16 Apr 2011 06:38:27 +0000" />
+      <newznab:attr name="thumbsup" value="2" />
+      <newznab:attr name="thumbsdown" value="5" />
+    </item>
+  </channel>
+</rss>

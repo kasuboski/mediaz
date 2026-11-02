@@ -1,0 +1,2514 @@
+<?xml version='1.0' encoding='utf-8'?>
+<rss xmlns:atom="http://www.w3.org/2005/Atom" xmlns:newznab="http://www.newznab.com/DTD/2010/feeds/attributes/" version="2.0">
+  <channel>
+    <atom:link href="https://indexer.example.invalid/api" rel="self" type="application/rss+xml" />
+    <title>Sanitized indexer fixture</title>
+    <description>Sanitized indexer fixture</description>
+    <link>https://indexer.example.invalid/</link>
+    <language>en</language>
+    <webMaster>fixture@example.invalid</webMaster>
+    <category>Sanitized indexer fixture</category>
+    <image>
+      <url>https://indexer.example.invalid/logo.png</url>
+    </image>
+    <newznab:response offset="0" total="3284" />
+    <item>
+      <title>Futurama.S08E02.Neutopia.1080p.DSNP.WEB-DL.DDP5.1.H.264-OldT</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000139</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000139&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000139</comments>
+      <pubDate>Mon, 19 Oct 2026 17:51:16 +0000</pubDate>
+      <category>TV &gt; HD</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000139&amp;apikey=TEST_API_KEY" length="1084721000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5040" />
+      <newznab:attr name="size" value="1084721000" />
+      <newznab:attr name="guid" value="release-000139" />
+      <newznab:attr name="rageid" value="3628" />
+      <newznab:attr name="tvdbid" value="73871" />
+      <newznab:attr name="season" value="S08" />
+      <newznab:attr name="episode" value="E02" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000139.jpg" />
+      <newznab:attr name="language" value="English" />
+      <newznab:attr name="language" value="French" />
+      <newznab:attr name="language" value="German" />
+      <newznab:attr name="language" value="Hungarian" />
+      <newznab:attr name="language" value="Italian" />
+      <newznab:attr name="language" value="Polish" />
+      <newznab:attr name="language" value="Portuguese" />
+      <newznab:attr name="language" value="Spanish" />
+      <newznab:attr name="subs" value="English" />
+      <newznab:attr name="subs" value="Arabic" />
+      <newznab:attr name="subs" value="Czech" />
+      <newznab:attr name="subs" value="Danish" />
+      <newznab:attr name="subs" value="German" />
+      <newznab:attr name="subs" value="Greek" />
+      <newznab:attr name="subs" value="Spanish (Latin America)" />
+      <newznab:attr name="subs" value="Spanish (ES)" />
+      <newznab:attr name="subs" value="Finnish" />
+      <newznab:attr name="subs" value="French (FR)" />
+      <newznab:attr name="subs" value="Hebrew" />
+      <newznab:attr name="subs" value="Hungarian" />
+      <newznab:attr name="subs" value="Indonesian" />
+      <newznab:attr name="subs" value="Italian" />
+      <newznab:attr name="subs" value="Japanese" />
+      <newznab:attr name="subs" value="Korean" />
+      <newznab:attr name="subs" value="Malay" />
+      <newznab:attr name="subs" value="Dutch" />
+      <newznab:attr name="subs" value="Norwegian" />
+      <newznab:attr name="subs" value="Polish" />
+      <newznab:attr name="subs" value="Portuguese (BR)" />
+      <newznab:attr name="subs" value="Portuguese (PT)" />
+      <newznab:attr name="subs" value="Romanian" />
+      <newznab:attr name="subs" value="Slovak" />
+      <newznab:attr name="subs" value="Swedish" />
+      <newznab:attr name="subs" value="Thai" />
+      <newznab:attr name="subs" value="Turkish" />
+      <newznab:attr name="subs" value="Chinese (Simplified)" />
+      <newznab:attr name="grabs" value="411" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Mon, 19 Oct 2026 17:51:16 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Easy.S01E06.Utopia.1080p.NF.WEB-DL.DD+5.1.H.264-playWEB</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000141</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000141&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000141</comments>
+      <pubDate>Sat, 17 Oct 2026 20:20:10 +0000</pubDate>
+      <category>TV &gt; HD</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000141&amp;apikey=TEST_API_KEY" length="1351380000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5040" />
+      <newznab:attr name="size" value="1351380000" />
+      <newznab:attr name="guid" value="release-000141" />
+      <newznab:attr name="tvdbid" value="314884" />
+      <newznab:attr name="season" value="S01" />
+      <newznab:attr name="episode" value="E06" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000141.jpg" />
+      <newznab:attr name="language" value="English" />
+      <newznab:attr name="subs" value="English" />
+      <newznab:attr name="subs" value="Arabic" />
+      <newznab:attr name="subs" value="Czech" />
+      <newznab:attr name="subs" value="Danish" />
+      <newznab:attr name="subs" value="German" />
+      <newznab:attr name="subs" value="Greek" />
+      <newznab:attr name="subs" value="Spanish (Latin America)" />
+      <newznab:attr name="subs" value="Spanish (ES)" />
+      <newznab:attr name="subs" value="Finnish" />
+      <newznab:attr name="subs" value="French" />
+      <newznab:attr name="subs" value="Hebrew" />
+      <newznab:attr name="subs" value="Hungarian" />
+      <newznab:attr name="subs" value="Italian" />
+      <newznab:attr name="subs" value="Japanese" />
+      <newznab:attr name="subs" value="Korean" />
+      <newznab:attr name="subs" value="Norwegian" />
+      <newznab:attr name="subs" value="Dutch" />
+      <newznab:attr name="subs" value="Polish" />
+      <newznab:attr name="subs" value="Portuguese (BR)" />
+      <newznab:attr name="subs" value="Portuguese (PT)" />
+      <newznab:attr name="subs" value="Romanian" />
+      <newznab:attr name="subs" value="Swedish" />
+      <newznab:attr name="subs" value="Thai" />
+      <newznab:attr name="subs" value="Turkish" />
+      <newznab:attr name="subs" value="Vietnamese" />
+      <newznab:attr name="subs" value="Chinese" />
+      <newznab:attr name="grabs" value="19" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Sat, 17 Oct 2026 20:20:10 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Adventure.Time.S03E14.Beautopia.1080p.MAX.WEB-DL.DDP2.0.H.264-Kitsune-AsRequested</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000143</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000143&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000143</comments>
+      <pubDate>Fri, 16 Oct 2026 19:16:52 +0000</pubDate>
+      <category>TV &gt; HD</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000143&amp;apikey=TEST_API_KEY" length="203035000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5040" />
+      <newznab:attr name="size" value="203035000" />
+      <newznab:attr name="guid" value="release-000143" />
+      <newznab:attr name="rageid" value="23369" />
+      <newznab:attr name="tvdbid" value="152831" />
+      <newznab:attr name="season" value="S03" />
+      <newznab:attr name="episode" value="E14" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000143.jpg" />
+      <newznab:attr name="grabs" value="1506" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Fri, 16 Oct 2026 19:16:52 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Mickeys.Mouse.Tracks.S01E19.Sea.Scouts.Steamboat.Willie.Mickey.and.the.Seal.Plutopia.480p.WEB-DL.AAC2.0.H.264</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000145</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000145&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000145</comments>
+      <pubDate>Sun, 11 Oct 2026 15:35:35 +0000</pubDate>
+      <category>TV &gt; SD</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000145&amp;apikey=TEST_API_KEY" length="695336000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5030" />
+      <newznab:attr name="size" value="695336000" />
+      <newznab:attr name="guid" value="release-000145" />
+      <newznab:attr name="grabs" value="4" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Sun, 11 Oct 2026 15:35:35 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Velma.2023.S02E07.Female.Utopia.720p.HMAX.WEB-DL.MULTi.DDP5.1.H.264-FUZEER</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000147</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000147&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000147</comments>
+      <pubDate>Wed, 07 Oct 2026 14:57:01 +0000</pubDate>
+      <category>TV &gt; HD</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000147&amp;apikey=TEST_API_KEY" length="761849000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5040" />
+      <newznab:attr name="size" value="761849000" />
+      <newznab:attr name="guid" value="release-000147" />
+      <newznab:attr name="tvdbid" value="396625" />
+      <newznab:attr name="season" value="S02" />
+      <newznab:attr name="episode" value="E07" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000147.jpg" />
+      <newznab:attr name="language" value="English" />
+      <newznab:attr name="language" value="French" />
+      <newznab:attr name="language" value="Portuguese" />
+      <newznab:attr name="language" value="Spanish" />
+      <newznab:attr name="subs" value="English (US)" />
+      <newznab:attr name="subs" value="German" />
+      <newznab:attr name="subs" value="Spanish (Latin America)" />
+      <newznab:attr name="subs" value="French (FR)" />
+      <newznab:attr name="subs" value="Italian" />
+      <newznab:attr name="subs" value="Portuguese (BR)" />
+      <newznab:attr name="grabs" value="18" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Wed, 07 Oct 2026 14:57:01 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Velma.2023.S02E07.Female.Utopia.1080p.HMAX.WEB-DL.MULTi.DDP5.1.H.265-FUZEER</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000149</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000149&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000149</comments>
+      <pubDate>Wed, 07 Oct 2026 14:56:44 +0000</pubDate>
+      <category>TV &gt; HD</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000149&amp;apikey=TEST_API_KEY" length="623532000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5040" />
+      <newznab:attr name="size" value="623532000" />
+      <newznab:attr name="guid" value="release-000149" />
+      <newznab:attr name="tvdbid" value="396625" />
+      <newznab:attr name="season" value="S02" />
+      <newznab:attr name="episode" value="E07" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000149.jpg" />
+      <newznab:attr name="language" value="English" />
+      <newznab:attr name="language" value="French" />
+      <newznab:attr name="language" value="Portuguese" />
+      <newznab:attr name="language" value="Spanish" />
+      <newznab:attr name="subs" value="English (US)" />
+      <newznab:attr name="subs" value="German" />
+      <newznab:attr name="subs" value="Spanish (Latin America)" />
+      <newznab:attr name="subs" value="French (FR)" />
+      <newznab:attr name="subs" value="Italian" />
+      <newznab:attr name="subs" value="Portuguese (BR)" />
+      <newznab:attr name="grabs" value="37" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Wed, 07 Oct 2026 14:56:44 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Draw.This.Then.Die.S01E04.Utopia.~.Making.Mangas.Better.With.Others.1080p.CR.WEB-DL.AAC2.0.H.264-ALANSARI87</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000151</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000151&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000151</comments>
+      <pubDate>Sat, 26 Sep 2026 11:14:18 +0000</pubDate>
+      <category>TV &gt; Anime</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000151&amp;apikey=TEST_API_KEY" length="1019700000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5070" />
+      <newznab:attr name="size" value="1019700000" />
+      <newznab:attr name="guid" value="release-000151" />
+      <newznab:attr name="tvdbid" value="461714" />
+      <newznab:attr name="season" value="S01" />
+      <newznab:attr name="episode" value="E04" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000151.jpg" />
+      <newznab:attr name="language" value="Japanese" />
+      <newznab:attr name="subs" value="English" />
+      <newznab:attr name="subs" value="Spanish (Latin America)" />
+      <newznab:attr name="subs" value="Spanish (ES)" />
+      <newznab:attr name="subs" value="Portuguese" />
+      <newznab:attr name="subs" value="French" />
+      <newznab:attr name="subs" value="German" />
+      <newznab:attr name="subs" value="Arabic" />
+      <newznab:attr name="subs" value="Italian" />
+      <newznab:attr name="subs" value="Russian" />
+      <newznab:attr name="grabs" value="0" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Sat, 26 Sep 2026 11:14:18 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Draw This, Then Die-S01E04-Utopia ~ Making Manga s Better with Others [1080p]</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000153</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000153&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000153</comments>
+      <pubDate>Sat, 26 Sep 2026 04:47:06 +0000</pubDate>
+      <category>TV &gt; Anime</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000153&amp;apikey=TEST_API_KEY" length="1012210000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5070" />
+      <newznab:attr name="size" value="1012210000" />
+      <newznab:attr name="guid" value="release-000153" />
+      <newznab:attr name="tvdbid" value="461714" />
+      <newznab:attr name="season" value="S01" />
+      <newznab:attr name="episode" value="E04" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000153.jpg" />
+      <newznab:attr name="grabs" value="27" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Sat, 26 Sep 2026 04:47:06 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>YooHoo.and.Friends.S02E05.Utopia.Carnival.720p.TUBI.WEB-DL.AAC2.0.x264-AndreMor</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000155</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000155&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000155</comments>
+      <pubDate>Fri, 18 Sep 2026 00:46:21 +0000</pubDate>
+      <category>TV &gt; HD</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000155&amp;apikey=TEST_API_KEY" length="269538000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5040" />
+      <newznab:attr name="size" value="269538000" />
+      <newznab:attr name="guid" value="release-000155" />
+      <newznab:attr name="tvdbid" value="364741" />
+      <newznab:attr name="season" value="S02" />
+      <newznab:attr name="episode" value="E05" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000155.jpg" />
+      <newznab:attr name="language" value="English" />
+      <newznab:attr name="subs" value="English" />
+      <newznab:attr name="grabs" value="3" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Fri, 18 Sep 2026 00:46:21 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Adventure.Time.S03E14.Beautopia.720p.HMAX.WEB-DL.DDP2.0.H.264-AndreMor</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000157</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000157&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000157</comments>
+      <pubDate>Fri, 28 Aug 2026 21:10:27 +0000</pubDate>
+      <category>TV &gt; HD</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000157&amp;apikey=TEST_API_KEY" length="345643000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5040" />
+      <newznab:attr name="size" value="345643000" />
+      <newznab:attr name="guid" value="release-000157" />
+      <newznab:attr name="rageid" value="23369" />
+      <newznab:attr name="tvdbid" value="152831" />
+      <newznab:attr name="season" value="S03" />
+      <newznab:attr name="episode" value="E14" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000157.jpg" />
+      <newznab:attr name="language" value="English" />
+      <newznab:attr name="subs" value="English" />
+      <newznab:attr name="grabs" value="788" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Fri, 28 Aug 2026 21:10:27 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Velma.S02E07.Female.Utopia.MULTI.1080p.MAX.WEB-DL.DDP5.1.H.264-AndreMor</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000159</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000159&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000159</comments>
+      <pubDate>Fri, 21 Aug 2026 09:39:20 +0000</pubDate>
+      <category>TV &gt; HD</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000159&amp;apikey=TEST_API_KEY" length="717633000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5040" />
+      <newznab:attr name="size" value="717633000" />
+      <newznab:attr name="guid" value="release-000159" />
+      <newznab:attr name="tvdbid" value="396625" />
+      <newznab:attr name="season" value="S02" />
+      <newznab:attr name="episode" value="E07" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000159.jpg" />
+      <newznab:attr name="language" value="English" />
+      <newznab:attr name="language" value="Portuguese" />
+      <newznab:attr name="language" value="Spanish" />
+      <newznab:attr name="subs" value="English" />
+      <newznab:attr name="subs" value="Spanish" />
+      <newznab:attr name="subs" value="Portuguese" />
+      <newznab:attr name="grabs" value="176" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Fri, 21 Aug 2026 09:39:20 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Codename.Kids.Next.Door.S03E04.Operation.UTOPIA.MULTI.1080p.MAX.WEB-DL.DDP2.0.H.264-AndreMor</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000161</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000161&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000161</comments>
+      <pubDate>Thu, 13 Aug 2026 12:16:30 +0000</pubDate>
+      <category>TV &gt; HD</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000161&amp;apikey=TEST_API_KEY" length="713083000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5040" />
+      <newznab:attr name="size" value="713083000" />
+      <newznab:attr name="guid" value="release-000161" />
+      <newznab:attr name="tvdbid" value="71685" />
+      <newznab:attr name="season" value="S03" />
+      <newznab:attr name="episode" value="E04" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000161.jpg" />
+      <newznab:attr name="language" value="English" />
+      <newznab:attr name="language" value="Portuguese" />
+      <newznab:attr name="language" value="Spanish" />
+      <newznab:attr name="grabs" value="398" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Thu, 13 Aug 2026 12:16:30 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Draw.This.Then.Die.S01E04.Utopia.Making.Mangas.Better.with.Others.1080p.CR.WEB-DL.MULTi.AAC2.0.H.264.MSubs-ToonsHub</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000163</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000163&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000163</comments>
+      <pubDate>Thu, 30 Jul 2026 20:00:22 +0000</pubDate>
+      <category>TV &gt; Anime</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000163&amp;apikey=TEST_API_KEY" length="1862935000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5070" />
+      <newznab:attr name="size" value="1862935000" />
+      <newznab:attr name="guid" value="release-000163" />
+      <newznab:attr name="tvdbid" value="461714" />
+      <newznab:attr name="season" value="S01" />
+      <newznab:attr name="episode" value="E04" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000163.jpg" />
+      <newznab:attr name="language" value="English" />
+      <newznab:attr name="grabs" value="68" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Thu, 30 Jul 2026 20:00:22 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Draw.This.Then.Die.S01E04.Utopia.Making.Mangas.Better.with.Others.1080p.CR.WEB-DL.MULTi.AAC2.0.H.264.MSubs-ToonsHub</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000165</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000165&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000165</comments>
+      <pubDate>Thu, 30 Jul 2026 19:43:36 +0000</pubDate>
+      <category>TV &gt; Anime</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000165&amp;apikey=TEST_API_KEY" length="1585158000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5070" />
+      <newznab:attr name="size" value="1585158000" />
+      <newznab:attr name="guid" value="release-000165" />
+      <newznab:attr name="tvdbid" value="461714" />
+      <newznab:attr name="season" value="S01" />
+      <newznab:attr name="episode" value="E04" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000165.jpg" />
+      <newznab:attr name="language" value="English" />
+      <newznab:attr name="language" value="Japanese" />
+      <newznab:attr name="language" value="Korean" />
+      <newznab:attr name="language" value="Thai" />
+      <newznab:attr name="subs" value="English" />
+      <newznab:attr name="subs" value="Arabic" />
+      <newznab:attr name="subs" value="Chinese (Traditional)" />
+      <newznab:attr name="subs" value="Filipino" />
+      <newznab:attr name="subs" value="French" />
+      <newznab:attr name="subs" value="German" />
+      <newznab:attr name="subs" value="Indonesian" />
+      <newznab:attr name="subs" value="Italian" />
+      <newznab:attr name="subs" value="Japanese" />
+      <newznab:attr name="subs" value="Korean" />
+      <newznab:attr name="subs" value="Malay" />
+      <newznab:attr name="subs" value="Portuguese (BR)" />
+      <newznab:attr name="subs" value="Russian" />
+      <newznab:attr name="subs" value="Spanish (Latin America)" />
+      <newznab:attr name="subs" value="Spanish (ES)" />
+      <newznab:attr name="subs" value="Thai" />
+      <newznab:attr name="subs" value="Vietnamese" />
+      <newznab:attr name="grabs" value="36" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Thu, 30 Jul 2026 19:43:36 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Draw.This.Then.Die.S01E04.Utopia.Making.Mangas.Better.with.Others.1080p.CR.WEB-DL.AAC2.0.H.264-VARYG</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000167</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000167&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000167</comments>
+      <pubDate>Fri, 24 Jul 2026 16:02:45 +0000</pubDate>
+      <category>TV &gt; Anime</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000167&amp;apikey=TEST_API_KEY" length="1752902000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5070" />
+      <newznab:attr name="size" value="1752902000" />
+      <newznab:attr name="guid" value="release-000167" />
+      <newznab:attr name="tvdbid" value="461714" />
+      <newznab:attr name="season" value="S01" />
+      <newznab:attr name="episode" value="E04" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000167.jpg" />
+      <newznab:attr name="language" value="Japanese" />
+      <newznab:attr name="subs" value="English" />
+      <newznab:attr name="subs" value="Arabic (SA)" />
+      <newznab:attr name="subs" value="German" />
+      <newznab:attr name="subs" value="Spanish (Latin America)" />
+      <newznab:attr name="subs" value="Spanish (ES)" />
+      <newznab:attr name="subs" value="French (FR)" />
+      <newznab:attr name="subs" value="Italian" />
+      <newznab:attr name="subs" value="Portuguese (BR)" />
+      <newznab:attr name="subs" value="Russian" />
+      <newznab:attr name="grabs" value="32" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Fri, 24 Jul 2026 16:02:45 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Draw.This.Then.Die.S01E04.Utopia.Making.Mangas.Better.with.Others.1080p.CR.WEB-DL.JPN.AAC2.0.H.264.MSubs-ToonsHub</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000169</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000169&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000169</comments>
+      <pubDate>Fri, 24 Jul 2026 16:02:45 +0000</pubDate>
+      <category>TV &gt; Anime</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000169&amp;apikey=TEST_API_KEY" length="1750388000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5070" />
+      <newznab:attr name="size" value="1750388000" />
+      <newznab:attr name="guid" value="release-000169" />
+      <newznab:attr name="tvdbid" value="461714" />
+      <newznab:attr name="season" value="S01" />
+      <newznab:attr name="episode" value="E04" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000169.jpg" />
+      <newznab:attr name="language" value="Italian" />
+      <newznab:attr name="subs" value="Italian" />
+      <newznab:attr name="grabs" value="14" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Fri, 24 Jul 2026 16:02:45 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Draw.This.Then.Die.S01E04.Utopia.Making.Mangas.Better.with.Others.1080p.CR.WEB-DL.JPN.AAC2.0.H.264.MSubs-ToonsHub</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000171</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000171&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000171</comments>
+      <pubDate>Fri, 24 Jul 2026 15:56:28 +0000</pubDate>
+      <category>TV &gt; Anime</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000171&amp;apikey=TEST_API_KEY" length="1491456000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5070" />
+      <newznab:attr name="size" value="1491456000" />
+      <newznab:attr name="guid" value="release-000171" />
+      <newznab:attr name="tvdbid" value="461714" />
+      <newznab:attr name="season" value="S01" />
+      <newznab:attr name="episode" value="E04" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000171.jpg" />
+      <newznab:attr name="grabs" value="61" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Fri, 24 Jul 2026 15:56:28 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Futurama.S06E14.Neutopia.1080p.DSNP.WEB-DL.DDP5.1.H.264-AndreMor</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000173</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000173&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000173</comments>
+      <pubDate>Tue, 21 Jul 2026 07:00:09 +0000</pubDate>
+      <category>TV &gt; HD</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000173&amp;apikey=TEST_API_KEY" length="1332397000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5040" />
+      <newznab:attr name="size" value="1332397000" />
+      <newznab:attr name="guid" value="release-000173" />
+      <newznab:attr name="rageid" value="3628" />
+      <newznab:attr name="tvdbid" value="73871" />
+      <newznab:attr name="season" value="S06" />
+      <newznab:attr name="episode" value="E14" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000173.jpg" />
+      <newznab:attr name="language" value="English" />
+      <newznab:attr name="language" value="French" />
+      <newznab:attr name="language" value="German" />
+      <newznab:attr name="language" value="Italian" />
+      <newznab:attr name="language" value="Polish" />
+      <newznab:attr name="language" value="Portuguese" />
+      <newznab:attr name="language" value="Spanish" />
+      <newznab:attr name="subs" value="German" />
+      <newznab:attr name="subs" value="Spanish" />
+      <newznab:attr name="subs" value="French" />
+      <newznab:attr name="subs" value="Italian" />
+      <newznab:attr name="subs" value="Czech" />
+      <newznab:attr name="subs" value="Danish" />
+      <newznab:attr name="subs" value="Greek" />
+      <newznab:attr name="subs" value="English" />
+      <newznab:attr name="subs" value="Finnish" />
+      <newznab:attr name="subs" value="Hungarian" />
+      <newznab:attr name="subs" value="Japanese" />
+      <newznab:attr name="subs" value="Korean" />
+      <newznab:attr name="subs" value="Dutch" />
+      <newznab:attr name="subs" value="Norwegian" />
+      <newznab:attr name="subs" value="Polish" />
+      <newznab:attr name="subs" value="Portuguese" />
+      <newznab:attr name="subs" value="Romanian" />
+      <newznab:attr name="subs" value="Swedish" />
+      <newznab:attr name="subs" value="Turkish" />
+      <newznab:attr name="subs" value="Chinese" />
+      <newznab:attr name="grabs" value="1695" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Tue, 21 Jul 2026 07:00:09 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Codename.Kids.Next.Door.S03E04E05.Operation.UTOPIA.Operation.ROBBERS.720p.TUBI.WEB-DL.AAC2.0.x264-AndreMor</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000175</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000175&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000175</comments>
+      <pubDate>Wed, 15 Jul 2026 22:47:11 +0000</pubDate>
+      <category>TV &gt; HD</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000175&amp;apikey=TEST_API_KEY" length="325059000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5040" />
+      <newznab:attr name="size" value="325059000" />
+      <newznab:attr name="guid" value="release-000175" />
+      <newznab:attr name="tvdbid" value="71685" />
+      <newznab:attr name="season" value="S03" />
+      <newznab:attr name="episode" value="E04" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000175.jpg" />
+      <newznab:attr name="language" value="English" />
+      <newznab:attr name="subs" value="English" />
+      <newznab:attr name="grabs" value="280" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Wed, 15 Jul 2026 22:47:11 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Captain.Planet.And.The.Planeteers.S02E26.Utopia.1080p.BluRay.DTS-HD.MA2.0.x264-DUS-AsRequested</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000177</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000177&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000177</comments>
+      <pubDate>Sun, 26 Apr 2026 12:59:12 +0000</pubDate>
+      <category>TV &gt; HD</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000177&amp;apikey=TEST_API_KEY" length="1751669000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5040" />
+      <newznab:attr name="size" value="1751669000" />
+      <newznab:attr name="guid" value="release-000177" />
+      <newznab:attr name="rageid" value="2979" />
+      <newznab:attr name="tvdbid" value="74142" />
+      <newznab:attr name="season" value="S02" />
+      <newznab:attr name="episode" value="E26" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000177.jpg" />
+      <newznab:attr name="grabs" value="259" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Sun, 26 Apr 2026 12:59:12 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Dejimon.Bitobureiku.S01E09.Utopia.1080p.CR.WEB-DL.AAC2.0.H.264-playWEB</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000179</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000179&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000179</comments>
+      <pubDate>Mon, 06 Apr 2026 22:35:36 +0000</pubDate>
+      <category>TV &gt; Anime</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000179&amp;apikey=TEST_API_KEY" length="1787078000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5070" />
+      <newznab:attr name="size" value="1787078000" />
+      <newznab:attr name="guid" value="release-000179" />
+      <newznab:attr name="tvdbid" value="461683" />
+      <newznab:attr name="season" value="S01" />
+      <newznab:attr name="episode" value="E09" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000179.jpg" />
+      <newznab:attr name="language" value="Japanese" />
+      <newznab:attr name="subs" value="English (US)" />
+      <newznab:attr name="subs" value="Spanish (Latin America)" />
+      <newznab:attr name="subs" value="Portuguese (BR)" />
+      <newznab:attr name="grabs" value="140" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Mon, 06 Apr 2026 22:35:36 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Captain.Planet.And.The.Planeteers.S02E26.Utopia.1080p.BluRay.10bit.EAC3.2.0.x265-iVy</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000181</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000181&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000181</comments>
+      <pubDate>Sun, 05 Apr 2026 20:23:39 +0000</pubDate>
+      <category>TV &gt; HD</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000181&amp;apikey=TEST_API_KEY" length="1042553000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5040" />
+      <newznab:attr name="size" value="1042553000" />
+      <newznab:attr name="guid" value="release-000181" />
+      <newznab:attr name="rageid" value="2979" />
+      <newznab:attr name="tvdbid" value="74142" />
+      <newznab:attr name="season" value="S02" />
+      <newznab:attr name="episode" value="E26" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000181.jpg" />
+      <newznab:attr name="grabs" value="130" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Sun, 05 Apr 2026 20:23:39 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Adventure.Time.S03E14.Beautopia.720p.HMAX.WEB-DL.HebDub.DDP2.0.H.264-T00LBAR</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000183</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000183&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000183</comments>
+      <pubDate>Sat, 28 Mar 2026 17:35:11 +0000</pubDate>
+      <category>TV &gt; Foreign</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000183&amp;apikey=TEST_API_KEY" length="246053000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5020" />
+      <newznab:attr name="size" value="246053000" />
+      <newznab:attr name="guid" value="release-000183" />
+      <newznab:attr name="rageid" value="23369" />
+      <newznab:attr name="tvdbid" value="152831" />
+      <newznab:attr name="season" value="S03" />
+      <newznab:attr name="episode" value="E14" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000183.jpg" />
+      <newznab:attr name="language" value="Hebrew" />
+      <newznab:attr name="grabs" value="339" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Sat, 28 Mar 2026 17:35:11 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Adventure.Time.S03E14.Beautopia.1080p.BluRay.REMUX.VC-1.DD.2.0-EPSiLON</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000185</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000185&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000185</comments>
+      <pubDate>Thu, 12 Feb 2026 14:00:02 +0000</pubDate>
+      <category>TV &gt; HD</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000185&amp;apikey=TEST_API_KEY" length="1183740000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5040" />
+      <newznab:attr name="size" value="1183740000" />
+      <newznab:attr name="guid" value="release-000185" />
+      <newznab:attr name="rageid" value="23369" />
+      <newznab:attr name="tvdbid" value="152831" />
+      <newznab:attr name="season" value="S03" />
+      <newznab:attr name="episode" value="E14" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000185.jpg" />
+      <newznab:attr name="grabs" value="723" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Thu, 12 Feb 2026 14:00:02 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Die.Deutschen.S02.DOKU.1080p.BluRay.x264-UTOPiA</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000187</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000187&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000187</comments>
+      <pubDate>Tue, 03 Feb 2026 21:57:17 +0000</pubDate>
+      <category>TV &gt; Foreign</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000187&amp;apikey=TEST_API_KEY" length="41074304000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5020" />
+      <newznab:attr name="size" value="41074304000" />
+      <newznab:attr name="guid" value="release-000187" />
+      <newznab:attr name="language" value="German" />
+      <newznab:attr name="grabs" value="9" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Tue, 03 Feb 2026 21:57:17 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Die.Deutschen.S01.German.DOKU.720p.BluRay.x264-UTOPiA</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000189</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000189&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000189</comments>
+      <pubDate>Tue, 03 Feb 2026 21:24:17 +0000</pubDate>
+      <category>TV &gt; Foreign</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000189&amp;apikey=TEST_API_KEY" length="14289174000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5020" />
+      <newznab:attr name="size" value="14289174000" />
+      <newznab:attr name="guid" value="release-000189" />
+      <newznab:attr name="language" value="German" />
+      <newznab:attr name="grabs" value="13" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Tue, 03 Feb 2026 21:24:17 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Digimon.Beatbreak.S01E09.Utopia.1080p.CR.WEB-DL.DUAL.AAC2.0.H.264-VARYG</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000191</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000191&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000191</comments>
+      <pubDate>Mon, 02 Feb 2026 20:43:52 +0000</pubDate>
+      <category>TV &gt; Anime</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000191&amp;apikey=TEST_API_KEY" length="1834926000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5070" />
+      <newznab:attr name="size" value="1834926000" />
+      <newznab:attr name="guid" value="release-000191" />
+      <newznab:attr name="tvdbid" value="461683" />
+      <newznab:attr name="season" value="S01" />
+      <newznab:attr name="episode" value="E09" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000191.jpg" />
+      <newznab:attr name="language" value="English" />
+      <newznab:attr name="language" value="Japanese" />
+      <newznab:attr name="subs" value="English" />
+      <newznab:attr name="subs" value="Arabic (SA)" />
+      <newznab:attr name="subs" value="German" />
+      <newznab:attr name="subs" value="Spanish (Latin America)" />
+      <newznab:attr name="subs" value="French (FR)" />
+      <newznab:attr name="subs" value="Portuguese (BR)" />
+      <newznab:attr name="grabs" value="155" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Mon, 02 Feb 2026 20:43:52 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Digimon.Beatbreak.S01E09.Utopia.1080p.CR.WEB-DL.DUAL.AAC2.0.H.264.MSubs-ToonsHub</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000193</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000193&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000193</comments>
+      <pubDate>Sun, 01 Feb 2026 04:55:50 +0000</pubDate>
+      <category>TV &gt; Anime</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000193&amp;apikey=TEST_API_KEY" length="1555464000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5070" />
+      <newznab:attr name="size" value="1555464000" />
+      <newznab:attr name="guid" value="release-000193" />
+      <newznab:attr name="tvdbid" value="461683" />
+      <newznab:attr name="season" value="S01" />
+      <newznab:attr name="episode" value="E09" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000193.jpg" />
+      <newznab:attr name="language" value="English" />
+      <newznab:attr name="language" value="Japanese" />
+      <newznab:attr name="subs" value="English" />
+      <newznab:attr name="subs" value="Portuguese" />
+      <newznab:attr name="subs" value="Spanish" />
+      <newznab:attr name="grabs" value="101" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Sun, 01 Feb 2026 04:55:50 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Digimon.Beatbreak.S01E09.Utopia.1080p.CR.WEB-DL.DDP2.0.H.264-Kitsune</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000195</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000195&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000195</comments>
+      <pubDate>Thu, 22 Jan 2026 01:59:07 +0000</pubDate>
+      <category>TV &gt; Anime</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000195&amp;apikey=TEST_API_KEY" length="1550689000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5070" />
+      <newznab:attr name="size" value="1550689000" />
+      <newznab:attr name="guid" value="release-000195" />
+      <newznab:attr name="tvdbid" value="461683" />
+      <newznab:attr name="season" value="S01" />
+      <newznab:attr name="episode" value="E09" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000195.jpg" />
+      <newznab:attr name="language" value="Japanese" />
+      <newznab:attr name="subs" value="English" />
+      <newznab:attr name="subs" value="Spanish" />
+      <newznab:attr name="subs" value="Portuguese" />
+      <newznab:attr name="grabs" value="42" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Thu, 22 Jan 2026 01:59:07 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Digimon.Beatbreak.S01E09.Utopia.1080p.CR.WEB-DL.DDP2.0.H.264-Kitsune</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000197</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000197&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000197</comments>
+      <pubDate>Thu, 22 Jan 2026 00:59:12 +0000</pubDate>
+      <category>TV &gt; Anime</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000197&amp;apikey=TEST_API_KEY" length="1829095000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5070" />
+      <newznab:attr name="size" value="1829095000" />
+      <newznab:attr name="guid" value="release-000197" />
+      <newznab:attr name="tvdbid" value="461683" />
+      <newznab:attr name="season" value="S01" />
+      <newznab:attr name="episode" value="E09" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000197.jpg" />
+      <newznab:attr name="language" value="Japanese" />
+      <newznab:attr name="subs" value="English (US)" />
+      <newznab:attr name="subs" value="Spanish (Latin America)" />
+      <newznab:attr name="subs" value="Portuguese (BR)" />
+      <newznab:attr name="grabs" value="199" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Thu, 22 Jan 2026 00:59:12 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Adventure.Time.S03E14.Beautopia</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000199</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000199&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000199</comments>
+      <pubDate>Fri, 02 Jan 2026 21:02:58 +0000</pubDate>
+      <category>TV &gt; HD</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000199&amp;apikey=TEST_API_KEY" length="347585000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5040" />
+      <newznab:attr name="size" value="347585000" />
+      <newznab:attr name="guid" value="release-000199" />
+      <newznab:attr name="rageid" value="23369" />
+      <newznab:attr name="tvdbid" value="152831" />
+      <newznab:attr name="season" value="S03" />
+      <newznab:attr name="episode" value="E14" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000199.jpg" />
+      <newznab:attr name="language" value="English" />
+      <newznab:attr name="language" value="Danish" />
+      <newznab:attr name="language" value="Dutch" />
+      <newznab:attr name="language" value="Finnish" />
+      <newznab:attr name="language" value="French" />
+      <newznab:attr name="language" value="German" />
+      <newznab:attr name="language" value="Greek" />
+      <newznab:attr name="language" value="Hebrew" />
+      <newznab:attr name="language" value="Italian" />
+      <newznab:attr name="language" value="Norwegian" />
+      <newznab:attr name="language" value="Portuguese" />
+      <newznab:attr name="language" value="Spanish" />
+      <newznab:attr name="language" value="Swedish" />
+      <newznab:attr name="grabs" value="68" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Fri, 02 Jan 2026 21:02:58 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Dejimon.Bitobureiku.S01E09.Utopia.1080p.CR.WEB-DL.AAC2.0.H.264-playWEB</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000201</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000201&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000201</comments>
+      <pubDate>Sun, 14 Dec 2025 10:54:06 +0000</pubDate>
+      <category>TV &gt; Anime</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000201&amp;apikey=TEST_API_KEY" length="1787078000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5070" />
+      <newznab:attr name="size" value="1787078000" />
+      <newznab:attr name="guid" value="release-000201" />
+      <newznab:attr name="tvdbid" value="461683" />
+      <newznab:attr name="season" value="S01" />
+      <newznab:attr name="episode" value="E09" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000201.jpg" />
+      <newznab:attr name="language" value="Japanese" />
+      <newznab:attr name="subs" value="English (US)" />
+      <newznab:attr name="subs" value="Spanish (Latin America)" />
+      <newznab:attr name="subs" value="Portuguese (BR)" />
+      <newznab:attr name="grabs" value="287" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Sun, 14 Dec 2025 10:54:06 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Digimon Beatbreak-S01E09-Utopia</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000203</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000203&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000203</comments>
+      <pubDate>Sun, 30 Nov 2025 05:38:20 +0000</pubDate>
+      <category>TV &gt; Anime</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000203&amp;apikey=TEST_API_KEY" length="269144000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5070" />
+      <newznab:attr name="size" value="269144000" />
+      <newznab:attr name="guid" value="release-000203" />
+      <newznab:attr name="tvdbid" value="461683" />
+      <newznab:attr name="season" value="S01" />
+      <newznab:attr name="episode" value="E09" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000203.jpg" />
+      <newznab:attr name="grabs" value="26" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Sun, 30 Nov 2025 05:38:20 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Escaping.Utopia.S01E02.1080p.WEB.H264-CBFM</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000205</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000205&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000205</comments>
+      <pubDate>Mon, 03 Nov 2025 13:57:37 +0000</pubDate>
+      <category>TV &gt; HD</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000205&amp;apikey=TEST_API_KEY" length="3060524000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5040" />
+      <newznab:attr name="size" value="3060524000" />
+      <newznab:attr name="guid" value="release-000205" />
+      <newznab:attr name="tvdbid" value="447639" />
+      <newznab:attr name="season" value="S01" />
+      <newznab:attr name="episode" value="E02" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000205.jpg" />
+      <newznab:attr name="language" value="English" />
+      <newznab:attr name="subs" value="English" />
+      <newznab:attr name="grabs" value="227" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Mon, 03 Nov 2025 13:57:37 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Escaping.Utopia.S01E03.1080p.WEB.H264-CBFM</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000207</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000207&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000207</comments>
+      <pubDate>Mon, 03 Nov 2025 13:51:52 +0000</pubDate>
+      <category>TV &gt; HD</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000207&amp;apikey=TEST_API_KEY" length="3429736000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5040" />
+      <newznab:attr name="size" value="3429736000" />
+      <newznab:attr name="guid" value="release-000207" />
+      <newznab:attr name="tvdbid" value="447639" />
+      <newznab:attr name="season" value="S01" />
+      <newznab:attr name="episode" value="E03" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000207.jpg" />
+      <newznab:attr name="language" value="English" />
+      <newznab:attr name="subs" value="English" />
+      <newznab:attr name="grabs" value="231" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Mon, 03 Nov 2025 13:51:52 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Escaping.Utopia.S01E01.1080p.WEB.H264-CBFM</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000209</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000209&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000209</comments>
+      <pubDate>Mon, 03 Nov 2025 13:38:14 +0000</pubDate>
+      <category>TV &gt; HD</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000209&amp;apikey=TEST_API_KEY" length="2842838000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5040" />
+      <newznab:attr name="size" value="2842838000" />
+      <newznab:attr name="guid" value="release-000209" />
+      <newznab:attr name="tvdbid" value="447639" />
+      <newznab:attr name="season" value="S01" />
+      <newznab:attr name="episode" value="E01" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000209.jpg" />
+      <newznab:attr name="language" value="English" />
+      <newznab:attr name="subs" value="English" />
+      <newznab:attr name="grabs" value="195" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Mon, 03 Nov 2025 13:38:14 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Doctor.Who.S03E11.Utopia.Part.1.1080p.BluRay.10bit.EAC3.5.1.x265-iVy</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000211</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000211&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000211</comments>
+      <pubDate>Sat, 01 Nov 2025 15:53:06 +0000</pubDate>
+      <category>TV &gt; HD</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000211&amp;apikey=TEST_API_KEY" length="1584986000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5040" />
+      <newznab:attr name="size" value="1584986000" />
+      <newznab:attr name="guid" value="release-000211" />
+      <newznab:attr name="rageid" value="3331" />
+      <newznab:attr name="tvdbid" value="78804" />
+      <newznab:attr name="season" value="S03" />
+      <newznab:attr name="episode" value="E11" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000211.jpg" />
+      <newznab:attr name="language" value="English" />
+      <newznab:attr name="subs" value="English" />
+      <newznab:attr name="grabs" value="2668" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Sat, 01 Nov 2025 15:53:06 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Futurama.S06E14.Neutopia.1080p.BluRay.10bit.EAC3.5.1.x265-iVy</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000213</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000213&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000213</comments>
+      <pubDate>Tue, 23 Sep 2025 07:49:13 +0000</pubDate>
+      <category>TV &gt; HD</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000213&amp;apikey=TEST_API_KEY" length="444342000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5040" />
+      <newznab:attr name="size" value="444342000" />
+      <newznab:attr name="guid" value="release-000213" />
+      <newznab:attr name="rageid" value="3628" />
+      <newznab:attr name="tvdbid" value="73871" />
+      <newznab:attr name="season" value="S06" />
+      <newznab:attr name="episode" value="E14" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000213.jpg" />
+      <newznab:attr name="language" value="English" />
+      <newznab:attr name="subs" value="English" />
+      <newznab:attr name="subs" value="French" />
+      <newznab:attr name="subs" value="Spanish" />
+      <newznab:attr name="grabs" value="975" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Tue, 23 Sep 2025 07:49:13 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Robinson.Utopia.S04E07.DANiSH.PDTV.XviD-TVBYEN</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000215</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000215&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000215</comments>
+      <pubDate>Wed, 10 Sep 2025 07:07:27 +0000</pubDate>
+      <category>TV &gt; Foreign</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000215&amp;apikey=TEST_API_KEY" length="122971000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5020" />
+      <newznab:attr name="size" value="122971000" />
+      <newznab:attr name="guid" value="release-000215" />
+      <newznab:attr name="grabs" value="19" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Wed, 10 Sep 2025 07:07:27 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Robinson.Utopia.S04E03.DANiSH.PDTV.XviD-TVBYEN</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000217</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000217&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000217</comments>
+      <pubDate>Wed, 10 Sep 2025 06:04:41 +0000</pubDate>
+      <category>TV &gt; Foreign</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000217&amp;apikey=TEST_API_KEY" length="421377000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5020" />
+      <newznab:attr name="size" value="421377000" />
+      <newznab:attr name="guid" value="release-000217" />
+      <newznab:attr name="grabs" value="10" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Wed, 10 Sep 2025 06:04:41 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Robinson.Utopia.S04E05.DANiSH.PDTV.XviD-TVBYEN</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000219</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000219&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000219</comments>
+      <pubDate>Wed, 10 Sep 2025 04:05:34 +0000</pubDate>
+      <category>TV &gt; Foreign</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000219&amp;apikey=TEST_API_KEY" length="417001000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5020" />
+      <newznab:attr name="size" value="417001000" />
+      <newznab:attr name="guid" value="release-000219" />
+      <newznab:attr name="grabs" value="17" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Wed, 10 Sep 2025 04:05:34 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Robinson.Utopia.S04E04.DANiSH.PDTV.XviD-TVBYEN</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000221</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000221&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000221</comments>
+      <pubDate>Tue, 09 Sep 2025 21:47:55 +0000</pubDate>
+      <category>TV &gt; Foreign</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000221&amp;apikey=TEST_API_KEY" length="416952000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5020" />
+      <newznab:attr name="size" value="416952000" />
+      <newznab:attr name="guid" value="release-000221" />
+      <newznab:attr name="grabs" value="13" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Tue, 09 Sep 2025 21:47:55 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Robinson.Utopia.S04E06.DANiSH.PDTV.XviD-TVBYEN</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000223</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000223&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000223</comments>
+      <pubDate>Tue, 09 Sep 2025 19:36:40 +0000</pubDate>
+      <category>TV &gt; Foreign</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000223&amp;apikey=TEST_API_KEY" length="417595000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5020" />
+      <newznab:attr name="size" value="417595000" />
+      <newznab:attr name="guid" value="release-000223" />
+      <newznab:attr name="grabs" value="13" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Tue, 09 Sep 2025 19:36:40 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Robinson.Utopia.S04E12.DANiSH.PDTV.XviD-TVBYEN</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000225</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000225&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000225</comments>
+      <pubDate>Tue, 09 Sep 2025 19:27:17 +0000</pubDate>
+      <category>TV &gt; Foreign</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000225&amp;apikey=TEST_API_KEY" length="148001000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5020" />
+      <newznab:attr name="size" value="148001000" />
+      <newznab:attr name="guid" value="release-000225" />
+      <newznab:attr name="grabs" value="10" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Tue, 09 Sep 2025 19:27:17 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>robinson.utopia.s04e10.danish.pdtv.xvid-tvbyen</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000227</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000227&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000227</comments>
+      <pubDate>Tue, 09 Sep 2025 16:44:30 +0000</pubDate>
+      <category>TV &gt; Foreign</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000227&amp;apikey=TEST_API_KEY" length="111966000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5020" />
+      <newznab:attr name="size" value="111966000" />
+      <newznab:attr name="guid" value="release-000227" />
+      <newznab:attr name="grabs" value="13" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Tue, 09 Sep 2025 16:44:30 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Robinson.Utopia.S04E09.DANiSH.PDTV.XviD-TVBYEN</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000229</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000229&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000229</comments>
+      <pubDate>Tue, 09 Sep 2025 16:14:28 +0000</pubDate>
+      <category>TV &gt; Foreign</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000229&amp;apikey=TEST_API_KEY" length="417800000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5020" />
+      <newznab:attr name="size" value="417800000" />
+      <newznab:attr name="guid" value="release-000229" />
+      <newznab:attr name="grabs" value="13" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Tue, 09 Sep 2025 16:14:28 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Adventure.Time.S03E14.Beautopia.1080p.BluRay.10bit.EAC3.2.0.x265-iVy</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000231</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000231&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000231</comments>
+      <pubDate>Wed, 03 Sep 2025 17:00:01 +0000</pubDate>
+      <category>TV &gt; HD</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000231&amp;apikey=TEST_API_KEY" length="209830000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5040" />
+      <newznab:attr name="size" value="209830000" />
+      <newznab:attr name="guid" value="release-000231" />
+      <newznab:attr name="rageid" value="23369" />
+      <newznab:attr name="tvdbid" value="152831" />
+      <newznab:attr name="season" value="S03" />
+      <newznab:attr name="episode" value="E14" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000231.jpg" />
+      <newznab:attr name="language" value="English" />
+      <newznab:attr name="subs" value="English" />
+      <newznab:attr name="grabs" value="1224" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Wed, 03 Sep 2025 17:00:01 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>robinson.utopia.s04e10.danish.pdtv.xvid-tvbyen</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000233</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000233&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000233</comments>
+      <pubDate>Wed, 03 Sep 2025 01:23:30 +0000</pubDate>
+      <category>TV &gt; Foreign</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000233&amp;apikey=TEST_API_KEY" length="111967000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5020" />
+      <newznab:attr name="size" value="111967000" />
+      <newznab:attr name="guid" value="release-000233" />
+      <newznab:attr name="grabs" value="10" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Wed, 03 Sep 2025 01:23:30 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Robinson.Utopia.S04E09.DANiSH.PDTV.XviD-TVBYEN</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000235</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000235&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000235</comments>
+      <pubDate>Wed, 03 Sep 2025 01:11:14 +0000</pubDate>
+      <category>TV &gt; Foreign</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000235&amp;apikey=TEST_API_KEY" length="417815000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5020" />
+      <newznab:attr name="size" value="417815000" />
+      <newznab:attr name="guid" value="release-000235" />
+      <newznab:attr name="grabs" value="15" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Wed, 03 Sep 2025 01:11:14 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Robinson.Utopia.S04E12.DANiSH.PDTV.XviD-TVBYEN</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000237</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000237&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000237</comments>
+      <pubDate>Tue, 02 Sep 2025 23:16:04 +0000</pubDate>
+      <category>TV &gt; Foreign</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000237&amp;apikey=TEST_API_KEY" length="148006000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5020" />
+      <newznab:attr name="size" value="148006000" />
+      <newznab:attr name="guid" value="release-000237" />
+      <newznab:attr name="grabs" value="10" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Tue, 02 Sep 2025 23:16:04 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Robinson.Utopia.S04E07.DANiSH.PDTV.XviD-TVBYEN</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000239</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000239&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000239</comments>
+      <pubDate>Tue, 02 Sep 2025 23:08:06 +0000</pubDate>
+      <category>TV &gt; Foreign</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000239&amp;apikey=TEST_API_KEY" length="122979000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5020" />
+      <newznab:attr name="size" value="122979000" />
+      <newznab:attr name="guid" value="release-000239" />
+      <newznab:attr name="grabs" value="10" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Tue, 02 Sep 2025 23:08:06 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Robinson.Utopia.S04E05.DANiSH.PDTV.XviD-TVBYEN</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000241</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000241&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000241</comments>
+      <pubDate>Tue, 02 Sep 2025 21:18:03 +0000</pubDate>
+      <category>TV &gt; Foreign</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000241&amp;apikey=TEST_API_KEY" length="417020000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5020" />
+      <newznab:attr name="size" value="417020000" />
+      <newznab:attr name="guid" value="release-000241" />
+      <newznab:attr name="grabs" value="9" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Tue, 02 Sep 2025 21:18:03 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Robinson.Utopia.S04E04.DANiSH.PDTV.XviD-TVBYEN</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000243</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000243&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000243</comments>
+      <pubDate>Tue, 02 Sep 2025 19:22:42 +0000</pubDate>
+      <category>TV &gt; Foreign</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000243&amp;apikey=TEST_API_KEY" length="416990000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5020" />
+      <newznab:attr name="size" value="416990000" />
+      <newznab:attr name="guid" value="release-000243" />
+      <newznab:attr name="grabs" value="11" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Tue, 02 Sep 2025 19:22:42 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Robinson.Utopia.S04E06.DANiSH.PDTV.XviD-TVBYEN</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000245</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000245&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000245</comments>
+      <pubDate>Tue, 02 Sep 2025 18:08:33 +0000</pubDate>
+      <category>TV &gt; Foreign</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000245&amp;apikey=TEST_API_KEY" length="417617000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5020" />
+      <newznab:attr name="size" value="417617000" />
+      <newznab:attr name="guid" value="release-000245" />
+      <newznab:attr name="grabs" value="9" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Tue, 02 Sep 2025 18:08:33 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Robinson.Utopia.S04E03.DANiSH.PDTV.XviD-TVBYEN</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000247</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000247&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000247</comments>
+      <pubDate>Tue, 02 Sep 2025 17:39:08 +0000</pubDate>
+      <category>TV &gt; Foreign</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000247&amp;apikey=TEST_API_KEY" length="421414000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5020" />
+      <newznab:attr name="size" value="421414000" />
+      <newznab:attr name="guid" value="release-000247" />
+      <newznab:attr name="grabs" value="10" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Tue, 02 Sep 2025 17:39:08 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Rock.Stars.S01E01.Einsatz.an.den.Niagara-Faellen.German.DOKU.WS.dTV.XviD-UTOPiA</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000249</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000249&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000249</comments>
+      <pubDate>Thu, 07 Aug 2025 19:14:21 +0000</pubDate>
+      <category>TV &gt; Foreign</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000249&amp;apikey=TEST_API_KEY" length="420383000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5020" />
+      <newznab:attr name="size" value="420383000" />
+      <newznab:attr name="guid" value="release-000249" />
+      <newznab:attr name="tvdbid" value="254166" />
+      <newznab:attr name="season" value="S01" />
+      <newznab:attr name="episode" value="E01" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000249.jpg" />
+      <newznab:attr name="grabs" value="17" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Thu, 07 Aug 2025 19:14:21 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Las.Vegas.S02E09.Geliebter.Feind.German.WS.DVDRip.XviD-UTOPiA</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000251</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000251&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000251</comments>
+      <pubDate>Thu, 07 Aug 2025 14:32:54 +0000</pubDate>
+      <category>TV &gt; Foreign</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000251&amp;apikey=TEST_API_KEY" length="397523000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5020" />
+      <newznab:attr name="size" value="397523000" />
+      <newznab:attr name="guid" value="release-000251" />
+      <newznab:attr name="rageid" value="4192" />
+      <newznab:attr name="tvdbid" value="72229" />
+      <newznab:attr name="season" value="S02" />
+      <newznab:attr name="episode" value="E09" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000251.jpg" />
+      <newznab:attr name="grabs" value="23" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Thu, 07 Aug 2025 14:32:54 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Earth.2.S01E10.Das.Gen.Experiment.German.FS.DVDRiP.XviD-UTOPiA ghost-of-usenet.org -</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000253</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000253&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000253</comments>
+      <pubDate>Thu, 07 Aug 2025 06:18:08 +0000</pubDate>
+      <category>TV &gt; Foreign</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000253&amp;apikey=TEST_API_KEY" length="417081000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5020" />
+      <newznab:attr name="size" value="417081000" />
+      <newznab:attr name="guid" value="release-000253" />
+      <newznab:attr name="rageid" value="3415" />
+      <newznab:attr name="tvdbid" value="75799" />
+      <newznab:attr name="season" value="S01" />
+      <newznab:attr name="episode" value="E10" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000253.jpg" />
+      <newznab:attr name="grabs" value="59" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Thu, 07 Aug 2025 06:18:08 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Earth.2.S01E13.Der.Stein.der.Zukunft.Teil1.German.FS.DVDRiP.XviD-UTOPiA ghost-of-usenet.org -</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000255</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000255&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000255</comments>
+      <pubDate>Thu, 07 Aug 2025 04:18:35 +0000</pubDate>
+      <category>TV &gt; Foreign</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000255&amp;apikey=TEST_API_KEY" length="415920000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5020" />
+      <newznab:attr name="size" value="415920000" />
+      <newznab:attr name="guid" value="release-000255" />
+      <newznab:attr name="rageid" value="3415" />
+      <newznab:attr name="tvdbid" value="75799" />
+      <newznab:attr name="season" value="S01" />
+      <newznab:attr name="episode" value="E13" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000255.jpg" />
+      <newznab:attr name="grabs" value="72" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Thu, 07 Aug 2025 04:18:35 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>The.Time.Tunnel.S01E14.German.FS.DVDRiP.XviD-UTOPiA</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000257</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000257&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000257</comments>
+      <pubDate>Wed, 06 Aug 2025 17:29:48 +0000</pubDate>
+      <category>TV &gt; Foreign</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000257&amp;apikey=TEST_API_KEY" length="623233000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5020" />
+      <newznab:attr name="size" value="623233000" />
+      <newznab:attr name="guid" value="release-000257" />
+      <newznab:attr name="rageid" value="6239" />
+      <newznab:attr name="tvdbid" value="77268" />
+      <newznab:attr name="season" value="S01" />
+      <newznab:attr name="episode" value="E14" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000257.jpg" />
+      <newznab:attr name="grabs" value="18" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Wed, 06 Aug 2025 17:29:48 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Everwood.S02E12.Alles.unter.Kontrolle.German.WS.DVDRip.XviD-UTOPiA ghost-of-usenet.org -</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000259</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000259&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000259</comments>
+      <pubDate>Wed, 06 Aug 2025 10:32:16 +0000</pubDate>
+      <category>TV &gt; Foreign</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000259&amp;apikey=TEST_API_KEY" length="420916000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5020" />
+      <newznab:attr name="size" value="420916000" />
+      <newznab:attr name="guid" value="release-000259" />
+      <newznab:attr name="rageid" value="3464" />
+      <newznab:attr name="tvdbid" value="78465" />
+      <newznab:attr name="season" value="S02" />
+      <newznab:attr name="episode" value="E12" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000259.jpg" />
+      <newznab:attr name="grabs" value="34" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Wed, 06 Aug 2025 10:32:16 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Las.Vegas.S02E12.Der.Schein.truegt.German.WS.DVDRip.XviD-UTOPiA</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000261</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000261&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000261</comments>
+      <pubDate>Wed, 06 Aug 2025 10:27:01 +0000</pubDate>
+      <category>TV &gt; Foreign</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000261&amp;apikey=TEST_API_KEY" length="388814000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5020" />
+      <newznab:attr name="size" value="388814000" />
+      <newznab:attr name="guid" value="release-000261" />
+      <newznab:attr name="rageid" value="4192" />
+      <newznab:attr name="tvdbid" value="72229" />
+      <newznab:attr name="season" value="S02" />
+      <newznab:attr name="episode" value="E12" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000261.jpg" />
+      <newznab:attr name="grabs" value="32" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Wed, 06 Aug 2025 10:27:01 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Falcon.Crest.S02E06.Eigene.Wege.German.FS.DVDRiP.XviD-UTOPiA ghost-of-usenet.org -</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000263</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000263&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000263</comments>
+      <pubDate>Wed, 06 Aug 2025 06:58:55 +0000</pubDate>
+      <category>TV &gt; Foreign</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000263&amp;apikey=TEST_API_KEY" length="423982000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5020" />
+      <newznab:attr name="size" value="423982000" />
+      <newznab:attr name="guid" value="release-000263" />
+      <newznab:attr name="tvdbid" value="352381" />
+      <newznab:attr name="season" value="S02" />
+      <newznab:attr name="episode" value="E06" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000263.jpg" />
+      <newznab:attr name="grabs" value="47" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Wed, 06 Aug 2025 06:58:55 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Las.Vegas.S02E11.Mein.wunderbarer.Waschsalon.German.WS.DVDRip.XviD-UTOPiA</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000265</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000265&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000265</comments>
+      <pubDate>Tue, 05 Aug 2025 13:04:24 +0000</pubDate>
+      <category>TV &gt; Foreign</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000265&amp;apikey=TEST_API_KEY" length="393648000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5020" />
+      <newznab:attr name="size" value="393648000" />
+      <newznab:attr name="guid" value="release-000265" />
+      <newznab:attr name="rageid" value="4192" />
+      <newznab:attr name="tvdbid" value="72229" />
+      <newznab:attr name="season" value="S02" />
+      <newznab:attr name="episode" value="E11" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000265.jpg" />
+      <newznab:attr name="grabs" value="30" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Tue, 05 Aug 2025 13:04:24 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Las.Vegas.S02E16.Vertauschte.Rollen.German.WS.DVDRip.XviD-UTOPiA</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000267</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000267&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000267</comments>
+      <pubDate>Fri, 01 Aug 2025 09:34:35 +0000</pubDate>
+      <category>TV &gt; Foreign</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000267&amp;apikey=TEST_API_KEY" length="397953000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5020" />
+      <newznab:attr name="size" value="397953000" />
+      <newznab:attr name="guid" value="release-000267" />
+      <newznab:attr name="rageid" value="4192" />
+      <newznab:attr name="tvdbid" value="72229" />
+      <newznab:attr name="season" value="S02" />
+      <newznab:attr name="episode" value="E16" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000267.jpg" />
+      <newznab:attr name="grabs" value="35" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Fri, 01 Aug 2025 09:34:35 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Dem.Verbrechen.auf.der.Spur.200.Jahre.Kriminalgeschichte.Teil.4.German.DOKU.WS.dTV.XviD-UTOPiA</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000269</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000269&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000269</comments>
+      <pubDate>Fri, 01 Aug 2025 06:12:12 +0000</pubDate>
+      <category>TV &gt; Foreign</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000269&amp;apikey=TEST_API_KEY" length="397649000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5020" />
+      <newznab:attr name="size" value="397649000" />
+      <newznab:attr name="guid" value="release-000269" />
+      <newznab:attr name="grabs" value="18" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Fri, 01 Aug 2025 06:12:12 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>The.Time.Tunnel.S01E15.German.FS.DVDRiP.XviD-UTOPiA</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000271</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000271&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000271</comments>
+      <pubDate>Thu, 31 Jul 2025 13:30:51 +0000</pubDate>
+      <category>TV &gt; Foreign</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000271&amp;apikey=TEST_API_KEY" length="643899000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5020" />
+      <newznab:attr name="size" value="643899000" />
+      <newznab:attr name="guid" value="release-000271" />
+      <newznab:attr name="rageid" value="6239" />
+      <newznab:attr name="tvdbid" value="77268" />
+      <newznab:attr name="season" value="S01" />
+      <newznab:attr name="episode" value="E15" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000271.jpg" />
+      <newznab:attr name="grabs" value="35" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Thu, 31 Jul 2025 13:30:51 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Superman.Die.Abenteuer.von.Lois.und.Clark.S03E16.Wanda.Detroit.German.FS.DVDRip.XviD-UTOPiA ghost-of-usenet.org -</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000273</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000273&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000273</comments>
+      <pubDate>Sun, 27 Jul 2025 03:50:38 +0000</pubDate>
+      <category>TV &gt; Foreign</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000273&amp;apikey=TEST_API_KEY" length="418013000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5020" />
+      <newznab:attr name="size" value="418013000" />
+      <newznab:attr name="guid" value="release-000273" />
+      <newznab:attr name="grabs" value="50" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Sun, 27 Jul 2025 03:50:38 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Jemen.Die.neue.Taktik.von.Al-Kaida.German.DOKU.WS.dTV.XviD-UTOPiA</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000275</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000275&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000275</comments>
+      <pubDate>Sun, 27 Jul 2025 03:29:36 +0000</pubDate>
+      <category>TV &gt; Foreign</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000275&amp;apikey=TEST_API_KEY" length="417040000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5020" />
+      <newznab:attr name="size" value="417040000" />
+      <newznab:attr name="guid" value="release-000275" />
+      <newznab:attr name="grabs" value="39" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Sun, 27 Jul 2025 03:29:36 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Everwood.S02E15.Das.Wort.mit.L.German.WS.DVDRip.XviD-UTOPiA ghost-of-usenet.org -</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000277</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000277&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000277</comments>
+      <pubDate>Sun, 27 Jul 2025 02:55:48 +0000</pubDate>
+      <category>TV &gt; Foreign</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000277&amp;apikey=TEST_API_KEY" length="425009000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5020" />
+      <newznab:attr name="size" value="425009000" />
+      <newznab:attr name="guid" value="release-000277" />
+      <newznab:attr name="rageid" value="3464" />
+      <newznab:attr name="tvdbid" value="78465" />
+      <newznab:attr name="season" value="S02" />
+      <newznab:attr name="episode" value="E15" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000277.jpg" />
+      <newznab:attr name="grabs" value="33" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Sun, 27 Jul 2025 02:55:48 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>The.West.Wing.S01E12-E17.German.FS.DVDRip.XviD-UTOPiA ghost-of-usenet.org -</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000279</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000279&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000279</comments>
+      <pubDate>Sun, 27 Jul 2025 01:34:24 +0000</pubDate>
+      <category>TV &gt; Foreign</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000279&amp;apikey=TEST_API_KEY" length="417916000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5020" />
+      <newznab:attr name="size" value="417916000" />
+      <newznab:attr name="guid" value="release-000279" />
+      <newznab:attr name="rageid" value="6289" />
+      <newznab:attr name="tvdbid" value="72521" />
+      <newznab:attr name="season" value="S01" />
+      <newznab:attr name="episode" value="E12" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000279.jpg" />
+      <newznab:attr name="grabs" value="14" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Sun, 27 Jul 2025 01:34:24 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Superman.Die.Abenteuer.von.Lois.und.Clark.S03E20.Die.Welt.ist.klein.German.FS.DVDRip.XviD-UTOPiA ghost-of-usenet.org -</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000281</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000281&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000281</comments>
+      <pubDate>Sun, 27 Jul 2025 01:14:21 +0000</pubDate>
+      <category>TV &gt; Foreign</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000281&amp;apikey=TEST_API_KEY" length="359725000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5020" />
+      <newznab:attr name="size" value="359725000" />
+      <newznab:attr name="guid" value="release-000281" />
+      <newznab:attr name="grabs" value="39" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Sun, 27 Jul 2025 01:14:21 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Energiewende.rueckwaerts.German.DOKU.WS.dTV.XviD-UTOPiA</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000283</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000283&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000283</comments>
+      <pubDate>Thu, 24 Jul 2025 23:49:42 +0000</pubDate>
+      <category>TV &gt; Foreign</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000283&amp;apikey=TEST_API_KEY" length="109097000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5020" />
+      <newznab:attr name="size" value="109097000" />
+      <newznab:attr name="guid" value="release-000283" />
+      <newznab:attr name="grabs" value="26" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Thu, 24 Jul 2025 23:49:42 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Secret.Service.Einsatz.in.Kolumbien.German.DOKU.WS.dTV.XviD-UTOPiA</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000285</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000285&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000285</comments>
+      <pubDate>Thu, 24 Jul 2025 20:37:28 +0000</pubDate>
+      <category>TV &gt; Foreign</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000285&amp;apikey=TEST_API_KEY" length="447579000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5020" />
+      <newznab:attr name="size" value="447579000" />
+      <newznab:attr name="guid" value="release-000285" />
+      <newznab:attr name="grabs" value="32" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Thu, 24 Jul 2025 20:37:28 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Bauwerke.Die.Tibet-Bahn.German.DOKU.WS.dTV.XviD-UTOPiA</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000287</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000287&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000287</comments>
+      <pubDate>Thu, 24 Jul 2025 20:27:09 +0000</pubDate>
+      <category>TV &gt; Foreign</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000287&amp;apikey=TEST_API_KEY" length="596593000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5020" />
+      <newznab:attr name="size" value="596593000" />
+      <newznab:attr name="guid" value="release-000287" />
+      <newznab:attr name="grabs" value="38" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Thu, 24 Jul 2025 20:27:09 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>The.West.Wing.S01E02.Post.Hoc.Ergo.Propter.Hoc.German.WS.DVDRip.XviD-UTOPiA ghost-of-usenet.org -</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000289</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000289&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000289</comments>
+      <pubDate>Thu, 24 Jul 2025 17:34:59 +0000</pubDate>
+      <category>TV &gt; Foreign</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000289&amp;apikey=TEST_API_KEY" length="410363000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5020" />
+      <newznab:attr name="size" value="410363000" />
+      <newznab:attr name="guid" value="release-000289" />
+      <newznab:attr name="rageid" value="6289" />
+      <newznab:attr name="tvdbid" value="72521" />
+      <newznab:attr name="season" value="S01" />
+      <newznab:attr name="episode" value="E02" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000289.jpg" />
+      <newznab:attr name="grabs" value="43" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Thu, 24 Jul 2025 17:34:59 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Bones.S04E01.Zwei.Amerikaner.in.Grossbritannien.Teil1.Teil2.German.WS.DVDRiP.XviD-UTOPiA</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000291</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000291&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000291</comments>
+      <pubDate>Thu, 24 Jul 2025 15:21:53 +0000</pubDate>
+      <category>TV &gt; Foreign</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000291&amp;apikey=TEST_API_KEY" length="854561000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5020" />
+      <newznab:attr name="size" value="854561000" />
+      <newznab:attr name="guid" value="release-000291" />
+      <newznab:attr name="rageid" value="2870" />
+      <newznab:attr name="tvdbid" value="75682" />
+      <newznab:attr name="season" value="S04" />
+      <newznab:attr name="episode" value="E01" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000291.jpg" />
+      <newznab:attr name="grabs" value="46" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Thu, 24 Jul 2025 15:21:53 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Ein.General.gegen.Hitler.Wilhelm.Zehner.German.DOKU.WS.dTV.XviD-UTOPiA</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000293</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000293&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000293</comments>
+      <pubDate>Thu, 24 Jul 2025 13:30:01 +0000</pubDate>
+      <category>TV &gt; Foreign</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000293&amp;apikey=TEST_API_KEY" length="595885000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5020" />
+      <newznab:attr name="size" value="595885000" />
+      <newznab:attr name="guid" value="release-000293" />
+      <newznab:attr name="grabs" value="30" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Thu, 24 Jul 2025 13:30:01 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Mondbasis.Alpha.I.S01E12.Der.Mann.der.seinen.Namen.aenderte.German.DL.720p.BluRay.x264-UTOPiA</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000295</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000295&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000295</comments>
+      <pubDate>Thu, 24 Jul 2025 13:17:52 +0000</pubDate>
+      <category>TV &gt; Foreign</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000295&amp;apikey=TEST_API_KEY" length="1151174000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5020" />
+      <newznab:attr name="size" value="1151174000" />
+      <newznab:attr name="guid" value="release-000295" />
+      <newznab:attr name="language" value="English" />
+      <newznab:attr name="language" value="German" />
+      <newznab:attr name="grabs" value="26" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Thu, 24 Jul 2025 13:17:52 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Amerikas.heisse.Grenze.Im.Dunst.des.Verbrechens.German.DOKU.1080p.HDTV.x264-UTOPiA</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000297</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000297&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000297</comments>
+      <pubDate>Thu, 24 Jul 2025 13:09:18 +0000</pubDate>
+      <category>TV &gt; Foreign</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000297&amp;apikey=TEST_API_KEY" length="2782384000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5020" />
+      <newznab:attr name="size" value="2782384000" />
+      <newznab:attr name="guid" value="release-000297" />
+      <newznab:attr name="language" value="German" />
+      <newznab:attr name="grabs" value="36" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="1" />
+      <newznab:attr name="usenetdate" value="Thu, 24 Jul 2025 13:09:18 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Kometen.auf.Erdkurs.German.DOKU.720p.HDTV.x264-UTOPiA</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000299</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000299&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000299</comments>
+      <pubDate>Thu, 24 Jul 2025 11:35:29 +0000</pubDate>
+      <category>TV &gt; Foreign</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000299&amp;apikey=TEST_API_KEY" length="1425512000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5020" />
+      <newznab:attr name="size" value="1425512000" />
+      <newznab:attr name="guid" value="release-000299" />
+      <newznab:attr name="grabs" value="33" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Thu, 24 Jul 2025 11:35:29 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Die.Prinzessinnen.von.Rajasthan.German.DOKU.WS.dTV.XviD-UTOPiA</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000301</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000301&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000301</comments>
+      <pubDate>Thu, 24 Jul 2025 10:20:22 +0000</pubDate>
+      <category>TV &gt; Foreign</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000301&amp;apikey=TEST_API_KEY" length="401187000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5020" />
+      <newznab:attr name="size" value="401187000" />
+      <newznab:attr name="guid" value="release-000301" />
+      <newznab:attr name="grabs" value="30" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Thu, 24 Jul 2025 10:20:22 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Hinter.Gittern.Der.Frauenknast.S16E09.Zwischen.allen.Stuehlen.German.FS.DVDRiP.XviD-UTOPiA</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000303</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000303&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000303</comments>
+      <pubDate>Thu, 24 Jul 2025 09:40:13 +0000</pubDate>
+      <category>TV &gt; Foreign</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000303&amp;apikey=TEST_API_KEY" length="416127000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5020" />
+      <newznab:attr name="size" value="416127000" />
+      <newznab:attr name="guid" value="release-000303" />
+      <newznab:attr name="grabs" value="48" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Thu, 24 Jul 2025 09:40:13 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>The.West.Wing.S01E04-E11.German.FS.DVDRip.XviD-UTOPiA ghost-of-usenet.org -</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000305</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000305&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000305</comments>
+      <pubDate>Thu, 24 Jul 2025 08:48:19 +0000</pubDate>
+      <category>TV &gt; Foreign</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000305&amp;apikey=TEST_API_KEY" length="409408000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5020" />
+      <newznab:attr name="size" value="409408000" />
+      <newznab:attr name="guid" value="release-000305" />
+      <newznab:attr name="rageid" value="6289" />
+      <newznab:attr name="tvdbid" value="72521" />
+      <newznab:attr name="season" value="S01" />
+      <newznab:attr name="episode" value="E04" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000305.jpg" />
+      <newznab:attr name="grabs" value="13" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Thu, 24 Jul 2025 08:48:19 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Alles.Atze.S01E12.Der.getuerkte.Murat.German.DVDRiP.XViD.iNTERNAL-UTOPiA</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000307</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000307&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000307</comments>
+      <pubDate>Thu, 24 Jul 2025 07:01:13 +0000</pubDate>
+      <category>TV &gt; Foreign</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000307&amp;apikey=TEST_API_KEY" length="280470000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5020" />
+      <newznab:attr name="size" value="280470000" />
+      <newznab:attr name="guid" value="release-000307" />
+      <newznab:attr name="tvdbid" value="80706" />
+      <newznab:attr name="season" value="S01" />
+      <newznab:attr name="episode" value="E12" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000307.jpg" />
+      <newznab:attr name="grabs" value="24" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Thu, 24 Jul 2025 07:01:13 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Superman.Die.Abenteuer.von.Lois.und.Clark.S03E04.Der.irische.Fluch.German.FS.DVDRip.XviD-UTOPiA ghost-of-usenet.org -</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000309</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000309&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000309</comments>
+      <pubDate>Thu, 24 Jul 2025 06:53:59 +0000</pubDate>
+      <category>TV &gt; Foreign</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000309&amp;apikey=TEST_API_KEY" length="422715000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5020" />
+      <newznab:attr name="size" value="422715000" />
+      <newznab:attr name="guid" value="release-000309" />
+      <newznab:attr name="grabs" value="21" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Thu, 24 Jul 2025 06:53:59 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Superman.Die.Abenteuer.von.Lois.und.Clark.S03E17.Lois.mal.drei.German.FS.DVDRip.XviD-UTOPiA ghost-of-usenet.org -</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000311</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000311&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000311</comments>
+      <pubDate>Thu, 24 Jul 2025 05:21:56 +0000</pubDate>
+      <category>TV &gt; Foreign</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000311&amp;apikey=TEST_API_KEY" length="381239000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5020" />
+      <newznab:attr name="size" value="381239000" />
+      <newznab:attr name="guid" value="release-000311" />
+      <newznab:attr name="grabs" value="23" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Thu, 24 Jul 2025 05:21:56 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Superman.Die.Abenteuer.von.Lois.und.Clark.S03E21.Die.Kryptonier.German.FS.DVDRip.XviD-UTOPiA ghost-of-usenet.org -</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000313</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000313&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000313</comments>
+      <pubDate>Thu, 24 Jul 2025 04:29:07 +0000</pubDate>
+      <category>TV &gt; Foreign</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000313&amp;apikey=TEST_API_KEY" length="415620000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5020" />
+      <newznab:attr name="size" value="415620000" />
+      <newznab:attr name="guid" value="release-000313" />
+      <newznab:attr name="grabs" value="20" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Thu, 24 Jul 2025 04:29:07 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Ancient.Aliens.Unerklaerliche.Phaenomene.S02E05.Technologien.im.Dritten.Reich.German.DOKU.WS.HDTVRiP.XviD-UTOPiA</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000315</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000315&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000315</comments>
+      <pubDate>Thu, 24 Jul 2025 02:09:26 +0000</pubDate>
+      <category>TV &gt; Foreign</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000315&amp;apikey=TEST_API_KEY" length="440080000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5020" />
+      <newznab:attr name="size" value="440080000" />
+      <newznab:attr name="guid" value="release-000315" />
+      <newznab:attr name="grabs" value="19" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Thu, 24 Jul 2025 02:09:26 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Superman.Die.Abenteuer.von.Lois.und.Clark.S04E03-E15.German.FS.DVDRiP.XviD-UTOPiA ghost-of-usenet.org dreamload.com -</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000317</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000317&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000317</comments>
+      <pubDate>Thu, 24 Jul 2025 01:55:22 +0000</pubDate>
+      <category>TV &gt; Foreign</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000317&amp;apikey=TEST_API_KEY" length="418391000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5020" />
+      <newznab:attr name="size" value="418391000" />
+      <newznab:attr name="guid" value="release-000317" />
+      <newznab:attr name="grabs" value="20" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Thu, 24 Jul 2025 01:55:22 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Falcon.Crest.S02E08.Heimlicher.Abschied.German.FS.DVDRiP.XviD-UTOPiA ghost-of-usenet.org -</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000319</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000319&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000319</comments>
+      <pubDate>Thu, 24 Jul 2025 01:03:29 +0000</pubDate>
+      <category>TV &gt; Foreign</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000319&amp;apikey=TEST_API_KEY" length="427688000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5020" />
+      <newznab:attr name="size" value="427688000" />
+      <newznab:attr name="guid" value="release-000319" />
+      <newznab:attr name="tvdbid" value="352381" />
+      <newznab:attr name="season" value="S02" />
+      <newznab:attr name="episode" value="E08" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000319.jpg" />
+      <newznab:attr name="grabs" value="55" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Thu, 24 Jul 2025 01:03:29 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Die.Porsche-Saga.Wirtschaftskrimi.und.globaler.Mythos.Teil.4.German.DOKU.WS.dTV.XviD-UTOPiA</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000321</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000321&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000321</comments>
+      <pubDate>Wed, 23 Jul 2025 23:35:20 +0000</pubDate>
+      <category>TV &gt; Foreign</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000321&amp;apikey=TEST_API_KEY" length="597082000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5020" />
+      <newznab:attr name="size" value="597082000" />
+      <newznab:attr name="guid" value="release-000321" />
+      <newznab:attr name="grabs" value="18" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Wed, 23 Jul 2025 23:35:20 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Earth.2.S01E22.Der.defekte.Chip.German.FS.DVDRip.XviD-UTOPiA ghost-of-usenet.org -</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000323</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000323&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000323</comments>
+      <pubDate>Wed, 23 Jul 2025 16:33:21 +0000</pubDate>
+      <category>TV &gt; Foreign</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000323&amp;apikey=TEST_API_KEY" length="426215000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5020" />
+      <newznab:attr name="size" value="426215000" />
+      <newznab:attr name="guid" value="release-000323" />
+      <newznab:attr name="rageid" value="3415" />
+      <newznab:attr name="tvdbid" value="75799" />
+      <newznab:attr name="season" value="S01" />
+      <newznab:attr name="episode" value="E22" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000323.jpg" />
+      <newznab:attr name="grabs" value="95" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Wed, 23 Jul 2025 16:33:21 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>An.einem.Tag.in.Kunduz.Der.toedliche.Befehl.German.DOKU.WS.dTV.XviD-UTOPiA</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000325</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000325&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000325</comments>
+      <pubDate>Wed, 23 Jul 2025 14:59:13 +0000</pubDate>
+      <category>TV &gt; Foreign</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000325&amp;apikey=TEST_API_KEY" length="170934000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5020" />
+      <newznab:attr name="size" value="170934000" />
+      <newznab:attr name="guid" value="release-000325" />
+      <newznab:attr name="grabs" value="17" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Wed, 23 Jul 2025 14:59:13 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Superman.Die.Abenteuer.von.Lois.und.Clark.S04E02.Duell.mit.Lord.Nor.German.FS.DVDRiP.XviD-UTOPiA ghost-of-usenet.org dreamload.com-</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000327</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000327&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000327</comments>
+      <pubDate>Wed, 23 Jul 2025 10:06:53 +0000</pubDate>
+      <category>TV &gt; Foreign</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000327&amp;apikey=TEST_API_KEY" length="422902000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5020" />
+      <newznab:attr name="size" value="422902000" />
+      <newznab:attr name="guid" value="release-000327" />
+      <newznab:attr name="grabs" value="27" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Wed, 23 Jul 2025 10:06:53 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Falcon.Crest.S02E03.Schmutziges.Wasser.German.FS.DVDRiP.XviD-UTOPiA ghost-of-usenet.org -</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000329</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000329&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000329</comments>
+      <pubDate>Wed, 23 Jul 2025 09:47:12 +0000</pubDate>
+      <category>TV &gt; Foreign</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000329&amp;apikey=TEST_API_KEY" length="182040000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5020" />
+      <newznab:attr name="size" value="182040000" />
+      <newznab:attr name="guid" value="release-000329" />
+      <newznab:attr name="tvdbid" value="352381" />
+      <newznab:attr name="season" value="S02" />
+      <newznab:attr name="episode" value="E03" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000329.jpg" />
+      <newznab:attr name="grabs" value="42" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Wed, 23 Jul 2025 09:47:12 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Danni.Lowinski.S01E01.Neues.Leben.German.WS.DVDRiP.XviD-UTOPiA ghost-of-usenet.org -</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000331</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000331&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000331</comments>
+      <pubDate>Wed, 23 Jul 2025 05:17:09 +0000</pubDate>
+      <category>TV &gt; Foreign</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000331&amp;apikey=TEST_API_KEY" length="430526000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5020" />
+      <newznab:attr name="size" value="430526000" />
+      <newznab:attr name="guid" value="release-000331" />
+      <newznab:attr name="rageid" value="26800" />
+      <newznab:attr name="tvdbid" value="150741" />
+      <newznab:attr name="season" value="S01" />
+      <newznab:attr name="episode" value="E01" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000331.jpg" />
+      <newznab:attr name="grabs" value="22" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Wed, 23 Jul 2025 05:17:09 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>NSU.Terror.von.rechts.Geschichte.einer.Terrorzelle.German.DOKU.720p.HDTV.x264-UTOPiA</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000333</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000333&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000333</comments>
+      <pubDate>Wed, 23 Jul 2025 02:29:41 +0000</pubDate>
+      <category>TV &gt; Foreign</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000333&amp;apikey=TEST_API_KEY" length="1426669000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5020" />
+      <newznab:attr name="size" value="1426669000" />
+      <newznab:attr name="guid" value="release-000333" />
+      <newznab:attr name="language" value="German" />
+      <newznab:attr name="grabs" value="20" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Wed, 23 Jul 2025 02:29:41 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>The.West.Wing.S01E04-E11.German.FS.DVDRip.XviD-UTOPiA ghost-of-usenet.org -</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000335</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000335&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000335</comments>
+      <pubDate>Tue, 22 Jul 2025 23:46:18 +0000</pubDate>
+      <category>TV &gt; Foreign</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000335&amp;apikey=TEST_API_KEY" length="328826000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5020" />
+      <newznab:attr name="size" value="328826000" />
+      <newznab:attr name="guid" value="release-000335" />
+      <newznab:attr name="rageid" value="6289" />
+      <newznab:attr name="tvdbid" value="72521" />
+      <newznab:attr name="season" value="S01" />
+      <newznab:attr name="episode" value="E04" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000335.jpg" />
+      <newznab:attr name="grabs" value="73" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Tue, 22 Jul 2025 23:46:18 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+    <item>
+      <title>Las.Vegas.S02E14.Die.Rache.einer.Frau.German.WS.DVDRip.XviD-UTOPiA</title>
+      <guid isPermaLink="true">https://indexer.example.invalid/details/release-000337</guid>
+      <link>https://indexer.example.invalid/api?t=get&amp;id=release-000337&amp;apikey=TEST_API_KEY</link>
+      <comments>https://indexer.example.invalid/details/release-000337</comments>
+      <pubDate>Tue, 22 Jul 2025 23:21:35 +0000</pubDate>
+      <category>TV &gt; Foreign</category>
+      <description>Sanitized description</description>
+      <enclosure url="https://indexer.example.invalid/api?t=get&amp;id=release-000337&amp;apikey=TEST_API_KEY" length="387897000" type="application/x-nzb" />
+      <newznab:attr name="category" value="5000" />
+      <newznab:attr name="category" value="5020" />
+      <newznab:attr name="size" value="387897000" />
+      <newznab:attr name="guid" value="release-000337" />
+      <newznab:attr name="rageid" value="4192" />
+      <newznab:attr name="tvdbid" value="72229" />
+      <newznab:attr name="season" value="S02" />
+      <newznab:attr name="episode" value="E14" />
+      <newznab:attr name="coverurl" value="https://indexer.example.invalid/posters/release-000337.jpg" />
+      <newznab:attr name="grabs" value="15" />
+      <newznab:attr name="comments" value="0" />
+      <newznab:attr name="password" value="0" />
+      <newznab:attr name="usenetdate" value="Tue, 22 Jul 2025 23:21:35 +0000" />
+      <newznab:attr name="thumbsup" value="0" />
+      <newznab:attr name="thumbsdown" value="0" />
+    </item>
+  </channel>
+</rss>
