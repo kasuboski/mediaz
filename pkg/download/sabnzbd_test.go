@@ -5,12 +5,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/kasuboski/mediaz/pkg/indexer"
 	"io"
 	"net/http"
 	"testing"
 
 	httpMock "github.com/kasuboski/mediaz/pkg/http/mocks"
-	"github.com/kasuboski/mediaz/pkg/prowlarr"
 	"github.com/oapi-codegen/nullable"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -70,7 +70,7 @@ func TestSabnzbdClient_Add(t *testing.T) {
 		ctx := context.Background()
 
 		addRequest := AddRequest{
-			Release: &prowlarr.ReleaseResource{DownloadURL: nullable.NewNullableWithValue[string]("http://example.com/group")},
+			Release: &indexer.Release{DownloadURL: nullable.NewNullableWithValue[string]("http://example.com/group")},
 		}
 
 		getResponse := QueueResponse{
@@ -147,7 +147,7 @@ func TestSabnzbdClient_Add(t *testing.T) {
 		ctx := context.Background()
 
 		addRequest := AddRequest{
-			Release: &prowlarr.ReleaseResource{DownloadURL: nullable.NewNullNullable[string]()},
+			Release: &indexer.Release{DownloadURL: nullable.NewNullNullable[string]()},
 		}
 
 		status, err := client.Add(ctx, addRequest)
@@ -162,7 +162,7 @@ func TestSabnzbdClient_Add(t *testing.T) {
 		ctx := context.Background()
 
 		addRequest := AddRequest{
-			Release: &prowlarr.ReleaseResource{DownloadURL: nullable.NewNullableWithValue[string]("http://example.com/torrent")},
+			Release: &indexer.Release{DownloadURL: nullable.NewNullableWithValue[string]("http://example.com/torrent")},
 		}
 
 		mockHttp.EXPECT().Do(gomock.Any()).Return(nil, fmt.Errorf("http error"))
@@ -179,7 +179,7 @@ func TestSabnzbdClient_Add(t *testing.T) {
 		ctx := context.Background()
 
 		addRequest := AddRequest{
-			Release: &prowlarr.ReleaseResource{DownloadURL: nullable.NewNullableWithValue[string]("http://example.com/torrent")},
+			Release: &indexer.Release{DownloadURL: nullable.NewNullableWithValue[string]("http://example.com/torrent")},
 		}
 
 		addResponse := AddNewsResponse{}
@@ -204,7 +204,7 @@ func TestSabnzbdClient_Add(t *testing.T) {
 		ctx := context.Background()
 
 		addRequest := AddRequest{
-			Release: &prowlarr.ReleaseResource{DownloadURL: nullable.NewNullableWithValue[string]("http://example.com/group")},
+			Release: &indexer.Release{DownloadURL: nullable.NewNullableWithValue[string]("http://example.com/group")},
 		}
 
 		// Mock the successful Add response

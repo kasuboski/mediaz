@@ -7,7 +7,7 @@ import (
 
 	"github.com/kasuboski/mediaz/pkg/download"
 	downloadMocks "github.com/kasuboski/mediaz/pkg/download/mocks"
-	"github.com/kasuboski/mediaz/pkg/prowlarr"
+	"github.com/kasuboski/mediaz/pkg/indexer"
 	"github.com/kasuboski/mediaz/pkg/storage/mocks"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 	"github.com/stretchr/testify/assert"
@@ -42,23 +42,23 @@ func TestClientForProtocol(t *testing.T) {
 	}
 
 	t.Run("find torrent", func(t *testing.T) {
-		actual := clientForProtocol(clients, prowlarr.DownloadProtocolTorrent)
+		actual := clientForProtocol(clients, indexer.DownloadProtocolTorrent)
 		assert.NotNil(t, actual)
 		assert.Equal(t, int64(2), actual.ID)
 	})
 	t.Run("find usenet", func(t *testing.T) {
-		actual := clientForProtocol(clients, prowlarr.DownloadProtocolUsenet)
+		actual := clientForProtocol(clients, indexer.DownloadProtocolUsenet)
 		assert.NotNil(t, actual)
 		assert.Equal(t, int64(1), actual.ID)
 	})
 
 	t.Run("not found", func(t *testing.T) {
-		actual := clientForProtocol([]sqlcdb.DownloadClient{{ID: 1, Type: "usenet"}}, prowlarr.DownloadProtocolTorrent)
+		actual := clientForProtocol([]sqlcdb.DownloadClient{{ID: 1, Type: "usenet"}}, indexer.DownloadProtocolTorrent)
 		assert.Nil(t, actual)
 	})
 
 	t.Run("empty", func(t *testing.T) {
-		actual := clientForProtocol([]sqlcdb.DownloadClient{}, prowlarr.DownloadProtocolTorrent)
+		actual := clientForProtocol([]sqlcdb.DownloadClient{}, indexer.DownloadProtocolTorrent)
 		assert.Nil(t, actual)
 	})
 }

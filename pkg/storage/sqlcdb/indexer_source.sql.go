@@ -11,8 +11,8 @@ import (
 )
 
 const createIndexerSource = `-- name: CreateIndexerSource :one
-INSERT INTO indexer_source (name, implementation, scheme, host, port, api_key, enabled)
-VALUES (?, ?, ?, ?, ?, ?, ?)
+INSERT INTO indexer_source (name, implementation, scheme, host, port, api_key, enabled, api_path)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 RETURNING id
 `
 
@@ -24,6 +24,7 @@ type CreateIndexerSourceParams struct {
 	Port           sql.NullInt64
 	ApiKey         sql.NullString
 	Enabled        bool
+	ApiPath        sql.NullString
 }
 
 func (q *Queries) CreateIndexerSource(ctx context.Context, arg CreateIndexerSourceParams) (int64, error) {
@@ -35,6 +36,7 @@ func (q *Queries) CreateIndexerSource(ctx context.Context, arg CreateIndexerSour
 		arg.Port,
 		arg.ApiKey,
 		arg.Enabled,
+		arg.ApiPath,
 	)
 	var id int64
 	err := row.Scan(&id)
@@ -60,19 +62,8 @@ func (q *Queries) DeleteIndexersBySourceID(ctx context.Context, indexerSourceID 
 }
 
 const getIndexerSource = `-- name: GetIndexerSource :one
-SELECT
-    id,
-    name,
-    implementation,
-    scheme,
-    host,
-    port,
-    api_key,
-    enabled,
-    created_at,
-    updated_at
-FROM indexer_source
-WHERE id = ?
+SELECT id, name, implementation, scheme, host, port, api_key, enabled, created_at, updated_at, api_path
+FROM indexer_source WHERE id = ?
 `
 
 func (q *Queries) GetIndexerSource(ctx context.Context, id int64) (IndexerSource, error) {
@@ -89,25 +80,14 @@ func (q *Queries) GetIndexerSource(ctx context.Context, id int64) (IndexerSource
 		&i.Enabled,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ApiPath,
 	)
 	return i, err
 }
 
 const listEnabledIndexerSources = `-- name: ListEnabledIndexerSources :many
-SELECT
-    id,
-    name,
-    implementation,
-    scheme,
-    host,
-    port,
-    api_key,
-    enabled,
-    created_at,
-    updated_at
-FROM indexer_source
-WHERE enabled = 1
-ORDER BY name ASC, id ASC
+SELECT id, name, implementation, scheme, host, port, api_key, enabled, created_at, updated_at, api_path
+FROM indexer_source WHERE enabled = 1 ORDER BY name ASC, id ASC
 `
 
 func (q *Queries) ListEnabledIndexerSources(ctx context.Context) ([]IndexerSource, error) {
@@ -130,6 +110,7 @@ func (q *Queries) ListEnabledIndexerSources(ctx context.Context) ([]IndexerSourc
 			&i.Enabled,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.ApiPath,
 		); err != nil {
 			return nil, err
 		}
@@ -145,19 +126,8 @@ func (q *Queries) ListEnabledIndexerSources(ctx context.Context) ([]IndexerSourc
 }
 
 const listIndexerSources = `-- name: ListIndexerSources :many
-SELECT
-    id,
-    name,
-    implementation,
-    scheme,
-    host,
-    port,
-    api_key,
-    enabled,
-    created_at,
-    updated_at
-FROM indexer_source
-ORDER BY name ASC
+SELECT id, name, implementation, scheme, host, port, api_key, enabled, created_at, updated_at, api_path
+FROM indexer_source ORDER BY name ASC
 `
 
 func (q *Queries) ListIndexerSources(ctx context.Context) ([]IndexerSource, error) {
@@ -180,6 +150,7 @@ func (q *Queries) ListIndexerSources(ctx context.Context) ([]IndexerSource, erro
 			&i.Enabled,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.ApiPath,
 		); err != nil {
 			return nil, err
 		}
@@ -195,16 +166,7 @@ func (q *Queries) ListIndexerSources(ctx context.Context) ([]IndexerSource, erro
 }
 
 const updateIndexerSource = `-- name: UpdateIndexerSource :exec
-UPDATE indexer_source
-SET
-    name = ?,
-    implementation = ?,
-    scheme = ?,
-    host = ?,
-    port = ?,
-    enabled = ?,
-    api_key = COALESCE(?, api_key)
-WHERE id = ?
+UPDATE indexer_source SET name = ?, implementation = ?, scheme = ?, host = ?, port = ?, enabled = ?, api_key = COALESCE(?, api_key), api_path = ? WHERE id = ?
 `
 
 type UpdateIndexerSourceParams struct {
@@ -215,6 +177,7 @@ type UpdateIndexerSourceParams struct {
 	Port           sql.NullInt64
 	Enabled        bool
 	ApiKey         sql.NullString
+	ApiPath        sql.NullString
 	ID             int64
 }
 
@@ -227,6 +190,7 @@ func (q *Queries) UpdateIndexerSource(ctx context.Context, arg UpdateIndexerSour
 		arg.Port,
 		arg.Enabled,
 		arg.ApiKey,
+		arg.ApiPath,
 		arg.ID,
 	)
 	return err

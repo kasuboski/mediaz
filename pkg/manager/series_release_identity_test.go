@@ -2,9 +2,9 @@ package manager
 
 import (
 	"context"
+	"github.com/kasuboski/mediaz/pkg/indexer"
 	"testing"
 
-	"github.com/kasuboski/mediaz/pkg/prowlarr"
 	"github.com/kasuboski/mediaz/pkg/ptr"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 	"github.com/oapi-codegen/nullable"
@@ -52,7 +52,7 @@ func TestSeriesReleaseIdentity(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			params := SeriesReleaseFilterParams{Title: tc.title, SeasonNumber: 1, EpisodeNumber: 2, Runtime: 60, TmdbID: 42, IMDbID: "tt0000123", TVDBID: 5, Year: ptr.To(int32(2014))}
-			r := &prowlarr.ReleaseResource{Title: nullable.NewNullableWithValue(tc.release), TmdbID: tc.tmdb, ImdbID: tc.imdb, TvdbID: tc.tvdb, Size: ptr.To(int64(500 << 20))}
+			r := &indexer.Release{Title: nullable.NewNullableWithValue(tc.release), TmdbID: tc.tmdb, ImdbID: tc.imdb, TvdbID: tc.tvdb, Size: ptr.To(int64(500 << 20))}
 			filter := RejectEpisodeReleaseFunc(context.Background(), params, profile, nil)
 			if tc.pack {
 				filter = RejectSeasonReleaseFunc(context.Background(), params, profile, nil)

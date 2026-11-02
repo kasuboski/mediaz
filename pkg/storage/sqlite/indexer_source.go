@@ -18,6 +18,7 @@ func (s *SQLite) CreateIndexerSource(ctx context.Context, source sqlcdb.IndexerS
 		Port:           source.Port,
 		ApiKey:         source.ApiKey,
 		Enabled:        source.Enabled,
+		ApiPath:        source.ApiPath,
 	})
 }
 
@@ -52,6 +53,7 @@ func (s *SQLite) UpdateIndexerSource(ctx context.Context, id int64, source sqlcd
 		Port:           source.Port,
 		Enabled:        source.Enabled,
 		ApiKey:         source.ApiKey,
+		ApiPath:        source.ApiPath,
 		ID:             id,
 	})
 }

@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/kasuboski/mediaz/pkg/prowlarr"
+	"github.com/kasuboski/mediaz/pkg/indexer"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 )
 
@@ -53,7 +53,7 @@ func (d DownloadClientFactory) NewDownloadClient(config sqlcdb.DownloadClient) (
 }
 
 type AddRequest struct {
-	Release *prowlarr.ReleaseResource
+	Release *indexer.Release
 }
 
 type GetRequest struct {

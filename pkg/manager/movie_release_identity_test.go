@@ -2,9 +2,9 @@ package manager
 
 import (
 	"context"
+	"github.com/kasuboski/mediaz/pkg/indexer"
 	"testing"
 
-	"github.com/kasuboski/mediaz/pkg/prowlarr"
 	"github.com/kasuboski/mediaz/pkg/ptr"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 	"github.com/oapi-codegen/nullable"
@@ -92,25 +92,25 @@ func TestMovieReleaseIdentityFilter(t *testing.T) {
 		{"empty title even with ID", " ", ptr.To(int32(42)), nil, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			r := &prowlarr.ReleaseResource{Title: nullable.NewNullableWithValue(tc.title), TmdbID: tc.tmdb, ImdbID: tc.imdb, Size: ptr.To(int64(500 << 20))}
+			r := &indexer.Release{Title: nullable.NewNullableWithValue(tc.title), TmdbID: tc.tmdb, ImdbID: tc.imdb, Size: ptr.To(int64(500 << 20))}
 			assert.Equal(t, tc.wantReject, RejectMovieReleaseFunc(context.Background(), params, profile, nil)(r))
 		})
 	}
 	for _, tc := range []struct {
 		name       string
 		size       *int64
-		protocol   *prowlarr.DownloadProtocol
+		protocol   *string
 		filename   nullable.Nullable[string]
 		wantReject bool
 	}{
 		{"missing size", nil, nil, nil, true},
 		{"negative size", ptr.To(int64(-1)), nil, nil, true},
 		{"oversize", ptr.To(int64(1 << 50)), nil, nil, true},
-		{"unavailable protocol", ptr.To(int64(500 << 20)), ptr.To(prowlarr.DownloadProtocolTorrent), nil, true},
+		{"unavailable protocol", ptr.To(int64(500 << 20)), ptr.To(string(indexer.DownloadProtocolTorrent)), nil, true},
 		{"null filename", ptr.To(int64(500 << 20)), nil, nullable.NewNullNullable[string](), false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			r := &prowlarr.ReleaseResource{Title: nullable.NewNullableWithValue("Different title"), TmdbID: ptr.To(int32(42)), Size: tc.size, Protocol: tc.protocol, FileName: tc.filename}
+			r := &indexer.Release{Title: nullable.NewNullableWithValue("Different title"), TmdbID: ptr.To(int32(42)), Size: tc.size, Protocol: tc.protocol, FileName: tc.filename}
 			assert.Equal(t, tc.wantReject, RejectMovieReleaseFunc(context.Background(), params, profile, nil)(r))
 		})
 	}
@@ -119,23 +119,23 @@ func TestMovieReleaseIdentityFilter(t *testing.T) {
 func TestCompareReleaseIDs(t *testing.T) {
 	for _, tc := range []struct {
 		name                    string
-		release                 *prowlarr.ReleaseResource
+		release                 *indexer.Release
 		tmdb                    int64
 		imdb                    string
 		tvdb                    int64
 		wantMatch, wantConflict bool
 	}{
 		{"nil", nil, 42, "tt123", 5, false, false},
-		{"TMDB", &prowlarr.ReleaseResource{TmdbID: ptr.To(int32(42))}, 42, "", 0, true, false},
-		{"IMDb leading zeros", &prowlarr.ReleaseResource{ImdbID: ptr.To(int32(123))}, 0, "tt0000123", 0, true, false},
-		{"numeric IMDb", &prowlarr.ReleaseResource{ImdbID: ptr.To(int32(123))}, 0, "123", 0, true, false},
-		{"TVDB", &prowlarr.ReleaseResource{TvdbID: ptr.To(int32(5))}, 0, "", 5, true, false},
-		{"conflicting namespaces", &prowlarr.ReleaseResource{TmdbID: ptr.To(int32(42)), ImdbID: ptr.To(int32(124))}, 42, "tt123", 0, true, true},
-		{"no expected ID", &prowlarr.ReleaseResource{TmdbID: ptr.To(int32(42)), ImdbID: ptr.To(int32(123))}, 0, "", 0, false, false},
-		{"invalid IMDb", &prowlarr.ReleaseResource{ImdbID: ptr.To(int32(123))}, 0, "tt+123", 0, false, false},
-		{"overflow IMDb", &prowlarr.ReleaseResource{ImdbID: ptr.To(int32(123))}, 0, "tt99999999999999999999999", 0, false, false},
-		{"zero unavailable", &prowlarr.ReleaseResource{TmdbID: ptr.To(int32(0)), ImdbID: ptr.To(int32(0))}, 42, "tt123", 0, false, false},
-		{"negative unavailable", &prowlarr.ReleaseResource{TmdbID: ptr.To(int32(-1))}, 42, "", 0, false, false},
+		{"TMDB", &indexer.Release{TmdbID: ptr.To(int32(42))}, 42, "", 0, true, false},
+		{"IMDb leading zeros", &indexer.Release{ImdbID: ptr.To(int32(123))}, 0, "tt0000123", 0, true, false},
+		{"numeric IMDb", &indexer.Release{ImdbID: ptr.To(int32(123))}, 0, "123", 0, true, false},
+		{"TVDB", &indexer.Release{TvdbID: ptr.To(int32(5))}, 0, "", 5, true, false},
+		{"conflicting namespaces", &indexer.Release{TmdbID: ptr.To(int32(42)), ImdbID: ptr.To(int32(124))}, 42, "tt123", 0, true, true},
+		{"no expected ID", &indexer.Release{TmdbID: ptr.To(int32(42)), ImdbID: ptr.To(int32(123))}, 0, "", 0, false, false},
+		{"invalid IMDb", &indexer.Release{ImdbID: ptr.To(int32(123))}, 0, "tt+123", 0, false, false},
+		{"overflow IMDb", &indexer.Release{ImdbID: ptr.To(int32(123))}, 0, "tt99999999999999999999999", 0, false, false},
+		{"zero unavailable", &indexer.Release{TmdbID: ptr.To(int32(0)), ImdbID: ptr.To(int32(0))}, 42, "tt123", 0, false, false},
+		{"negative unavailable", &indexer.Release{TmdbID: ptr.To(int32(-1))}, 42, "", 0, false, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			m, c := compareReleaseIDs(tc.release, tc.tmdb, tc.imdb, tc.tvdb)

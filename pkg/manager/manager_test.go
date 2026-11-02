@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"github.com/kasuboski/mediaz/pkg/indexer"
 	"io"
 	"net/http"
 	"os"
@@ -18,7 +19,6 @@ import (
 	"github.com/kasuboski/mediaz/pkg/library"
 	mockLibrary "github.com/kasuboski/mediaz/pkg/library/mocks"
 	"github.com/kasuboski/mediaz/pkg/pagination"
-	"github.com/kasuboski/mediaz/pkg/prowlarr"
 	"github.com/kasuboski/mediaz/pkg/ptr"
 	"github.com/kasuboski/mediaz/pkg/storage"
 	storageMocks "github.com/kasuboski/mediaz/pkg/storage/mocks"
@@ -378,7 +378,7 @@ func TestMovieRejectRelease(t *testing.T) {
 		rejectFunc := RejectMovieReleaseFunc(ctx, params, profile, protocolsAvailable)
 
 		// Test case where the release protocol is not available
-		r2 := &prowlarr.ReleaseResource{Protocol: ptr.To(prowlarr.DownloadProtocolUsenet), Size: ptr.To(int64(500))}
+		r2 := &indexer.Release{Protocol: ptr.To(string(indexer.DownloadProtocolUsenet)), Size: ptr.To(int64(500))}
 		if !rejectFunc(r2) {
 			t.Errorf("Expected rejection for protocol 'usenet' since it's unavailable")
 		}
@@ -411,9 +411,9 @@ func TestMovieRejectRelease(t *testing.T) {
 		}
 
 		for _, tt := range tests {
-			r := &prowlarr.ReleaseResource{
+			r := &indexer.Release{
 				Title:    nullable.NewNullableWithValue(tt.title),
-				Protocol: ptr.To(prowlarr.DownloadProtocolTorrent),
+				Protocol: ptr.To(string(indexer.DownloadProtocolTorrent)),
 				Size:     ptr.To(int64(500 << 20)),
 			}
 			got := rejectFunc(r)
@@ -424,12 +424,12 @@ func TestMovieRejectRelease(t *testing.T) {
 	})
 }
 
-func getReleasesFromFile(t *testing.T, path string) []*prowlarr.ReleaseResource {
+func getReleasesFromFile(t *testing.T, path string) []*indexer.Release {
 	b, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatal(err)
 	}
-	releases := make([]*prowlarr.ReleaseResource, 0)
+	releases := make([]*indexer.Release, 0)
 	err = json.Unmarshal(b, &releases)
 	if err != nil {
 		t.Fatal(err)

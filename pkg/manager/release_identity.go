@@ -1,12 +1,12 @@
 package manager
 
 import (
+	"github.com/kasuboski/mediaz/pkg/indexer"
 	"regexp"
 	"strconv"
 	"strings"
 	"unicode"
 
-	"github.com/kasuboski/mediaz/pkg/prowlarr"
 	"golang.org/x/text/unicode/norm"
 )
 
@@ -114,7 +114,7 @@ func movieTechnicalDetailsMatch(release, suffix string, expectedYear *int32) boo
 // compareReleaseIDs only compares positive IDs present on both sides. Missing,
 // zero and malformed IDs are unavailable evidence, not mismatches. A conflict
 // in one namespace must not be hidden by a match in another namespace.
-func compareReleaseIDs(release *prowlarr.ReleaseResource, tmdbID int64, imdbID string, tvdbID int64) (matched bool, conflict bool) {
+func compareReleaseIDs(release *indexer.Release, tmdbID int64, imdbID string, tvdbID int64) (matched bool, conflict bool) {
 	if release == nil {
 		return false, false
 	}

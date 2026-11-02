@@ -3,10 +3,8 @@ package manager
 import (
 	"context"
 	"fmt"
-
 	"github.com/kasuboski/mediaz/pkg/indexer"
 	"github.com/kasuboski/mediaz/pkg/logger"
-	"github.com/kasuboski/mediaz/pkg/prowlarr"
 	"github.com/kasuboski/mediaz/pkg/storage"
 	sqlcdb "github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 	"go.uber.org/zap"
@@ -35,7 +33,7 @@ func (m MediaManager) prepareSearchSnapshot(ctx context.Context) (*ReconcileSnap
 	return newReconcileSnapshot(indexers, dcs), nil
 }
 
-func (m MediaManager) executeSearch(ctx context.Context, snapshot *ReconcileSnapshot, categories []int32, opts indexer.SearchOptions) ([]*prowlarr.ReleaseResource, error) {
+func (m MediaManager) executeSearch(ctx context.Context, snapshot *ReconcileSnapshot, categories []int32, opts indexer.SearchOptions) ([]*indexer.Release, error) {
 	log := logger.FromCtx(ctx)
 
 	indexerIDs := snapshot.GetIndexerIDs()

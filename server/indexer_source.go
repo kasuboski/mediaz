@@ -1,6 +1,7 @@
 package server
 
 import (
+	"errors"
 	"net/http"
 	"sort"
 
@@ -40,7 +41,11 @@ func (s Server) CreateIndexerSource() http.HandlerFunc {
 
 		source, err := s.manager.CreateIndexerSource(r.Context(), req)
 		if err != nil {
-			s.respondError(r, w, http.StatusInternalServerError, err)
+			status := http.StatusInternalServerError
+			if errors.Is(err, manager.ErrValidation) {
+				status = http.StatusBadRequest
+			}
+			s.respondError(r, w, status, err)
 			return
 		}
 		s.respond(r, w, http.StatusCreated, source)
@@ -77,7 +82,11 @@ func (s Server) UpdateIndexerSource() http.HandlerFunc {
 
 		source, err := s.manager.UpdateIndexerSource(r.Context(), id, req)
 		if err != nil {
-			s.respondError(r, w, http.StatusInternalServerError, err)
+			status := http.StatusInternalServerError
+			if errors.Is(err, manager.ErrValidation) {
+				status = http.StatusBadRequest
+			}
+			s.respondError(r, w, status, err)
 			return
 		}
 		s.respond(r, w, http.StatusOK, source)

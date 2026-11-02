@@ -831,6 +831,7 @@ export interface IndexerSource {
   implementation: string;
   scheme: string;
   host: string;
+  apiPath: string;
   port?: number;
   enabled: boolean;
 }
@@ -840,6 +841,7 @@ export interface AddIndexerSourceRequest {
   implementation: string;
   scheme: string;
   host: string;
+  apiPath?: string;
   port?: number;
   apiKey?: string;
   enabled: boolean;
@@ -850,6 +852,7 @@ export interface UpdateIndexerSourceRequest {
   implementation: string;
   scheme: string;
   host: string;
+  apiPath?: string;
   port?: number;
   apiKey?: string;
   enabled: boolean;

@@ -4,12 +4,12 @@ import (
 	"cmp"
 	"context"
 	"fmt"
+	"github.com/kasuboski/mediaz/pkg/indexer"
 	"regexp"
 	"strconv"
 	"strings"
 
 	"github.com/kasuboski/mediaz/pkg/logger"
-	"github.com/kasuboski/mediaz/pkg/prowlarr"
 	"github.com/kasuboski/mediaz/pkg/size"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 	"go.uber.org/zap"
@@ -54,8 +54,8 @@ type SeriesReleaseFilterParams struct {
 	Year          *int32
 }
 
-func RejectMovieReleaseFunc(ctx context.Context, params ReleaseFilterParams, profile []sqlcdb.ListQualityProfileRowsRow, protocolsAvailable map[string]struct{}) func(*prowlarr.ReleaseResource) bool {
-	return func(r *prowlarr.ReleaseResource) bool {
+func RejectMovieReleaseFunc(ctx context.Context, params ReleaseFilterParams, profile []sqlcdb.ListQualityProfileRowsRow, protocolsAvailable map[string]struct{}) func(*indexer.Release) bool {
+	return func(r *indexer.Release) bool {
 		if r == nil {
 			return true
 		}
@@ -109,8 +109,8 @@ func extractYear(title string) *int32 {
 	return findYear(normalizeSeparators(title))
 }
 
-func RejectSeasonReleaseFunc(ctx context.Context, params SeriesReleaseFilterParams, profile []sqlcdb.ListQualityProfileRowsRow, protocolsAvailable map[string]struct{}) func(*prowlarr.ReleaseResource) bool {
-	return func(r *prowlarr.ReleaseResource) bool {
+func RejectSeasonReleaseFunc(ctx context.Context, params SeriesReleaseFilterParams, profile []sqlcdb.ListQualityProfileRowsRow, protocolsAvailable map[string]struct{}) func(*indexer.Release) bool {
+	return func(r *indexer.Release) bool {
 		if rejectSeriesRelease(params, params.SeasonNumber, 0, true, r) {
 			return true
 		}
@@ -118,11 +118,11 @@ func RejectSeasonReleaseFunc(ctx context.Context, params SeriesReleaseFilterPara
 	}
 }
 
-func rejectSeasonReleaseFunc(seriesTitle string, seasonNumber int64, r *prowlarr.ReleaseResource) bool {
+func rejectSeasonReleaseFunc(seriesTitle string, seasonNumber int64, r *indexer.Release) bool {
 	return rejectSeriesRelease(SeriesReleaseFilterParams{Title: seriesTitle}, seasonNumber, 0, true, r)
 }
 
-func rejectSeriesRelease(params SeriesReleaseFilterParams, seasonNumber, episodeNumber int64, seasonPack bool, r *prowlarr.ReleaseResource) bool {
+func rejectSeriesRelease(params SeriesReleaseFilterParams, seasonNumber, episodeNumber int64, seasonPack bool, r *indexer.Release) bool {
 	if r == nil {
 		return true
 	}
@@ -184,8 +184,8 @@ func rejectSeriesRelease(params SeriesReleaseFilterParams, seasonNumber, episode
 	return !seriesReleaseTitleMatches(params.Title, foundTitle[:boundary], params.Year)
 }
 
-func RejectEpisodeReleaseFunc(ctx context.Context, params SeriesReleaseFilterParams, profile []sqlcdb.ListQualityProfileRowsRow, protocolsAvailable map[string]struct{}) func(*prowlarr.ReleaseResource) bool {
-	return func(r *prowlarr.ReleaseResource) bool {
+func RejectEpisodeReleaseFunc(ctx context.Context, params SeriesReleaseFilterParams, profile []sqlcdb.ListQualityProfileRowsRow, protocolsAvailable map[string]struct{}) func(*indexer.Release) bool {
+	return func(r *indexer.Release) bool {
 		if rejectSeriesRelease(params, params.SeasonNumber, params.EpisodeNumber, false, r) {
 			return true
 		}
@@ -226,7 +226,7 @@ func isVideoResolution(width, height int64) bool {
 	}
 }
 
-func rejectEpisodeReleaseFunc(seriesTitle string, seasonNumber, episodeNumber int64, r *prowlarr.ReleaseResource) bool {
+func rejectEpisodeReleaseFunc(seriesTitle string, seasonNumber, episodeNumber int64, r *indexer.Release) bool {
 	return rejectSeriesRelease(SeriesReleaseFilterParams{Title: seriesTitle}, seasonNumber, episodeNumber, false, r)
 }
 
@@ -253,10 +253,10 @@ func seriesReleaseTitleMatches(seriesTitle, prefix string, expectedYear *int32) 
 }
 
 // rejectReleaseFunc returns a function that returns true if the given release should be rejected
-func rejectReleaseFunc(ctx context.Context, runtime int64, profile []sqlcdb.ListQualityProfileRowsRow, protocolsAvailable map[string]struct{}) func(*prowlarr.ReleaseResource) bool {
+func rejectReleaseFunc(ctx context.Context, runtime int64, profile []sqlcdb.ListQualityProfileRowsRow, protocolsAvailable map[string]struct{}) func(*indexer.Release) bool {
 	log := logger.FromCtx(ctx)
 
-	return func(r *prowlarr.ReleaseResource) bool {
+	return func(r *indexer.Release) bool {
 		if r == nil {
 			return true
 		}
@@ -299,8 +299,8 @@ func rejectReleaseFunc(ctx context.Context, runtime int64, profile []sqlcdb.List
 }
 
 // sortReleaseFunc returns a function that sorts releases by their number of seeders currently
-func sortReleaseFunc() func(*prowlarr.ReleaseResource, *prowlarr.ReleaseResource) int {
-	return func(r1 *prowlarr.ReleaseResource, r2 *prowlarr.ReleaseResource) int {
+func sortReleaseFunc() func(*indexer.Release, *indexer.Release) int {
+	return func(r1 *indexer.Release, r2 *indexer.Release) int {
 		return cmp.Compare(nullableDefault(r1.Seeders), nullableDefault(r2.Seeders))
 	}
 }
