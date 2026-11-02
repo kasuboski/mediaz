@@ -30,7 +30,10 @@ func TestNativeNewznabIndexerServiceIntegration(t *testing.T) {
 	var requests []url.Values
 	var requestsMu sync.Mutex
 	feed := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, "/api", r.URL.Path)
+		if r.URL.Path != "/api" {
+			t.Errorf("unexpected path: got %q, want %q", r.URL.Path, "/api")
+			return
+		}
 		q := r.URL.Query()
 		requestsMu.Lock()
 		requests = append(requests, q)

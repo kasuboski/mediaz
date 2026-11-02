@@ -359,7 +359,7 @@ func (n *NewznabIndexerSource) Search(ctx context.Context, id SourceID, categori
 			out = append(out, rel)
 		}
 		offset += len(p.Items)
-		if page == 4 && len(p.Items) > 0 && (p.Total == 0 || offset < p.Total) {
+		if page == 4 && len(p.Items) > 0 && ((p.Total > 0 && offset < p.Total) || (p.Total <= 0 && len(p.Items) >= limit)) {
 			return out, &SearchTruncatedError{Limit: limit * 5, Results: len(out)}
 		}
 		if len(p.Items) == 0 || (p.Total > 0 && offset >= p.Total) || (p.Total <= 0 && len(p.Items) < limit) {
@@ -372,7 +372,7 @@ func (n *NewznabIndexerSource) Search(ctx context.Context, id SourceID, categori
 type SearchTruncatedError struct{ Limit, Results int }
 
 func (e *SearchTruncatedError) Error() string {
-	return fmt.Sprintf("Newznab results truncated at %d pages (%d releases)", e.Limit, e.Results)
+	return fmt.Sprintf("Newznab results truncated at %d-result page budget (%d releases kept)", e.Limit, e.Results)
 }
 func attr(i newznab.Item, key string) string {
 	for k, v := range i.Attributes {

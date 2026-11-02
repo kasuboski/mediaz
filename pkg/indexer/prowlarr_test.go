@@ -261,7 +261,7 @@ func TestProwlarrIndexerSource_Search(t *testing.T) {
 		src, mockClient := newSourceWithMock(ctrl)
 
 		wireReleases := []*prowlarr.ReleaseResource{
-			{ID: ptr.To(int32(8)), Title: nullable.NewNullableWithValue("Movie.2024.1080p.mkv"), Indexer: nullable.NewNullableWithValue("indexer"), IndexerID: ptr.To(int32(4)), DownloadURL: nullable.NewNullableWithValue("https://example.test/download"), TmdbID: ptr.To(int32(42))},
+			{ID: ptr.To(int32(8)), Title: nullable.NewNullableWithValue("Movie.2024.1080p.mkv"), Indexer: nullable.NewNullableWithValue("indexer"), IndexerID: ptr.To(int32(4)), DownloadURL: nullable.NewNullableWithValue("https://example.test/download"), TmdbID: ptr.To(int32(42)), Protocol: ptr.To(prowlarr.DownloadProtocolTorrent), Categories: nullable.NewNullableWithValue([]prowlarr.IndexerCategory{{ID: ptr.To(int32(2000)), Name: nullable.NewNullableWithValue("Movies")}})},
 		}
 		body, err := json.Marshal(wireReleases)
 		require.NoError(t, err)
@@ -274,11 +274,16 @@ func TestProwlarrIndexerSource_Search(t *testing.T) {
 		got, err := src.Search(ctx, 1, nil, indexer.SearchOptions{Query: "Movie"})
 		require.NoError(t, err)
 		require.Equal(t, 1, len(got))
-		assert.Equal(t, int32(8), *got[0].ID)
-		assert.Equal(t, "indexer", got[0].Indexer.MustGet())
-		assert.Equal(t, int32(4), *got[0].IndexerID)
-		assert.Equal(t, "https://example.test/download", got[0].DownloadURL.MustGet())
-		assert.Equal(t, int32(42), *got[0].TmdbID)
+		assert.Equal(t, &indexer.Release{
+			ID:          ptr.To(int32(8)),
+			Title:       nullable.NewNullableWithValue("Movie.2024.1080p.mkv"),
+			Indexer:     nullable.NewNullableWithValue("indexer"),
+			IndexerID:   ptr.To(int32(4)),
+			DownloadURL: nullable.NewNullableWithValue("https://example.test/download"),
+			TmdbID:      ptr.To(int32(42)),
+			Protocol:    ptr.To("torrent"),
+			Categories:  nullable.NewNullableWithValue([]indexer.Category{{ID: ptr.To(int32(2000)), Name: nullable.NewNullableWithValue("Movies")}}),
+		}, got[0])
 	})
 
 	t.Run("formats season and episode in query", func(t *testing.T) {

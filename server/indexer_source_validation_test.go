@@ -4,12 +4,15 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 
+	"github.com/gorilla/mux"
 	"github.com/kasuboski/mediaz/config"
 	"github.com/kasuboski/mediaz/pkg/manager"
 	"github.com/kasuboski/mediaz/pkg/storage"
+	"github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 	mediaSqlite "github.com/kasuboski/mediaz/pkg/storage/sqlite"
 	tmdbMocks "github.com/kasuboski/mediaz/pkg/tmdb/mocks"
 	"github.com/stretchr/testify/require"
@@ -37,9 +40,19 @@ func TestIndexerSourceValidationIsBadRequest(t *testing.T) {
 			if tc.method == http.MethodPost {
 				s.CreateIndexerSource().ServeHTTP(rr, req)
 			} else {
+				seed := sqlcdb.IndexerSource{Name: "existing", Implementation: "newznab", Scheme: "http", Host: "example.com", Enabled: true}
+				id, err := store.CreateIndexerSource(context.Background(), seed)
+				require.NoError(t, err)
+				before, err := store.GetIndexerSource(context.Background(), id)
+				require.NoError(t, err)
+				req = mux.SetURLVars(req, map[string]string{"id": strconv.FormatInt(id, 10)})
 				s.UpdateIndexerSource().ServeHTTP(rr, req)
+				after, err := store.GetIndexerSource(context.Background(), id)
+				require.NoError(t, err)
+				require.Equal(t, before, after)
 			}
 			require.Equal(t, http.StatusBadRequest, rr.Code, rr.Body.String())
+			require.Contains(t, rr.Body.String(), "scheme must be http or https")
 		})
 	}
 }

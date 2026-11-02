@@ -157,6 +157,66 @@ func TestNewznabShortPageContinuesWhenTotalSaysMore(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, got, 120)
 }
+func TestNewznabFifthPageExhaustionAndTruncation(t *testing.T) {
+	tests := []struct {
+		name             string
+		total, lastCount int
+		wantErr          bool
+	}{
+		{name: "unknown short fifth page", total: 0, lastCount: 1},
+		{name: "unknown full fifth page", total: 0, lastCount: 2, wantErr: true},
+		{name: "known remaining total short fifth page", total: 10, lastCount: 1, wantErr: true},
+		{name: "known exhausted short fifth page", total: 9, lastCount: 1},
+		{name: "known exhausted full fifth page", total: 10, lastCount: 2},
+		{name: "negative total short fifth page", total: -1, lastCount: 1},
+		{name: "negative total full fifth page", total: -1, lastCount: 2, wantErr: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			c := mocks.NewMockNewznabClient(ctrl)
+			src := indexer.NewNewznabIndexerSourceWithClient(c, config())
+			cap := capsFixture()
+			cap.Max = 2
+			c.EXPECT().Caps(gomock.Any()).Return(cap, nil)
+			nextOffset := 0
+			c.EXPECT().Search(gomock.Any(), gomock.Any()).Times(5).DoAndReturn(func(_ context.Context, r newznab.SearchRequest) (*newznab.Page, error) {
+				require.Equal(t, 2, r.Limit)
+				require.Equal(t, nextOffset, r.Offset)
+				nextOffset += 2
+				count := 2
+				if r.Offset == 8 {
+					count = tt.lastCount
+				}
+				items := make([]newznab.Item, count)
+				for i := range items {
+					id := fmt.Sprint(r.Offset + i)
+					items[i] = newznab.Item{Title: id, GUID: id, Link: "/x", Size: 1}
+				}
+				return &newznab.Page{Total: tt.total, Items: items}, nil
+			})
+			got, err := src.Search(context.Background(), 1, nil, indexer.SearchOptions{})
+			wantCount := 8 + tt.lastCount
+			require.Len(t, got, wantCount)
+			for i, release := range got {
+				title := fmt.Sprint(i)
+				size, id := int64(1), int32(1)
+				protocol := "usenet"
+				want := &indexer.Release{Size: &size, Title: nullable.NewNullableWithValue(title), GUID: nullable.NewNullableWithValue(title), DownloadURL: nullable.NewNullableWithValue("http://example.test/x"), Indexer: nullable.NewNullableWithValue("NZBGeek"), IndexerID: &id, Protocol: &protocol}
+				require.Equal(t, want, release)
+			}
+			var truncated *indexer.SearchTruncatedError
+			if tt.wantErr {
+				require.ErrorAs(t, err, &truncated)
+				require.Equal(t, &indexer.SearchTruncatedError{Limit: 10, Results: wantCount}, truncated)
+				require.EqualError(t, err, fmt.Sprintf("Newznab results truncated at 10-result page budget (%d releases kept)", wantCount))
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
 func TestNewznabPageBudgetIsTypedPartialError(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	c := mocks.NewMockNewznabClient(ctrl)
