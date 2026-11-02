@@ -1,0 +1,47 @@
+name: mediaz-prowlarr-capture
+
+services:
+  mitmproxy:
+    image: mitmproxy/mitmproxy:12.2.1@sha256:743b6cdc817211d64bc269f5defacca8d14e76e647fc474e5c7244dbcb645141
+    user: "${LOCAL_UID:-1000}:${LOCAL_GID:-100}"
+    restart: unless-stopped
+    entrypoint: ["/bin/sh", "-ec"]
+    # Flow file name: UTC timestamp + random suffix + PID so recorder restarts
+    # never collide on (or append to) one capture file.
+    command:
+      - >-
+        exec mitmdump --listen-host 0.0.0.0 --listen-port 8080
+        --set confdir=/home/mitmproxy/.mitmproxy
+        --set flow_detail=0 --set termlog_verbosity=warn
+        -w "/captures/flows-$$(date -u +%Y%m%dT%H%M%SZ)-$$(head -c 4 /dev/urandom | od -An -tx4 | tr -d ' \n')-$$$$.mitm"
+    volumes:
+      - ./.state/mitm:/home/mitmproxy/.mitmproxy
+      - ./.state/captures:/captures
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "2"
+
+  prowlarr:
+    image: lscr.io/linuxserver/prowlarr@sha256:04be30163fbaf48d6aeee7b5893c9f6614ffbad6d853971df0d6dcdf01c7f104
+    restart: unless-stopped
+    depends_on:
+      - mitmproxy
+    environment:
+      PUID: "${LOCAL_UID:-1000}"
+      PGID: "${LOCAL_GID:-100}"
+      TZ: UTC
+    ports:
+      # Loopback only; override with PROWLARR_PORT=<port> (see start.sh/README).
+      - "127.0.0.1:${PROWLARR_PORT:-9696}:9696"
+    volumes:
+      - ./.state/prowlarr:/config
+      # Only the public CA certificate is shared, not mitmproxy's signing key.
+      - ./.state/mitm/mitmproxy-ca-cert.pem:/capture-ca/mitmproxy-ca.crt:ro
+      - ./trust-capture-ca.sh:/custom-cont-init.d/trust-capture-ca.sh:ro
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "2"
