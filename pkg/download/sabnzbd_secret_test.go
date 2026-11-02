@@ -53,7 +53,7 @@ func TestSabnzbdAddDoesNotExposeSecrets(t *testing.T) {
 				return nil, fmt.Errorf("transport failed for %s?apikey=%s", uri, apiKey)
 			})
 
-			_, err := NewSabnzbdClient(client, "https", "sab.invalid", "", apiKey).Add(ctx, AddRequest{
+			_, err := NewSabnzbdClient(client, "https", "sab.invalid", "", apiKey, "/sabnzbd/api").Add(ctx, AddRequest{
 				Release: &indexer.Release{DownloadURL: nullable.NewNullableWithValue[string](uri)},
 			})
 			require.Error(t, err)

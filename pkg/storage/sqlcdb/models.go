@@ -17,6 +17,7 @@ type DownloadClient struct {
 	Host           string
 	Port           int64
 	ApiKey         sql.NullString
+	ApiPath        sql.NullString
 }
 
 type Episode struct {

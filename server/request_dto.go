@@ -14,11 +14,15 @@ type downloadClientRequest struct {
 	Scheme         string  `json:"Scheme"`
 	Host           string  `json:"Host"`
 	Port           int64   `json:"Port"`
+	APIPath        *string `json:"APIPath"`
 	APIKey         *string `json:"APIKey"`
 }
 
 func (r downloadClientRequest) row() sqlcdb.DownloadClient {
 	c := sqlcdb.DownloadClient{ID: r.ID, Type: r.Type, Implementation: r.Implementation, Scheme: r.Scheme, Host: r.Host, Port: r.Port}
+	if r.APIPath != nil {
+		c.ApiPath = sql.NullString{String: *r.APIPath, Valid: true}
+	}
 	if r.APIKey != nil {
 		c.ApiKey = sql.NullString{String: *r.APIKey, Valid: true}
 	}

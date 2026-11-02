@@ -733,7 +733,7 @@ export interface DownloadClient {
   Scheme: string;
   Host: string;
   Port: number;
-  APIKey?: string | null;
+  APIPath?: string | null;
 }
 
 export interface CreateDownloadClientRequest {
@@ -743,6 +743,8 @@ export interface CreateDownloadClientRequest {
   host: string;
   port: number;
   apiKey?: string | null;
+  apiPath?: string;
+  id?: number;
 }
 
 export interface UpdateDownloadClientRequest extends CreateDownloadClientRequest {

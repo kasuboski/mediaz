@@ -2,6 +2,8 @@ package manager
 
 import (
 	"context"
+	"database/sql"
+	"fmt"
 
 	"github.com/kasuboski/mediaz/pkg/download"
 	"github.com/kasuboski/mediaz/pkg/indexer"
@@ -35,8 +37,19 @@ type UpdateDownloadClientRequest struct {
 
 func (ds DownloadClientService) CreateDownloadClient(ctx context.Context, request AddDownloadClientRequest) (sqlcdb.DownloadClient, error) {
 	downloadClient := request.DownloadClient
+	if downloadClient.Implementation == "sabnzbd" {
+		if !downloadClient.ApiKey.Valid || downloadClient.ApiKey.String == "" {
+			return downloadClient, fmt.Errorf("%w: missing api key", ErrValidation)
+		}
+		if !downloadClient.ApiPath.Valid || downloadClient.ApiPath.String == "" {
+			downloadClient.ApiPath = sql.NullString{String: "/api", Valid: true}
+		}
+		if err := download.ValidateSABConfig(downloadClient.Scheme, downloadClient.Host, downloadClient.Port, downloadClient.ApiPath.String); err != nil {
+			return downloadClient, fmt.Errorf("%w: %v", ErrValidation, err)
+		}
+	}
 
-	id, err := ds.downloadStorage.CreateDownloadClient(ctx, request.DownloadClient)
+	id, err := ds.downloadStorage.CreateDownloadClient(ctx, downloadClient)
 	if err != nil {
 		return downloadClient, err
 	}
@@ -46,14 +59,31 @@ func (ds DownloadClientService) CreateDownloadClient(ctx context.Context, reques
 }
 
 func (ds DownloadClientService) UpdateDownloadClient(ctx context.Context, id int64, request UpdateDownloadClientRequest) (sqlcdb.DownloadClient, error) {
-	if !request.ApiKey.Valid || request.ApiKey.String == "" {
+	needsKey := !request.ApiKey.Valid || request.ApiKey.String == ""
+	needsPath := request.Implementation == "sabnzbd" && !request.ApiPath.Valid
+	if needsKey || needsPath {
 		existing, err := ds.downloadStorage.GetDownloadClient(ctx, id)
 		if err != nil {
 			return sqlcdb.DownloadClient{}, err
 		}
-		request.ApiKey = existing.ApiKey
+		if needsKey {
+			request.ApiKey = existing.ApiKey
+		}
+		if needsPath {
+			request.ApiPath = existing.ApiPath
+		}
 	}
-
+	if request.Implementation == "sabnzbd" {
+		if request.ApiPath.Valid && request.ApiPath.String == "" {
+			request.ApiPath = sql.NullString{String: "/api", Valid: true}
+		}
+		if !request.ApiKey.Valid || request.ApiKey.String == "" {
+			return sqlcdb.DownloadClient{}, fmt.Errorf("%w: missing api key", ErrValidation)
+		}
+		if err := download.ValidateSABConfig(request.Scheme, request.Host, request.Port, request.ApiPath.String); err != nil {
+			return sqlcdb.DownloadClient{}, fmt.Errorf("%w: %v", ErrValidation, err)
+		}
+	}
 	downloadClient := request.DownloadClient
 	downloadClient.ID = id
 
@@ -66,7 +96,36 @@ func (ds DownloadClientService) UpdateDownloadClient(ctx context.Context, id int
 }
 
 func (ds DownloadClientService) TestDownloadClient(ctx context.Context, request AddDownloadClientRequest) error {
-	client, err := ds.factory.NewDownloadClient(request.DownloadClient)
+	config := request.DownloadClient
+	if config.Implementation == "sabnzbd" {
+		loadedExisting := false
+		if config.ID != 0 && (!config.ApiKey.Valid || config.ApiKey.String == "" || !config.ApiPath.Valid) {
+			existing, err := ds.downloadStorage.GetDownloadClient(ctx, config.ID)
+			if err != nil {
+				return err
+			}
+			loadedExisting = true
+			if !config.ApiKey.Valid || config.ApiKey.String == "" {
+				config.ApiKey = existing.ApiKey
+			}
+			if !config.ApiPath.Valid {
+				config.ApiPath = existing.ApiPath
+			}
+		}
+		if !config.ApiKey.Valid || config.ApiKey.String == "" {
+			return fmt.Errorf("%w: missing api key", ErrValidation)
+		}
+		if config.ApiPath.Valid && config.ApiPath.String == "" {
+			config.ApiPath = sql.NullString{String: "/api", Valid: true}
+		}
+		if !loadedExisting && !config.ApiPath.Valid {
+			config.ApiPath = sql.NullString{String: "/api", Valid: true}
+		}
+		if err := download.ValidateSABConfig(config.Scheme, config.Host, config.Port, config.ApiPath.String); err != nil {
+			return fmt.Errorf("%w: %v", ErrValidation, err)
+		}
+	}
+	client, err := ds.factory.NewDownloadClient(config)
 	if err != nil {
 		return err
 	}

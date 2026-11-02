@@ -17,6 +17,80 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
+func boolPointer(v bool) *bool { return &v }
+
+func TestSabnzbdPopulatedQueueAddGetList(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	client := httpMock.NewMockHTTPClient(ctrl)
+	c := NewSabnzbdClient(client, "http", "sab.invalid", "", "key", "/prefix/api/custom")
+	ctx := context.Background()
+	responses := []string{`{"status":true,"nzo_ids":["SABnzbd_nzo_ksfai6"]}`, testQueueResponse, testHistoyResponse,
+		testQueueResponse, testHistoyResponse, testQueueResponse, testHistoyResponse}
+	for i, body := range responses {
+		wantMode := []string{"addurl", "queue", "history", "queue", "history", "queue", "history"}[i]
+		client.EXPECT().Do(gomock.Any()).DoAndReturn(func(req *http.Request) (*http.Response, error) {
+			require.Equal(t, "/prefix/api/custom", req.URL.Path)
+			require.Equal(t, wantMode, req.URL.Query().Get("mode"))
+			return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(bytes.NewBufferString(body))}, nil
+		})
+	}
+	added, err := c.Add(ctx, AddRequest{Release: &indexer.Release{DownloadURL: nullable.NewNullableWithValue[string]("https://provider.invalid/derived.nzb")}})
+	require.NoError(t, err)
+	require.Equal(t, Status{ID: "SABnzbd_nzo_ksfai6", Name: "TV.Show.S04E12.720p.HDTV.x264", Progress: 50, Speed: 1, Size: 1277, FilePaths: []string{"/path2/to/TV.Show.S04E02.720p.BluRay.x264-xHD"}}, added)
+	got, err := c.Get(ctx, GetRequest{ID: "SABnzbd_nzo_p86tgx"})
+	require.NoError(t, err)
+	require.Equal(t, "SABnzbd_nzo_p86tgx", got.ID)
+	listed, err := c.List(ctx)
+	require.NoError(t, err)
+	var queue QueueResponse
+	require.NoError(t, json.Unmarshal([]byte(testQueueResponse), &queue))
+	var history HistoryResponse
+	require.NoError(t, json.Unmarshal([]byte(testHistoyResponse), &history))
+	want, err := queueToStatus(queue.Queue, history.History, "")
+	require.NoError(t, err)
+	require.Equal(t, want, listed)
+}
+
+func TestSabnzbdAddRejectsMissingReleaseURL(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	client := httpMock.NewMockHTTPClient(ctrl)
+	sab := NewSabnzbdClient(client, "http", "sab.invalid", "", "key").(*SabnzbdClient)
+	for _, request := range []AddRequest{{}, {Release: &indexer.Release{DownloadURL: nullable.NewNullableWithValue[string]("")}}} {
+		_, err := sab.Add(context.Background(), request)
+		require.Error(t, err)
+	}
+}
+
+func TestSabnzbdRejectsFailureEnvelope(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	client := httpMock.NewMockHTTPClient(ctrl)
+	c := NewSabnzbdClient(client, "http", "sab.invalid", "", "credential", "/api")
+	client.EXPECT().Do(gomock.Any()).Return(&http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(bytes.NewBufferString(`{"status":false,"error":"credential leaked by server"}`))}, nil)
+	_, err := c.Add(context.Background(), AddRequest{Release: &indexer.Release{DownloadURL: nullable.NewNullableWithValue[string]("https://provider.invalid/item")}})
+	require.Error(t, err)
+	require.NotContains(t, err.Error(), "credential")
+	require.NotContains(t, err.Error(), "leaked by server")
+}
+
+func TestSabnzbdAPIPaths(t *testing.T) {
+	for _, tc := range []struct{ path, want string }{{"", "/api"}, {"/sabnzbd/api", "/sabnzbd/api"}, {"/prefix/api/custom", "/prefix/api/custom"}} {
+		var client *SabnzbdClient
+		if tc.path == "" {
+			client = NewSabnzbdClient(nil, "http", "sab.invalid", "", "key").(*SabnzbdClient)
+		} else {
+			client = NewSabnzbdClient(nil, "http", "sab.invalid", "", "key", tc.path).(*SabnzbdClient)
+		}
+		got, err := client.validatedAPIPath()
+		require.NoError(t, err)
+		require.Equal(t, tc.want, got)
+	}
+	for _, path := range []string{"https://sab.invalid/api", "//sab.invalid/api", "/api?secret=x", "/api#frag", `\\api`, "relative", "/api\\bad", "/api\n"} {
+		client := NewSabnzbdClient(nil, "http", "sab.invalid", "", "key", path).(*SabnzbdClient)
+		_, err := client.List(context.Background())
+		require.Error(t, err, path)
+	}
+}
+
 func TestQueueToStatus(t *testing.T) {
 	var response QueueResponse
 	err := json.Unmarshal([]byte(testQueueResponse), &response)
@@ -30,6 +104,8 @@ func TestQueueToStatus(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Len(t, statuses, 2)
+	assert.Equal(t, "Normal", response.Queue.Slots[0].Priority)
+	assert.Equal(t, "High", response.Queue.Slots[1].Priority)
 	firstStatus := statuses[0]
 	assert.Equal(t, "SABnzbd_nzo_p86tgx", firstStatus.ID)
 	assert.Equal(t, "TV.Show.S04E11.720p.HDTV.x264", firstStatus.Name)
@@ -58,6 +134,7 @@ func TestNewSabnzbdClient(t *testing.T) {
 	assert.Equal(t, mockHttp, sabnzbdClient.http, "HTTP client should match")
 	assert.Equal(t, "http", sabnzbdClient.scheme, "Scheme should match")
 	assert.Equal(t, "secret", sabnzbdClient.apiKey, "ApiKey should match")
+	assert.Equal(t, "/api", sabnzbdClient.apiPath)
 }
 
 func TestSabnzbdClient_Add(t *testing.T) {
@@ -86,7 +163,7 @@ func TestSabnzbdClient_Add(t *testing.T) {
 		}
 
 		addResponse := AddNewsResponse{
-			Status: true,
+			Status: boolPointer(true),
 			NzoIDs: []string{"SABnzbd_nzo_ksfai6"},
 		}
 
@@ -209,7 +286,7 @@ func TestSabnzbdClient_Add(t *testing.T) {
 
 		// Mock the successful Add response
 		addResponse := AddNewsResponse{
-			Status: true,
+			Status: boolPointer(true),
 			NzoIDs: []string{"SABnzbd_nzo_ksfai6"},
 		}
 
@@ -536,10 +613,11 @@ func TestSabnzbdClient_History(t *testing.T) {
 	t.Run("success with ids", func(t *testing.T) {
 		mockHttp := httpMock.NewMockHTTPClient(ctrl)
 		client := SabnzbdClient{
-			http:   mockHttp,
-			host:   "localhost",
-			scheme: "http",
-			apiKey: "secret",
+			http:    mockHttp,
+			host:    "localhost",
+			scheme:  "http",
+			apiKey:  "secret",
+			apiPath: "/api",
 		}
 		ctx := context.Background()
 
@@ -573,10 +651,11 @@ func TestSabnzbdClient_History(t *testing.T) {
 	t.Run("success without ids", func(t *testing.T) {
 		mockHttp := httpMock.NewMockHTTPClient(ctrl)
 		client := SabnzbdClient{
-			http:   mockHttp,
-			host:   "localhost",
-			scheme: "http",
-			apiKey: "secret",
+			http:    mockHttp,
+			host:    "localhost",
+			scheme:  "http",
+			apiKey:  "secret",
+			apiPath: "/api",
 		}
 		ctx := context.Background()
 
@@ -610,10 +689,11 @@ func TestSabnzbdClient_History(t *testing.T) {
 	t.Run("error during request", func(t *testing.T) {
 		mockHttp := httpMock.NewMockHTTPClient(ctrl)
 		client := SabnzbdClient{
-			http:   mockHttp,
-			host:   "localhost",
-			scheme: "http",
-			apiKey: "secret",
+			http:    mockHttp,
+			host:    "localhost",
+			scheme:  "http",
+			apiKey:  "secret",
+			apiPath: "/api",
 		}
 		ctx := context.Background()
 
@@ -628,10 +708,11 @@ func TestSabnzbdClient_History(t *testing.T) {
 	t.Run("error in response", func(t *testing.T) {
 		mockHttp := httpMock.NewMockHTTPClient(ctrl)
 		client := SabnzbdClient{
-			http:   mockHttp,
-			host:   "localhost",
-			scheme: "http",
-			apiKey: "secret",
+			http:    mockHttp,
+			host:    "localhost",
+			scheme:  "http",
+			apiKey:  "secret",
+			apiPath: "/api",
 		}
 
 		ctx := context.Background()
@@ -648,7 +729,9 @@ func TestSabnzbdClient_History(t *testing.T) {
 	})
 }
 
+// Synthetic fixture derived from the public SABnzbd 5.1.3 API response schema; no captured credentials or provider data.
 const testQueueResponse = `{
+    "status": true,
     "queue": {
         "status": "Downloading",
         "speedlimit": "9",
@@ -680,7 +763,7 @@ const testQueueResponse = `{
                 "sizeleft": "1.2 GB",
                 "filename": "TV.Show.S04E11.720p.HDTV.x264",
                 "labels": [],
-                "priority": 1,
+                "priority": "Normal",
                 "cat": "tv",
                 "timeleft": "0:16:44",
                 "percentage": "2.5",
@@ -704,7 +787,7 @@ const testQueueResponse = `{
                     "TOO LARGE",
                     "DUPLICATE"
                 ],
-                "priority": 1,
+                "priority": "High",
                 "cat": "tv",
                 "timeleft": "0:00:00",
                 "percentage": "50",

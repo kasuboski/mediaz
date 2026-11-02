@@ -13,7 +13,7 @@ import (
 func TestMigrations_BaselineOnly(t *testing.T) {
 	version, err := maxMigrationSourceVersion()
 	require.NoError(t, err)
-	assert.Equal(t, uint(4), version)
+	assert.Equal(t, uint(5), version)
 }
 
 // TestMigrations_RunnerIsIdempotent verifies the forward-only runner: the
@@ -35,7 +35,7 @@ func TestMigrations_RunnerIsIdempotent(t *testing.T) {
 	version, exists, err = storedMigrationVersion(db)
 	require.NoError(t, err)
 	assert.True(t, exists)
-	assert.Equal(t, uint64(4), version)
+	assert.Equal(t, uint64(5), version)
 
 	migrated, err = runMigrations(db, ":memory:")
 	require.NoError(t, err)
@@ -44,7 +44,7 @@ func TestMigrations_RunnerIsIdempotent(t *testing.T) {
 	version, exists, err = storedMigrationVersion(db)
 	require.NoError(t, err)
 	assert.True(t, exists)
-	assert.Equal(t, uint64(4), version)
+	assert.Equal(t, uint64(5), version)
 }
 
 func TestMigrations_V3PreservesIndexerSource(t *testing.T) {
@@ -57,6 +57,8 @@ func TestMigrations_V3PreservesIndexerSource(t *testing.T) {
 	_, err = runMigrations(db, ":memory:")
 	require.NoError(t, err)
 	_, err = db.Exec(`ALTER TABLE indexer_source DROP COLUMN api_path`)
+	require.NoError(t, err)
+	_, err = db.Exec(`ALTER TABLE download_client DROP COLUMN api_path`)
 	require.NoError(t, err)
 	_, err = db.Exec(`UPDATE schema_migrations SET version = 3`)
 	require.NoError(t, err)
@@ -94,7 +96,52 @@ func TestMigrations_V3PreservesIndexerSource(t *testing.T) {
 	version, exists, err := storedMigrationVersion(db)
 	require.NoError(t, err)
 	assert.True(t, exists)
-	assert.Equal(t, uint64(4), version)
+	assert.Equal(t, uint64(5), version)
+}
+
+func TestMigrations_V4PreservesDownloadClient(t *testing.T) {
+	db, err := sql.Open("sqlite3", ":memory:")
+	require.NoError(t, err)
+	db.SetMaxOpenConns(1)
+	defer db.Close()
+
+	_, err = runMigrations(db, ":memory:")
+	require.NoError(t, err)
+	// Recreate the v4 schema: migration 4's indexer_source.api_path remains.
+	_, err = db.Exec(`ALTER TABLE download_client DROP COLUMN api_path`)
+	require.NoError(t, err)
+	_, err = db.Exec(`INSERT INTO download_client (id, type, implementation, scheme, host, port, api_key) VALUES (73, 'usenet', 'sabnzbd', 'http', 'sab.example', 8080, 'legacy-secret')`)
+	require.NoError(t, err)
+	_, err = db.Exec(`UPDATE schema_migrations SET version = 4`)
+	require.NoError(t, err)
+
+	migrated, err := runMigrations(db, ":memory:")
+	require.NoError(t, err)
+	assert.True(t, migrated)
+	var id, port int64
+	var clientType, implementation, scheme, host, apiKey string
+	var apiPath sql.NullString
+	require.NoError(t, db.QueryRow(`SELECT id, type, implementation, scheme, host, port, api_key, api_path FROM download_client WHERE id = 73`).Scan(&id, &clientType, &implementation, &scheme, &host, &port, &apiKey, &apiPath))
+	assert.Equal(t, int64(73), id)
+	assert.Equal(t, "usenet", clientType)
+	assert.Equal(t, "sabnzbd", implementation)
+	assert.Equal(t, "http", scheme)
+	assert.Equal(t, "sab.example", host)
+	assert.Equal(t, int64(8080), port)
+	assert.Equal(t, "legacy-secret", apiKey)
+	assert.False(t, apiPath.Valid)
+	version, exists, err := storedMigrationVersion(db)
+	require.NoError(t, err)
+	assert.True(t, exists)
+	assert.Equal(t, uint64(5), version)
+
+	migrated, err = runMigrations(db, ":memory:")
+	require.NoError(t, err)
+	assert.False(t, migrated)
+	version, exists, err = storedMigrationVersion(db)
+	require.NoError(t, err)
+	assert.True(t, exists)
+	assert.Equal(t, uint64(5), version)
 }
 
 func TestMigrations_EmptyVersionTableResumes(t *testing.T) {
@@ -110,7 +157,7 @@ func TestMigrations_EmptyVersionTableResumes(t *testing.T) {
 	version, exists, err := storedMigrationVersion(db)
 	require.NoError(t, err)
 	assert.True(t, exists)
-	assert.Equal(t, uint64(4), version)
+	assert.Equal(t, uint64(5), version)
 }
 
 // TestMigrations_RecreateErrorMessage pins the operator-facing error for

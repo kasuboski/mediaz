@@ -1,6 +1,7 @@
 package server
 
 import (
+	"errors"
 	"net/http"
 	"sort"
 
@@ -59,7 +60,11 @@ func (s Server) CreateDownloadClient() http.HandlerFunc {
 
 		result, err := s.manager.CreateDownloadClient(r.Context(), manager.AddDownloadClientRequest{DownloadClient: req.row()})
 		if err != nil {
-			s.respondError(r, w, http.StatusInternalServerError, err)
+			status := http.StatusInternalServerError
+			if errors.Is(err, manager.ErrValidation) {
+				status = http.StatusBadRequest
+			}
+			s.respondError(r, w, status, err)
 			return
 		}
 		s.respond(r, w, http.StatusCreated, downloadClientDTO(result))
@@ -80,7 +85,11 @@ func (s Server) UpdateDownloadClient() http.HandlerFunc {
 
 		result, err := s.manager.UpdateDownloadClient(r.Context(), id, manager.UpdateDownloadClientRequest{DownloadClient: req.row()})
 		if err != nil {
-			s.respondError(r, w, http.StatusInternalServerError, err)
+			status := http.StatusInternalServerError
+			if errors.Is(err, manager.ErrValidation) {
+				status = http.StatusBadRequest
+			}
+			s.respondError(r, w, status, err)
 			return
 		}
 		s.respond(r, w, http.StatusOK, downloadClientDTO(result))

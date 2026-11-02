@@ -1,6 +1,6 @@
 -- name: CreateDownloadClient :one
-INSERT INTO download_client (type, implementation, scheme, host, port, api_key)
-VALUES (?, ?, ?, ?, ?, ?)
+INSERT INTO download_client (type, implementation, scheme, host, port, api_key, api_path)
+VALUES (?, ?, ?, ?, ?, ?, ?)
 RETURNING id;
 
 -- name: GetDownloadClient :one
@@ -11,7 +11,8 @@ SELECT
     scheme,
     host,
     port,
-    api_key
+    api_key,
+    api_path
 FROM download_client
 WHERE id = ?;
 
@@ -23,7 +24,8 @@ SELECT
     scheme,
     host,
     port,
-    api_key
+    api_key,
+    api_path
 FROM download_client
 ORDER BY id ASC;
 
@@ -35,7 +37,8 @@ SET
     scheme = ?,
     host = ?,
     port = ?,
-    api_key = ?
+    api_key = COALESCE(?, api_key),
+    api_path = ?
 WHERE id = ?;
 
 -- name: DeleteDownloadClient :exec

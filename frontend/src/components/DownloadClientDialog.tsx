@@ -21,6 +21,7 @@ export function DownloadClientDialog({ open, onOpenChange, client }: DownloadCli
   const [host, setHost] = useState<string>('');
   const [port, setPort] = useState<string>('');
   const [apiKey, setApiKey] = useState<string>('');
+  const [apiPath, setApiPath] = useState<string>('/api');
   const [testStatus, setTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
 
   const createClient = useCreateDownloadClient();
@@ -35,12 +36,14 @@ export function DownloadClientDialog({ open, onOpenChange, client }: DownloadCli
         setHost(client.Host);
         setPort(client.Port ? client.Port.toString() : '');
         setApiKey('');
+        setApiPath(client.Implementation === 'sabnzbd' ? (client.APIPath || '/sabnzbd/api') : '/api');
       } else {
         setImplementation('transmission');
         setScheme('http');
         setHost('');
         setPort('');
         setApiKey('');
+        setApiPath('/api');
       }
       setTestStatus('idle');
     }
@@ -59,12 +62,14 @@ export function DownloadClientDialog({ open, onOpenChange, client }: DownloadCli
     setTestStatus('testing');
 
     const request: CreateDownloadClientRequest = {
+      ...(client ? { id: client.ID } : {}),
       type: implementation === 'transmission' ? 'torrent' : 'usenet',
       implementation,
       scheme,
       host,
       port: port ? parseInt(port) : 0,
-      apiKey: implementation === 'sabnzbd' ? (apiKey || client?.APIKey || null) : null,
+      apiKey: implementation === 'sabnzbd' ? (apiKey || null) : null,
+      ...(implementation === 'sabnzbd' ? { apiPath } : {}),
     };
 
     try {
@@ -88,12 +93,14 @@ export function DownloadClientDialog({ open, onOpenChange, client }: DownloadCli
     }
 
     const request: CreateDownloadClientRequest = {
+      ...(client ? { id: client.ID } : {}),
       type: implementation === 'transmission' ? 'torrent' : 'usenet',
       implementation,
       scheme,
       host,
       port: port ? parseInt(port) : 0,
       apiKey: implementation === 'sabnzbd' ? (apiKey || null) : null,
+      ...(implementation === 'sabnzbd' ? { apiPath } : {}),
     };
 
     setTestStatus('testing');
@@ -132,7 +139,14 @@ export function DownloadClientDialog({ open, onOpenChange, client }: DownloadCli
         <div className="grid gap-4 py-4">
           <div className="grid gap-2">
             <Label htmlFor="implementation">Implementation</Label>
-            <Select value={implementation} defaultValue="transmission" onValueChange={setImplementation} disabled={!!client}>
+            <Select value={implementation} defaultValue="transmission" onValueChange={(value) => {
+              setImplementation(value);
+              if (value === 'sabnzbd') {
+                if (!client && !port) setPort('8080');
+                setApiPath('/api');
+              }
+              setTestStatus('idle');
+            }} disabled={!!client}>
               <SelectTrigger id="implementation">
                 <SelectValue />
               </SelectTrigger>
@@ -180,15 +194,22 @@ export function DownloadClientDialog({ open, onOpenChange, client }: DownloadCli
           </div>
 
           {implementation === 'sabnzbd' && (
-            <div className="grid gap-2">
-              <Label htmlFor="apiKey">API Key</Label>
-              <Input
-                id="apiKey"
-                type="password"
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                placeholder={client ? '' : 'required for SABnzbd'}
-              />
+            <div className="grid gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="apiPath">API path</Label>
+                <Input id="apiPath" value={apiPath} aria-describedby="apiPath-help" onChange={(e) => { setApiPath(e.target.value); setTestStatus('idle'); }} placeholder="/api" />
+                <p id="apiPath-help" className="text-sm text-muted-foreground">Use /api for default SABnzbd, /sabnzbd/api for legacy installations, or your proxy API path.</p>
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="apiKey">API Key</Label>
+                <Input
+                  id="apiKey"
+                  type="password"
+                  value={apiKey}
+                  onChange={(e) => setApiKey(e.target.value)}
+                  placeholder={client ? '' : 'required for SABnzbd'}
+                />
+              </div>
             </div>
           )}
 
