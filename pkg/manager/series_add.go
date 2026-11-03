@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"sort"
 	"github.com/kasuboski/mediaz/pkg/storage"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 	"time"
@@ -38,12 +39,28 @@ func (s SeriesService) detailSeasons(ctx context.Context, metadataID, seriesID i
 		for j, child := range season.Episodes {
 			if v, ok := children[child.Number]; ok {
 				season.Episodes[j] = v
+				delete(children, child.Number)
+			}
+		}
+		// Local episodes discovered from files may have no metadata match; keep them visible
+		// after the metadata-backed entries so they stay selectable.
+		for _, child := range stored.Episodes {
+			if _, unmatched := children[child.Number]; unmatched {
+				season.Episodes = append(season.Episodes, child)
 			}
 		}
 		stored.Episodes = season.Episodes
 		stored.EpisodeCount = int32(len(season.Episodes))
 		tree[i] = stored
+		delete(byNumber, season.Number)
 	}
+	// Local seasons absent from the metadata tree (file-discovered only) stay visible.
+	unmatchedSeasons := make([]SeasonResult, 0, len(byNumber))
+	for _, season := range byNumber {
+		unmatchedSeasons = append(unmatchedSeasons, season)
+	}
+	sort.Slice(unmatchedSeasons, func(a, b int) bool { return unmatchedSeasons[a].Number < unmatchedSeasons[b].Number })
+	tree = append(tree, unmatchedSeasons...)
 	return tree, nil
 }
 

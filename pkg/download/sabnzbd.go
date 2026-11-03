@@ -358,7 +358,9 @@ func (c *SabnzbdClient) do(ctx context.Context, url *url.URL) ([]byte, error) {
 		Status *bool `json:"status"`
 	}
 	if json.Unmarshal(b, &envelope) == nil && envelope.Status != nil && !*envelope.Status {
-		return nil, errors.New("SABnzbd rejected request")
+		// The server answered with an explicit rejection: no job was created, so this is a definite
+		// (not transport-ambiguous) failure. Wrapping lets admission release the TV claim.
+		return nil, &SubmissionRejectedError{Err: errors.New("SABnzbd rejected request")}
 	}
 	return b, nil
 }

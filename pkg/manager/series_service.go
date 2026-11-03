@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"sort"
 
 	"github.com/kasuboski/mediaz/pkg/library"
 	"github.com/kasuboski/mediaz/pkg/logger"
@@ -721,10 +722,40 @@ func (s SeriesService) getSeasonsWithEpisodes(ctx context.Context, seriesID int6
 		return nil, err
 	}
 	results := make([]SeasonResult, 0, len(seasons))
+	// Local seasons with no linked metadata (file-discovered) must stay visible too.
+	unmatchedSeasons := make([]SeasonResult, 0)
 	for _, season := range seasons {
 		// Get season metadata for rich data
 		if !season.Season.SeasonMetadataID.Valid {
-			log.Debug("season has no metadata ID, skipping", zap.Int64("seasonID", season.Season.ID))
+			fallback := SeasonResult{
+				SeriesID:     season.Season.SeriesID,
+				Number:       season.Season.SeasonNumber,
+				Title:        fmt.Sprintf("Season %d", season.Season.SeasonNumber),
+				Monitored:    season.Season.Monitored == 1,
+				EpisodeCount: int32(len(episodesBySeasonID[season.Season.ID])),
+				Episodes:     make([]EpisodeResult, 0, len(episodesBySeasonID[season.Season.ID])),
+			}
+			fallback.ID = ptrInt64(season.Season.ID)
+			if season.Season.QualityProfileID.Valid {
+				fallback.QualityProfileID = ptrInt64(season.Season.QualityProfileID.Int64)
+			}
+			effective, source := ResolveTVQualityProfileID(parent.Series.QualityProfileID, season.Season.QualityProfileID, sql.NullInt64{})
+			fallback.EffectiveQualityProfileID, fallback.QualityProfileSource = &effective, &source
+			for _, episode := range episodesBySeasonID[season.Season.ID] {
+				child := buildEpisodeResult(episode, nil, season.Season.SeriesID, season.Season.SeasonNumber)
+				child.ID = ptrInt64(episode.Episode.ID)
+				if episode.State != "" {
+					state := episode.State
+					child.State = &state
+				}
+				if episode.Episode.QualityProfileID.Valid {
+					child.QualityProfileID = ptrInt64(episode.Episode.QualityProfileID.Int64)
+				}
+				effective, source := ResolveTVQualityProfileID(parent.Series.QualityProfileID, season.Season.QualityProfileID, episode.Episode.QualityProfileID)
+				child.EffectiveQualityProfileID, child.QualityProfileSource = &effective, &source
+				fallback.Episodes = append(fallback.Episodes, child)
+			}
+			unmatchedSeasons = append(unmatchedSeasons, fallback)
 			continue
 		}
 
@@ -780,6 +811,8 @@ func (s SeriesService) getSeasonsWithEpisodes(ctx context.Context, seriesID int6
 
 		results = append(results, result)
 	}
+	sort.Slice(unmatchedSeasons, func(a, b int) bool { return unmatchedSeasons[a].Number < unmatchedSeasons[b].Number })
+	results = append(results, unmatchedSeasons...)
 
 	return results, nil
 }

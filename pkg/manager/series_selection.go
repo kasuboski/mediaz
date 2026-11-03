@@ -78,8 +78,6 @@ func (p *EpisodeSelectionUpdate) UnmarshalJSON(data []byte) error {
 }
 
 func (s SeriesService) UpdateSelection(ctx context.Context, id int64, patch SeriesSelectionPatch) (*TVDetailResult, error) {
-	unlock := storage.LockTVAdmission(id)
-	defer unlock()
 	if id <= 0 {
 		return nil, fmt.Errorf("%w: invalid series id", ErrValidation)
 	}
@@ -125,7 +123,12 @@ func (s SeriesService) UpdateSelection(ctx context.Context, id int64, patch Seri
 		}
 		p.Episodes = append(p.Episodes, storage.EpisodeSelectionPatch{ID: item.ID, Monitored: item.Monitored, QualityProfileID: q})
 	}
-	if err := s.seriesStorage.ApplySeriesSelectionPatch(ctx, id, p); err != nil {
+	// The admission stripe only has to cover the validate-and-apply step; release it before
+	// any remote TMDB fetch so admission/refresh for this and neighboring series are not blocked.
+	unlock := storage.LockTVAdmission(id)
+	err := s.seriesStorage.ApplySeriesSelectionPatch(ctx, id, p)
+	unlock()
+	if err != nil {
 		return nil, err
 	}
 	row, err := s.seriesStorage.GetSeriesByID(ctx, id)

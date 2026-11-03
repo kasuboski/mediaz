@@ -440,7 +440,9 @@ func (m MediaManager) reconcileMissingSeries(ctx context.Context, series sqlcdb.
 		}
 	}
 
-	if allMissingSeasonsUnreleased {
+	// Only a series currently in the missing state may revert to continuing; the broad
+	// monitored listing above stays for per-episode acquisition work.
+	if allMissingSeasonsUnreleased && storage.SeriesState(series.State) == storage.SeriesStateMissing {
 		log.Info("all missing seasons only have unreleased episodes, reverting series state to continuing")
 		err := m.updateSeriesState(ctx, int64(series.Series.ID), storage.SeriesStateContinuing, nil)
 		if err != nil {
