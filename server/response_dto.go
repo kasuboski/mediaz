@@ -53,21 +53,16 @@ func seriesDTO(row *sqlcdb.GetSeriesRow) *seriesResponse {
 
 // No APIKey field: credentials are write-only at the HTTP boundary.
 type downloadClientResponse struct {
-	ID             int64   `json:"ID"`
-	Type           string  `json:"Type"`
-	Implementation string  `json:"Implementation"`
-	Scheme         string  `json:"Scheme"`
-	Host           string  `json:"Host"`
-	Port           int64   `json:"Port"`
-	APIPath        *string `json:"APIPath,omitempty"`
+	ID             int64  `json:"ID"`
+	Type           string `json:"Type"`
+	Implementation string `json:"Implementation"`
+	Scheme         string `json:"Scheme"`
+	Host           string `json:"Host"`
+	Port           int64  `json:"Port"`
 }
 
 func downloadClientDTO(c sqlcdb.DownloadClient) downloadClientResponse {
-	r := downloadClientResponse{ID: c.ID, Type: c.Type, Implementation: c.Implementation, Scheme: c.Scheme, Host: c.Host, Port: c.Port}
-	if c.ApiPath.Valid {
-		r.APIPath = &c.ApiPath.String
-	}
-	return r
+	return downloadClientResponse{ID: c.ID, Type: c.Type, Implementation: c.Implementation, Scheme: c.Scheme, Host: c.Host, Port: c.Port}
 }
 func downloadClientsDTO(clients []sqlcdb.DownloadClient) []downloadClientResponse {
 	if clients == nil {

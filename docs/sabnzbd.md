@@ -1,16 +1,11 @@
-# SABnzbd download client configuration
+# SABnzbd
 
-Mediaz's SABnzbd API integration is compatible with SABnzbd 5.1.3. Configure it from **Settings → Download Clients** (or the corresponding download-client form):
+Mediaz targets SABnzbd **5.1.3** and uses its modern `/api` endpoint. Older SAB versions and custom API prefixes are not supported by this adapter.
 
-- **Protocol** is `http` or `https` and applies to the connection scheme.
-- **Host** is the hostname or IP address; enter the **Port** separately. The dialog suggests port `8080` for a new SABnzbd client; this is a form default, not automatic port discovery or a server-side default. IPv6 literals in the legacy inline `host:port` form are accepted where unambiguous; conflicts with a separately supplied port are rejected.
-- **API path** is the full path to SABnzbd's API endpoint, not a base URL. New clients default to `/api`. Existing clients with a legacy null path continue using `/sabnzbd/api`. Use `/sabnzbd/api` for legacy installations or enter the full custom path exposed by a reverse proxy, such as `/sab/api`.
-- **API key** is write-only: it is not returned by the API. On edit, leave it blank to use the saved key; the client ID is supplied for connection tests so the server can reuse that key. Enter a key only to replace it.
+Configure a download client with implementation `sabnzbd`, scheme (`http` or `https`), host, port (normally `8080`), and API key. Use HTTPS outside a trusted local network. The host is a hostname or IP address, not a URL; IPv6 is supported. An inline host port must agree with the separate port if both are set.
 
-Requests use bounded timeouts (30 seconds) and response reads are limited to 8 MiB. SABnzbd request errors are reported without exposing request URLs or query-string credentials; API keys are sent to SABnzbd as query parameters, so use HTTPS when traffic crosses an untrusted network. The API path is validated as a path, not a URL, and requests do not follow redirects.
+No database migration or additional API-path setting is needed. The client honors the configured port, decodes textual queue priorities, rejects explicit API failures, blocks redirects, limits responses to 8 MiB, and uses a 30-second HTTP timeout. Client logs and errors do not include API keys or download URLs.
 
-## Compatibility and scope
+Tests exercise populated Add/Get/List responses and actual HTTP endpoint selection. Real verification also passed against a disposable SABnzbd 5.1.3 instance: the factory-created client used `/api`, added and retrieved a paused synthetic job, and SAB parsed one file's metadata with textual `Normal` priority and zero progress. No NNTP servers or provider accounts were configured. The owned job was deleted, queue/history verified empty, and the disposable container/network removed.
 
-The path field is nullable for existing saved clients: a null value preserves the legacy `/sabnzbd/api` behavior, while new clients use `/api`. A custom value is stored and reused on edit. This compatibility does not imply that the integration covers every SABnzbd API feature: the pre-existing history-only completion/import gap is outside this change, and full completion/import support is not claimed.
-
-Automated validation uses derived synthetic fixtures and tests; it does not validate live provider payloads or require a live SABnzbd instance.
+This does not prove a complete download/import workflow: existing history-only completion tracking and completed-file discovery remain separate limitations.

@@ -15,7 +15,6 @@ func (s *SQLite) CreateDownloadClient(ctx context.Context, client sqlcdb.Downloa
 		Host:           client.Host,
 		Port:           client.Port,
 		ApiKey:         client.ApiKey,
-		ApiPath:        client.ApiPath,
 	})
 }
 
@@ -43,7 +42,6 @@ func (s *SQLite) UpdateDownloadClient(ctx context.Context, id int64, client sqlc
 		Host:           client.Host,
 		Port:           client.Port,
 		ApiKey:         client.ApiKey,
-		ApiPath:        client.ApiPath,
 		ID:             id,
 	})
 }

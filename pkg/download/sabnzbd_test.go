@@ -22,14 +22,14 @@ func boolPointer(v bool) *bool { return &v }
 func TestSabnzbdPopulatedQueueAddGetList(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	client := httpMock.NewMockHTTPClient(ctrl)
-	c := NewSabnzbdClient(client, "http", "sab.invalid", "", "key", "/prefix/api/custom")
+	c := NewSabnzbdClient(client, "http", "sab.invalid", "", "key")
 	ctx := context.Background()
 	responses := []string{`{"status":true,"nzo_ids":["SABnzbd_nzo_ksfai6"]}`, testQueueResponse, testHistoyResponse,
 		testQueueResponse, testHistoyResponse, testQueueResponse, testHistoyResponse}
 	for i, body := range responses {
 		wantMode := []string{"addurl", "queue", "history", "queue", "history", "queue", "history"}[i]
 		client.EXPECT().Do(gomock.Any()).DoAndReturn(func(req *http.Request) (*http.Response, error) {
-			require.Equal(t, "/prefix/api/custom", req.URL.Path)
+			require.Equal(t, "/api", req.URL.Path)
 			require.Equal(t, wantMode, req.URL.Query().Get("mode"))
 			return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(bytes.NewBufferString(body))}, nil
 		})
@@ -64,31 +64,12 @@ func TestSabnzbdAddRejectsMissingReleaseURL(t *testing.T) {
 func TestSabnzbdRejectsFailureEnvelope(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	client := httpMock.NewMockHTTPClient(ctrl)
-	c := NewSabnzbdClient(client, "http", "sab.invalid", "", "credential", "/api")
+	c := NewSabnzbdClient(client, "http", "sab.invalid", "", "credential")
 	client.EXPECT().Do(gomock.Any()).Return(&http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(bytes.NewBufferString(`{"status":false,"error":"credential leaked by server"}`))}, nil)
 	_, err := c.Add(context.Background(), AddRequest{Release: &indexer.Release{DownloadURL: nullable.NewNullableWithValue[string]("https://provider.invalid/item")}})
 	require.Error(t, err)
 	require.NotContains(t, err.Error(), "credential")
 	require.NotContains(t, err.Error(), "leaked by server")
-}
-
-func TestSabnzbdAPIPaths(t *testing.T) {
-	for _, tc := range []struct{ path, want string }{{"", "/api"}, {"/sabnzbd/api", "/sabnzbd/api"}, {"/prefix/api/custom", "/prefix/api/custom"}} {
-		var client *SabnzbdClient
-		if tc.path == "" {
-			client = NewSabnzbdClient(nil, "http", "sab.invalid", "", "key").(*SabnzbdClient)
-		} else {
-			client = NewSabnzbdClient(nil, "http", "sab.invalid", "", "key", tc.path).(*SabnzbdClient)
-		}
-		got, err := client.validatedAPIPath()
-		require.NoError(t, err)
-		require.Equal(t, tc.want, got)
-	}
-	for _, path := range []string{"https://sab.invalid/api", "//sab.invalid/api", "/api?secret=x", "/api#frag", `\\api`, "relative", "/api\\bad", "/api\n"} {
-		client := NewSabnzbdClient(nil, "http", "sab.invalid", "", "key", path).(*SabnzbdClient)
-		_, err := client.List(context.Background())
-		require.Error(t, err, path)
-	}
 }
 
 func TestQueueToStatus(t *testing.T) {
@@ -134,7 +115,6 @@ func TestNewSabnzbdClient(t *testing.T) {
 	assert.Equal(t, mockHttp, sabnzbdClient.http, "HTTP client should match")
 	assert.Equal(t, "http", sabnzbdClient.scheme, "Scheme should match")
 	assert.Equal(t, "secret", sabnzbdClient.apiKey, "ApiKey should match")
-	assert.Equal(t, "/api", sabnzbdClient.apiPath)
 }
 
 func TestSabnzbdClient_Add(t *testing.T) {
@@ -613,11 +593,10 @@ func TestSabnzbdClient_History(t *testing.T) {
 	t.Run("success with ids", func(t *testing.T) {
 		mockHttp := httpMock.NewMockHTTPClient(ctrl)
 		client := SabnzbdClient{
-			http:    mockHttp,
-			host:    "localhost",
-			scheme:  "http",
-			apiKey:  "secret",
-			apiPath: "/api",
+			http:   mockHttp,
+			host:   "localhost",
+			scheme: "http",
+			apiKey: "secret",
 		}
 		ctx := context.Background()
 
@@ -651,11 +630,10 @@ func TestSabnzbdClient_History(t *testing.T) {
 	t.Run("success without ids", func(t *testing.T) {
 		mockHttp := httpMock.NewMockHTTPClient(ctrl)
 		client := SabnzbdClient{
-			http:    mockHttp,
-			host:    "localhost",
-			scheme:  "http",
-			apiKey:  "secret",
-			apiPath: "/api",
+			http:   mockHttp,
+			host:   "localhost",
+			scheme: "http",
+			apiKey: "secret",
 		}
 		ctx := context.Background()
 
@@ -689,11 +667,10 @@ func TestSabnzbdClient_History(t *testing.T) {
 	t.Run("error during request", func(t *testing.T) {
 		mockHttp := httpMock.NewMockHTTPClient(ctrl)
 		client := SabnzbdClient{
-			http:    mockHttp,
-			host:    "localhost",
-			scheme:  "http",
-			apiKey:  "secret",
-			apiPath: "/api",
+			http:   mockHttp,
+			host:   "localhost",
+			scheme: "http",
+			apiKey: "secret",
 		}
 		ctx := context.Background()
 
@@ -708,11 +685,10 @@ func TestSabnzbdClient_History(t *testing.T) {
 	t.Run("error in response", func(t *testing.T) {
 		mockHttp := httpMock.NewMockHTTPClient(ctrl)
 		client := SabnzbdClient{
-			http:    mockHttp,
-			host:    "localhost",
-			scheme:  "http",
-			apiKey:  "secret",
-			apiPath: "/api",
+			http:   mockHttp,
+			host:   "localhost",
+			scheme: "http",
+			apiKey: "secret",
 		}
 
 		ctx := context.Background()

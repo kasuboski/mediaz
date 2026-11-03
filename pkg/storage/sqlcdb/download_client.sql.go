@@ -11,8 +11,8 @@ import (
 )
 
 const createDownloadClient = `-- name: CreateDownloadClient :one
-INSERT INTO download_client (type, implementation, scheme, host, port, api_key, api_path)
-VALUES (?, ?, ?, ?, ?, ?, ?)
+INSERT INTO download_client (type, implementation, scheme, host, port, api_key)
+VALUES (?, ?, ?, ?, ?, ?)
 RETURNING id
 `
 
@@ -23,7 +23,6 @@ type CreateDownloadClientParams struct {
 	Host           string
 	Port           int64
 	ApiKey         sql.NullString
-	ApiPath        sql.NullString
 }
 
 func (q *Queries) CreateDownloadClient(ctx context.Context, arg CreateDownloadClientParams) (int64, error) {
@@ -34,7 +33,6 @@ func (q *Queries) CreateDownloadClient(ctx context.Context, arg CreateDownloadCl
 		arg.Host,
 		arg.Port,
 		arg.ApiKey,
-		arg.ApiPath,
 	)
 	var id int64
 	err := row.Scan(&id)
@@ -58,8 +56,7 @@ SELECT
     scheme,
     host,
     port,
-    api_key,
-    api_path
+    api_key
 FROM download_client
 WHERE id = ?
 `
@@ -75,7 +72,6 @@ func (q *Queries) GetDownloadClient(ctx context.Context, id int64) (DownloadClie
 		&i.Host,
 		&i.Port,
 		&i.ApiKey,
-		&i.ApiPath,
 	)
 	return i, err
 }
@@ -88,8 +84,7 @@ SELECT
     scheme,
     host,
     port,
-    api_key,
-    api_path
+    api_key
 FROM download_client
 ORDER BY id ASC
 `
@@ -111,7 +106,6 @@ func (q *Queries) ListDownloadClients(ctx context.Context) ([]DownloadClient, er
 			&i.Host,
 			&i.Port,
 			&i.ApiKey,
-			&i.ApiPath,
 		); err != nil {
 			return nil, err
 		}
@@ -134,8 +128,7 @@ SET
     scheme = ?,
     host = ?,
     port = ?,
-    api_key = COALESCE(?, api_key),
-    api_path = ?
+    api_key = ?
 WHERE id = ?
 `
 
@@ -146,7 +139,6 @@ type UpdateDownloadClientParams struct {
 	Host           string
 	Port           int64
 	ApiKey         sql.NullString
-	ApiPath        sql.NullString
 	ID             int64
 }
 
@@ -158,7 +150,6 @@ func (q *Queries) UpdateDownloadClient(ctx context.Context, arg UpdateDownloadCl
 		arg.Host,
 		arg.Port,
 		arg.ApiKey,
-		arg.ApiPath,
 		arg.ID,
 	)
 	return err

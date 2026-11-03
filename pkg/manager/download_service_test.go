@@ -84,7 +84,6 @@ func TestUpdateDownloadClient(t *testing.T) {
 			},
 		}
 
-		store.EXPECT().GetDownloadClient(ctx, int64(1)).Return(sqlcdb.DownloadClient{ApiKey: sql.NullString{String: "stored", Valid: true}}, nil)
 		store.EXPECT().UpdateDownloadClient(ctx, int64(1), gomock.Any()).Return(nil)
 
 		result, err := ds.UpdateDownloadClient(ctx, 1, request)

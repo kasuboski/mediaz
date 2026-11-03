@@ -40,7 +40,7 @@ func NewDownloadClientFactory(mountPrefix ...string) Factory {
 }
 
 // ValidateSABConfig validates endpoint fields without performing network I/O.
-func ValidateSABConfig(scheme, host string, port int64, apiPath string) error {
+func ValidateSABConfig(scheme, host string, port int64) error {
 	if scheme != "http" && scheme != "https" {
 		return errors.New("SABnzbd scheme must be http or https")
 	}
@@ -53,15 +53,6 @@ func ValidateSABConfig(scheme, host string, port int64, apiPath string) error {
 	}
 	if inline != 0 && port != 0 && int64(inline) != port {
 		return errors.New("conflicting SABnzbd ports")
-	}
-	if apiPath == "" {
-		apiPath = "/sabnzbd/api"
-	}
-	if strings.HasPrefix(apiPath, "//") {
-		return errors.New("invalid SABnzbd API path")
-	}
-	if err := validateSABAPIPath(apiPath); err != nil {
-		return err
 	}
 	return nil
 }
@@ -128,11 +119,7 @@ func (d DownloadClientFactory) NewDownloadClient(config sqlcdb.DownloadClient) (
 		if !config.ApiKey.Valid || config.ApiKey.String == "" {
 			return nil, errors.New("missing api key")
 		}
-		apiPath := config.ApiPath.String
-		if !config.ApiPath.Valid || apiPath == "" {
-			apiPath = "/sabnzbd/api"
-		}
-		if err := ValidateSABConfig(config.Scheme, config.Host, config.Port, apiPath); err != nil {
+		if err := ValidateSABConfig(config.Scheme, config.Host, config.Port); err != nil {
 			return nil, err
 		}
 		hostname, inline, _ := parseSABHost(config.Host)
@@ -144,7 +131,7 @@ func (d DownloadClientFactory) NewDownloadClient(config sqlcdb.DownloadClient) (
 				host = "[" + hostname + "]"
 			}
 		}
-		return NewSabnzbdClient(sabHTTPClient(), config.Scheme, host, d.downloadMountPrefix, config.ApiKey.String, apiPath), nil
+		return NewSabnzbdClient(sabHTTPClient(), config.Scheme, host, d.downloadMountPrefix, config.ApiKey.String), nil
 	default:
 		return nil, fmt.Errorf("unsupported client implementation: %v", config.Implementation)
 	}

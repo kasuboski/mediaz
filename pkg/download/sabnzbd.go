@@ -22,38 +22,10 @@ type SabnzbdClient struct {
 	host        string
 	apiKey      string
 	mountPrefix string
-	apiPath     string
 }
 
-func NewSabnzbdClient(http mhttp.HTTPClient, scheme, host, mountPrefix, apiKey string, apiPath ...string) DownloadClient {
-	path := "/api"
-	if len(apiPath) > 0 {
-		path = apiPath[0]
-	}
-	return &SabnzbdClient{http: http, scheme: scheme, host: host, apiKey: apiKey, mountPrefix: mountPrefix, apiPath: path}
-}
-
-func validateSABAPIPath(p string) error {
-	if p == "" || !strings.HasPrefix(p, "/") || strings.ContainsAny(p, "\\\\?#") {
-		return errors.New("invalid SABnzbd API path")
-	}
-	for _, r := range p {
-		if r < 0x20 || r == 0x7f {
-			return errors.New("invalid SABnzbd API path")
-		}
-	}
-	u, err := url.Parse(p)
-	if err != nil || u.IsAbs() || u.Host != "" || u.RawQuery != "" || u.Fragment != "" {
-		return errors.New("invalid SABnzbd API path")
-	}
-	return nil
-}
-
-func (c *SabnzbdClient) validatedAPIPath() (string, error) {
-	if err := validateSABAPIPath(c.apiPath); err != nil {
-		return "", err
-	}
-	return c.apiPath, nil
+func NewSabnzbdClient(http mhttp.HTTPClient, scheme, host, mountPrefix, apiKey string) DownloadClient {
+	return &SabnzbdClient{http: http, scheme: scheme, host: host, apiKey: apiKey, mountPrefix: mountPrefix}
 }
 
 type AddNewsResponse struct {
@@ -74,11 +46,7 @@ func (c *SabnzbdClient) Add(ctx context.Context, request AddRequest) (Status, er
 		return status, errors.New("failed to get download URI from release")
 	}
 
-	path, err := c.validatedAPIPath()
-	if err != nil {
-		return status, err
-	}
-	url := url.URL{Host: c.host, Scheme: c.scheme, Path: path}
+	url := url.URL{Host: c.host, Scheme: c.scheme, Path: "/api"}
 
 	q := url.Query()
 	q.Add("mode", "addurl")
@@ -186,11 +154,7 @@ func (c *SabnzbdClient) Get(ctx context.Context, request GetRequest) (Status, er
 }
 
 func (c *SabnzbdClient) List(ctx context.Context) ([]Status, error) {
-	path, pathErr := c.validatedAPIPath()
-	if pathErr != nil {
-		return nil, pathErr
-	}
-	url := url.URL{Host: c.host, Scheme: c.scheme, Path: path}
+	url := url.URL{Host: c.host, Scheme: c.scheme, Path: "/api"}
 
 	q := url.Query()
 	q.Add("mode", "queue")
@@ -280,11 +244,7 @@ type StageLog struct {
 }
 
 func (c *SabnzbdClient) history(ctx context.Context, ids ...string) (HistoryResponse, error) {
-	path, pathErr := c.validatedAPIPath()
-	if pathErr != nil {
-		return HistoryResponse{}, pathErr
-	}
-	url := url.URL{Host: c.host, Scheme: c.scheme, Path: path}
+	url := url.URL{Host: c.host, Scheme: c.scheme, Path: "/api"}
 
 	q := url.Query()
 	q.Set("mode", "history")
@@ -347,9 +307,6 @@ func queueToStatus(queue Queue, history History, mountPrefix string) ([]Status, 
 
 func (c *SabnzbdClient) do(ctx context.Context, url *url.URL) ([]byte, error) {
 	log := logger.FromCtx(ctx)
-	if _, err := c.validatedAPIPath(); err != nil {
-		return nil, err
-	}
 	if c.http == nil {
 		return nil, errors.New("http client is nil")
 	}
