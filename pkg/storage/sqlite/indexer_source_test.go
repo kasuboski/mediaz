@@ -24,6 +24,7 @@ func TestIndexerSourceStorage(t *testing.T) {
 		Implementation: "prowlarr",
 		Scheme:         "http",
 		Host:           "localhost",
+		ApiPath:        sql.NullString{String: "/reverse/api", Valid: true},
 		Port:           sql.NullInt64{Int64: 9696, Valid: true},
 		ApiKey:         sql.NullString{String: "secret", Valid: true},
 		Enabled:        true,
@@ -40,6 +41,7 @@ func TestIndexerSourceStorage(t *testing.T) {
 	assert.Equal(t, source.Implementation, stored.Implementation)
 	assert.Equal(t, source.Scheme, stored.Scheme)
 	assert.Equal(t, source.Host, stored.Host)
+	assert.Equal(t, source.ApiPath, stored.ApiPath)
 	assert.Equal(t, source.Port, stored.Port)
 	assert.Equal(t, source.ApiKey, stored.ApiKey)
 	assert.True(t, stored.Enabled)
@@ -53,6 +55,18 @@ func TestIndexerSourceStorage(t *testing.T) {
 	sources, err = store.ListIndexerSources(ctx)
 	require.NoError(t, err)
 	assert.Empty(t, sources)
+}
+
+func TestIndexerSourceApiPathIsOptionalForLegacyConfigurations(t *testing.T) {
+	ctx := context.Background()
+	store := initSqlite(t, ctx)
+	id, err := store.CreateIndexerSource(ctx, sqlcdb.IndexerSource{
+		Name: "legacy", Implementation: "prowlarr", Scheme: "http", Host: "localhost",
+	})
+	require.NoError(t, err)
+	got, err := store.GetIndexerSource(ctx, id)
+	require.NoError(t, err)
+	assert.False(t, got.ApiPath.Valid, "empty paths remain unset for existing Prowlarr configurations")
 }
 
 func TestGetIndexerSourceNotFound(t *testing.T) {

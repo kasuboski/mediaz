@@ -21,6 +21,7 @@ export function IndexerSourceDialog({ open, onOpenChange, source }: IndexerSourc
   const [implementation, setImplementation] = useState<string>('prowlarr');
   const [scheme, setScheme] = useState<string>('http');
   const [host, setHost] = useState<string>('');
+  const [apiPath, setApiPath] = useState<string>('');
   const [port, setPort] = useState<string>('');
   const [apiKey, setApiKey] = useState<string>('');
   const [enabled, setEnabled] = useState<boolean>(true);
@@ -37,6 +38,7 @@ export function IndexerSourceDialog({ open, onOpenChange, source }: IndexerSourc
         setImplementation(source.implementation);
         setScheme(source.scheme);
         setHost(source.host);
+        setApiPath(source.apiPath || (source.implementation === 'newznab' ? '/api' : ''));
         setPort(source.port ? source.port.toString() : '');
         setApiKey('');
         setEnabled(source.enabled);
@@ -45,6 +47,7 @@ export function IndexerSourceDialog({ open, onOpenChange, source }: IndexerSourc
         setImplementation('prowlarr');
         setScheme('http');
         setHost('');
+        setApiPath('');
         setPort('');
         setApiKey('');
         setEnabled(true);
@@ -62,7 +65,7 @@ export function IndexerSourceDialog({ open, onOpenChange, source }: IndexerSourc
       toast.error('Host is required');
       return;
     }
-    if (!apiKey && !source) {
+    if (implementation === 'prowlarr' && !apiKey && !source) {
       toast.error('API key is required');
       return;
     }
@@ -74,6 +77,7 @@ export function IndexerSourceDialog({ open, onOpenChange, source }: IndexerSourc
       implementation,
       scheme,
       host,
+      apiPath: apiPath || undefined,
       port: port ? parseInt(port) : undefined,
       apiKey: apiKey || undefined,
       enabled,
@@ -98,7 +102,7 @@ export function IndexerSourceDialog({ open, onOpenChange, source }: IndexerSourc
       toast.error('Host is required');
       return;
     }
-    if (!apiKey && !source) {
+    if (implementation === 'prowlarr' && !apiKey && !source) {
       toast.error('API key is required');
       return;
     }
@@ -108,6 +112,7 @@ export function IndexerSourceDialog({ open, onOpenChange, source }: IndexerSourc
       implementation,
       scheme,
       host,
+      apiPath: apiPath || undefined,
       port: port ? parseInt(port) : undefined,
       apiKey: apiKey || undefined,
       enabled,
@@ -159,12 +164,13 @@ export function IndexerSourceDialog({ open, onOpenChange, source }: IndexerSourc
 
           <div className="grid gap-2">
             <Label htmlFor="implementation">Implementation</Label>
-            <Select value={implementation} defaultValue="prowlarr" onValueChange={setImplementation} disabled={!!source}>
+            <Select value={implementation} defaultValue="prowlarr" onValueChange={(value) => { setImplementation(value); setApiPath(value === 'newznab' ? '/api' : ''); }} disabled={!!source}>
               <SelectTrigger id="implementation">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="prowlarr">Prowlarr</SelectItem>
+                <SelectItem value="newznab">Newznab</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -192,6 +198,13 @@ export function IndexerSourceDialog({ open, onOpenChange, source }: IndexerSourc
             />
           </div>
 
+          {implementation === 'newznab' && (
+            <div className="grid gap-2">
+              <Label htmlFor="apiPath">API path</Label>
+              <Input id="apiPath" value={apiPath} onChange={(e) => setApiPath(e.target.value)} placeholder="/api" />
+            </div>
+          )}
+
           <div className="grid gap-2">
             <Label htmlFor="port">Port (optional)</Label>
             <Input
@@ -212,7 +225,7 @@ export function IndexerSourceDialog({ open, onOpenChange, source }: IndexerSourc
               type="password"
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
-              placeholder={source ? '' : 'required'}
+              placeholder={implementation === 'prowlarr' ? (source ? 'leave blank to keep current key' : 'required') : 'optional'}
             />
           </div>
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"github.com/kasuboski/mediaz/pkg/indexer"
 	"io"
 	"net/http"
 	"strings"
@@ -14,11 +15,9 @@ import (
 	"github.com/kasuboski/mediaz/pkg/download"
 	downloadMock "github.com/kasuboski/mediaz/pkg/download/mocks"
 	mhttpMock "github.com/kasuboski/mediaz/pkg/http/mocks"
-	"github.com/kasuboski/mediaz/pkg/indexer"
 	indexerMock "github.com/kasuboski/mediaz/pkg/indexer/mocks"
 	"github.com/kasuboski/mediaz/pkg/library"
 	mockLibrary "github.com/kasuboski/mediaz/pkg/library/mocks"
-	"github.com/kasuboski/mediaz/pkg/prowlarr"
 	"github.com/kasuboski/mediaz/pkg/ptr"
 	"github.com/kasuboski/mediaz/pkg/storage"
 	storageMocks "github.com/kasuboski/mediaz/pkg/storage/mocks"
@@ -43,19 +42,19 @@ func Test_Manager_reconcileMissingMovie(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	store := newMovieReconcileStore(t, ctx)
 
-	makeRelease := func(id, seeders int32, size int64, title string, protocol prowlarr.DownloadProtocol) *prowlarr.ReleaseResource {
-		return &prowlarr.ReleaseResource{ID: &id, Title: nullable.NewNullableWithValue(title), Size: &size, Seeders: nullable.NewNullableWithValue(seeders), Protocol: &protocol}
+	makeRelease := func(id, seeders int32, size int64, title string, protocol indexer.DownloadProtocol) *indexer.Release {
+		return &indexer.Release{ID: &id, Title: nullable.NewNullableWithValue(title), Size: &size, Seeders: nullable.NewNullableWithValue(seeders), Protocol: ptr.To(string(protocol))}
 	}
-	wantRelease := makeRelease(123, 23, 23*1024*1024*1024, "translated movie title", prowlarr.DownloadProtocolTorrent)
+	wantRelease := makeRelease(123, 23, 23*1024*1024*1024, "translated movie title", indexer.DownloadProtocolTorrent)
 	wantRelease.ImdbID = ptr.To(int32(123456))
-	conflictingRelease := makeRelease(126, 99, 23*1024*1024*1024, "test movie", prowlarr.DownloadProtocolTorrent)
+	conflictingRelease := makeRelease(126, 99, 23*1024*1024*1024, "test movie", indexer.DownloadProtocolTorrent)
 	conflictingRelease.ImdbID = ptr.To(int32(654321))
-	releases := []*prowlarr.ReleaseResource{
+	releases := []*indexer.Release{
 		conflictingRelease,
-		makeRelease(124, 15, 23*1024*1024*1024, "test movie", prowlarr.DownloadProtocolTorrent),
+		makeRelease(124, 15, 23*1024*1024*1024, "test movie", indexer.DownloadProtocolTorrent),
 		wantRelease,
-		makeRelease(125, 10, 1024*1024*1024, "test movie - very small", prowlarr.DownloadProtocolTorrent),
-		makeRelease(1225, 10, 23*1024*1024*1024, "test movie - nzb", prowlarr.DownloadProtocolUsenet),
+		makeRelease(125, 10, 1024*1024*1024, "test movie - very small", indexer.DownloadProtocolTorrent),
+		makeRelease(1225, 10, 23*1024*1024*1024, "test movie - nzb", indexer.DownloadProtocolUsenet),
 	}
 	source := indexerMock.NewMockIndexerSource(ctrl)
 	source.EXPECT().Search(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(releases, nil).Times(2)

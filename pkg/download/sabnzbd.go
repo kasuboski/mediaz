@@ -14,7 +14,6 @@ import (
 
 	mhttp "github.com/kasuboski/mediaz/pkg/http"
 	"github.com/kasuboski/mediaz/pkg/logger"
-	"go.uber.org/zap"
 )
 
 type SabnzbdClient struct {
@@ -46,8 +45,8 @@ func (c *SabnzbdClient) Add(ctx context.Context, request AddRequest) (Status, er
 
 	uri, err := request.Release.DownloadURL.Get()
 	if err != nil {
-		log.Warn("failed to get uri from release", zap.Error(err))
-		return status, err
+		log.Warn("failed to get download URI from release")
+		return status, errors.New("failed to get download URI from release")
 	}
 
 	url := url.URL{
@@ -330,22 +329,32 @@ func (c *SabnzbdClient) do(ctx context.Context, url *url.URL) ([]byte, error) {
 	url.RawQuery = q.Encode()
 
 	u := url.String()
-	log.Debugw("sabnzbd do", "url", u)
+	log.Debugw("sabnzbd request", "method", http.MethodGet, "path", url.Path)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to construct SABnzbd request")
 	}
 
 	resp, err := c.http.Do(req)
 	if err != nil {
-		return nil, err
+		if ctx.Err() != nil {
+			return nil, ctx.Err()
+		}
+		return nil, errors.New("http error during Get: SABnzbd request failed")
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("status code not ok: %s", resp.Status)
+		return nil, fmt.Errorf("SABnzbd returned HTTP status %d", resp.StatusCode)
 	}
 
-	return io.ReadAll(resp.Body)
+	b, err := io.ReadAll(resp.Body)
+	if err != nil {
+		if ctx.Err() != nil {
+			return nil, ctx.Err()
+		}
+		return nil, errors.New("failed to read SABnzbd response")
+	}
+	return b, nil
 }

@@ -13,7 +13,6 @@ import (
 	"github.com/kasuboski/mediaz/pkg/io"
 	"github.com/kasuboski/mediaz/pkg/library"
 	"github.com/kasuboski/mediaz/pkg/logger"
-	"github.com/kasuboski/mediaz/pkg/prowlarr"
 	"github.com/kasuboski/mediaz/pkg/ptr"
 	"github.com/kasuboski/mediaz/pkg/storage"
 	sqlcdb "github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
@@ -460,11 +459,11 @@ func (m MediaManager) reconcileMissingSeries(ctx context.Context, series sqlcdb.
 	return nil
 }
 
-func (m MediaManager) reconcileMissingSeason(ctx context.Context, seriesTitle string, season sqlcdb.ListSeasonsRow, snapshot *ReconcileSnapshot, qualityProfile []sqlcdb.ListQualityProfileRowsRow, releases []*prowlarr.ReleaseResource) error {
+func (m MediaManager) reconcileMissingSeason(ctx context.Context, seriesTitle string, season sqlcdb.ListSeasonsRow, snapshot *ReconcileSnapshot, qualityProfile []sqlcdb.ListQualityProfileRowsRow, releases []*indexer.Release) error {
 	return m.reconcileMissingSeasonWithMetadata(ctx, seriesTitle, season, nil, nil, nil, snapshot, qualityProfile, releases)
 }
 
-func (m MediaManager) reconcileMissingSeasonWithMetadata(ctx context.Context, seriesTitle string, season sqlcdb.ListSeasonsRow, episodesBySeason map[int64][]sqlcdb.ListEpisodesRow, seasonMetadataByID map[int64]sqlcdb.SeasonMetadatum, episodeMetadataByID map[int64]sqlcdb.EpisodeMetadatum, snapshot *ReconcileSnapshot, qualityProfile []sqlcdb.ListQualityProfileRowsRow, releases []*prowlarr.ReleaseResource, identities ...SeriesReleaseFilterParams) error {
+func (m MediaManager) reconcileMissingSeasonWithMetadata(ctx context.Context, seriesTitle string, season sqlcdb.ListSeasonsRow, episodesBySeason map[int64][]sqlcdb.ListEpisodesRow, seasonMetadataByID map[int64]sqlcdb.SeasonMetadatum, episodeMetadataByID map[int64]sqlcdb.EpisodeMetadatum, snapshot *ReconcileSnapshot, qualityProfile []sqlcdb.ListQualityProfileRowsRow, releases []*indexer.Release, identities ...SeriesReleaseFilterParams) error {
 	log := logger.FromCtx(ctx)
 	log = log.With("reconcile loop", "missing series")
 	metadata, ok := seasonMetadataByID[season.Season.SeasonMetadataID.Int64]
@@ -564,7 +563,7 @@ func (m MediaManager) reconcileMissingSeasonWithMetadata(ctx context.Context, se
 	runtime := getSeasonRuntime(missingEpisodesMetadata, len(episodes))
 	log.Debug("considering releases for season pack", zap.Int("count", len(releases)))
 
-	var chosenSeasonPackRelease *prowlarr.ReleaseResource
+	var chosenSeasonPackRelease *indexer.Release
 	seasonParams := SeriesReleaseFilterParams{
 		Title:        seriesTitle,
 		SeasonNumber: metadata.Number,
@@ -637,11 +636,11 @@ func (m MediaManager) reconcileMissingSeasonWithMetadata(ctx context.Context, se
 	return nil
 }
 
-func (m MediaManager) reconcileMissingEpisodes(ctx context.Context, seriesTitle string, seasonID int64, seasonNumber int64, episode []sqlcdb.ListEpisodesRow, snapshot *ReconcileSnapshot, qualityProfile []sqlcdb.ListQualityProfileRowsRow, releases []*prowlarr.ReleaseResource) error {
+func (m MediaManager) reconcileMissingEpisodes(ctx context.Context, seriesTitle string, seasonID int64, seasonNumber int64, episode []sqlcdb.ListEpisodesRow, snapshot *ReconcileSnapshot, qualityProfile []sqlcdb.ListQualityProfileRowsRow, releases []*indexer.Release) error {
 	return m.reconcileMissingEpisodesWithMetadata(ctx, seriesTitle, seasonID, seasonNumber, episode, nil, snapshot, qualityProfile, releases)
 }
 
-func (m MediaManager) reconcileMissingEpisodesWithMetadata(ctx context.Context, seriesTitle string, seasonID int64, seasonNumber int64, episode []sqlcdb.ListEpisodesRow, episodeMetadataByID map[int64]sqlcdb.EpisodeMetadatum, snapshot *ReconcileSnapshot, qualityProfile []sqlcdb.ListQualityProfileRowsRow, releases []*prowlarr.ReleaseResource, identities ...SeriesReleaseFilterParams) error {
+func (m MediaManager) reconcileMissingEpisodesWithMetadata(ctx context.Context, seriesTitle string, seasonID int64, seasonNumber int64, episode []sqlcdb.ListEpisodesRow, episodeMetadataByID map[int64]sqlcdb.EpisodeMetadatum, snapshot *ReconcileSnapshot, qualityProfile []sqlcdb.ListQualityProfileRowsRow, releases []*indexer.Release, identities ...SeriesReleaseFilterParams) error {
 	log := logger.FromCtx(ctx)
 
 	var allUpdated = true
@@ -676,11 +675,11 @@ func (m MediaManager) reconcileMissingEpisodesWithMetadata(ctx context.Context, 
 	return m.updateSeasonState(ctx, int64(seasonID), storage.SeasonStateDownloading, nil)
 }
 
-func (m MediaManager) reconcileMissingEpisode(ctx context.Context, seriesTitle string, seasonNumber int64, episode sqlcdb.ListEpisodesRow, snapshot *ReconcileSnapshot, qualityProfile []sqlcdb.ListQualityProfileRowsRow, releases []*prowlarr.ReleaseResource) (bool, error) {
+func (m MediaManager) reconcileMissingEpisode(ctx context.Context, seriesTitle string, seasonNumber int64, episode sqlcdb.ListEpisodesRow, snapshot *ReconcileSnapshot, qualityProfile []sqlcdb.ListQualityProfileRowsRow, releases []*indexer.Release) (bool, error) {
 	return m.reconcileMissingEpisodeWithMetadata(ctx, seriesTitle, seasonNumber, episode, nil, snapshot, qualityProfile, releases)
 }
 
-func (m MediaManager) reconcileMissingEpisodeWithMetadata(ctx context.Context, seriesTitle string, seasonNumber int64, episode sqlcdb.ListEpisodesRow, episodeMetadataByID map[int64]sqlcdb.EpisodeMetadatum, snapshot *ReconcileSnapshot, qualityProfile []sqlcdb.ListQualityProfileRowsRow, releases []*prowlarr.ReleaseResource, identities ...SeriesReleaseFilterParams) (bool, error) {
+func (m MediaManager) reconcileMissingEpisodeWithMetadata(ctx context.Context, seriesTitle string, seasonNumber int64, episode sqlcdb.ListEpisodesRow, episodeMetadataByID map[int64]sqlcdb.EpisodeMetadatum, snapshot *ReconcileSnapshot, qualityProfile []sqlcdb.ListQualityProfileRowsRow, releases []*indexer.Release, identities ...SeriesReleaseFilterParams) (bool, error) {
 	log := logger.FromCtx(ctx)
 
 	if snapshot == nil {
@@ -714,7 +713,7 @@ func (m MediaManager) reconcileMissingEpisodeWithMetadata(ctx context.Context, s
 		return false, nil
 	}
 
-	var chosenRelease *prowlarr.ReleaseResource
+	var chosenRelease *indexer.Release
 	episodeParams := SeriesReleaseFilterParams{
 		Title:         seriesTitle,
 		SeasonNumber:  seasonNumber,

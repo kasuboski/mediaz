@@ -11,7 +11,6 @@ import (
 	"github.com/kasuboski/mediaz/pkg/download"
 	"github.com/kasuboski/mediaz/pkg/indexer"
 	"github.com/kasuboski/mediaz/pkg/logger"
-	"github.com/kasuboski/mediaz/pkg/prowlarr"
 	"github.com/kasuboski/mediaz/pkg/ptr"
 	"github.com/kasuboski/mediaz/pkg/storage"
 	sqlcdb "github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
@@ -478,9 +477,9 @@ func (m MediaManager) reconcileDiscoveredMovie(ctx context.Context, movie sqlcdb
 	return nil
 }
 
-func (m MediaManager) requestReleaseDownload(ctx context.Context, snapshot *ReconcileSnapshot, release *prowlarr.ReleaseResource) (int64, download.Status, error) {
+func (m MediaManager) requestReleaseDownload(ctx context.Context, snapshot *ReconcileSnapshot, release *indexer.Release) (int64, download.Status, error) {
 	dcs := snapshot.GetDownloadClients()
-	c := clientForProtocol(dcs, *release.Protocol)
+	c := clientForProtocol(dcs, indexer.DownloadProtocol(*release.Protocol))
 	if c == nil {
 		return 0, download.Status{}, fmt.Errorf("no download client found for protocol: %s", *release.Protocol)
 	}

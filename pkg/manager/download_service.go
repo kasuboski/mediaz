@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/kasuboski/mediaz/pkg/download"
-	"github.com/kasuboski/mediaz/pkg/prowlarr"
+	"github.com/kasuboski/mediaz/pkg/indexer"
 	"github.com/kasuboski/mediaz/pkg/storage"
 	sqlcdb "github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 )
@@ -96,7 +96,7 @@ func availableProtocols(clients []sqlcdb.DownloadClient) map[string]struct{} {
 	return ret
 }
 
-func clientForProtocol(clients []sqlcdb.DownloadClient, proto prowlarr.DownloadProtocol) *sqlcdb.DownloadClient {
+func clientForProtocol(clients []sqlcdb.DownloadClient, proto indexer.DownloadProtocol) *sqlcdb.DownloadClient {
 	for i := range clients {
 		if clients[i].Type == string(proto) {
 			return &clients[i]

@@ -169,10 +169,10 @@ func TestProwlarrIndexerSource_ListIndexers(t *testing.T) {
 				Name:     "test-indexer",
 				URI:      "http://example.com",
 				Priority: 25,
-				Categories: []prowlarr.IndexerCategory{
+				Categories: []indexer.Category{
 					{ID: ptr.To(int32(2000)), Name: nullable.NewNullableWithValue("Movies")},
 				},
-				Status: &prowlarr.IndexerStatusResource{},
+				Status: &indexer.Status{},
 			},
 		}
 		assert.Equal(t, expected, got)
@@ -234,7 +234,7 @@ func TestProwlarrIndexerSource_ListIndexers(t *testing.T) {
 			URI:        "",
 			Priority:   50,
 			Categories: nil,
-			Status:     (*prowlarr.IndexerStatusResource)(nil),
+			Status:     (*indexer.Status)(nil),
 		}
 		assert.Equal(t, expected, got[0])
 	})
@@ -260,10 +260,10 @@ func TestProwlarrIndexerSource_Search(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		src, mockClient := newSourceWithMock(ctrl)
 
-		releases := []*prowlarr.ReleaseResource{
-			{Title: nullable.NewNullableWithValue("Movie.2024.1080p.mkv")},
+		wireReleases := []*prowlarr.ReleaseResource{
+			{ID: ptr.To(int32(8)), Title: nullable.NewNullableWithValue("Movie.2024.1080p.mkv"), Indexer: nullable.NewNullableWithValue("indexer"), IndexerID: ptr.To(int32(4)), DownloadURL: nullable.NewNullableWithValue("https://example.test/download"), TmdbID: ptr.To(int32(42)), Protocol: ptr.To(prowlarr.DownloadProtocolTorrent), Categories: nullable.NewNullableWithValue([]prowlarr.IndexerCategory{{ID: ptr.To(int32(2000)), Name: nullable.NewNullableWithValue("Movies")}})},
 		}
-		body, err := json.Marshal(releases)
+		body, err := json.Marshal(wireReleases)
 		require.NoError(t, err)
 
 		mockClient.EXPECT().GetAPIV1Search(gomock.Any(), gomock.Any(), gomock.Any()).Return(&http.Response{
@@ -273,7 +273,17 @@ func TestProwlarrIndexerSource_Search(t *testing.T) {
 
 		got, err := src.Search(ctx, 1, nil, indexer.SearchOptions{Query: "Movie"})
 		require.NoError(t, err)
-		assert.Equal(t, releases, got)
+		require.Equal(t, 1, len(got))
+		assert.Equal(t, &indexer.Release{
+			ID:          ptr.To(int32(8)),
+			Title:       nullable.NewNullableWithValue("Movie.2024.1080p.mkv"),
+			Indexer:     nullable.NewNullableWithValue("indexer"),
+			IndexerID:   ptr.To(int32(4)),
+			DownloadURL: nullable.NewNullableWithValue("https://example.test/download"),
+			TmdbID:      ptr.To(int32(42)),
+			Protocol:    ptr.To("torrent"),
+			Categories:  nullable.NewNullableWithValue([]indexer.Category{{ID: ptr.To(int32(2000)), Name: nullable.NewNullableWithValue("Movies")}}),
+		}, got[0])
 	})
 
 	t.Run("formats season and episode in query", func(t *testing.T) {

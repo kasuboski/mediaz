@@ -4,12 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/kasuboski/mediaz/pkg/indexer"
 	"math"
 	"testing"
 
 	"github.com/kasuboski/mediaz/pkg/library"
 	libraryMocks "github.com/kasuboski/mediaz/pkg/library/mocks"
-	"github.com/kasuboski/mediaz/pkg/prowlarr"
 	"github.com/kasuboski/mediaz/pkg/ptr"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 	"github.com/oapi-codegen/nullable"
@@ -26,8 +26,8 @@ func TestReleaseFiltersPreserveInt64Numbers(t *testing.T) {
 	params := SeriesReleaseFilterParams{Title: "Show", SeasonNumber: season, EpisodeNumber: episode, Runtime: runtime}
 	seasonFilter := RejectSeasonReleaseFunc(context.Background(), params, profile, nil)
 	episodeFilter := RejectEpisodeReleaseFunc(context.Background(), params, profile, nil)
-	release := func(title string) *prowlarr.ReleaseResource {
-		return &prowlarr.ReleaseResource{Title: nullable.NewNullableWithValue(title), Size: ptr.To(runtime << 20)}
+	release := func(title string) *indexer.Release {
+		return &indexer.Release{Title: nullable.NewNullableWithValue(title), Size: ptr.To(runtime << 20)}
 	}
 	assert.False(t, seasonFilter(release(fmt.Sprintf("Show.S%d.1080p", season))))
 	assert.False(t, episodeFilter(release(fmt.Sprintf("Show.S%dE%d.1080p", season, episode))))
@@ -68,7 +68,7 @@ func TestReleaseFiltersDisambiguateDimensionsAndEpisodes(t *testing.T) {
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			params := SeriesReleaseFilterParams{Title: "Show", SeasonNumber: tt.season, EpisodeNumber: tt.episode, Runtime: 60}
-			release := &prowlarr.ReleaseResource{Title: nullable.NewNullableWithValue(tt.title), Size: ptr.To(int64(60 << 20))}
+			release := &indexer.Release{Title: nullable.NewNullableWithValue(tt.title), Size: ptr.To(int64(60 << 20))}
 			assert.Equal(t, tt.wantSeasonReject, RejectSeasonReleaseFunc(context.Background(), params, profile, nil)(release))
 			assert.Equal(t, tt.wantEpisodeReject, RejectEpisodeReleaseFunc(context.Background(), params, profile, nil)(release))
 		})

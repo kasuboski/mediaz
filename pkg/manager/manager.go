@@ -17,7 +17,6 @@ import (
 	"github.com/kasuboski/mediaz/pkg/library"
 	"github.com/kasuboski/mediaz/pkg/logger"
 	"github.com/kasuboski/mediaz/pkg/pagination"
-	"github.com/kasuboski/mediaz/pkg/prowlarr"
 	"github.com/kasuboski/mediaz/pkg/storage"
 	sqlcdb "github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 	"github.com/kasuboski/mediaz/pkg/tmdb"
@@ -453,7 +452,7 @@ func (m MediaManager) RefreshAllIndexerSources(ctx context.Context) error {
 	return m.indexerService.RefreshAllIndexerSources(ctx)
 }
 
-func (m MediaManager) SearchIndexers(ctx context.Context, indexers []indexer.RowID, categories []int32, opts indexer.SearchOptions) ([]*prowlarr.ReleaseResource, error) {
+func (m MediaManager) SearchIndexers(ctx context.Context, indexers []indexer.RowID, categories []int32, opts indexer.SearchOptions) ([]*indexer.Release, error) {
 	return m.indexerService.SearchIndexers(ctx, indexers, categories, opts)
 }
 

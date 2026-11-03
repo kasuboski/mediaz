@@ -4,11 +4,10 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"github.com/kasuboski/mediaz/pkg/indexer"
 	"testing"
 
-	"github.com/kasuboski/mediaz/pkg/indexer"
 	indexerMocks "github.com/kasuboski/mediaz/pkg/indexer/mocks"
-	"github.com/kasuboski/mediaz/pkg/prowlarr"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlite"
 	"github.com/stretchr/testify/assert"
@@ -31,7 +30,7 @@ func TestSearchIndexerIdentityAboveSDKRange(t *testing.T) {
 	const sourceID int64 = 1 << 40
 	service.indexerCache.Set(sourceID, indexerCacheEntry{
 		Indexers: []indexer.SourceIndexer{{ID: 1, Name: "external"}},
-		RowIDs:   map[indexer.ProwlarrID]indexer.RowID{1: rowID},
+		RowIDs:   map[indexer.SourceID]indexer.RowID{1: rowID},
 	})
 	// Even an exact numeric match with the external ID is not a row selection.
 	_, err := service.SearchIndexers(ctx, []indexer.RowID{1}, nil, indexer.SearchOptions{})
@@ -41,8 +40,8 @@ func TestSearchIndexerIdentityAboveSDKRange(t *testing.T) {
 	source := indexerMocks.NewMockIndexerSource(ctrl)
 	factory.EXPECT().NewIndexerSource(config).Return(source, nil)
 	rows.EXPECT().ListIndexers(gomock.Any()).Return(nil, nil)
-	expected := []*prowlarr.ReleaseResource{{}}
-	source.EXPECT().Search(gomock.Any(), indexer.ProwlarrID(1), []int32{2000}, indexer.SearchOptions{}).Return(expected, nil)
+	expected := []*indexer.Release{{}}
+	source.EXPECT().Search(gomock.Any(), indexer.SourceID(1), []int32{2000}, indexer.SearchOptions{}).Return(expected, nil)
 	releases, err := service.SearchIndexers(ctx, []indexer.RowID{rowID}, []int32{2000}, indexer.SearchOptions{})
 	require.NoError(t, err)
 	assert.Equal(t, expected, releases)
@@ -104,9 +103,9 @@ func TestIndexerIdentityAcrossPersistenceAndSources(t *testing.T) {
 			{indexer.TypeTV, TVCategories},
 		} {
 			factory.EXPECT().NewIndexerSource(gomock.Any()).Return(sources[i], nil)
-			expected := []*prowlarr.ReleaseResource{{}}
+			expected := []*indexer.Release{{}}
 			opts := indexer.SearchOptions{Type: &media.kind}
-			sources[i].EXPECT().Search(gomock.Any(), indexer.ProwlarrID(1), media.fallback, opts).Return(expected, nil)
+			sources[i].EXPECT().Search(gomock.Any(), indexer.SourceID(1), media.fallback, opts).Return(expected, nil)
 			got, err := service.SearchIndexers(ctx, []indexer.RowID{rowIDs[i]}, media.fallback, opts)
 			require.NoError(t, err)
 			assert.Equal(t, expected, got)

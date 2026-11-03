@@ -5,12 +5,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/kasuboski/mediaz/pkg/indexer"
 	"io"
 	"net/http"
 	"testing"
 
 	httpMock "github.com/kasuboski/mediaz/pkg/http/mocks"
-	"github.com/kasuboski/mediaz/pkg/prowlarr"
 	"github.com/oapi-codegen/nullable"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
@@ -47,7 +47,7 @@ func TestTransmissionClient_Add(t *testing.T) {
 		ctx := context.Background()
 
 		addRequest := AddRequest{
-			Release: &prowlarr.ReleaseResource{GUID: nullable.NewNullableWithValue[string]("http://example.com/torrent")},
+			Release: &indexer.Release{GUID: nullable.NewNullableWithValue[string]("http://example.com/torrent")},
 		}
 
 		addResponse := AddTorrentResponse{
@@ -114,7 +114,7 @@ func TestTransmissionClient_Add(t *testing.T) {
 		ctx := context.Background()
 
 		addRequest := AddRequest{
-			Release: &prowlarr.ReleaseResource{GUID: nullable.NewNullNullable[string]()},
+			Release: &indexer.Release{GUID: nullable.NewNullNullable[string]()},
 		}
 
 		status, err := client.Add(ctx, addRequest)
@@ -129,7 +129,7 @@ func TestTransmissionClient_Add(t *testing.T) {
 		ctx := context.Background()
 
 		addRequest := AddRequest{
-			Release: &prowlarr.ReleaseResource{GUID: nullable.NewNullableWithValue[string]("http://example.com/torrent")},
+			Release: &indexer.Release{GUID: nullable.NewNullableWithValue[string]("http://example.com/torrent")},
 		}
 
 		mockHttp.EXPECT().Do(gomock.Any()).Return(nil, fmt.Errorf("http error"))
@@ -146,7 +146,7 @@ func TestTransmissionClient_Add(t *testing.T) {
 		ctx := context.Background()
 
 		addRequest := AddRequest{
-			Release: &prowlarr.ReleaseResource{GUID: nullable.NewNullableWithValue[string]("http://example.com/torrent")},
+			Release: &indexer.Release{GUID: nullable.NewNullableWithValue[string]("http://example.com/torrent")},
 		}
 
 		addResponse := AddTorrentResponse{
@@ -173,7 +173,7 @@ func TestTransmissionClient_Add(t *testing.T) {
 		ctx := context.Background()
 
 		addRequest := AddRequest{
-			Release: &prowlarr.ReleaseResource{GUID: nullable.NewNullableWithValue[string]("http://example.com/torrent")},
+			Release: &indexer.Release{GUID: nullable.NewNullableWithValue[string]("http://example.com/torrent")},
 		}
 
 		// Mock the successful Add response

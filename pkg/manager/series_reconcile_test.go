@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"github.com/kasuboski/mediaz/pkg/indexer"
 	"io"
 	"net/http"
 	"slices"
@@ -15,11 +16,9 @@ import (
 	"github.com/kasuboski/mediaz/config"
 	"github.com/kasuboski/mediaz/pkg/download"
 	downloadMock "github.com/kasuboski/mediaz/pkg/download/mocks"
-	"github.com/kasuboski/mediaz/pkg/indexer"
 	indexerMock "github.com/kasuboski/mediaz/pkg/indexer/mocks"
 	"github.com/kasuboski/mediaz/pkg/library"
 	libraryMocks "github.com/kasuboski/mediaz/pkg/library/mocks"
-	"github.com/kasuboski/mediaz/pkg/prowlarr"
 	"github.com/kasuboski/mediaz/pkg/ptr"
 	"github.com/kasuboski/mediaz/pkg/storage"
 	storageMocks "github.com/kasuboski/mediaz/pkg/storage/mocks"
@@ -175,18 +174,18 @@ func TestMediaManager_reconcileMissingEpisodes(t *testing.T) {
 		_, err = store.CreateEpisode(ctx, episode3.Episode, storage.EpisodeStateMissing)
 		require.NoError(t, err)
 
-		releases := []*prowlarr.ReleaseResource{
+		releases := []*indexer.Release{
 			{
 				ID:       ptr.To(int32(1)),
 				Title:    nullable.NewNullableWithValue("Series.S01E01.1080p.WEB-DL.AAC2.0.x264-GROUP"),
 				Size:     sizeGBToBytes(2),
-				Protocol: ptr.To(prowlarr.DownloadProtocolTorrent),
+				Protocol: ptr.To(string(indexer.DownloadProtocolTorrent)),
 			},
 			{
 				ID:       ptr.To(int32(2)),
 				Title:    nullable.NewNullableWithValue("Series.S01E02.1080p.WEB-DL.AAC2.0.x264-GROUP"),
 				Size:     sizeGBToBytes(2),
-				Protocol: ptr.To(prowlarr.DownloadProtocolTorrent),
+				Protocol: ptr.To(string(indexer.DownloadProtocolTorrent)),
 			},
 		}
 
@@ -321,18 +320,18 @@ func TestMediaManager_reconcileMissingEpisodes(t *testing.T) {
 		_, err = store.CreateEpisode(ctx, episode2.Episode, storage.EpisodeStateMissing)
 		require.NoError(t, err)
 
-		releases := []*prowlarr.ReleaseResource{
+		releases := []*indexer.Release{
 			{
 				ID:       ptr.To(int32(1)),
 				Title:    nullable.NewNullableWithValue("Series.S01E01.1080p.WEB-DL.AAC2.0.x264-GROUP"),
 				Size:     sizeGBToBytes(2),
-				Protocol: ptr.To(prowlarr.DownloadProtocolTorrent),
+				Protocol: ptr.To(string(indexer.DownloadProtocolTorrent)),
 			},
 			{
 				ID:       ptr.To(int32(2)),
 				Title:    nullable.NewNullableWithValue("Series.S01E02.1080p.WEB-DL.AAC2.0.x264-GROUP"),
 				Size:     sizeGBToBytes(2),
-				Protocol: ptr.To(prowlarr.DownloadProtocolTorrent),
+				Protocol: ptr.To(string(indexer.DownloadProtocolTorrent)),
 			},
 		}
 
@@ -590,12 +589,12 @@ func TestMediaManager_reconcileMissingSeason(t *testing.T) {
 		}, storage.EpisodeStateMissing)
 		require.NoError(t, err)
 
-		releases := []*prowlarr.ReleaseResource{
+		releases := []*indexer.Release{
 			{
 				ID:       ptr.To(int32(1)),
 				Title:    nullable.NewNullableWithValue("series.S01.1080p.WEB-DL.HEVC.x265"),
 				Size:     sizeGBToBytes(2),
-				Protocol: ptr.To(prowlarr.DownloadProtocolTorrent),
+				Protocol: ptr.To(string(indexer.DownloadProtocolTorrent)),
 			},
 		}
 
@@ -737,18 +736,18 @@ func TestMediaManager_reconcileMissingSeason(t *testing.T) {
 		}, storage.EpisodeStateMissing)
 		require.NoError(t, err)
 
-		releases := []*prowlarr.ReleaseResource{
+		releases := []*indexer.Release{
 			{
 				ID:       ptr.To(int32(1)),
 				Title:    nullable.NewNullableWithValue("Series.S01E01.1080p.WEB-DL.AAC2.0.x264-GROUP"),
 				Size:     sizeGBToBytes(2),
-				Protocol: ptr.To(prowlarr.DownloadProtocolTorrent),
+				Protocol: ptr.To(string(indexer.DownloadProtocolTorrent)),
 			},
 			{
 				ID:       ptr.To(int32(2)),
 				Title:    nullable.NewNullableWithValue("Series.S01E02.1080p.WEB-DL.AAC2.0.x264-GROUP"),
 				Size:     sizeGBToBytes(2),
-				Protocol: ptr.To(prowlarr.DownloadProtocolTorrent),
+				Protocol: ptr.To(string(indexer.DownloadProtocolTorrent)),
 			},
 		}
 
@@ -938,18 +937,18 @@ func TestMediaManager_ReconcileMissingSeries(t *testing.T) {
 		}, storage.EpisodeStateMissing)
 		require.NoError(t, err)
 
-		releases := []*prowlarr.ReleaseResource{
+		releases := []*indexer.Release{
 			{
 				ID:       ptr.To(int32(1)),
 				Title:    nullable.NewNullableWithValue("Series.S01E01.1080p.WEB-DL.AAC2.0.x264-GROUP"),
 				Size:     sizeGBToBytes(2),
-				Protocol: ptr.To(prowlarr.DownloadProtocolTorrent),
+				Protocol: ptr.To(string(indexer.DownloadProtocolTorrent)),
 			},
 			{
 				ID:       ptr.To(int32(2)),
 				Title:    nullable.NewNullableWithValue("Series.S01E02.1080p.WEB-DL.AAC2.0.x264-GROUP"),
 				Size:     sizeGBToBytes(2),
-				Protocol: ptr.To(prowlarr.DownloadProtocolTorrent),
+				Protocol: ptr.To(string(indexer.DownloadProtocolTorrent)),
 			},
 		}
 
@@ -1149,12 +1148,12 @@ func TestMediaManager_ReconcileContinuingSeries(t *testing.T) {
 		}, storage.EpisodeStateMissing)
 		require.NoError(t, err)
 
-		releases := []*prowlarr.ReleaseResource{
+		releases := []*indexer.Release{
 			{
 				ID:       ptr.To(int32(1)),
 				Title:    nullable.NewNullableWithValue("Continuing.Series.S01E03.1080p.WEB-DL.AAC2.0.x264-GROUP"),
 				Size:     sizeGBToBytes(2),
-				Protocol: ptr.To(prowlarr.DownloadProtocolTorrent),
+				Protocol: ptr.To(string(indexer.DownloadProtocolTorrent)),
 			},
 		}
 
@@ -1303,7 +1302,7 @@ func TestMediaManager_ReconcileContinuingSeries(t *testing.T) {
 		tmdbMock.EXPECT().TvSeriesWatchProviders(gomock.Any(), int32(100)).Return(wpResp, nil).AnyTimes()
 
 		mockIndexerSource := indexerMock.NewMockIndexerSource(ctrl)
-		mockIndexerSource.EXPECT().Search(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return([]*prowlarr.ReleaseResource{}, nil).AnyTimes()
+		mockIndexerSource.EXPECT().Search(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return([]*indexer.Release{}, nil).AnyTimes()
 
 		indexerFactory := indexerMock.NewMockFactory(ctrl)
 		indexerFactory.EXPECT().NewIndexerSource(gomock.Any()).Return(mockIndexerSource, nil).AnyTimes()

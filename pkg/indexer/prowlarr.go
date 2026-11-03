@@ -11,6 +11,7 @@ import (
 	"github.com/kasuboski/mediaz/pkg/prowlarr"
 	"github.com/kasuboski/mediaz/pkg/ptr"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
+	"github.com/oapi-codegen/nullable"
 	"go.uber.org/zap"
 )
 
@@ -93,26 +94,53 @@ func (p *ProwlarrIndexerSource) ListIndexers(ctx context.Context) ([]SourceIndex
 			}
 		}
 
-		var categories []prowlarr.IndexerCategory
-		if pi.Capabilities.Categories.IsSpecified() {
+		var categories []Category
+		if pi.Capabilities != nil && pi.Capabilities.Categories.IsSpecified() {
 			cats, _ := pi.Capabilities.Categories.Get()
-			categories = cats
+			categories = mapCategories(cats)
 		}
-
+		var status *Status
+		if pi.Status != nil {
+			status = &Status{DisabledTill: pi.Status.DisabledTill, ID: pi.Status.ID, IndexerID: pi.Status.IndexerID, InitialFailure: pi.Status.InitialFailure, MostRecentFailure: pi.Status.MostRecentFailure}
+		}
 		indexers = append(indexers, SourceIndexer{
-			ID:         ProwlarrID(*pi.ID),
-			Name:       name,
-			URI:        uri,
-			Priority:   *pi.Priority,
-			Categories: categories,
-			Status:     pi.Status,
+			ID: SourceID(*pi.ID), Name: name, URI: uri, Priority: *pi.Priority,
+			Categories: categories, Status: status,
 		})
 	}
 
 	return indexers, nil
 }
 
-func (p *ProwlarrIndexerSource) Search(ctx context.Context, indexerID ProwlarrID, categories []int32, opts SearchOptions) ([]*prowlarr.ReleaseResource, error) {
+func mapCategories(in []prowlarr.IndexerCategory) []Category {
+	out := make([]Category, len(in))
+	for i, c := range in {
+		out[i] = Category{ID: c.ID, Name: c.Name, Description: c.Description}
+		if c.SubCategories.IsSpecified() {
+			children, _ := c.SubCategories.Get()
+			out[i].SubCategories = nullable.NewNullableWithValue(mapCategories(children))
+		}
+	}
+	return out
+}
+
+func mapRelease(r *prowlarr.ReleaseResource) *Release {
+	if r == nil {
+		return nil
+	}
+	out := &Release{Age: r.Age, CommentURL: r.CommentURL, DownloadURL: r.DownloadURL, FileName: r.FileName, GUID: r.GUID, ID: r.ID, ImdbID: r.ImdbID, Indexer: r.Indexer, IndexerID: r.IndexerID, InfoHash: r.InfoHash, InfoURL: r.InfoURL, Leechers: r.Leechers, MagnetURL: r.MagnetURL, PosterURL: r.PosterURL, PublishDate: r.PublishDate, Seeders: r.Seeders, Size: r.Size, Title: r.Title, TmdbID: r.TmdbID, TvdbID: r.TvdbID}
+	if r.Protocol != nil {
+		v := string(*r.Protocol)
+		out.Protocol = &v
+	}
+	if r.Categories.IsSpecified() {
+		cs, _ := r.Categories.Get()
+		out.Categories = nullable.NewNullableWithValue(mapCategories(cs))
+	}
+	return out
+}
+
+func (p *ProwlarrIndexerSource) Search(ctx context.Context, indexerID SourceID, categories []int32, opts SearchOptions) ([]*Release, error) {
 	log := logger.FromCtx(ctx)
 
 	query := opts.Query
@@ -146,10 +174,13 @@ func (p *ProwlarrIndexerSource) Search(ctx context.Context, indexerID ProwlarrID
 		return nil, err
 	}
 
-	var releases []*prowlarr.ReleaseResource
-	if err := json.Unmarshal(body, &releases); err != nil {
+	var wireReleases []*prowlarr.ReleaseResource
+	if err := json.Unmarshal(body, &wireReleases); err != nil {
 		return nil, err
 	}
-
+	releases := make([]*Release, 0, len(wireReleases))
+	for _, r := range wireReleases {
+		releases = append(releases, mapRelease(r))
+	}
 	return releases, nil
 }

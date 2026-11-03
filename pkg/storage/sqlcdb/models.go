@@ -85,6 +85,7 @@ type IndexerSource struct {
 	Enabled        bool
 	CreatedAt      sql.NullTime
 	UpdatedAt      sql.NullTime
+	ApiPath        sql.NullString
 }
 
 type Job struct {

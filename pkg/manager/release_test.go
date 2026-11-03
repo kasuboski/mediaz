@@ -3,12 +3,12 @@ package manager
 import (
 	"context"
 	"encoding/json"
+	"github.com/kasuboski/mediaz/pkg/indexer"
 	"os"
 	"reflect"
 	"strings"
 	"testing"
 
-	"github.com/kasuboski/mediaz/pkg/prowlarr"
 	"github.com/kasuboski/mediaz/pkg/ptr"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
 	"github.com/oapi-codegen/nullable"
@@ -368,7 +368,7 @@ func TestRejectSeasonReleaseFunc(t *testing.T) {
 		name         string
 		seriesTitle  string
 		seasonNumber int64
-		release      *prowlarr.ReleaseResource
+		release      *indexer.Release
 		want         bool
 	}{
 		{
@@ -382,7 +382,7 @@ func TestRejectSeasonReleaseFunc(t *testing.T) {
 			name:         "valid season pack",
 			seriesTitle:  "ShowName",
 			seasonNumber: 3,
-			release: &prowlarr.ReleaseResource{
+			release: &indexer.Release{
 				Title: nullable.NewNullableWithValue("ShowName.S03.1080p.WEB-DL.HEVC.x265"),
 			},
 			want: false,
@@ -391,7 +391,7 @@ func TestRejectSeasonReleaseFunc(t *testing.T) {
 			name:         "invalid season pack",
 			seriesTitle:  "ShowName",
 			seasonNumber: 3,
-			release: &prowlarr.ReleaseResource{
+			release: &indexer.Release{
 				Title: nullable.NewNullableWithValue("Show.Name.S03E01.1080p.WEB-DL"),
 			},
 			want: true,
@@ -400,7 +400,7 @@ func TestRejectSeasonReleaseFunc(t *testing.T) {
 			name:         "valid season pack with 'season' in name",
 			seriesTitle:  "ShowName",
 			seasonNumber: 3,
-			release: &prowlarr.ReleaseResource{
+			release: &indexer.Release{
 				Title: nullable.NewNullableWithValue("ShowName.season.3.1080p.WEB-DL.HEVC.x265"),
 			},
 		},
@@ -408,7 +408,7 @@ func TestRejectSeasonReleaseFunc(t *testing.T) {
 			name:         "valid release with group",
 			seriesTitle:  "ShowName",
 			seasonNumber: 7,
-			release: &prowlarr.ReleaseResource{
+			release: &indexer.Release{
 				Title: nullable.NewNullableWithValue("ShowName.S07.1080p.WEB-DL.AAC2.0.x264-Group"),
 			},
 			want: false,
@@ -417,7 +417,7 @@ func TestRejectSeasonReleaseFunc(t *testing.T) {
 			name:         "double digit sesaon number",
 			seriesTitle:  "ShowName",
 			seasonNumber: 10,
-			release: &prowlarr.ReleaseResource{
+			release: &indexer.Release{
 				Title: nullable.NewNullableWithValue("ShowName.S10.1080p.WEB-DL.AAC2.0.x264-Group"),
 			},
 		},
@@ -425,7 +425,7 @@ func TestRejectSeasonReleaseFunc(t *testing.T) {
 			name:         "underscores",
 			seriesTitle:  "ShowName",
 			seasonNumber: 3,
-			release: &prowlarr.ReleaseResource{
+			release: &indexer.Release{
 				Title: nullable.NewNullableWithValue("ShowName_Season_03_Complete_720p.HDTV"),
 			},
 		},
@@ -433,7 +433,7 @@ func TestRejectSeasonReleaseFunc(t *testing.T) {
 			name:         "unrelated show",
 			seriesTitle:  "ShowName",
 			seasonNumber: 3,
-			release: &prowlarr.ReleaseResource{
+			release: &indexer.Release{
 				Title: nullable.NewNullableWithValue("yoyo.S10.1080p.WEB-DL.AAC2.0.x264-Group"),
 			},
 			want: true,
@@ -442,7 +442,7 @@ func TestRejectSeasonReleaseFunc(t *testing.T) {
 			name:         "unrelated release",
 			seriesTitle:  "ShowName",
 			seasonNumber: 3,
-			release: &prowlarr.ReleaseResource{
+			release: &indexer.Release{
 				Title: nullable.NewNullableWithValue("asdfadfadsfad"),
 			},
 			want: true,
@@ -463,7 +463,7 @@ func TestRejectEpisodeReleaseFunc(t *testing.T) {
 		episodeTitle  string
 		seasonNumber  int64
 		episodeNumber int64
-		release       *prowlarr.ReleaseResource
+		release       *indexer.Release
 		want          bool
 	}{
 		{
@@ -479,7 +479,7 @@ func TestRejectEpisodeReleaseFunc(t *testing.T) {
 			episodeTitle:  "ShowName",
 			seasonNumber:  1,
 			episodeNumber: 2,
-			release: &prowlarr.ReleaseResource{
+			release: &indexer.Release{
 				Title: nullable.NewNullableWithValue("ShowName.S01E02.1080p.WEB-DL.AAC2.0.x264-GROUP"),
 			},
 			want: false,
@@ -489,7 +489,7 @@ func TestRejectEpisodeReleaseFunc(t *testing.T) {
 			episodeTitle:  "ShowName",
 			seasonNumber:  1,
 			episodeNumber: 2,
-			release: &prowlarr.ReleaseResource{
+			release: &indexer.Release{
 				Title: nullable.NewNullableWithValue("ShowName.1x02.1080p.WEB-DL.AAC2.0.x264-GROUP"),
 			},
 			want: false,
@@ -499,7 +499,7 @@ func TestRejectEpisodeReleaseFunc(t *testing.T) {
 			episodeTitle:  "ShowName",
 			seasonNumber:  1,
 			episodeNumber: 2,
-			release: &prowlarr.ReleaseResource{
+			release: &indexer.Release{
 				Title: nullable.NewNullableWithValue("ShowName.S02E02.1080p.WEB-DL.AAC2.0.x264-GROUP"),
 			},
 			want: true,
@@ -509,7 +509,7 @@ func TestRejectEpisodeReleaseFunc(t *testing.T) {
 			episodeTitle:  "ShowName",
 			seasonNumber:  1,
 			episodeNumber: 2,
-			release: &prowlarr.ReleaseResource{
+			release: &indexer.Release{
 				Title: nullable.NewNullableWithValue("ShowName.S01E03.1080p.WEB-DL.AAC2.0.x264-GROUP"),
 			},
 			want: true,
@@ -519,7 +519,7 @@ func TestRejectEpisodeReleaseFunc(t *testing.T) {
 			episodeTitle:  "ShowName",
 			seasonNumber:  10,
 			episodeNumber: 12,
-			release: &prowlarr.ReleaseResource{
+			release: &indexer.Release{
 				Title: nullable.NewNullableWithValue("ShowName.S10E12.1080p.WEB-DL.AAC2.0.x264-GROUP"),
 			},
 			want: false,
@@ -529,7 +529,7 @@ func TestRejectEpisodeReleaseFunc(t *testing.T) {
 			episodeTitle:  "ShowName",
 			seasonNumber:  1,
 			episodeNumber: 2,
-			release: &prowlarr.ReleaseResource{
+			release: &indexer.Release{
 				Title: nullable.NewNullableWithValue("ShowName.S01E02.1080p.WEB-DL.AAC2.0.x264-GROUP"),
 			},
 			want: false,
@@ -539,7 +539,7 @@ func TestRejectEpisodeReleaseFunc(t *testing.T) {
 			episodeTitle:  "ShowName",
 			seasonNumber:  1,
 			episodeNumber: 2,
-			release: &prowlarr.ReleaseResource{
+			release: &indexer.Release{
 				Title: nullable.NewNullableWithValue("ShowName.1080p.WEB-DL.AAC2.0.x264-GROUP"),
 			},
 			want: true,
@@ -549,7 +549,7 @@ func TestRejectEpisodeReleaseFunc(t *testing.T) {
 			episodeTitle:  "ShowName",
 			seasonNumber:  1,
 			episodeNumber: 2,
-			release: &prowlarr.ReleaseResource{
+			release: &indexer.Release{
 				Title: nullable.NewNullableWithValue("DifferentShow.S01E02.1080p.WEB-DL.AAC2.0.x264-GROUP"),
 			},
 			want: true,
@@ -559,7 +559,7 @@ func TestRejectEpisodeReleaseFunc(t *testing.T) {
 			episodeTitle:  "ShowName",
 			seasonNumber:  1,
 			episodeNumber: 2,
-			release: &prowlarr.ReleaseResource{
+			release: &indexer.Release{
 				Title: nullable.NewNullableWithValue("showname.s01e02.1080p.WEB-DL.AAC2.0.x264-GROUP"),
 			},
 			want: false,
@@ -569,7 +569,7 @@ func TestRejectEpisodeReleaseFunc(t *testing.T) {
 			episodeTitle:  "ShowName",
 			seasonNumber:  1,
 			episodeNumber: 2,
-			release: &prowlarr.ReleaseResource{
+			release: &indexer.Release{
 				Title: nullable.NewNullableWithValue("ShowName_S01E02_1080p_WEB-DL_AAC2.0_x264-GROUP"),
 			},
 			want: false,
@@ -579,7 +579,7 @@ func TestRejectEpisodeReleaseFunc(t *testing.T) {
 			episodeTitle:  "ShowName",
 			seasonNumber:  1,
 			episodeNumber: 2,
-			release: &prowlarr.ReleaseResource{
+			release: &indexer.Release{
 				Title: nullable.NewNullableWithValue("yo.s01e02.1080p.WEB-DL.AAC2.0.x264-GROUP"),
 			},
 			want: true,
@@ -589,7 +589,7 @@ func TestRejectEpisodeReleaseFunc(t *testing.T) {
 			episodeTitle:  "ShowName",
 			seasonNumber:  1,
 			episodeNumber: 2,
-			release: &prowlarr.ReleaseResource{
+			release: &indexer.Release{
 				Title: nullable.NewNullableWithValue("asdfadsfadsfads"),
 			},
 			want: true,
@@ -921,13 +921,13 @@ func TestRejectMovieReleaseFunc(t *testing.T) {
 
 	t.Run("unspecified title", func(t *testing.T) {
 		reject := RejectMovieReleaseFunc(context.Background(), params, profile, protocols)
-		r := &prowlarr.ReleaseResource{}
+		r := &indexer.Release{}
 		assert.True(t, reject(r))
 	})
 
 	t.Run("null title", func(t *testing.T) {
 		reject := RejectMovieReleaseFunc(context.Background(), params, profile, protocols)
-		r := &prowlarr.ReleaseResource{
+		r := &indexer.Release{
 			Title: nullable.NewNullNullable[string](),
 		}
 		assert.True(t, reject(r))
@@ -935,7 +935,7 @@ func TestRejectMovieReleaseFunc(t *testing.T) {
 
 	t.Run("empty title", func(t *testing.T) {
 		reject := RejectMovieReleaseFunc(context.Background(), params, profile, protocols)
-		r := &prowlarr.ReleaseResource{
+		r := &indexer.Release{
 			Title: nullable.NewNullableWithValue(""),
 		}
 		assert.True(t, reject(r))
@@ -943,7 +943,7 @@ func TestRejectMovieReleaseFunc(t *testing.T) {
 
 	t.Run("whitespace only title", func(t *testing.T) {
 		reject := RejectMovieReleaseFunc(context.Background(), params, profile, protocols)
-		r := &prowlarr.ReleaseResource{
+		r := &indexer.Release{
 			Title: nullable.NewNullableWithValue("   "),
 		}
 		assert.True(t, reject(r))

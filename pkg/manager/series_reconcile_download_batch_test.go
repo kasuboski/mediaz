@@ -3,13 +3,13 @@ package manager
 import (
 	"context"
 	"database/sql"
+	"github.com/kasuboski/mediaz/pkg/indexer"
 	"testing"
 	"time"
 
 	"github.com/kasuboski/mediaz/config"
 	"github.com/kasuboski/mediaz/pkg/download"
 	downloadMock "github.com/kasuboski/mediaz/pkg/download/mocks"
-	"github.com/kasuboski/mediaz/pkg/prowlarr"
 	"github.com/kasuboski/mediaz/pkg/ptr"
 	"github.com/kasuboski/mediaz/pkg/storage"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
@@ -99,11 +99,11 @@ func TestReconcileMissingSeasonWithMetadataDownloadBatch(t *testing.T) {
 			episodes, err := db.ListEpisodes(ctx, storage.EpisodeFilter{SeasonID: &seasonID})
 			require.NoError(t, err)
 			store.listEpisodes = 0
-			releases := []*prowlarr.ReleaseResource{{ID: ptr.To(int32(1)), Title: nullable.NewNullableWithValue("series.S01.1080p.WEB-DL.HEVC.x265"), Size: sizeGBToBytes(2), Protocol: ptr.To(prowlarr.DownloadProtocolTorrent)}}
+			releases := []*indexer.Release{{ID: ptr.To(int32(1)), Title: nullable.NewNullableWithValue("series.S01.1080p.WEB-DL.HEVC.x265"), Size: sizeGBToBytes(2), Protocol: ptr.To(string(indexer.DownloadProtocolTorrent))}}
 			if tc.individual {
-				releases = []*prowlarr.ReleaseResource{
-					{ID: ptr.To(int32(1)), Title: nullable.NewNullableWithValue("series.S01E01.1080p.WEB-DL.HEVC.x265"), Size: sizeGBToBytes(1), Protocol: ptr.To(prowlarr.DownloadProtocolTorrent)},
-					{ID: ptr.To(int32(2)), Title: nullable.NewNullableWithValue("series.S01E02.1080p.WEB-DL.HEVC.x265"), Size: sizeGBToBytes(1), Protocol: ptr.To(prowlarr.DownloadProtocolTorrent)},
+				releases = []*indexer.Release{
+					{ID: ptr.To(int32(1)), Title: nullable.NewNullableWithValue("series.S01E01.1080p.WEB-DL.HEVC.x265"), Size: sizeGBToBytes(1), Protocol: ptr.To(string(indexer.DownloadProtocolTorrent))},
+					{ID: ptr.To(int32(2)), Title: nullable.NewNullableWithValue("series.S01E02.1080p.WEB-DL.HEVC.x265"), Size: sizeGBToBytes(1), Protocol: ptr.To(string(indexer.DownloadProtocolTorrent))},
 				}
 			}
 			profile := []sqlcdb.ListQualityProfileRowsRow{{QualityDefinition: sqlcdb.QualityDefinition{Name: "HD", MinSize: 15, MaxSize: 1000, PreferredSize: 995, MediaType: "tv"}}}

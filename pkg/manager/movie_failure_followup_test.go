@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"github.com/kasuboski/mediaz/pkg/indexer"
 	"io"
 	"net/http"
 	"path/filepath"
@@ -16,11 +17,9 @@ import (
 	"github.com/kasuboski/mediaz/pkg/download"
 	downloadMock "github.com/kasuboski/mediaz/pkg/download/mocks"
 	httpMock "github.com/kasuboski/mediaz/pkg/http/mocks"
-	"github.com/kasuboski/mediaz/pkg/indexer"
 	indexerMock "github.com/kasuboski/mediaz/pkg/indexer/mocks"
 	"github.com/kasuboski/mediaz/pkg/library"
 	libraryMock "github.com/kasuboski/mediaz/pkg/library/mocks"
-	"github.com/kasuboski/mediaz/pkg/prowlarr"
 	"github.com/kasuboski/mediaz/pkg/ptr"
 	"github.com/kasuboski/mediaz/pkg/storage"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
@@ -133,28 +132,28 @@ func TestMovieFailureFollowup_MissingPreservesRowAndHistory(t *testing.T) {
 			require.NoError(t, err)
 			source := indexerMock.NewMockIndexerSource(ctrl)
 			factory := indexerMock.NewMockFactory(ctrl)
-			source.EXPECT().ListIndexers(ctx).Return([]indexer.SourceIndexer{{ID: indexer.ProwlarrID(1), Name: "indexer", Priority: 1}}, nil)
+			source.EXPECT().ListIndexers(ctx).Return([]indexer.SourceIndexer{{ID: indexer.SourceID(1), Name: "indexer", Priority: 1}}, nil)
 			factory.EXPECT().NewIndexerSource(gomock.Any()).Return(source, nil)
 			injected := errors.New("injected search failure")
-			var release *prowlarr.ReleaseResource
+			var release *indexer.Release
 			if scenario == "search source error" {
 				factory.EXPECT().NewIndexerSource(gomock.Any()).Return(nil, injected)
 			} else {
 				factory.EXPECT().NewIndexerSource(gomock.Any()).Return(source, nil)
-				var releases []*prowlarr.ReleaseResource
+				var releases []*indexer.Release
 				var searchErr error
 				if scenario == "all rejected" || scenario == "download add error" {
-					protocol := prowlarr.DownloadProtocolTorrent
+					protocol := indexer.DownloadProtocolTorrent
 					if scenario == "all rejected" {
-						protocol = prowlarr.DownloadProtocolUsenet
+						protocol = indexer.DownloadProtocolUsenet
 					}
-					release = &prowlarr.ReleaseResource{ID: ptr.To(int32(123)), Title: nullable.NewNullableWithValue("test movie"), Size: ptr.To(int64(23 * 1024 * 1024 * 1024)), Seeders: nullable.NewNullableWithValue(int32(23)), Protocol: &protocol}
-					releases = []*prowlarr.ReleaseResource{release}
+					release = &indexer.Release{ID: ptr.To(int32(123)), Title: nullable.NewNullableWithValue("test movie"), Size: ptr.To(int64(23 * 1024 * 1024 * 1024)), Seeders: nullable.NewNullableWithValue(int32(23)), Protocol: ptr.To(string(protocol))}
+					releases = []*indexer.Release{release}
 				}
 				if scenario == "indexer search error" {
 					searchErr = injected
 				}
-				source.EXPECT().Search(gomock.Any(), indexer.ProwlarrID(1), MovieCategories, indexer.SearchOptions{Query: "test movie", Type: ptr.To(indexer.TypeMovie)}).Return(releases, searchErr)
+				source.EXPECT().Search(gomock.Any(), indexer.SourceID(1), MovieCategories, indexer.SearchOptions{Query: "test movie", Type: ptr.To(indexer.TypeMovie)}).Return(releases, searchErr)
 			}
 			downloads := downloadMock.NewMockFactory(ctrl)
 			dc := downloadMock.NewMockDownloadClient(ctrl)
@@ -170,14 +169,13 @@ func TestMovieFailureFollowup_MissingPreservesRowAndHistory(t *testing.T) {
 			require.NoError(t, err)
 			err = m.reconcileMissingMovie(ctx, sqlcdb.ListMoviesByStatesRow(before), newReconcileSnapshot(indexers, []sqlcdb.DownloadClient{client}))
 			switch scenario {
-			case "search source error":
+			case "search source error", "indexer search error":
 				require.ErrorIs(t, err, injected)
+			case "no releases", "all rejected":
+				require.NoError(t, err)
 			case "download add error":
 				require.ErrorIs(t, err, addErr)
 				require.EqualError(t, err, "failed to add movie download request: injected add failure")
-			default:
-				// searchIndexerSource currently logs and swallows individual Search errors.
-				require.NoError(t, err)
 			}
 			got, err := store.GetMovie(ctx, id)
 			require.NoError(t, err)

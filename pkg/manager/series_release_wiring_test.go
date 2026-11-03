@@ -3,6 +3,7 @@ package manager
 import (
 	"context"
 	"database/sql"
+	"github.com/kasuboski/mediaz/pkg/indexer"
 	"strings"
 	"testing"
 	"time"
@@ -10,9 +11,7 @@ import (
 	"github.com/kasuboski/mediaz/config"
 	"github.com/kasuboski/mediaz/pkg/download"
 	downloadMock "github.com/kasuboski/mediaz/pkg/download/mocks"
-	"github.com/kasuboski/mediaz/pkg/indexer"
 	indexerMock "github.com/kasuboski/mediaz/pkg/indexer/mocks"
-	"github.com/kasuboski/mediaz/pkg/prowlarr"
 	"github.com/kasuboski/mediaz/pkg/ptr"
 	"github.com/kasuboski/mediaz/pkg/storage"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
@@ -46,10 +45,10 @@ func TestSeriesSearchWiresReleaseIdentity(t *testing.T) {
 			episodeID, err := store.CreateEpisode(ctx, sqlcdb.Episode{SeasonID: seasonID, EpisodeNumber: 1, EpisodeMetadataID: sql.NullInt64{Int64: episodeMetadataID, Valid: true}, Monitored: 1}, storage.EpisodeStateMissing)
 			require.NoError(t, err)
 
-			releases := []*prowlarr.ReleaseResource{
-				{ID: ptr.To(int32(1)), Title: nullable.NewNullableWithValue("Original.Series.S01E01.1080p.WEB-DL-GROUP"), Seeders: nullable.NewNullableWithValue(int32(200)), Size: sizeGBToBytes(2), Protocol: ptr.To(prowlarr.DownloadProtocolTorrent), TvdbID: ptr.To(int32(88))},
-				{ID: ptr.To(int32(2)), Title: nullable.NewNullableWithValue("Serie.Traducida.S01E01.1080p.WEB-DL-GROUP"), Seeders: nullable.NewNullableWithValue(int32(1)), Size: sizeGBToBytes(2), Protocol: ptr.To(prowlarr.DownloadProtocolTorrent), TvdbID: ptr.To(int32(77))},
-				{ID: ptr.To(int32(3)), Title: nullable.NewNullableWithValue("Serie.Traducida.S02E01.1080p.WEB-DL-GROUP"), Seeders: nullable.NewNullableWithValue(int32(500)), Size: sizeGBToBytes(2), Protocol: ptr.To(prowlarr.DownloadProtocolTorrent), TvdbID: ptr.To(int32(77))},
+			releases := []*indexer.Release{
+				{ID: ptr.To(int32(1)), Title: nullable.NewNullableWithValue("Original.Series.S01E01.1080p.WEB-DL-GROUP"), Seeders: nullable.NewNullableWithValue(int32(200)), Size: sizeGBToBytes(2), Protocol: ptr.To(string(indexer.DownloadProtocolTorrent)), TvdbID: ptr.To(int32(88))},
+				{ID: ptr.To(int32(2)), Title: nullable.NewNullableWithValue("Serie.Traducida.S01E01.1080p.WEB-DL-GROUP"), Seeders: nullable.NewNullableWithValue(int32(1)), Size: sizeGBToBytes(2), Protocol: ptr.To(string(indexer.DownloadProtocolTorrent)), TvdbID: ptr.To(int32(77))},
+				{ID: ptr.To(int32(3)), Title: nullable.NewNullableWithValue("Serie.Traducida.S02E01.1080p.WEB-DL-GROUP"), Seeders: nullable.NewNullableWithValue(int32(500)), Size: sizeGBToBytes(2), Protocol: ptr.To(string(indexer.DownloadProtocolTorrent)), TvdbID: ptr.To(int32(77))},
 			}
 			if mode == "scheduled pack" {
 				for _, r := range releases {
