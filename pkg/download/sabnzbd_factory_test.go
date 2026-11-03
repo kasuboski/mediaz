@@ -10,6 +10,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/kasuboski/mediaz/pkg/indexer"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
@@ -171,8 +172,11 @@ func TestValidateSABConfigIPv6(t *testing.T) {
 	if err != nil {
 		t.Skipf("local IPv6 unavailable: %v", err)
 	}
-	server := &http.Server{Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { _, _ = fmt.Fprint(w, factoryQueue) })}
-	defer server.Close()
+	server := &http.Server{
+		ReadHeaderTimeout: 5 * time.Second,
+		Handler:           http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { _, _ = fmt.Fprint(w, factoryQueue) }),
+	}
+	t.Cleanup(func() { require.NoError(t, server.Close()) })
 	go func() { _ = server.Serve(listener) }()
 	port := int64(listener.Addr().(*net.TCPAddr).Port)
 	client, err := NewDownloadClientFactory().NewDownloadClient(sabFactoryConfig("::1", "http", port))
