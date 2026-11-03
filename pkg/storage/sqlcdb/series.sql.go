@@ -268,3 +268,41 @@ func (q *Queries) ListSeries(ctx context.Context, arg ListSeriesParams) ([]ListS
 	}
 	return items, nil
 }
+
+const updateSeriesMonitorNewSeasons = `-- name: UpdateSeriesMonitorNewSeasons :exec
+UPDATE
+    series
+SET
+    "monitor_new_seasons" = ?
+WHERE
+    id = ?
+`
+
+type UpdateSeriesMonitorNewSeasonsParams struct {
+	MonitorNewSeasons int64
+	ID                int64
+}
+
+func (q *Queries) UpdateSeriesMonitorNewSeasons(ctx context.Context, arg UpdateSeriesMonitorNewSeasonsParams) error {
+	_, err := q.db.ExecContext(ctx, updateSeriesMonitorNewSeasons, arg.MonitorNewSeasons, arg.ID)
+	return err
+}
+
+const updateSeriesQualityProfile = `-- name: UpdateSeriesQualityProfile :exec
+UPDATE
+    series
+SET
+    "quality_profile_id" = ?
+WHERE
+    id = ?
+`
+
+type UpdateSeriesQualityProfileParams struct {
+	QualityProfileID int64
+	ID               int64
+}
+
+func (q *Queries) UpdateSeriesQualityProfile(ctx context.Context, arg UpdateSeriesQualityProfileParams) error {
+	_, err := q.db.ExecContext(ctx, updateSeriesQualityProfile, arg.QualityProfileID, arg.ID)
+	return err
+}

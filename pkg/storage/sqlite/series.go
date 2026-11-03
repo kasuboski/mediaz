@@ -189,3 +189,166 @@ func (s *SQLite) UpdateSeriesByID(ctx context.Context, id int64, series sqlcdb.S
 		ID:        id,
 	})
 }
+
+// ApplySeriesSelectionPatch applies a whole-series selection edit in ONE
+// transaction. Series-level nil fields and child nil fields are unchanged;
+// child quality profile overrides are set or cleared via sql.NullInt64. Any
+// unknown series, foreign (not-owned) child ID, unknown profile, duplicate
+// child ID, or failed write rolls back the entire patch.
+func (s *SQLite) ApplySeriesSelectionPatch(ctx context.Context, seriesID int64, patch storage.SeriesSelectionPatch) error {
+	if seriesID <= 0 {
+		return fmt.Errorf("invalid series id %d", seriesID)
+	}
+
+	// Duplicate child IDs within one patch are ambiguous; reject before any
+	// write so the caller sees a validation error, not a partial apply.
+	seenSeasons := make(map[int64]struct{}, len(patch.Seasons))
+	for _, sp := range patch.Seasons {
+		if sp.ID <= 0 {
+			return fmt.Errorf("invalid season id %d", sp.ID)
+		}
+		if _, dup := seenSeasons[sp.ID]; dup {
+			return fmt.Errorf("duplicate season id %d", sp.ID)
+		}
+		seenSeasons[sp.ID] = struct{}{}
+	}
+	seenEpisodes := make(map[int64]struct{}, len(patch.Episodes))
+	for _, ep := range patch.Episodes {
+		if ep.ID <= 0 {
+			return fmt.Errorf("invalid episode id %d", ep.ID)
+		}
+		if _, dup := seenEpisodes[ep.ID]; dup {
+			return fmt.Errorf("duplicate episode id %d", ep.ID)
+		}
+		seenEpisodes[ep.ID] = struct{}{}
+	}
+
+	return s.withTx(ctx, func(q *sqlcdb.Queries) error {
+		series, err := q.GetSeries(ctx, sqlcdb.GetSeriesParams{ID: sql.NullInt64{Int64: seriesID, Valid: true}})
+		if err != nil {
+			return mapQueryErr(err, "failed to get series")
+		}
+		if series.Series.ID != seriesID {
+			return storage.ErrNotFound
+		}
+
+		// Series-level updates.
+		if patch.SeriesMonitored != nil {
+			if err := q.UpdateSeriesByID(ctx, sqlcdb.UpdateSeriesByIDParams{
+				Monitored: boolToInt64(*patch.SeriesMonitored),
+				ID:        seriesID,
+			}); err != nil {
+				return fmt.Errorf("failed to update series monitored: %w", err)
+			}
+		}
+		if patch.MonitorNewSeasons != nil {
+			if err := q.UpdateSeriesMonitorNewSeasons(ctx, sqlcdb.UpdateSeriesMonitorNewSeasonsParams{
+				MonitorNewSeasons: boolToInt64(*patch.MonitorNewSeasons),
+				ID:                seriesID,
+			}); err != nil {
+				return fmt.Errorf("failed to update series monitor_new_seasons: %w", err)
+			}
+		}
+		if patch.QualityProfileID != nil {
+			if err := requireQualityProfile(ctx, q, *patch.QualityProfileID); err != nil {
+				return err
+			}
+			if err := q.UpdateSeriesQualityProfile(ctx, sqlcdb.UpdateSeriesQualityProfileParams{
+				QualityProfileID: *patch.QualityProfileID,
+				ID:               seriesID,
+			}); err != nil {
+				return fmt.Errorf("failed to update series quality profile: %w", err)
+			}
+		}
+
+		// Season-level sparse updates.
+		for _, sp := range patch.Seasons {
+			season, err := q.GetSeasonByID(ctx, sp.ID)
+			if err != nil {
+				return mapQueryErr(err, "failed to get season")
+			}
+			if season.Season.SeriesID != seriesID {
+				return fmt.Errorf("season %d: %w", sp.ID, storage.ErrNotOwned)
+			}
+			if sp.Monitored != nil {
+				if err := q.UpdateSeasonMonitored(ctx, sqlcdb.UpdateSeasonMonitoredParams{
+					Monitored: boolToInt64(*sp.Monitored),
+					ID:        sp.ID,
+				}); err != nil {
+					return fmt.Errorf("failed to update season monitored: %w", err)
+				}
+			}
+			if sp.QualityProfileID != nil {
+				override := sql.NullInt64{}
+				if *sp.QualityProfileID > 0 {
+					if err := requireQualityProfile(ctx, q, *sp.QualityProfileID); err != nil {
+						return err
+					}
+					override = sql.NullInt64{Int64: *sp.QualityProfileID, Valid: true}
+				}
+				if err := q.UpdateSeasonQualityProfile(ctx, sqlcdb.UpdateSeasonQualityProfileParams{
+					QualityProfileID: override,
+					ID:               sp.ID,
+				}); err != nil {
+					return fmt.Errorf("failed to update season quality profile: %w", err)
+				}
+			}
+		}
+
+		// Episode-level sparse updates. Ownership is proven through the
+		// episode's season chain back to the patched series.
+		for _, ep := range patch.Episodes {
+			episode, err := q.GetEpisodeByID(ctx, ep.ID)
+			if err != nil {
+				return mapQueryErr(err, "failed to get episode")
+			}
+			season, err := q.GetSeasonByID(ctx, episode.Episode.SeasonID)
+			if err != nil {
+				return mapQueryErr(err, "failed to get episode season")
+			}
+			if season.Season.SeriesID != seriesID {
+				return fmt.Errorf("episode %d: %w", ep.ID, storage.ErrNotOwned)
+			}
+			if ep.Monitored != nil {
+				if err := q.UpdateEpisodeMonitored(ctx, sqlcdb.UpdateEpisodeMonitoredParams{
+					Monitored: boolToInt64(*ep.Monitored),
+					ID:        ep.ID,
+				}); err != nil {
+					return fmt.Errorf("failed to update episode monitored: %w", err)
+				}
+			}
+			if ep.QualityProfileID != nil {
+				override := sql.NullInt64{}
+				if *ep.QualityProfileID > 0 {
+					if err := requireQualityProfile(ctx, q, *ep.QualityProfileID); err != nil {
+						return err
+					}
+					override = sql.NullInt64{Int64: *ep.QualityProfileID, Valid: true}
+				}
+				if err := q.UpdateEpisodeQualityProfile(ctx, sqlcdb.UpdateEpisodeQualityProfileParams{
+					QualityProfileID: override,
+					ID:               ep.ID,
+				}); err != nil {
+					return fmt.Errorf("failed to update episode quality profile: %w", err)
+				}
+			}
+		}
+
+		return nil
+	})
+}
+
+// requireQualityProfile errors unless the referenced profile exists.
+func requireQualityProfile(ctx context.Context, q *sqlcdb.Queries, id int64) error {
+	if _, err := q.GetQualityProfile(ctx, id); err != nil {
+		return fmt.Errorf("quality profile %d: %w", id, storage.ErrNotFound)
+	}
+	return nil
+}
+
+func boolToInt64(b bool) int64 {
+	if b {
+		return 1
+	}
+	return 0
+}

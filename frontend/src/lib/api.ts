@@ -154,6 +154,7 @@ export interface TVDetailResult {
   path?: string;
   qualityProfileID?: number;
   monitored?: boolean;
+  monitorNewSeasons?: boolean;
   seasons?: SeasonResult[];
   externalIds?: ExternalIDs;
   watchProviders?: WatchProvider[];
@@ -185,6 +186,7 @@ export interface TVDetail {
   path?: string;
   qualityProfileID?: number;
   monitored: boolean;
+  monitorNewSeasons?: boolean;
   seasons: SeasonResult[];
   externalIds?: ExternalIDs;
   watchProviders: WatchProvider[];
@@ -269,6 +271,17 @@ export interface AddMovieRequest {
 export interface AddSeriesRequest {
   tmdbID: number;
   qualityProfileID: number;
+  monitored?: boolean;
+  monitorNewSeasons?: boolean;
+  selection?: { mode: 'all' | 'none' | 'custom'; seasons?: { seasonNumber: number; monitored: boolean; qualityProfileID?: number | null; episodes: { episodeNumber: number; monitored: boolean; qualityProfileID?: number | null }[] }[] };
+}
+
+export interface TVSelectionPatch {
+  monitored?: boolean;
+  monitorNewSeasons?: boolean;
+  qualityProfileID?: number;
+  seasons?: { id: number; monitored?: boolean; qualityProfileID?: number | null }[];
+  episodes?: { id: number; monitored?: boolean; qualityProfileID?: number | null }[];
 }
 
 /**
@@ -320,7 +333,16 @@ async function apiRequest<T>(
     if (!response.ok) {
       throw new ApiError(response.status, `HTTP ${response.status}: ${response.statusText}`);
     }
-    const data: ApiResponse<T> = await response.json();
+    if (response.status === 202 || response.status === 204 || response.headers?.get?.('content-length') === '0') {
+      return undefined as T;
+    }
+    if (typeof response.text !== 'function') {
+      const data: ApiResponse<T> = await response.json();
+      return data.response;
+    }
+    const text = await response.text();
+    if (!text.trim()) return undefined as T;
+    const data: ApiResponse<T> = JSON.parse(text);
     return data.response;
   } catch (error) {
     if (error instanceof ApiError) {
@@ -439,6 +461,10 @@ export interface SeasonResult {
   posterPath?: string;
   episodeCount: number;
   monitored: boolean;
+  id?: number | null;
+  qualityProfileID?: number | null;
+  effectiveQualityProfileID?: number | null;
+  qualityProfileSource?: 'season' | 'series' | null;
   episodes?: EpisodeResult[];
 }
 
@@ -458,6 +484,11 @@ export interface EpisodeResult {
   voteAverage?: number;
   monitored: boolean;
   downloaded: boolean;
+  id?: number | null;
+  state?: string | null;
+  qualityProfileID?: number | null;
+  effectiveQualityProfileID?: number | null;
+  qualityProfileSource?: 'episode' | 'season' | 'series' | null;
 }
 
 export const tvApi = {
@@ -479,6 +510,13 @@ export const tvApi = {
     const endpoint = `/library/tv/${seriesID}${deleteDirectory ? '?deleteDirectory=true' : ''}`;
     return apiRequest<void>(endpoint, { method: 'DELETE' });
   },
+  async updateSelection(seriesID: number, patch: TVSelectionPatch): Promise<TVDetail> {
+    const result = await apiRequest<TVDetailResult>(`/library/tv/${seriesID}/selection`, { method: 'PATCH', body: JSON.stringify(patch) });
+    return transformTVDetailResult(result);
+  },
+  async requestSeries(seriesID: number): Promise<void> { return apiRequest<void>(`/library/tv/${seriesID}/search`, { method: 'POST' }); },
+  async requestSeason(id: number): Promise<void> { return apiRequest<void>(`/season/${id}/search`, { method: 'POST' }); },
+  async requestEpisode(id: number): Promise<void> { return apiRequest<void>(`/episode/${id}/search`, { method: 'POST' }); },
   async updateSeriesMonitored(seriesID: number, monitored: boolean): Promise<TVDetail> {
     const result = await apiRequest<TVDetailResult>(`/library/tv/${seriesID}/monitored`, {
       method: 'PATCH',

@@ -19,7 +19,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useState } from "react";
-import { useTVDetail } from "@/lib/queries";
+import { useTVDetail, useSeriesQualityProfiles } from "@/lib/queries";
+import { TVSelectionEditor, tvSelectionFromSeasons, buildSelectionPatch, selectionSubmissionProblem, type TVSelection } from "@/components/media/TVSelectionEditor";
 import { type SeasonResult, type EpisodeResult, tvApi } from "@/lib/api";
 import {
   DropdownMenu,
@@ -132,9 +133,43 @@ export default function TVDetail() {
   const [deleteDirectory, setDeleteDirectory] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isTogglingMonitoring, setIsTogglingMonitoring] = useState(false);
+  const [selectionDraft, setSelectionDraft] = useState<TVSelection | null>(null);
+  const [monitorNewSeasonsDraft, setMonitorNewSeasonsDraft] = useState<boolean | null>(null);
+  const [savingSelection, setSavingSelection] = useState(false);
+  // Managed pages show ONE season tree at a time: either the episode metadata
+  // accordion (default) or the monitoring/quality selection editor. Drafts are
+  // component state, so switching views never resets unsaved changes.
+  const [editAcquisition, setEditAcquisition] = useState(false);
+  const { data: seriesProfiles = [] } = useSeriesQualityProfiles();
 
   const tmdbID = parseInt(id || '0');
   const { data: show, isLoading, error } = useTVDetail(tmdbID);
+
+  // A future-seasons-only edit is a complete, independent draft: it saves as a
+  // sparse PATCH ({monitorNewSeasons}) without touching any season/episode
+  // monitoring, overrides, or unrelated metadata. A tree draft saves as an
+  // atomic selection snapshot.
+  const hasDraft = selectionDraft != null || monitorNewSeasonsDraft !== null;
+  const handleSaveSelection = async () => {
+    if (!show?.id || !hasDraft) return;
+    setSavingSelection(true);
+    try {
+      const monitorNewSeasons = monitorNewSeasonsDraft ?? show.monitorNewSeasons;
+      const patch = selectionDraft
+        ? buildSelectionPatch(show.seasons ?? [], selectionDraft, typeof monitorNewSeasons === 'boolean' ? monitorNewSeasons : undefined)
+        : { monitorNewSeasons };
+      await tvApi.updateSelection(show.id, patch);
+      await queryClient.invalidateQueries({ queryKey: ['tv', 'detail', tmdbID] });
+      await queryClient.invalidateQueries({ queryKey: ['tv', 'library'] });
+      setSelectionDraft(null);
+      setMonitorNewSeasonsDraft(null);
+      toast.success('Selection saved');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not save selection');
+    } finally {
+      setSavingSelection(false);
+    }
+  };
 
   const handleRefreshMetadata = async () => {
     setIsRefreshing(true);
@@ -338,11 +373,102 @@ export default function TVDetail() {
 
             {/* Seasons Section */}
             <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Seasons</CardTitle>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0">
+                <CardTitle className="text-lg">Seasons &amp; acquisition</CardTitle>
+                {show.libraryStatus && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={editAcquisition ? 'ghost' : 'outline'}
+                    onClick={() => setEditAcquisition(v => !v)}
+                  >
+                    {editAcquisition ? 'Back to episode details' : 'Edit monitoring & quality'}
+                  </Button>
+                )}
               </CardHeader>
               <CardContent>
-                {!show.seasons || show.seasons.length === 0 ? (
+                {show.libraryStatus ? (() => {
+                  const monitorNewSeasons = monitorNewSeasonsDraft ?? show.monitorNewSeasons;
+                  const submissionProblem = selectionDraft && show.seasons ? selectionSubmissionProblem(show.seasons, selectionDraft) : null;
+                  if (editAcquisition) {
+                    return <div className="space-y-3">
+                      <p className="text-xs text-muted-foreground">Editing monitoring and quality overrides for this series. Episode details stay available under “Back to episode details”; switching views never discards your changes.</p>
+                      <div aria-label="Series automation" className="space-y-1">
+                        <label className="flex items-center gap-2 text-sm">
+                          <Checkbox id={`monitor-new-seasons-${tmdbID}`} checked={monitorNewSeasons ?? false} disabled={savingSelection} onCheckedChange={v => setMonitorNewSeasonsDraft(v === true)} />
+                          <label htmlFor={`monitor-new-seasons-${tmdbID}`} className="text-sm">Monitor future seasons</label>
+                        </label>
+                        <p className="text-xs text-muted-foreground">Automatically monitor seasons that are added to this series after it joins the library. Existing season and episode choices are never changed.</p>
+                      </div>
+                      <TVSelectionEditor seasons={show.seasons} profiles={seriesProfiles} selection={selectionDraft ?? tvSelectionFromSeasons(show.seasons)} onChange={setSelectionDraft} disabled={savingSelection} previewProfileID={show.qualityProfileID} requestOnce={{ series: show.id ? () => tvApi.requestSeries(show.id!) : undefined, season: id => tvApi.requestSeason(id), episode: id => tvApi.requestEpisode(id) }} />
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Button disabled={savingSelection || !hasDraft || submissionProblem != null} onClick={handleSaveSelection}>Save selection</Button>
+                        <span className="text-xs text-muted-foreground">Saving stores your monitoring and profile choices. “Request once” searches now without changing monitoring.</span>
+                      </div>
+                      {/* Blockers are stated explicitly instead of silently submitting a misleading All/None. */}
+                      {submissionProblem && <p role="alert" className="text-xs text-destructive">{submissionProblem}</p>}
+                    </div>;
+                  }
+                  // Metadata view: while an unsaved draft exists, keep Save and
+                  // dirty state reachable even though the editor is hidden.
+                  return <>
+                    {hasDraft && <div role="status" className="mb-4 flex flex-wrap items-center gap-2 rounded-md border border-border/50 bg-muted/40 p-3">
+                      <span className="text-sm">You have unsaved monitoring and quality changes.</span>
+                      <Button type="button" size="sm" variant="outline" onClick={() => setEditAcquisition(true)}>Review changes</Button>
+                      <Button type="button" size="sm" disabled={savingSelection || submissionProblem != null} onClick={handleSaveSelection}>Save selection</Button>
+                      {submissionProblem && <span role="alert" className="text-xs text-destructive">{submissionProblem}</span>}
+                    </div>}
+                    {(!show.seasons || show.seasons.length === 0) ? (
+                      <div className="text-center py-8">
+                        <p className="text-sm text-muted-foreground">No seasons data available</p>
+                      </div>
+                    ) : (
+                      <Accordion type="single" collapsible className="w-full">
+                        {show.seasons.map((season) => (
+                          <AccordionItem key={season.seasonNumber} value={`season-${season.seasonNumber}`}>
+                            <AccordionTrigger className="hover:no-underline">
+                              <div className="flex items-center justify-between w-full mr-4">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-12 h-16 bg-muted rounded flex items-center justify-center">
+                                    {season.posterPath ? (
+                                      <img
+                                        src={`https://image.tmdb.org/t/p/w92${season.posterPath}`}
+                                        alt={season.title}
+                                        className="w-full h-full object-cover rounded"
+                                        onError={(e) => {
+                                          const target = e.target as HTMLImageElement;
+                                          target.style.display = 'none';
+                                          const parentDiv = target.parentElement;
+                                          if (parentDiv) {
+                                            parentDiv.innerHTML = '<svg class="h-4 w-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1m4 0h1m-6 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>';
+                                          }
+                                        }}
+                                      />
+                                    ) : (
+                                      <Play className="h-4 w-4 text-muted-foreground" />
+                                    )}
+                                  </div>
+                                  <div className="text-left">
+                                    <h4 className="font-medium">{season.title}</h4>
+                                    <p className="text-sm text-muted-foreground">
+                                      {season.episodeCount} episodes
+                                      {season.airDate && (
+                                        <span> • {new Date(season.airDate).getFullYear()}</span>
+                                      )}
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            </AccordionTrigger>
+                            <AccordionContent>
+                              <SeasonContent season={season} />
+                            </AccordionContent>
+                          </AccordionItem>
+                        ))}
+                      </Accordion>
+                    )}
+                  </>;
+                })() : (!show.seasons || show.seasons.length === 0 ? (
                   <div className="text-center py-8">
                     <p className="text-sm text-muted-foreground">No seasons data available</p>
                   </div>
@@ -390,7 +516,7 @@ export default function TVDetail() {
                       </AccordionItem>
                     ))}
                   </Accordion>
-                )}
+                ))}
               </CardContent>
             </Card>
           </div>

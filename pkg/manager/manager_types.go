@@ -144,7 +144,7 @@ type TVDetailResult struct {
 	QualityProfileID    *int64          `json:"qualityProfileID,omitempty"`
 	Monitored           *bool           `json:"monitored,omitempty"`
 	MonitorNewSeasons   *bool           `json:"monitorNewSeasons,omitempty"`
-	Seasons             []SeasonResult  `json:"seasons,omitempty"`
+	Seasons             []SeasonResult  `json:"seasons"`
 	ExternalIDs         *ExternalIDs    `json:"externalIds,omitempty"`
 	WatchProviders      []WatchProvider `json:"watchProviders,omitempty"`
 }
@@ -171,9 +171,27 @@ type AddMovieRequest struct {
 // TMDBID must refer to a valid TMDB series; QualityProfileID must match an existing quality profile.
 // MonitorNewSeasons indicates whether new seasons should be automatically monitored.
 type AddSeriesRequest struct {
-	TMDBID            int64 `json:"tmdbID" validate:"required,gt=0"`
-	QualityProfileID  int64 `json:"qualityProfileID" validate:"required,gt=0"`
-	MonitorNewSeasons bool  `json:"monitorNewSeasons,omitempty"`
+	TMDBID            int64               `json:"tmdbID" validate:"required,gt=0"`
+	QualityProfileID  int64               `json:"qualityProfileID" validate:"required,gt=0"`
+	MonitorNewSeasons bool                `json:"monitorNewSeasons,omitempty"`
+	Monitored         *bool               `json:"monitored,omitempty"`
+	Selection         *SeriesAddSelection `json:"selection,omitempty"`
+}
+
+type SeriesAddSelection struct {
+	Mode    string               `json:"mode"`
+	Seasons []SeasonAddSelection `json:"seasons,omitempty"`
+}
+type SeasonAddSelection struct {
+	SeasonNumber     int64                 `json:"seasonNumber"`
+	Monitored        bool                  `json:"monitored"`
+	QualityProfileID *int64                `json:"qualityProfileID,omitempty"`
+	Episodes         []EpisodeAddSelection `json:"episodes,omitempty"`
+}
+type EpisodeAddSelection struct {
+	EpisodeNumber    int64  `json:"episodeNumber"`
+	Monitored        bool   `json:"monitored"`
+	QualityProfileID *int64 `json:"qualityProfileID,omitempty"`
 }
 
 type IndexerResponse struct {
@@ -207,33 +225,42 @@ type DeleteIndexerRequest struct {
 // Overview, AirDate, and PosterPath are optional fields from TMDB; EpisodeCount reflects known episodes; Monitored indicates tracking status.
 // Episodes array contains detailed episode information when requested.
 type SeasonResult struct {
-	TMDBID       int64           `json:"tmdbID"`
-	SeriesID     int64           `json:"seriesID"`
-	Number       int64           `json:"seasonNumber"`
-	Title        string          `json:"title"`
-	Overview     *string         `json:"overview,omitempty"`
-	AirDate      *string         `json:"airDate,omitempty"`
-	PosterPath   *string         `json:"posterPath,omitempty"`
-	EpisodeCount int32           `json:"episodeCount"`
-	Monitored    bool            `json:"monitored"`
-	Episodes     []EpisodeResult `json:"episodes,omitempty"`
+	ID                        *int64          `json:"id"`
+	QualityProfileID          *int64          `json:"qualityProfileID"`
+	EffectiveQualityProfileID *int64          `json:"effectiveQualityProfileID"`
+	QualityProfileSource      *string         `json:"qualityProfileSource"`
+	TMDBID                    int64           `json:"tmdbID"`
+	SeriesID                  int64           `json:"seriesID"`
+	Number                    int64           `json:"seasonNumber"`
+	Title                     string          `json:"title"`
+	Overview                  *string         `json:"overview,omitempty"`
+	AirDate                   *string         `json:"airDate,omitempty"`
+	PosterPath                *string         `json:"posterPath,omitempty"`
+	EpisodeCount              int32           `json:"episodeCount"`
+	Monitored                 bool            `json:"monitored"`
+	Episodes                  []EpisodeResult `json:"episodes"`
 }
 
 // EpisodeResult represents an episode with metadata for API responses.
 // Overview, AirDate, StillPath, Runtime, and VoteAverage are optional TMDB fields; Downloaded reflects local status.
 type EpisodeResult struct {
-	TMDBID       int64    `json:"tmdbID"`
-	SeriesID     int64    `json:"seriesID"`
-	SeasonNumber int64    `json:"seasonNumber"`
-	Number       int64    `json:"episodeNumber"`
-	Title        string   `json:"title"`
-	Overview     *string  `json:"overview,omitempty"`
-	AirDate      *string  `json:"airDate,omitempty"`
-	StillPath    *string  `json:"stillPath,omitempty"`
-	Runtime      *int32   `json:"runtime,omitempty"`
-	VoteAverage  *float64 `json:"voteAverage,omitempty"`
-	Monitored    bool     `json:"monitored"`
-	Downloaded   bool     `json:"downloaded"`
+	ID                        *int64   `json:"id"`
+	State                     *string  `json:"state"`
+	QualityProfileID          *int64   `json:"qualityProfileID"`
+	EffectiveQualityProfileID *int64   `json:"effectiveQualityProfileID"`
+	QualityProfileSource      *string  `json:"qualityProfileSource"`
+	TMDBID                    int64    `json:"tmdbID"`
+	SeriesID                  int64    `json:"seriesID"`
+	SeasonNumber              int64    `json:"seasonNumber"`
+	Number                    int64    `json:"episodeNumber"`
+	Title                     string   `json:"title"`
+	Overview                  *string  `json:"overview,omitempty"`
+	AirDate                   *string  `json:"airDate,omitempty"`
+	StillPath                 *string  `json:"stillPath,omitempty"`
+	Runtime                   *int32   `json:"runtime,omitempty"`
+	VoteAverage               *float64 `json:"voteAverage,omitempty"`
+	Monitored                 bool     `json:"monitored"`
+	Downloaded                bool     `json:"downloaded"`
 }
 
 // ConfigSummary provides a readonly summary of library configuration (excludes sensitive data)

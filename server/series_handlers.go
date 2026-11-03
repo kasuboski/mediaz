@@ -63,10 +63,50 @@ func (s Server) AddSeriesToLibrary() http.HandlerFunc {
 
 		release, err := s.manager.AddSeriesToLibrary(r.Context(), req)
 		if err != nil {
+			if errors.Is(err, manager.ErrValidation) {
+				s.respondError(r, w, http.StatusBadRequest, err)
+				return
+			}
+			if errors.Is(err, manager.ErrSelectionStale) {
+				s.respondError(r, w, http.StatusConflict, err)
+				return
+			}
 			s.respondError(r, w, http.StatusInternalServerError, err)
 			return
 		}
 		s.respond(r, w, http.StatusOK, seriesDTO(release))
+	}
+}
+
+// UpdateSeriesSelection applies a sparse atomic series/child selection edit.
+func (s Server) UpdateSeriesSelection() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id, ok := s.parseURLInt64(w, r, "id")
+		if !ok {
+			return
+		}
+		var req manager.SeriesSelectionPatch
+		if !s.decodeJSON(w, r, &req) {
+			return
+		}
+		detail, err := s.manager.UpdateSeriesSelection(r.Context(), id, req)
+		if err != nil {
+			if errors.Is(err, storage.ErrNotFound) {
+				s.respondError(r, w, http.StatusNotFound, err)
+				return
+			}
+			if errors.Is(err, storage.ErrNotOwned) {
+				s.respondError(r, w, http.StatusNotFound, err)
+				return
+			}
+			if errors.Is(err, manager.ErrValidation) {
+				s.respondError(r, w, http.StatusBadRequest, err)
+				return
+			}
+			s.respondError(r, w, http.StatusInternalServerError, err)
+			return
+		}
+		s.respond(r, w, http.StatusOK, detail)
 	}
 }
 

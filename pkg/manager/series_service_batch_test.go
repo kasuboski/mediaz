@@ -93,7 +93,18 @@ func TestSeriesService_GetSeasonsWithEpisodesBatch(t *testing.T) {
 	svc := NewSeriesService(nil, nil, seriesStore, metadataStore, nil, nil)
 	got, err := svc.getSeasonsWithEpisodes(ctx, seriesID)
 	require.NoError(t, err)
-	assert.Equal(t, []SeasonResult{{TMDBID: 101, SeriesID: seriesID, Number: 1, Title: "One", EpisodeCount: 1, Monitored: true, Episodes: []EpisodeResult{{TMDBID: 201, SeriesID: seriesID, SeasonNumber: 1, Number: 1, Title: "Pilot", Monitored: true}}}, {TMDBID: 102, SeriesID: seriesID, Number: 2, Title: "Two", EpisodeCount: 1, Episodes: []EpisodeResult{{SeriesID: seriesID, SeasonNumber: 2, Number: 1, Title: "Episode 1"}}}}, got)
+	source, state := "series", "missing"
+	want := []SeasonResult{{TMDBID: 101, SeriesID: seriesID, Number: 1, Title: "One", EpisodeCount: 1, Monitored: true, Episodes: []EpisodeResult{{TMDBID: 201, SeriesID: seriesID, SeasonNumber: 1, Number: 1, Title: "Pilot", Monitored: true}}}, {TMDBID: 102, SeriesID: seriesID, Number: 2, Title: "Two", EpisodeCount: 1, Episodes: []EpisodeResult{{SeriesID: seriesID, SeasonNumber: 2, Number: 1, Title: "Episode 1"}}}}
+	for i, id := range []int64{season1, season2} {
+		want[i].ID = ptrInt64(id)
+		want[i].EffectiveQualityProfileID = ptrInt64(1)
+		want[i].QualityProfileSource = &source
+		want[i].Episodes[0].ID = ptrInt64(int64(i + 1))
+		want[i].Episodes[0].State = &state
+		want[i].Episodes[0].EffectiveQualityProfileID = ptrInt64(1)
+		want[i].Episodes[0].QualityProfileSource = &source
+	}
+	assert.Equal(t, want, got)
 	assert.Equal(t, 1, seriesStore.batchEpisodeReads)
 	assert.Zero(t, seriesStore.individualReads)
 	assert.Equal(t, 1, metadataStore.batchSeasonReads)

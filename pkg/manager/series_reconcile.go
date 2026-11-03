@@ -94,7 +94,6 @@ func (m MediaManager) ReconcileMissingSeries(ctx context.Context, snapshot *Reco
 
 	monitored := true
 	series, err := m.seriesStorage.ListSeries(ctx, storage.SeriesFilter{
-		States:    []storage.SeriesState{storage.SeriesStateMissing},
 		Monitored: &monitored,
 	})
 	if err != nil {
@@ -130,10 +129,10 @@ func (m MediaManager) ReconcileContinuingSeries(ctx context.Context, snapshot *R
 		return nil
 	}
 
-	// Process all continuing series (monitored and unmonitored) to refresh metadata
-	// New episodes will inherit the series' monitored status, so only monitored episodes will be searched/downloaded
+	// Metadata retention is independent of automation and aggregate state.
+	// New children follow the stored future-season/season choices.
 	series, err := m.seriesStorage.ListSeries(ctx, storage.SeriesFilter{
-		States: []storage.SeriesState{storage.SeriesStateContinuing, storage.SeriesStateDownloading},
+		// Refresh all library trees, independent of aggregate acquisition state.
 	})
 	if err != nil {
 		if !errors.Is(err, storage.ErrNotFound) {
@@ -162,8 +161,7 @@ func (m MediaManager) ReconcileContinuingSeries(ctx context.Context, snapshot *R
 func (m MediaManager) reconcileContinuingSeries(ctx context.Context, series sqlcdb.ListSeriesRow, snapshot *ReconcileSnapshot) error {
 	log := logger.FromCtx(ctx)
 
-	// Process both monitored and unmonitored series for metadata refresh
-	// The series' monitored status will be inherited by new episodes
+	// Process both monitored and unmonitored series for metadata refresh.
 
 	seriesMetadata, err := m.seriesMetaStorage.GetSeriesMetadataByID(ctx, series.Series.SeriesMetadataID.Int64)
 	if err != nil {
@@ -193,6 +191,13 @@ func (m MediaManager) refreshSeriesEpisodes(ctx context.Context, series sqlcdb.S
 		return err
 	}
 
+	unlock := storage.LockTVAdmission(series.ID)
+	defer unlock()
+	currentSeries, err := m.seriesStorage.GetSeriesByID(ctx, series.ID)
+	if err != nil {
+		return err
+	}
+	series = currentSeries.Series
 	seriesIDInt := series.ID
 	existingSeasons, err := m.seriesStorage.ListSeasons(ctx, storage.SeasonFilter{SeriesID: &seriesIDInt})
 	if err != nil {
@@ -230,7 +235,7 @@ func (m MediaManager) refreshSeriesEpisodes(ctx context.Context, series sqlcdb.S
 
 		if seasonID, exists = existingSeasonNumbers[seasonMeta.Number]; !exists {
 			// Use unified season creation to prevent duplicates
-			seasonID, err = m.getOrCreateSeason(ctx, series.ID, seasonMeta.Number, ptr.To(seasonMeta.ID), storage.SeasonStateMissing)
+			seasonID, err = m.getOrCreateSeason(ctx, series.ID, seasonMeta.Number, ptr.To(seasonMeta.ID), storage.SeasonStateMissing, series.MonitorNewSeasons == 1)
 			if err != nil {
 				log.Error("failed to create new season", zap.Error(err))
 				continue
@@ -267,12 +272,12 @@ func (m MediaManager) refreshSeriesEpisodes(ctx context.Context, series sqlcdb.S
 
 		for _, episodeMeta := range episodeMetadataList {
 			if !existingEpisodeNumbers[episodeMeta.Number] {
-				// New episodes inherit the series' monitored status
-				// This ensures unmonitored series don't trigger searches/downloads
+				// Existing-season additions inherit that season's choice, not
+				// the independent series automation master switch.
 				episode := sqlcdb.Episode{
 					EpisodeMetadataID: sql.NullInt64{Int64: episodeMeta.ID, Valid: true},
 					SeasonID:          seasonID,
-					Monitored:         series.Monitored,
+					Monitored:         seasonEntity.Season.Monitored,
 					EpisodeNumber:     episodeMeta.Number,
 				}
 
@@ -326,6 +331,7 @@ func (m MediaManager) refreshSeriesEpisodes(ctx context.Context, series sqlcdb.S
 }
 
 func (m MediaManager) reconcileMissingSeries(ctx context.Context, series sqlcdb.ListSeriesRow, snapshot *ReconcileSnapshot) error {
+	ctx = withTVScope(ctx, "scheduled")
 	log := logger.FromCtx(ctx)
 
 	if series.Series.Monitored == 0 {
@@ -361,7 +367,6 @@ func (m MediaManager) reconcileMissingSeries(ctx context.Context, series sqlcdb.
 	seriesIDInt := int64(series.Series.ID)
 	missingMonitoredSeasons, err := m.seriesStorage.ListSeasons(ctx, storage.SeasonFilter{
 		SeriesID: &seriesIDInt,
-		States:   []storage.SeasonState{storage.SeasonStateMissing},
 	})
 	if err != nil {
 		log.Error("failed to list missing seasons", zap.Error(err))
@@ -448,7 +453,7 @@ func (m MediaManager) reconcileMissingSeries(ctx context.Context, series sqlcdb.
 	identity := seriesReleaseIdentity(seriesMetadata)
 	for _, s := range seasons {
 		log.Debug("reconciling season", zap.Any("season", s.Season.ID))
-		err = m.reconcileMissingSeasonWithMetadata(ctx, seriesMetadata.Title, s, episodesBySeason, seasonMetadataByID, episodeMetadataByID, snapshot, qualityProfile, releases, identity)
+		err = m.reconcileMissingSeasonWithMetadata(ctx, seriesMetadata.Title, series.Series, s, episodesBySeason, seasonMetadataByID, episodeMetadataByID, snapshot, qualityProfile, releases, identity)
 		if err != nil {
 			log.Error("failed to reconcile missing season", zap.Error(err))
 			continue
@@ -459,11 +464,11 @@ func (m MediaManager) reconcileMissingSeries(ctx context.Context, series sqlcdb.
 	return nil
 }
 
-func (m MediaManager) reconcileMissingSeason(ctx context.Context, seriesTitle string, season sqlcdb.ListSeasonsRow, snapshot *ReconcileSnapshot, qualityProfile []sqlcdb.ListQualityProfileRowsRow, releases []*indexer.Release) error {
-	return m.reconcileMissingSeasonWithMetadata(ctx, seriesTitle, season, nil, nil, nil, snapshot, qualityProfile, releases)
+func (m MediaManager) reconcileMissingSeason(ctx context.Context, seriesTitle string, series sqlcdb.Series, season sqlcdb.ListSeasonsRow, snapshot *ReconcileSnapshot, qualityProfile []sqlcdb.ListQualityProfileRowsRow, releases []*indexer.Release) error {
+	return m.reconcileMissingSeasonWithMetadata(ctx, seriesTitle, series, season, nil, nil, nil, snapshot, qualityProfile, releases)
 }
 
-func (m MediaManager) reconcileMissingSeasonWithMetadata(ctx context.Context, seriesTitle string, season sqlcdb.ListSeasonsRow, episodesBySeason map[int64][]sqlcdb.ListEpisodesRow, seasonMetadataByID map[int64]sqlcdb.SeasonMetadatum, episodeMetadataByID map[int64]sqlcdb.EpisodeMetadatum, snapshot *ReconcileSnapshot, qualityProfile []sqlcdb.ListQualityProfileRowsRow, releases []*indexer.Release, identities ...SeriesReleaseFilterParams) error {
+func (m MediaManager) reconcileMissingSeasonWithMetadata(ctx context.Context, seriesTitle string, series sqlcdb.Series, season sqlcdb.ListSeasonsRow, episodesBySeason map[int64][]sqlcdb.ListEpisodesRow, seasonMetadataByID map[int64]sqlcdb.SeasonMetadatum, episodeMetadataByID map[int64]sqlcdb.EpisodeMetadatum, snapshot *ReconcileSnapshot, qualityProfile []sqlcdb.ListQualityProfileRowsRow, releases []*indexer.Release, identities ...SeriesReleaseFilterParams) error {
 	log := logger.FromCtx(ctx)
 	log = log.With("reconcile loop", "missing series")
 	metadata, ok := seasonMetadataByID[season.Season.SeasonMetadataID.Int64]
@@ -490,44 +495,46 @@ func (m MediaManager) reconcileMissingSeasonWithMetadata(ctx context.Context, se
 		return nil
 	}
 
-	var allMissing = true
+	resolver := newTVProfileResolver(ctx, &m, series.QualityProfileID, qualityProfile)
+
 	var missingEpisodes []sqlcdb.ListEpisodesRow
 	var allMissingUnreleased = true
 	for _, e := range episodes {
-		switch storage.EpisodeState(e.State) {
-		case storage.EpisodeStateMissing:
-			missingEpisodes = append(missingEpisodes, e)
-			// Check if episode is unreleased
-			if e.Episode.EpisodeMetadataID.Valid {
-				var episodeMetadata sqlcdb.EpisodeMetadatum
-				var metadataErr error
-				if episodeMetadataByID == nil {
-					episodeMetadata, metadataErr = m.seriesMetaStorage.GetEpisodeMetadataByID(ctx, int64(e.Episode.EpisodeMetadataID.Int64))
-				} else {
-					var found bool
-					episodeMetadata, found = episodeMetadataByID[e.Episode.EpisodeMetadataID.Int64]
-					if !found {
-						continue
-					}
-				}
-				if metadataErr == nil && episodeMetadata.AirDate.Valid && isReleased(snapshot.time, &episodeMetadata.AirDate.Time) {
-					allMissingUnreleased = false
+		// Monitoring gates acquisition, not state/progress reconciliation.
+		// Unmonitored siblings are never collected.
+		if !isMissingMonitoredEpisode(e) {
+			continue
+		}
+		// Check if episode is unreleased
+		if e.Episode.EpisodeMetadataID.Valid {
+			var episodeMetadata sqlcdb.EpisodeMetadatum
+			var metadataErr error
+			if episodeMetadataByID == nil {
+				episodeMetadata, metadataErr = m.seriesMetaStorage.GetEpisodeMetadataByID(ctx, int64(e.Episode.EpisodeMetadataID.Int64))
+			} else {
+				var found bool
+				episodeMetadata, found = episodeMetadataByID[e.Episode.EpisodeMetadataID.Int64]
+				if !found {
+					continue
 				}
 			}
-			continue
-		default:
-			allMissing = false
+			if metadataErr == nil && episodeMetadata.AirDate.Valid && isReleased(snapshot.time, &episodeMetadata.AirDate.Time) {
+				allMissingUnreleased = false
+			}
 		}
+		missingEpisodes = append(missingEpisodes, e)
+	}
+
+	if len(missingEpisodes) == 0 {
+		// Nothing eligible (unmonitored, non-missing, or unknown): leave states untouched.
+		log.Debug("no eligible missing episodes, skipping reconcile")
+		return nil
 	}
 
 	log.Debug("found missing episodes", zap.Int("count", len(missingEpisodes)))
 
-	if !allMissing {
-		return m.reconcileMissingEpisodesWithMetadata(ctx, seriesTitle, season.Season.ID, metadata.Number, missingEpisodes, episodeMetadataByID, snapshot, qualityProfile, releases, identities...)
-	}
-
-	// If all missing episodes are unreleased, revert season state to continuing
-	if allMissing && allMissingUnreleased {
+	// If all eligible episodes are unreleased, revert season state to continuing
+	if allMissingUnreleased {
 		log.Info("all missing episodes are unreleased, reverting season state to continuing")
 		err := m.updateSeasonState(ctx, int64(season.Season.ID), storage.SeasonStateContinuing, nil)
 		if err != nil {
@@ -564,6 +571,7 @@ func (m MediaManager) reconcileMissingSeasonWithMetadata(ctx context.Context, se
 	log.Debug("considering releases for season pack", zap.Int("count", len(releases)))
 
 	var chosenSeasonPackRelease *indexer.Release
+	packProfileRows := qualityProfile
 	seasonParams := SeriesReleaseFilterParams{
 		Title:        seriesTitle,
 		SeasonNumber: metadata.Number,
@@ -575,29 +583,67 @@ func (m MediaManager) reconcileMissingSeasonWithMetadata(ctx context.Context, se
 		seasonParams.TVDBID = identities[0].TVDBID
 		seasonParams.Year = identities[0].Year
 	}
-	for _, r := range releases {
-		if RejectSeasonReleaseFunc(ctx, seasonParams, qualityProfile, snapshot.GetProtocols())(r) {
-			continue
-		}
 
-		chosenSeasonPackRelease = r
-		break
+	// Conservative season-pack gate: the pack must provably cover the whole
+	// eligible season scope (all known episodes selected, missing, aired, not
+	// active) under a single effective quality profile. Partial or
+	// heterogeneous selection falls back to individual episodes.
+	decision := resolver.evaluateSeasonPackEligibility(series.QualityProfileID, season.Season.QualityProfileID, season.Season, episodes, func(e sqlcdb.ListEpisodesRow) bool {
+		if !e.Episode.EpisodeMetadataID.Valid {
+			return false
+		}
+		var episodeMetadata sqlcdb.EpisodeMetadatum
+		var err error
+		if episodeMetadataByID == nil {
+			episodeMetadata, err = m.seriesMetaStorage.GetEpisodeMetadataByID(ctx, int64(e.Episode.EpisodeMetadataID.Int64))
+		} else {
+			var found bool
+			episodeMetadata, found = episodeMetadataByID[e.Episode.EpisodeMetadataID.Int64]
+			if !found {
+				return false
+			}
+		}
+		return err == nil && episodeMetadata.AirDate.Valid && isReleased(snapshot.time, &episodeMetadata.AirDate.Time)
+	})
+	if decision.eligible {
+		rows, _, _, err := resolver.resolve(series.QualityProfileID, season.Season.QualityProfileID, sql.NullInt64{})
+		if err != nil {
+			log.Warn("season pack profile resolution failed", zap.Error(err))
+		} else {
+			packProfileRows = rows
+			for _, r := range releases {
+				if RejectSeasonReleaseFunc(ctx, seasonParams, packProfileRows, snapshot.GetProtocols())(r) {
+					continue
+				}
+
+				chosenSeasonPackRelease = r
+				break
+			}
+		}
+	} else {
+		log.Debug("season pack rejected", zap.String("reason", decision.reason))
 	}
 
 	if chosenSeasonPackRelease == nil {
-		log.Debug("no season pack releases found, defaulting to individual episodes")
-		return m.reconcileMissingEpisodesWithMetadata(ctx, seriesTitle, season.Season.ID, metadata.Number, missingEpisodes, episodeMetadataByID, snapshot, qualityProfile, releases, identities...)
+		log.Debug("no eligible season pack releases found, defaulting to individual episodes")
+		return m.reconcileMissingEpisodesWithMetadata(ctx, seriesTitle, series.QualityProfileID, season.Season.QualityProfileID, season.Season.ID, metadata.Number, missingEpisodes, episodeMetadataByID, snapshot, qualityProfile, releases, identities...)
 	}
 
 	log.Info("found season pack release", zap.Any("title", chosenSeasonPackRelease.Title), zap.String("proto", string(*chosenSeasonPackRelease.Protocol)))
 
-	clientID, status, err := m.requestReleaseDownload(ctx, snapshot, chosenSeasonPackRelease)
+	clientID, status, finish, err := m.admitTVRelease(ctx, snapshot, chosenSeasonPackRelease, series.QualityProfileID, season.Season.QualityProfileID, missingEpisodes, true)
+	linked := false
+	defer func() { finish(linked) }()
 	if err != nil {
+		if errors.Is(err, errTVAlreadyActive) {
+			return nil
+		}
 		log.Debug("failed to request episode release download", zap.Error(err))
 		return err
 	}
 
 	var allUpdated = true
+	var persistErr error
 	updatedAny := false
 	for _, e := range missingEpisodes {
 		updateEpisodeState := m.updateEpisodeState
@@ -611,6 +657,7 @@ func (m MediaManager) reconcileMissingSeasonWithMetadata(ctx context.Context, se
 		})
 		if err != nil {
 			allUpdated = false
+			persistErr = errors.Join(persistErr, err)
 			log.Error("failed to update episode state in seasons pack", zap.Error(err))
 			continue
 		}
@@ -626,6 +673,7 @@ func (m MediaManager) reconcileMissingSeasonWithMetadata(ctx context.Context, se
 	}
 
 	if allUpdated {
+		linked = true
 		return m.updateSeasonState(ctx, int64(season.Season.ID), storage.SeasonStateDownloading, &storage.TransitionStateMetadata{
 			DownloadID:             &status.ID,
 			DownloadClientID:       &clientID,
@@ -633,31 +681,40 @@ func (m MediaManager) reconcileMissingSeasonWithMetadata(ctx context.Context, se
 		})
 	}
 
-	return nil
+	return fmt.Errorf("season submission linkage incomplete; admission retained pending manual recovery: %w", persistErr)
 }
 
-func (m MediaManager) reconcileMissingEpisodes(ctx context.Context, seriesTitle string, seasonID int64, seasonNumber int64, episode []sqlcdb.ListEpisodesRow, snapshot *ReconcileSnapshot, qualityProfile []sqlcdb.ListQualityProfileRowsRow, releases []*indexer.Release) error {
-	return m.reconcileMissingEpisodesWithMetadata(ctx, seriesTitle, seasonID, seasonNumber, episode, nil, snapshot, qualityProfile, releases)
+func (m MediaManager) reconcileMissingEpisodes(ctx context.Context, seriesTitle string, seriesProfileID int64, seasonOverride sql.NullInt64, seasonID int64, seasonNumber int64, episode []sqlcdb.ListEpisodesRow, snapshot *ReconcileSnapshot, qualityProfile []sqlcdb.ListQualityProfileRowsRow, releases []*indexer.Release) error {
+	return m.reconcileMissingEpisodesWithMetadata(ctx, seriesTitle, seriesProfileID, seasonOverride, seasonID, seasonNumber, episode, nil, snapshot, qualityProfile, releases)
 }
 
-func (m MediaManager) reconcileMissingEpisodesWithMetadata(ctx context.Context, seriesTitle string, seasonID int64, seasonNumber int64, episode []sqlcdb.ListEpisodesRow, episodeMetadataByID map[int64]sqlcdb.EpisodeMetadatum, snapshot *ReconcileSnapshot, qualityProfile []sqlcdb.ListQualityProfileRowsRow, releases []*indexer.Release, identities ...SeriesReleaseFilterParams) error {
+func (m MediaManager) reconcileMissingEpisodesWithMetadata(ctx context.Context, seriesTitle string, seriesProfileID int64, seasonOverride sql.NullInt64, seasonID int64, seasonNumber int64, episode []sqlcdb.ListEpisodesRow, episodeMetadataByID map[int64]sqlcdb.EpisodeMetadatum, snapshot *ReconcileSnapshot, qualityProfile []sqlcdb.ListQualityProfileRowsRow, releases []*indexer.Release, identities ...SeriesReleaseFilterParams) error {
 	log := logger.FromCtx(ctx)
+	resolver := newTVProfileResolver(ctx, &m, seriesProfileID, qualityProfile)
 
 	var allUpdated = true
+	var reconcileErr error
 	updatedAny := false
 	for _, e := range episode {
-		updated, err := m.reconcileMissingEpisodeWithMetadata(ctx, seriesTitle, seasonNumber, e, episodeMetadataByID, snapshot, qualityProfile, releases, identities...)
+		updated, err := m.reconcileMissingEpisodeWithResolver(ctx, seriesTitle, seriesProfileID, seasonOverride, seasonNumber, e, episodeMetadataByID, snapshot, resolver, releases, identities...)
 		if !updated {
 			allUpdated = false
 		} else {
 			updatedAny = true
 		}
 		if err != nil {
+			reconcileErr = errors.Join(reconcileErr, err)
 			log.Error("failed to reconcile missing episode", zap.Error(err))
 			continue
 		}
 	}
 
+	if reconcileErr != nil {
+		if updatedAny {
+			reconcileErr = errors.Join(reconcileErr, m.evaluateReconciledSeasonAggregates(ctx, seasonID))
+		}
+		return reconcileErr
+	}
 	if episodeMetadataByID != nil {
 		if updatedAny {
 			return m.evaluateReconciledSeasonAggregates(ctx, int64(seasonID))
@@ -675,15 +732,32 @@ func (m MediaManager) reconcileMissingEpisodesWithMetadata(ctx context.Context, 
 	return m.updateSeasonState(ctx, int64(seasonID), storage.SeasonStateDownloading, nil)
 }
 
-func (m MediaManager) reconcileMissingEpisode(ctx context.Context, seriesTitle string, seasonNumber int64, episode sqlcdb.ListEpisodesRow, snapshot *ReconcileSnapshot, qualityProfile []sqlcdb.ListQualityProfileRowsRow, releases []*indexer.Release) (bool, error) {
-	return m.reconcileMissingEpisodeWithMetadata(ctx, seriesTitle, seasonNumber, episode, nil, snapshot, qualityProfile, releases)
+func (m MediaManager) reconcileMissingEpisode(ctx context.Context, seriesTitle string, seriesProfileID int64, seasonOverride sql.NullInt64, seasonNumber int64, episode sqlcdb.ListEpisodesRow, snapshot *ReconcileSnapshot, qualityProfile []sqlcdb.ListQualityProfileRowsRow, releases []*indexer.Release) (bool, error) {
+	return m.reconcileMissingEpisodeWithMetadata(ctx, seriesTitle, seriesProfileID, seasonOverride, seasonNumber, episode, nil, snapshot, qualityProfile, releases)
 }
 
-func (m MediaManager) reconcileMissingEpisodeWithMetadata(ctx context.Context, seriesTitle string, seasonNumber int64, episode sqlcdb.ListEpisodesRow, episodeMetadataByID map[int64]sqlcdb.EpisodeMetadatum, snapshot *ReconcileSnapshot, qualityProfile []sqlcdb.ListQualityProfileRowsRow, releases []*indexer.Release, identities ...SeriesReleaseFilterParams) (bool, error) {
+func (m MediaManager) reconcileMissingEpisodeWithMetadata(ctx context.Context, seriesTitle string, seriesProfileID int64, seasonOverride sql.NullInt64, seasonNumber int64, episode sqlcdb.ListEpisodesRow, episodeMetadataByID map[int64]sqlcdb.EpisodeMetadatum, snapshot *ReconcileSnapshot, qualityProfile []sqlcdb.ListQualityProfileRowsRow, releases []*indexer.Release, identities ...SeriesReleaseFilterParams) (bool, error) {
+	resolver := newTVProfileResolver(ctx, &m, seriesProfileID, qualityProfile)
+	return m.reconcileMissingEpisodeWithResolver(ctx, seriesTitle, seriesProfileID, seasonOverride, seasonNumber, episode, episodeMetadataByID, snapshot, resolver, releases, identities...)
+}
+
+func (m MediaManager) reconcileMissingEpisodeWithResolver(ctx context.Context, seriesTitle string, seriesProfileID int64, seasonOverride sql.NullInt64, seasonNumber int64, episode sqlcdb.ListEpisodesRow, episodeMetadataByID map[int64]sqlcdb.EpisodeMetadatum, snapshot *ReconcileSnapshot, resolver *tvProfileResolver, releases []*indexer.Release, identities ...SeriesReleaseFilterParams) (bool, error) {
 	log := logger.FromCtx(ctx)
 
 	if snapshot == nil {
 		log.Warn("snapshot is nil, skipping reconcile")
+		return false, nil
+	}
+
+	// Never re-enqueue targets that are not missing or already have an
+	// active download; existing downloads continue processing untouched.
+	// Scheduled callers pre-filter monitored episodes; explicit request-once
+	// paths may bypass monitoring for exactly the requested target.
+	if storage.EpisodeState(episode.State) != storage.EpisodeStateMissing || hasActiveDownload(episode) {
+		log.Debug("episode is not eligible for acquisition, skipping",
+			zap.Int64("episode id", episode.Episode.ID),
+			zap.String("state", episode.State),
+			zap.Bool("download_active", hasActiveDownload(episode)))
 		return false, nil
 	}
 
@@ -714,6 +788,13 @@ func (m MediaManager) reconcileMissingEpisodeWithMetadata(ctx context.Context, s
 	}
 
 	var chosenRelease *indexer.Release
+	qualityProfile, _, _, err := resolver.resolve(seriesProfileID, seasonOverride, episode.Episode.QualityProfileID)
+	if err != nil {
+		// No valid effective episode-compatible profile: never fall back
+		// to another profile.
+		log.Warn("effective quality profile resolution failed, skipping episode", zap.Error(err))
+		return false, nil
+	}
 	episodeParams := SeriesReleaseFilterParams{
 		Title:         seriesTitle,
 		SeasonNumber:  seasonNumber,
@@ -727,6 +808,11 @@ func (m MediaManager) reconcileMissingEpisodeWithMetadata(ctx context.Context, s
 		episodeParams.Year = identities[0].Year
 	}
 	for _, r := range releases {
+		// Prevent multi-episode releases from covering unrequested siblings
+		// via the single-episode path.
+		if title, titleErr := r.Title.Get(); titleErr != nil || looksLikeMultiEpisodeRelease(title) {
+			continue
+		}
 		if RejectEpisodeReleaseFunc(ctx, episodeParams, qualityProfile, snapshot.GetProtocols())(r) {
 			continue
 		}
@@ -740,8 +826,13 @@ func (m MediaManager) reconcileMissingEpisodeWithMetadata(ctx context.Context, s
 
 	log.Info("found release", zap.Any("title", chosenRelease.Title), zap.String("proto", string(*chosenRelease.Protocol)))
 
-	clientID, status, err := m.requestReleaseDownload(ctx, snapshot, chosenRelease)
+	clientID, status, finish, err := m.admitTVRelease(ctx, snapshot, chosenRelease, seriesProfileID, seasonOverride, []sqlcdb.ListEpisodesRow{episode})
+	linked := false
+	defer func() { finish(linked) }()
 	if err != nil {
+		if errors.Is(err, errTVAlreadyActive) {
+			return false, nil
+		}
 		log.Debug("failed to request episode release download", zap.Error(err))
 		return false, err
 	}
@@ -759,6 +850,7 @@ func (m MediaManager) reconcileMissingEpisodeWithMetadata(ctx context.Context, s
 		return false, err
 	}
 
+	linked = true
 	log.Debug("successfully reconciled episode")
 	return true, nil
 }

@@ -38,12 +38,12 @@ func (c *SabnzbdClient) Add(ctx context.Context, request AddRequest) (Status, er
 	log := logger.FromCtx(ctx)
 
 	if request.Release == nil {
-		return status, errors.New("failed to get download URI from release")
+		return status, &SubmissionRejectedError{Err: errors.New("failed to get download URI from release")}
 	}
 	uri, err := request.Release.DownloadURL.Get()
 	if err != nil || uri == "" {
 		log.Warn("failed to get download URI from release")
-		return status, errors.New("failed to get download URI from release")
+		return status, &SubmissionRejectedError{Err: errors.New("failed to get download URI from release")}
 	}
 
 	url := url.URL{Host: c.host, Scheme: c.scheme, Path: "/api"}
@@ -65,7 +65,7 @@ func (c *SabnzbdClient) Add(ctx context.Context, request AddRequest) (Status, er
 	}
 
 	if response.Status != nil && !*response.Status {
-		return status, errors.New("SABnzbd rejected add request")
+		return status, &SubmissionRejectedError{Err: errors.New("SABnzbd rejected add request")}
 	}
 	if len(response.NzoIDs) == 0 {
 		return status, errors.New("no ids returned")

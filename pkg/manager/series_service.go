@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"time"
 
 	"github.com/kasuboski/mediaz/pkg/library"
 	"github.com/kasuboski/mediaz/pkg/logger"
@@ -51,145 +50,6 @@ func NewSeriesService(tmdbClient tmdb.ITmdb, lib library.Library, seriesStorage 
 // ---------------------------------------------------------------------------
 // CRUD Operations
 // ---------------------------------------------------------------------------
-
-// AddSeriesToLibrary adds a series to be managed by mediaz.
-func (s SeriesService) AddSeriesToLibrary(ctx context.Context, request AddSeriesRequest) (*sqlcdb.GetSeriesRow, error) {
-	log := logger.FromCtx(ctx)
-
-	qualityProfile, err := s.qualityService.GetQualityProfile(ctx, int64(request.QualityProfileID))
-	if err != nil {
-		log.Debug("failed to get quality profile", zap.Int64("id", request.QualityProfileID), zap.Error(err))
-		return nil, err
-	}
-
-	seriesMetadata, err := s.metadataProvider.GetSeriesMetadata(ctx, request.TMDBID)
-	if err != nil {
-		log.Debug("failed to get series metadata", zap.Error(err))
-		return nil, err
-	}
-
-	series, err := s.seriesStorage.GetSeriesByMetadataID(ctx, seriesMetadata.ID)
-	// if we find the series we dont need to add it
-	if err == nil {
-		return &series, err
-	}
-	if !errors.Is(err, storage.ErrNotFound) {
-		log.Warn("couldn't find series by metadata", zap.Int64("meta_id", seriesMetadata.ID), zap.Error(err))
-		return nil, err
-	}
-
-	monitorNewSeasons := int64(0)
-	if request.MonitorNewSeasons {
-		monitorNewSeasons = 1
-	}
-	newSeries := sqlcdb.Series{
-		SeriesMetadataID:  sql.NullInt64{Int64: seriesMetadata.ID, Valid: true},
-		QualityProfileID:  qualityProfile.ID,
-		Monitored:         1,
-		Path:              sql.NullString{String: seriesMetadata.Title, Valid: true},
-		MonitorNewSeasons: monitorNewSeasons,
-	}
-
-	var firstAirDate *time.Time
-	if seriesMetadata.FirstAirDate.Valid {
-		firstAirDate = &seriesMetadata.FirstAirDate.Time
-	}
-	state := initialSeriesState(firstAirDate)
-
-	seriesID, err := s.seriesStorage.CreateSeries(ctx, newSeries, state)
-	if err != nil {
-		log.Error("failed to create new missing series", zap.Error(err))
-		return nil, err
-	}
-
-	log.Debug("created new missing series", zap.Any("series", newSeries))
-
-	// cleanupCreatedSeries removes the series on any child-creation failure.
-	cleanupCreatedSeries := func() {
-		if delErr := s.seriesStorage.DeleteSeries(ctx, seriesID); delErr != nil {
-			log.Error("failed to cleanup created series after error", zap.Int64("series_id", seriesID), zap.Error(delErr))
-		}
-	}
-
-	// Get series to access its metadata ID
-	seriesEntity, err := s.seriesStorage.GetSeriesByID(ctx, seriesID)
-	if err != nil || !seriesEntity.Series.SeriesMetadataID.Valid {
-		log.Error("failed to get series or series has no metadata", zap.Error(err))
-		cleanupCreatedSeries()
-		if err != nil {
-			return nil, err
-		}
-		return nil, fmt.Errorf("series has no metadata")
-	}
-
-	seasonMetadata, err := s.seriesMetaStorage.ListSeasonMetadataBySeriesMetadataID(ctx, seriesEntity.Series.SeriesMetadataID.Int64)
-	if err != nil {
-		cleanupCreatedSeries()
-		return nil, err
-	}
-
-	for _, sm := range seasonMetadata {
-		season := sqlcdb.Season{
-			SeriesID:         seriesID,
-			SeasonNumber:     sm.Number,
-			SeasonMetadataID: sql.NullInt64{Int64: sm.ID, Valid: true},
-			Monitored:        1,
-		}
-
-		seasonID, err := s.seriesStorage.CreateSeason(ctx, season, storage.SeasonStateMissing)
-		if err != nil {
-			log.Error("failed to create season", zap.Error(err))
-			cleanupCreatedSeries()
-			return nil, err
-		}
-
-		log.Debug("created new missing season", zap.Any("season", season))
-
-		// Get the season to access its metadata ID for proper episode metadata querying
-		seasonEntity, err := s.seriesStorage.GetSeasonByID(ctx, seasonID)
-		if err != nil || !seasonEntity.Season.SeasonMetadataID.Valid {
-			log.Error("failed to get season or season has no metadata linked", zap.Error(err))
-			cleanupCreatedSeries()
-			if err != nil {
-				return nil, err
-			}
-			return nil, fmt.Errorf("season has no metadata")
-		}
-
-		episodesMetadata, err := s.seriesMetaStorage.ListEpisodeMetadataBySeasonMetadataID(ctx, seasonEntity.Season.SeasonMetadataID.Int64)
-		if err != nil {
-			log.Error("failed to list episode metadata", zap.Error(err))
-			cleanupCreatedSeries()
-			return nil, err
-		}
-
-		for _, e := range episodesMetadata {
-			episode := sqlcdb.Episode{
-				EpisodeMetadataID: sql.NullInt64{Int64: e.ID, Valid: true},
-				SeasonID:          seasonID,
-				Monitored:         1,
-				EpisodeNumber:     e.Number,
-			}
-
-			_, err := s.seriesStorage.CreateEpisode(ctx, episode, storage.EpisodeStateMissing)
-			if err != nil {
-				log.Error("failed to create episode", zap.Error(err))
-				cleanupCreatedSeries()
-				return nil, err
-			}
-
-			log.Debug("created new missing episode", zap.Any("episode", episode))
-		}
-	}
-
-	created, err := s.seriesStorage.GetSeriesByID(ctx, seriesID)
-	if err != nil {
-		log.Warn("failed to get created series", zap.Error(err))
-		return nil, err
-	}
-
-	return &created, nil
-}
 
 // DeleteSeries removes a series and optionally its files from disk.
 func (s SeriesService) DeleteSeries(ctx context.Context, seriesID int64, deleteDirectory bool) error {
@@ -250,13 +110,9 @@ func (s SeriesService) DeleteSeries(ctx context.Context, seriesID int64, deleteD
 
 // UpdateSeriesMonitored toggles the monitored state of a series.
 func (s SeriesService) UpdateSeriesMonitored(ctx context.Context, seriesID int64, monitored bool) (*sqlcdb.GetSeriesRow, error) {
-	monitoredInt := int64(0)
-	if monitored {
-		monitoredInt = 1
-	}
-
-	seriesUpdate := sqlcdb.Series{Monitored: monitoredInt}
-	err := s.seriesStorage.UpdateSeriesByID(ctx, seriesID, seriesUpdate)
+	unlock := storage.LockTVAdmission(seriesID)
+	defer unlock()
+	err := s.seriesStorage.ApplySeriesSelectionPatch(ctx, seriesID, storage.SeriesSelectionPatch{SeriesMonitored: &monitored})
 	if err != nil {
 		return nil, err
 	}
@@ -290,22 +146,24 @@ func (s SeriesService) GetTVDetailByTMDBID(ctx context.Context, tmdbID int64) (*
 	if srow, err := s.seriesStorage.GetSeriesByMetadataID(ctx, metadata.ID); err == nil {
 		series = &srow
 	} else if !errors.Is(err, storage.ErrNotFound) {
-		log.Debug("error checking series library status", zap.Error(err), zap.Int64("metadataID", metadata.ID))
+		return nil, err
 	}
 
 	// Get seasons and episodes information for the consolidated response
 	var seasons []SeasonResult
 	if series != nil {
-		seasonsData, err := s.getSeasonsWithEpisodes(ctx, series.Series.ID)
+		seasonsData, err := s.detailSeasons(ctx, metadata.ID, series.Series.ID)
 		if err != nil {
 			log.Debug("failed to get seasons and episodes", zap.Error(err), zap.Int64("metadataID", metadata.ID))
-			// Continue without seasons data - buildTVDetailResult will handle empty seasons
-			seasons = []SeasonResult{}
+			return nil, err
 		} else {
 			seasons = seasonsData
 		}
 	} else {
-		seasons = []SeasonResult{}
+		seasons, err = s.previewSeasons(ctx, metadata.ID)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// Transform data into result
@@ -792,8 +650,9 @@ func (s SeriesService) buildTVDetailResult(metadata *sqlcdb.SeriesMetadatum, det
 	}
 
 	// Add seasons information if available
-	if len(seasons) > 0 {
-		result.Seasons = seasons
+	result.Seasons = seasons
+	if result.Seasons == nil {
+		result.Seasons = []SeasonResult{}
 	}
 
 	return result
@@ -841,10 +700,27 @@ func (s SeriesService) getSeasonsWithEpisodes(ctx context.Context, seriesID int6
 		episodesBySeasonID[row.Episode.SeasonID] = append(episodesBySeasonID[row.Episode.SeasonID], episode)
 		allEpisodes = append(allEpisodes, episode)
 	}
-	allEpisodeMetadata := s.preloadEpisodeMetadata(ctx, allEpisodes)
+	episodeMetadataIDs := make([]int64, 0, len(allEpisodes))
+	for _, episode := range allEpisodes {
+		if episode.Episode.EpisodeMetadataID.Valid {
+			episodeMetadataIDs = append(episodeMetadataIDs, episode.Episode.EpisodeMetadataID.Int64)
+		}
+	}
+	episodeMetadataRows, err := s.seriesMetaStorage.ListEpisodeMetadataByIDs(ctx, episodeMetadataIDs)
+	if err != nil {
+		return nil, fmt.Errorf("batch list episode metadata: %w", err)
+	}
+	allEpisodeMetadata := make(map[int64]*sqlcdb.EpisodeMetadatum, len(episodeMetadataRows))
+	for _, meta := range episodeMetadataRows {
+		allEpisodeMetadata[meta.ID] = &meta
+	}
 
 	// Transform to response format with metadata and episodes
-	var results []SeasonResult
+	parent, err := s.seriesStorage.GetSeriesByID(ctx, seriesID)
+	if err != nil {
+		return nil, err
+	}
+	results := make([]SeasonResult, 0, len(seasons))
 	for _, season := range seasons {
 		// Get season metadata for rich data
 		if !season.Season.SeasonMetadataID.Valid {
@@ -854,8 +730,7 @@ func (s SeriesService) getSeasonsWithEpisodes(ctx context.Context, seriesID int6
 
 		seasonMeta, ok := seasonMetadataByID[season.Season.SeasonMetadataID.Int64]
 		if !ok {
-			log.Error("failed to get season metadata", zap.Int64("seasonMetadataID", season.Season.SeasonMetadataID.Int64))
-			continue
+			return nil, fmt.Errorf("missing linked season metadata %d", season.Season.SeasonMetadataID.Int64)
 		}
 
 		episodes := make([]EpisodeResult, 0, len(episodesBySeasonID[season.Season.ID]))
@@ -864,7 +739,18 @@ func (s SeriesService) getSeasonsWithEpisodes(ctx context.Context, seriesID int6
 			if episode.Episode.EpisodeMetadataID.Valid {
 				episodeMeta = allEpisodeMetadata[episode.Episode.EpisodeMetadataID.Int64]
 			}
-			episodes = append(episodes, buildEpisodeResult(episode, episodeMeta, season.Season.SeriesID, seasonMeta.Number))
+			child := buildEpisodeResult(episode, episodeMeta, season.Season.SeriesID, seasonMeta.Number)
+			child.ID = ptrInt64(episode.Episode.ID)
+			if episode.State != "" {
+				state := episode.State
+				child.State = &state
+			}
+			if episode.Episode.QualityProfileID.Valid {
+				child.QualityProfileID = ptrInt64(episode.Episode.QualityProfileID.Int64)
+			}
+			effective, source := ResolveTVQualityProfileID(parent.Series.QualityProfileID, season.Season.QualityProfileID, episode.Episode.QualityProfileID)
+			child.EffectiveQualityProfileID, child.QualityProfileSource = &effective, &source
+			episodes = append(episodes, child)
 		}
 
 		result := SeasonResult{
@@ -876,6 +762,12 @@ func (s SeriesService) getSeasonsWithEpisodes(ctx context.Context, seriesID int6
 			EpisodeCount: int32(len(episodes)),
 			Episodes:     episodes,
 		}
+		result.ID = ptrInt64(season.Season.ID)
+		if season.Season.QualityProfileID.Valid {
+			result.QualityProfileID = ptrInt64(season.Season.QualityProfileID.Int64)
+		}
+		effective, source := ResolveTVQualityProfileID(parent.Series.QualityProfileID, season.Season.QualityProfileID, sql.NullInt64{})
+		result.EffectiveQualityProfileID, result.QualityProfileSource = &effective, &source
 
 		// Add optional fields
 		if seasonMeta.Overview.Valid {

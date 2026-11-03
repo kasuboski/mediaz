@@ -3,6 +3,7 @@ package sqlite
 import (
 	"context"
 	"database/sql"
+	"fmt"
 
 	"github.com/kasuboski/mediaz/pkg/storage"
 	"github.com/kasuboski/mediaz/pkg/storage/sqlcdb"
@@ -32,6 +33,7 @@ func (s *SQLite) CreateSeason(ctx context.Context, season sqlcdb.Season, initial
 			SeasonNumber:     season.SeasonNumber,
 			SeasonMetadataID: season.SeasonMetadataID,
 			Monitored:        season.Monitored,
+			QualityProfileID: season.QualityProfileID,
 		})
 		if err != nil {
 			return err
@@ -110,6 +112,18 @@ func (s *SQLite) ListSeasons(ctx context.Context, filter storage.SeasonFilter) (
 		return nil, mapQueryErr(err, "failed to list seasons")
 	}
 	return rows, nil
+}
+
+// UpdateSeasonQualityProfile sets or clears (NULL) the season's quality
+// profile override. NULL restores inheritance from the series default.
+func (s *SQLite) UpdateSeasonQualityProfile(ctx context.Context, id int64, qualityProfileID sql.NullInt64) error {
+	if err := s.Queries.UpdateSeasonQualityProfile(ctx, sqlcdb.UpdateSeasonQualityProfileParams{
+		QualityProfileID: qualityProfileID,
+		ID:               id,
+	}); err != nil {
+		return fmt.Errorf("failed to update season quality profile: %w", err)
+	}
+	return nil
 }
 
 // UpdateSeasonState updates the transition state of a season. Metadata is

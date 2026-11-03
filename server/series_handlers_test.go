@@ -121,6 +121,9 @@ func TestServer_GetTVDetailByTMDBID(t *testing.T) {
 			Title:  "Episode 1",
 		}
 		store.EXPECT().ListEpisodeMetadataByIDs(gomock.Any(), []int64{episodeMetadataID}).Return([]sqlcdb.EpisodeMetadatum{episodeMetadata}, nil)
+		store.EXPECT().ListSeasonMetadataBySeriesMetadataID(gomock.Any(), expectedMetadata.ID).Return([]sqlcdb.SeasonMetadatum{seasonMetadata}, nil)
+		store.EXPECT().ListEpisodeMetadataBySeasonMetadataID(gomock.Any(), seasonMetadata.ID).Return([]sqlcdb.EpisodeMetadatum{episodeMetadata}, nil)
+		store.EXPECT().GetSeriesByID(gomock.Any(), expectedSeries.Series.ID).Return(expectedSeries, nil)
 
 		// Create manager with mocked dependencies
 		mgr := manager.New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
@@ -232,6 +235,7 @@ func TestServer_GetTVDetailByTMDBID(t *testing.T) {
 		tmdbMock.EXPECT().TvSeriesDetails(gomock.Any(), int32(12345), nil).Return(resp, nil)
 
 		store.EXPECT().GetSeriesByMetadataID(gomock.Any(), gomock.Any()).Return(sqlcdb.GetSeriesRow{}, storage.ErrNotFound)
+		store.EXPECT().ListSeasonMetadataBySeriesMetadataID(gomock.Any(), expectedMetadata.ID).Return([]sqlcdb.SeasonMetadatum{}, nil)
 
 		mgr := manager.New(tmdbMock, nil, nil, store, nil, config.Manager{}, config.Config{})
 

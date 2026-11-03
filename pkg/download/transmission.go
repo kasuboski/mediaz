@@ -369,7 +369,7 @@ func (c *TransmissionClient) Add(ctx context.Context, request AddRequest) (Statu
 	uri, err := request.Release.GUID.Get()
 	if err != nil {
 		log.Debug("failed to get uri from release", zap.Error(err))
-		return status, err
+		return status, &SubmissionRejectedError{Err: err}
 	}
 
 	arguments := AddTorrentPayload{
@@ -404,7 +404,7 @@ func (c *TransmissionClient) Add(ctx context.Context, request AddRequest) (Statu
 	}
 
 	if response.Result != "success" {
-		return status, fmt.Errorf("unexpected result: %v", response.Result)
+		return status, &SubmissionRejectedError{Err: fmt.Errorf("unexpected result: %v", response.Result)}
 
 	}
 

@@ -41,6 +41,7 @@ var expectedTables = []string{
 	"series",
 	"series_metadata",
 	"series_transition",
+	"tv_episode_admission",
 }
 
 // TestBootstrap_FreshFileDatabase verifies that New on a fresh file database
@@ -58,7 +59,7 @@ func TestBootstrap_FreshFileDatabase(t *testing.T) {
 
 	version, dirty, err := s.GetMigrationVersion()
 	require.NoError(t, err)
-	assert.Equal(t, uint(4), version)
+	assert.Equal(t, uint(6), version)
 	assert.False(t, dirty)
 
 	assertSeedData(t, s.db)
@@ -89,7 +90,7 @@ func TestBootstrap_DoubleNewIsIdempotent(t *testing.T) {
 
 	version, dirty, err := s2.GetMigrationVersion()
 	require.NoError(t, err)
-	assert.Equal(t, uint(4), version)
+	assert.Equal(t, uint(6), version)
 	assert.False(t, dirty)
 }
 

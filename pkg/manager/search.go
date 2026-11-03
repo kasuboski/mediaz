@@ -95,18 +95,17 @@ func (m MediaManager) SearchForMovie(ctx context.Context, movieID int64) error {
 }
 
 func (m MediaManager) SearchForSeries(ctx context.Context, seriesID int64) error {
+	ctx = withTVScope(ctx, "series")
 	log := logger.FromCtx(ctx).With("series_id", seriesID)
-	log.Debug("starting manual search for series")
+	log.Debug("starting explicit request-once search for series")
 
+	// Explicit series requests bypass the series monitoring gate but still
+	// respect season and episode monitoring choices; monitoring flags are
+	// never mutated here.
 	series, err := m.seriesStorage.GetSeriesByID(ctx, seriesID)
 	if err != nil {
 		log.Error("failed to get series", zap.Error(err))
 		return fmt.Errorf("series not found: %w", err)
-	}
-
-	if series.Series.Monitored == 0 {
-		log.Debug("series is not monitored, cannot search")
-		return fmt.Errorf("series is not monitored")
 	}
 
 	seriesIDInt := series.Series.ID
@@ -118,6 +117,7 @@ func (m MediaManager) SearchForSeries(ctx context.Context, seriesID int64) error
 
 	var searchErrors []error
 	for _, season := range seasons {
+		// Explicit series scope respects the stored season choices.
 		if season.Season.Monitored == 0 {
 			log.Debug("skipping unmonitored season", zap.Int64("season_id", season.Season.ID))
 			continue
@@ -131,15 +131,8 @@ func (m MediaManager) SearchForSeries(ctx context.Context, seriesID int64) error
 		}
 	}
 
-	searchTime := now()
-	err = m.seriesStorage.UpdateSeriesByID(ctx, series.Series.ID, sqlcdb.Series{
-		ID:             series.Series.ID,
-		Monitored:      series.Series.Monitored,
-		LastSearchTime: nullTimeIn(&searchTime),
-	})
-	if err != nil {
-		log.Warn("failed to update series last search time", zap.Error(err))
-	}
+	// Request-once must not write back its pre-search monitoring snapshot.
+	// UpdateSeriesByID only updates monitoring, not LastSearchTime.
 
 	if len(searchErrors) > 0 {
 		log.Warn("some season searches failed", zap.Int("failed_count", len(searchErrors)))
@@ -151,8 +144,11 @@ func (m MediaManager) SearchForSeries(ctx context.Context, seriesID int64) error
 }
 
 func (m MediaManager) SearchForSeason(ctx context.Context, seasonID int64) error {
+	if ctx.Value(tvRequestScope{}) == nil {
+		ctx = withTVScope(ctx, "season")
+	}
 	log := logger.FromCtx(ctx).With("season_id", seasonID)
-	log.Debug("starting manual search for season")
+	log.Debug("starting explicit request-once search for season")
 
 	season, err := m.seriesStorage.GetSeasonByID(ctx, seasonID)
 	if err != nil {
@@ -160,9 +156,11 @@ func (m MediaManager) SearchForSeason(ctx context.Context, seasonID int64) error
 		return fmt.Errorf("season not found: %w", err)
 	}
 
-	if season.Season.Monitored == 0 {
-		log.Debug("season is not monitored, cannot search")
-		return fmt.Errorf("season is not monitored")
+	// An active season download already covers this target; do not enqueue
+	// a duplicate pack, and let the existing download continue processing.
+	if storage.SeasonState(season.State.String) == storage.SeasonStateDownloading && (season.DownloadID.Valid || season.DownloadClientID.Valid) {
+		log.Debug("season already downloading, skipping request")
+		return nil
 	}
 
 	snapshot, err := m.prepareSearchSnapshot(ctx)
@@ -174,17 +172,6 @@ func (m MediaManager) SearchForSeason(ctx context.Context, seasonID int64) error
 	if err != nil {
 		log.Error("failed to get series for season", zap.Error(err))
 		return fmt.Errorf("failed to get series: %w", err)
-	}
-
-	if series.Series.QualityProfileID == 0 {
-		log.Warn("series quality profile id is nil, skipping search")
-		return fmt.Errorf("series has no quality profile")
-	}
-
-	qualityProfile, err := m.ListQualityProfileRows(ctx, series.Series.QualityProfileID)
-	if err != nil {
-		log.Error("failed to get quality profile", zap.Error(err))
-		return fmt.Errorf("failed to get quality profile: %w", err)
 	}
 
 	if !series.Series.SeriesMetadataID.Valid {
@@ -214,19 +201,23 @@ func (m MediaManager) SearchForSeason(ctx context.Context, seasonID int64) error
 		return err
 	}
 
-	err = m.reconcileMissingSeasonWithMetadata(ctx, seriesMetadata.Title, seasonListRow(season), nil, nil, nil, snapshot, qualityProfile, releases, seriesReleaseIdentity(seriesMetadata))
+	// Explicit season scope bypasses series/season monitoring but includes
+	// only monitored child episodes; effective quality profiles are resolved
+	// per episode (episode > season > series).
+	err = m.reconcileMissingSeasonWithMetadata(ctx, seriesMetadata.Title, series.Series, seasonListRow(season), nil, nil, nil, snapshot, nil, releases, seriesReleaseIdentity(seriesMetadata))
 	if err != nil {
 		log.Error("failed to reconcile season", zap.Error(err))
 		return err
 	}
 
-	log.Debug("manual search completed for season")
+	log.Debug("explicit season request completed")
 	return nil
 }
 
 func (m MediaManager) SearchForEpisode(ctx context.Context, episodeID int64) error {
+	ctx = withTVScope(ctx, "episode")
 	log := logger.FromCtx(ctx).With("episode_id", episodeID)
-	log.Debug("starting manual search for episode")
+	log.Debug("starting explicit request-once search for episode")
 
 	episode, err := m.seriesStorage.GetEpisodeByID(ctx, episodeID)
 	if err != nil {
@@ -234,9 +225,13 @@ func (m MediaManager) SearchForEpisode(ctx context.Context, episodeID int64) err
 		return fmt.Errorf("episode not found: %w", err)
 	}
 
-	if episode.Episode.Monitored == 0 {
-		log.Debug("episode is not monitored, cannot search")
-		return fmt.Errorf("episode is not monitored")
+	// Request-once targets exactly this episode regardless of monitoring
+	// flags (which are never mutated), but only when it is still missing;
+	// downloading/downloaded/importing targets are not enqueued again.
+	if storage.EpisodeState(episode.State.String) != storage.EpisodeStateMissing || hasActiveDownload(episodeListRow(episode)) {
+		log.Debug("episode is not a missing target, skipping request",
+			zap.String("state", episode.State.String))
+		return nil
 	}
 
 	season, err := m.seriesStorage.GetSeasonByID(ctx, episode.Episode.SeasonID)
@@ -254,17 +249,6 @@ func (m MediaManager) SearchForEpisode(ctx context.Context, episodeID int64) err
 	if err != nil {
 		log.Error("failed to get series for episode", zap.Error(err))
 		return fmt.Errorf("failed to get series: %w", err)
-	}
-
-	if series.Series.QualityProfileID == 0 {
-		log.Warn("series quality profile id is nil, skipping search")
-		return fmt.Errorf("series has no quality profile")
-	}
-
-	qualityProfile, err := m.ListQualityProfileRows(ctx, series.Series.QualityProfileID)
-	if err != nil {
-		log.Error("failed to get quality profile", zap.Error(err))
-		return fmt.Errorf("failed to get quality profile: %w", err)
 	}
 
 	if !series.Series.SeriesMetadataID.Valid {
@@ -296,12 +280,14 @@ func (m MediaManager) SearchForEpisode(ctx context.Context, episodeID int64) err
 		return err
 	}
 
-	_, err = m.reconcileMissingEpisodeWithMetadata(ctx, seriesMetadata.Title, seasonNumber, episodeListRow(episode), nil, snapshot, qualityProfile, releases, seriesReleaseIdentity(seriesMetadata))
+	// The effective persistent profile (episode > season > series) is
+	// resolved and validated inside the reconciler; no silent fallback.
+	_, err = m.reconcileMissingEpisodeWithMetadata(ctx, seriesMetadata.Title, series.Series.QualityProfileID, season.Season.QualityProfileID, seasonNumber, episodeListRow(episode), nil, snapshot, nil, releases, seriesReleaseIdentity(seriesMetadata))
 	if err != nil {
 		log.Error("failed to reconcile episode", zap.Error(err))
 		return err
 	}
 
-	log.Debug("manual search completed for episode")
+	log.Debug("explicit episode request completed")
 	return nil
 }

@@ -30,6 +30,7 @@ func (s *Server) registerRoutes(rtr *mux.Router) {
 	v1.HandleFunc("/library/tv", s.AddSeriesToLibrary()).Methods("POST")
 	v1.HandleFunc("/library/tv/{id}", s.DeleteSeriesFromLibrary()).Methods("DELETE")
 	v1.HandleFunc("/library/tv/{id}/monitored", s.UpdateSeriesMonitored()).Methods("PATCH")
+	v1.HandleFunc("/library/tv/{id}/selection", s.UpdateSeriesSelection()).Methods("PATCH")
 	v1.HandleFunc("/library/tv/{id}/search", s.SearchForSeries()).Methods("POST")
 	v1.HandleFunc("/season/{id}/search", s.SearchForSeason()).Methods("POST")
 	v1.HandleFunc("/episode/{id}/search", s.SearchForEpisode()).Methods("POST")

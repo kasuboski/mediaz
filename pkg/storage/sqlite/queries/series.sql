@@ -93,3 +93,19 @@ INSERT INTO
         "sort_key"
     )
 VALUES (?, ?, ?, ?, ?);
+
+-- name: UpdateSeriesMonitorNewSeasons :exec
+UPDATE
+    series
+SET
+    "monitor_new_seasons" = ?
+WHERE
+    id = ?;
+
+-- name: UpdateSeriesQualityProfile :exec
+UPDATE
+    series
+SET
+    "quality_profile_id" = ?
+WHERE
+    id = ?;

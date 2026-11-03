@@ -43,7 +43,7 @@ func TestSeriesOrdinalFollowup_AddSeriesNativeIdentity(t *testing.T) {
 	}
 
 	svc := NewSeriesService(nil, nil, store, store, NewQualityService(store), &mockMetadataProvider{metadata: &metadata})
-	request := AddSeriesRequest{TMDBID: metadata.TmdbID, QualityProfileID: 1, MonitorNewSeasons: true}
+	request := AddSeriesRequest{TMDBID: metadata.TmdbID, QualityProfileID: 4, MonitorNewSeasons: true}
 	got, err := svc.AddSeriesToLibrary(ctx, request)
 	require.NoError(t, err)
 	require.NotNil(t, got)
@@ -53,7 +53,7 @@ func TestSeriesOrdinalFollowup_AddSeriesNativeIdentity(t *testing.T) {
 	require.Equal(t, &sqlcdb.GetSeriesRow{
 		Series: sqlcdb.Series{
 			ID: got.Series.ID, Path: sql.NullString{String: metadata.Title, Valid: true}, Monitored: 1,
-			Added: got.Series.Added, QualityProfileID: 1, SeriesMetadataID: sql.NullInt64{Int64: metadataID, Valid: true}, MonitorNewSeasons: 1,
+			Added: got.Series.Added, QualityProfileID: 4, SeriesMetadataID: sql.NullInt64{Int64: metadataID, Valid: true}, MonitorNewSeasons: 1,
 		},
 		State: string(storage.SeriesStateUnreleased),
 	}, got)

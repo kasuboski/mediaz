@@ -55,6 +55,9 @@ func TestSQLite_CreateSeasonCommitFailureRollbackRecovery(t *testing.T) {
 			if mode == "existing-state upsert" {
 				state = "downloading"
 			}
+			if mode == "existing-state upsert" {
+				candidate.Monitored = 1
+			} // Refresh preserves policy.
 			got, err := s.GetSeasonByID(ctx, id)
 			require.NoError(t, err)
 			assert.Equal(t, sqlcdb.GetSeasonByIDRow{Season: candidate, State: sql.NullString{String: state, Valid: true}}, got)
@@ -116,6 +119,9 @@ func TestSQLite_CreateEpisodeCommitFailureRollbackRecovery(t *testing.T) {
 			if mode == "existing-state upsert" {
 				state = "downloading"
 			}
+			if mode == "existing-state upsert" {
+				candidate.Monitored = 1
+			} // Refresh preserves policy.
 			got, err := s.GetEpisodeByID(ctx, id)
 			require.NoError(t, err)
 			assert.Equal(t, sqlcdb.GetEpisodeByIDRow{Episode: candidate, State: sql.NullString{String: state, Valid: true}}, got)

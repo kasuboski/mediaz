@@ -48,7 +48,8 @@ func TestSeriesService_UpdateSeriesMonitored(t *testing.T) {
 	ctx := context.Background()
 	svc, store, _, _ := newTestSeriesService(ctrl)
 	want := sqlcdb.GetSeriesRow{Series: sqlcdb.Series{ID: 1, Monitored: 1}, State: string(storage.SeriesStateMissing)}
-	store.EXPECT().UpdateSeriesByID(ctx, int64(1), sqlcdb.Series{Monitored: 1}).Return(nil)
+	enabled := true
+	store.EXPECT().ApplySeriesSelectionPatch(ctx, int64(1), storage.SeriesSelectionPatch{SeriesMonitored: &enabled}).Return(nil)
 	store.EXPECT().GetSeriesByID(ctx, int64(1)).Return(want, nil)
 	got, err := svc.UpdateSeriesMonitored(ctx, 1, true)
 	require.NoError(t, err)
@@ -59,7 +60,7 @@ func TestSeriesService_UpdateSeriesMonitored_Error(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 	svc, store, _, _ := newTestSeriesService(ctrl)
-	store.EXPECT().UpdateSeriesByID(gomock.Any(), int64(1), gomock.Any()).Return(errors.New("db error"))
+	store.EXPECT().ApplySeriesSelectionPatch(gomock.Any(), int64(1), gomock.Any()).Return(errors.New("db error"))
 	got, err := svc.UpdateSeriesMonitored(context.Background(), 1, true)
 	require.Error(t, err)
 	assert.Nil(t, got)
@@ -231,7 +232,7 @@ func TestSeriesService_buildTVDetailResult(t *testing.T) {
 	svc, _, _, _ := newTestSeriesService(ctrl)
 	metadata := &sqlcdb.SeriesMetadatum{TmdbID: 123, Title: "Test Series", SeasonCount: 3, EpisodeCount: 30, Overview: sql.NullString{String: "A great show", Valid: true}}
 	got := svc.buildTVDetailResult(metadata, &tmdb.SeriesDetailsResponse{}, nil, nil)
-	assert.Equal(t, &TVDetailResult{TMDBID: 123, Title: "Test Series", Overview: "A great show", SeasonCount: 3, EpisodeCount: 30, LibraryStatus: "Not In Library"}, got)
+	assert.Equal(t, &TVDetailResult{TMDBID: 123, Title: "Test Series", Overview: "A great show", SeasonCount: 3, EpisodeCount: 30, LibraryStatus: "Not In Library", Seasons: []SeasonResult{}}, got)
 }
 
 func TestSeriesService_buildTVDetailResult_WithSeries(t *testing.T) {
@@ -242,5 +243,5 @@ func TestSeriesService_buildTVDetailResult_WithSeries(t *testing.T) {
 	metadata := &sqlcdb.SeriesMetadatum{TmdbID: 123, Title: "Test Series"}
 	series := &sqlcdb.GetSeriesRow{Series: sqlcdb.Series{ID: 1, Path: sql.NullString{String: path, Valid: true}, QualityProfileID: 5, Monitored: 1}}
 	got := svc.buildTVDetailResult(metadata, &tmdb.SeriesDetailsResponse{}, series, nil)
-	assert.Equal(t, &TVDetailResult{TMDBID: 123, Title: "Test Series", LibraryStatus: "", ID: ptr.To(int64(1)), Path: &path, QualityProfileID: ptr.To(int64(5)), Monitored: ptr.To(true), MonitorNewSeasons: ptr.To(false)}, got)
+	assert.Equal(t, &TVDetailResult{TMDBID: 123, Title: "Test Series", LibraryStatus: "", ID: ptr.To(int64(1)), Path: &path, QualityProfileID: ptr.To(int64(5)), Monitored: ptr.To(true), MonitorNewSeasons: ptr.To(false), Seasons: []SeasonResult{}}, got)
 }
