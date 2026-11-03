@@ -40,19 +40,17 @@ func NewDownloadClientFactory(mountPrefix ...string) Factory {
 }
 
 // ValidateSABConfig validates endpoint fields without performing network I/O.
+// An inline host port takes precedence over the separate port.
 func ValidateSABConfig(scheme, host string, port int64) error {
 	if scheme != "http" && scheme != "https" {
 		return errors.New("SABnzbd scheme must be http or https")
 	}
-	_, inline, err := parseSABHost(host)
+	_, _, err := parseSABHost(host)
 	if err != nil {
 		return err
 	}
 	if port < 0 || port > 65535 {
 		return errors.New("invalid SABnzbd port")
-	}
-	if inline != 0 && port != 0 && int64(inline) != port {
-		return errors.New("conflicting SABnzbd ports")
 	}
 	return nil
 }

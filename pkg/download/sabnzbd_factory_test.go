@@ -48,6 +48,16 @@ func TestSabnzbdFactoryEndpointAndProtocol(t *testing.T) {
 	_, err := fmt.Sscan(portText, &port)
 	require.NoError(t, err)
 
+	var separatePortHits int
+	separatePortServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		separatePortHits++
+		mu.Unlock()
+		http.Error(w, "unexpected separate-port request", http.StatusServiceUnavailable)
+	}))
+	defer separatePortServer.Close()
+	separatePort := int64(separatePortServer.Listener.Addr().(*net.TCPAddr).Port)
+
 	for _, tc := range []struct {
 		name, host string
 		port       int64
@@ -55,6 +65,7 @@ func TestSabnzbdFactoryEndpointAndProtocol(t *testing.T) {
 		{"separate port", "127.0.0.1", port},
 		{"inline port", hostport, 0},
 		{"matching explicit port", hostport, port},
+		{"different explicit port", hostport, separatePort},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			mu.Lock()
@@ -70,8 +81,10 @@ func TestSabnzbdFactoryEndpointAndProtocol(t *testing.T) {
 			require.Equal(t, []Status{{ID: "id-1", Name: "synthetic.nzb", FilePaths: []string{""}, Progress: 0, Speed: 0, Size: 4}}, listed)
 			mu.Lock()
 			got := append([]string(nil), requests...)
+			unexpectedHits := separatePortHits
 			mu.Unlock()
 			require.Len(t, got, 5)
+			require.Zero(t, unexpectedHits)
 			modes := []string{"addurl", "queue", "history", "queue", "history"}
 			for i, mode := range modes {
 				parts := strings.Split(got[i], "|")
@@ -89,11 +102,9 @@ func TestSabnzbdFactoryRejectsInvalidConfiguration(t *testing.T) {
 		require.Error(t, err, host)
 	}
 	for _, port := range []int64{-1, 65536} {
-		_, err := NewDownloadClientFactory().NewDownloadClient(sabFactoryConfig("localhost", "http", port))
+		_, err := NewDownloadClientFactory().NewDownloadClient(sabFactoryConfig("localhost:8080", "http", port))
 		require.Error(t, err)
 	}
-	_, err := NewDownloadClientFactory().NewDownloadClient(sabFactoryConfig("localhost:1234", "http", 1235))
-	require.Error(t, err, "conflicting port")
 	for _, scheme := range []string{"", "ftp"} {
 		_, err := NewDownloadClientFactory().NewDownloadClient(sabFactoryConfig("localhost", scheme, 0))
 		require.Error(t, err)
