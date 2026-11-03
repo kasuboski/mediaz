@@ -91,6 +91,7 @@ func TestSeriesDiscoveryPropagatesPersistenceErrors(t *testing.T) {
 							}
 							store.EXPECT().CreateSeries(ctx, sqlcdb.Series{Path: sql.NullString{String: "Show", Valid: true}, QualityProfileID: 2}, storage.SeriesStateDiscovered).Return(int64(3), seriesErr)
 							if stage != "series" {
+								store.EXPECT().GetSeriesByID(ctx, int64(3)).Return(sqlcdb.GetSeriesRow{Series: sqlcdb.Series{ID: 3}}, nil)
 								store.EXPECT().GetSeasonBySeriesIDAndNumber(ctx, int64(3), int64(1)).Return(sqlcdb.GetSeasonBySeriesIDAndNumberRow{}, storage.ErrNotFound)
 								var seasonErr error
 								if stage == "season" {
@@ -98,6 +99,7 @@ func TestSeriesDiscoveryPropagatesPersistenceErrors(t *testing.T) {
 								}
 								store.EXPECT().CreateSeason(ctx, sqlcdb.Season{SeriesID: 3, SeasonNumber: 1}, storage.SeasonStateDiscovered).Return(int64(4), seasonErr)
 								if stage == "episode" {
+									store.EXPECT().GetSeasonByID(ctx, int64(4)).Return(sqlcdb.GetSeasonByIDRow{Season: sqlcdb.Season{ID: 4, SeriesID: 3, SeasonNumber: 1}}, nil)
 									store.EXPECT().CreateEpisode(ctx, sqlcdb.Episode{SeasonID: 4, EpisodeNumber: 1, EpisodeFileID: sql.NullInt64{Int64: 1, Valid: true}}, storage.EpisodeStateDiscovered).Return(int64(0), injected)
 								}
 							}

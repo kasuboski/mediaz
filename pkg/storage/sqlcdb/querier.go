@@ -223,6 +223,10 @@ type Querier interface {
 	UpdateDownloadClient(ctx context.Context, arg UpdateDownloadClientParams) error
 	UpdateEpisodeEpisodeFileID(ctx context.Context, arg UpdateEpisodeEpisodeFileIDParams) error
 	UpdateEpisodeFile(ctx context.Context, arg UpdateEpisodeFileParams) error
+	UpdateEpisodeMonitored(ctx context.Context, arg UpdateEpisodeMonitoredParams) error
+	// Sets or clears (NULL) the episode's quality profile override. NULL restores
+	// inheritance from the season (then series) profile.
+	UpdateEpisodeQualityProfile(ctx context.Context, arg UpdateEpisodeQualityProfileParams) error
 	UpdateIndexer(ctx context.Context, arg UpdateIndexerParams) (int64, error)
 	UpdateIndexerSource(ctx context.Context, arg UpdateIndexerSourceParams) error
 	UpdateMovieMetadataQuery(ctx context.Context, arg UpdateMovieMetadataQueryParams) error
@@ -231,9 +235,15 @@ type Querier interface {
 	UpdateMovieQualityProfileID(ctx context.Context, arg UpdateMovieQualityProfileIDParams) error
 	UpdateQualityDefinition(ctx context.Context, arg UpdateQualityDefinitionParams) error
 	UpdateQualityProfile(ctx context.Context, arg UpdateQualityProfileParams) error
+	UpdateSeasonMonitored(ctx context.Context, arg UpdateSeasonMonitoredParams) error
+	// Sets or clears (NULL) the season's quality profile override. NULL restores
+	// inheritance from the series default profile.
+	UpdateSeasonQualityProfile(ctx context.Context, arg UpdateSeasonQualityProfileParams) error
 	// Legacy parity: only the monitored column is ever updated through this path.
 	UpdateSeriesByID(ctx context.Context, arg UpdateSeriesByIDParams) error
 	UpdateSeriesMetadata(ctx context.Context, arg UpdateSeriesMetadataParams) error
+	UpdateSeriesMonitorNewSeasons(ctx context.Context, arg UpdateSeriesMonitorNewSeasonsParams) error
+	UpdateSeriesQualityProfile(ctx context.Context, arg UpdateSeriesQualityProfileParams) error
 	UpsertEpisodeMetadata(ctx context.Context, arg UpsertEpisodeMetadataParams) (int64, error)
 	UpsertSeasonMetadata(ctx context.Context, arg UpsertSeasonMetadataParams) (int64, error)
 	// Series/season/episode metadata queries plus the series-entity statements

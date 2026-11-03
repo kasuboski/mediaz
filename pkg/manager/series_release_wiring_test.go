@@ -22,7 +22,7 @@ import (
 )
 
 func TestSeriesSearchWiresReleaseIdentity(t *testing.T) {
-	for _, mode := range []string{"scheduled episode", "scheduled pack", "manual season", "manual episode"} {
+	for _, mode := range []string{"scheduled episode", "scheduled pack", "scheduled aggregate downloading", "scheduled aggregate completed", "manual season", "manual episode"} {
 		t.Run(mode, func(t *testing.T) {
 			ctx := context.Background()
 			store, err := mediaSqlite.New(ctx, ":memory:")
@@ -34,7 +34,7 @@ func TestSeriesSearchWiresReleaseIdentity(t *testing.T) {
 			require.NoError(t, err)
 			metadataID, err := store.CreateSeriesMetadata(ctx, sqlcdb.SeriesMetadatum{TmdbID: 4242, Title: "Original Series", EpisodeCount: 1, ExternalIds: sql.NullString{String: `{"tvdb_id":77}`, Valid: true}})
 			require.NoError(t, err)
-			seriesID, err := store.CreateSeries(ctx, sqlcdb.Series{SeriesMetadataID: sql.NullInt64{Int64: metadataID, Valid: true}, QualityProfileID: 1, Monitored: 1}, storage.SeriesStateMissing)
+			seriesID, err := store.CreateSeries(ctx, sqlcdb.Series{SeriesMetadataID: sql.NullInt64{Int64: metadataID, Valid: true}, QualityProfileID: 5, Monitored: 1}, storage.SeriesStateMissing)
 			require.NoError(t, err)
 			seasonMetadataID, err := store.CreateSeasonMetadata(ctx, sqlcdb.SeasonMetadatum{SeriesMetadataID: metadataID, Title: "Season 1", Number: 1})
 			require.NoError(t, err)
@@ -44,6 +44,15 @@ func TestSeriesSearchWiresReleaseIdentity(t *testing.T) {
 			require.NoError(t, err)
 			episodeID, err := store.CreateEpisode(ctx, sqlcdb.Episode{SeasonID: seasonID, EpisodeNumber: 1, EpisodeMetadataID: sql.NullInt64{Int64: episodeMetadataID, Valid: true}, Monitored: 1}, storage.EpisodeStateMissing)
 			require.NoError(t, err)
+
+			if strings.HasPrefix(mode, "scheduled aggregate") {
+				require.NoError(t, store.UpdateSeasonState(ctx, seasonID, storage.SeasonStateDownloading, nil))
+				require.NoError(t, store.UpdateSeriesState(ctx, seriesID, storage.SeriesStateDownloading, nil))
+				if mode == "scheduled aggregate completed" {
+					require.NoError(t, store.UpdateSeasonState(ctx, seasonID, storage.SeasonStateCompleted, nil))
+					require.NoError(t, store.UpdateSeriesState(ctx, seriesID, storage.SeriesStateCompleted, nil))
+				}
+			}
 
 			releases := []*indexer.Release{
 				{ID: ptr.To(int32(1)), Title: nullable.NewNullableWithValue("Original.Series.S01E01.1080p.WEB-DL-GROUP"), Seeders: nullable.NewNullableWithValue(int32(200)), Size: sizeGBToBytes(2), Protocol: ptr.To(string(indexer.DownloadProtocolTorrent)), TvdbID: ptr.To(int32(88))},
@@ -80,7 +89,7 @@ func TestSeriesSearchWiresReleaseIdentity(t *testing.T) {
 			require.NoError(t, err)
 			require.Len(t, wantEpisodes, 1)
 			switch mode {
-			case "scheduled episode", "scheduled pack":
+			case "scheduled episode", "scheduled pack", "scheduled aggregate downloading", "scheduled aggregate completed":
 				err = m.ReconcileMissingSeries(ctx, newReconcileSnapshot([]sqlcdb.Indexer{{ID: 1}}, []sqlcdb.DownloadClient{downloadModel}))
 			case "manual season":
 				err = m.SearchForSeason(ctx, seasonID)

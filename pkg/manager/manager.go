@@ -388,6 +388,10 @@ func (m MediaManager) AddSeriesToLibrary(ctx context.Context, request AddSeriesR
 	return m.seriesService.AddSeriesToLibrary(ctx, request)
 }
 
+func (m MediaManager) UpdateSeriesSelection(ctx context.Context, id int64, patch SeriesSelectionPatch) (*TVDetailResult, error) {
+	return m.seriesService.UpdateSelection(ctx, id, patch)
+}
+
 func (m MediaManager) DeleteMovie(ctx context.Context, movieID int64, deleteFiles bool) error {
 	return m.movieService.DeleteMovie(ctx, movieID, deleteFiles)
 }

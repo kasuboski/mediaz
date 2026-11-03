@@ -472,6 +472,8 @@ func TestMediaManager_AddSeriesToLibrary(t *testing.T) {
 		ctx := context.Background()
 
 		store := storageMocks.NewMockStorage(ctrl)
+		store.EXPECT().GetSeriesMetadataByTmdbID(gomock.Any(), int64(1234)).Return(sqlcdb.SeriesMetadatum{ID: 1, TmdbID: 1234}, nil)
+		store.EXPECT().GetSeriesByMetadataID(gomock.Any(), int64(1)).Return(sqlcdb.GetSeriesRow{}, storage.ErrNotFound)
 		store.EXPECT().GetQualityProfile(gomock.Any(), int64(1)).Return(sqlcdb.QualityProfile{}, errors.New("expected testing error"))
 
 		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
@@ -599,13 +601,14 @@ func TestMediaManager_AddSeriesToLibrary(t *testing.T) {
 			QualityProfileID: 1,
 		}
 
+		req.QualityProfileID = 4
 		series, err := m.AddSeriesToLibrary(ctx, req)
 		require.NoError(t, err)
 
 		assert.Equal(t, series.Series.ID, int64(1))
 		assert.Equal(t, sql.NullInt64{Int64: metadataID, Valid: true}, series.Series.SeriesMetadataID)
 		assert.Equal(t, series.Series.Monitored, int64(1))
-		assert.Equal(t, series.Series.QualityProfileID, int64(1))
+		assert.Equal(t, series.Series.QualityProfileID, int64(4))
 		assert.Equal(t, string(storage.SeriesStateUnreleased), series.State)
 	})
 
@@ -659,13 +662,14 @@ func TestMediaManager_AddSeriesToLibrary(t *testing.T) {
 			QualityProfileID: 1,
 		}
 
+		req.QualityProfileID = 4
 		series, err := m.AddSeriesToLibrary(ctx, req)
 		require.NoError(t, err)
 
 		assert.Equal(t, int64(1), series.Series.ID)
 		assert.Equal(t, sql.NullInt64{Int64: 1, Valid: true}, series.Series.SeriesMetadataID)
 		assert.Equal(t, int64(1), series.Series.Monitored)
-		assert.Equal(t, int64(1), series.Series.QualityProfileID)
+		assert.Equal(t, int64(4), series.Series.QualityProfileID)
 		assert.Equal(t, string(storage.SeriesStateMissing), series.State)
 
 		seasons, err := m.seriesStorage.ListSeasons(ctx, storage.SeasonFilter{SeriesID: ptr.To(int64(series.Series.ID))})

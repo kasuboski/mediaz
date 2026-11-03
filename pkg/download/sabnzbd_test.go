@@ -72,6 +72,30 @@ func TestSabnzbdRejectsFailureEnvelope(t *testing.T) {
 	require.NotContains(t, err.Error(), "leaked by server")
 }
 
+func TestSabnzbdAddClassifiesExplicitRejection(t *testing.T) {
+	t.Run("explicit status false through Add is a definite rejection", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		client := httpMock.NewMockHTTPClient(ctrl)
+		c := NewSabnzbdClient(client, "http", "sab.invalid", "", "key")
+		client.EXPECT().Do(gomock.Any()).Return(&http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(bytes.NewBufferString(`{"status":false}`))}, nil)
+		_, err := c.Add(context.Background(), AddRequest{Release: &indexer.Release{DownloadURL: nullable.NewNullableWithValue[string]("https://provider.invalid/item")}})
+		require.Error(t, err)
+		var rejected *SubmissionRejectedError
+		require.ErrorAs(t, err, &rejected)
+	})
+
+	t.Run("transport failure through Add stays ambiguous", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		client := httpMock.NewMockHTTPClient(ctrl)
+		c := NewSabnzbdClient(client, "http", "sab.invalid", "", "key")
+		client.EXPECT().Do(gomock.Any()).Return(nil, fmt.Errorf("connection refused"))
+		_, err := c.Add(context.Background(), AddRequest{Release: &indexer.Release{DownloadURL: nullable.NewNullableWithValue[string]("https://provider.invalid/item")}})
+		require.Error(t, err)
+		var rejected *SubmissionRejectedError
+		require.NotErrorAs(t, err, &rejected)
+	})
+}
+
 func TestQueueToStatus(t *testing.T) {
 	var response QueueResponse
 	err := json.Unmarshal([]byte(testQueueResponse), &response)

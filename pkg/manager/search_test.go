@@ -113,7 +113,7 @@ func TestMediaManager_SearchForSeries(t *testing.T) {
 		assert.Contains(t, err.Error(), "series not found")
 	})
 
-	t.Run("series not monitored", func(t *testing.T) {
+	t.Run("unmonitored series explicit request proceeds without mutating flags", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
@@ -124,12 +124,14 @@ func TestMediaManager_SearchForSeries(t *testing.T) {
 				Monitored: 0,
 			},
 		}, nil)
+		store.EXPECT().ListSeasons(gomock.Any(), gomock.Any()).Return(nil, nil)
 
 		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
 		err := m.SearchForSeries(context.Background(), 1)
 
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "not monitored")
+		// Explicit series request bypasses the series monitoring gate;
+		// it never mutates the stored monitored flag.
+		assert.NoError(t, err)
 	})
 
 	t.Run("no seasons to search", func(t *testing.T) {
@@ -144,7 +146,6 @@ func TestMediaManager_SearchForSeries(t *testing.T) {
 			},
 		}, nil)
 		store.EXPECT().ListSeasons(gomock.Any(), gomock.Any()).Return(nil, nil)
-		store.EXPECT().UpdateSeriesByID(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
 
 		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
 		err := m.SearchForSeries(context.Background(), 1)
@@ -167,7 +168,6 @@ func TestMediaManager_SearchForSeries(t *testing.T) {
 			{Season: sqlcdb.Season{ID: 1, SeriesID: 1, SeasonNumber: 1, Monitored: 0}},
 			{Season: sqlcdb.Season{ID: 2, SeriesID: 1, SeasonNumber: 2, Monitored: 0}},
 		}, nil)
-		store.EXPECT().UpdateSeriesByID(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
 
 		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
 		err := m.SearchForSeries(context.Background(), 1)
@@ -191,7 +191,7 @@ func TestMediaManager_SearchForSeason(t *testing.T) {
 		assert.Contains(t, err.Error(), "season not found")
 	})
 
-	t.Run("season not monitored", func(t *testing.T) {
+	t.Run("active season download is not re-enqueued", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
@@ -201,13 +201,16 @@ func TestMediaManager_SearchForSeason(t *testing.T) {
 				ID:        1,
 				Monitored: 0,
 			},
+			State:      sql.NullString{String: string(storage.SeasonStateDownloading), Valid: true},
+			DownloadID: sql.NullString{String: "active-pack", Valid: true},
 		}, nil)
 
 		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
 		err := m.SearchForSeason(context.Background(), 1)
 
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "not monitored")
+		// An active season pack already covers the request; nothing new is
+		// enqueued and the existing download keeps processing.
+		assert.NoError(t, err)
 	})
 
 	t.Run("no download clients available", func(t *testing.T) {
@@ -229,54 +232,6 @@ func TestMediaManager_SearchForSeason(t *testing.T) {
 
 		assert.Error(t, err)
 	})
-
-	t.Run("series has no quality profile", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
-		defer ctrl.Finish()
-
-		store := storageMocks.NewMockStorage(ctrl)
-		indexerFactory := indexerMock.NewMockFactory(ctrl)
-		downloadFactory := downloadMock.NewMockFactory(ctrl)
-
-		store.EXPECT().GetSeasonByID(gomock.Any(), gomock.Any()).Return(sqlcdb.GetSeasonByIDRow{
-			Season: sqlcdb.Season{
-				ID:           1,
-				SeriesID:     1,
-				SeasonNumber: 1,
-				Monitored:    1,
-			},
-		}, nil)
-		store.EXPECT().ListDownloadClients(gomock.Any()).Return([]sqlcdb.DownloadClient{
-			{ID: 1, Type: "torrent", Implementation: "transmission"},
-		}, nil)
-		store.EXPECT().ListIndexers(gomock.Any()).Return(nil, nil)
-		store.EXPECT().GetSeriesByID(gomock.Any(), int64(1)).Return(sqlcdb.GetSeriesRow{
-			Series: sqlcdb.Series{
-				ID:               1,
-				QualityProfileID: 0,
-			},
-		}, nil)
-
-		mockIndexerSource := indexerMock.NewMockIndexerSource(ctrl)
-		store.EXPECT().GetIndexerSource(gomock.Any(), int64(1)).Return(sqlcdb.IndexerSource{
-			ID: 1, Name: "test-source", Scheme: "http", Host: "test", Enabled: true,
-		}, nil)
-		indexerFactory.EXPECT().NewIndexerSource(gomock.Any()).Return(mockIndexerSource, nil)
-		mockIndexerSource.EXPECT().ListIndexers(gomock.Any()).Return([]indexer.SourceIndexer{
-			{ID: indexer.SourceID(1), Name: "test-indexer", Priority: 1},
-		}, nil)
-		store.EXPECT().CreateIndexer(gomock.Any(), sqlcdb.Indexer{
-			Name: "test-indexer", Priority: 1, IndexerSourceID: sql.NullInt64{Int64: 1, Valid: true}, Categories: `{"movie":[],"tv":[]}`, ProwlarrID: sql.NullInt64{Int64: 1, Valid: true},
-		}).Return(int64(1), nil)
-
-		m := New(nil, indexerFactory, nil, store, downloadFactory, config.Manager{}, config.Config{})
-		require.NoError(t, m.RefreshIndexerSource(context.Background(), 1))
-
-		err := m.SearchForSeason(context.Background(), 1)
-
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "no quality profile")
-	})
 }
 
 func TestMediaManager_SearchForEpisode(t *testing.T) {
@@ -294,7 +249,7 @@ func TestMediaManager_SearchForEpisode(t *testing.T) {
 		assert.Contains(t, err.Error(), "episode not found")
 	})
 
-	t.Run("episode not monitored", func(t *testing.T) {
+	t.Run("downloading episode is not re-enqueued", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
@@ -302,15 +257,16 @@ func TestMediaManager_SearchForEpisode(t *testing.T) {
 		store.EXPECT().GetEpisodeByID(gomock.Any(), gomock.Any()).Return(sqlcdb.GetEpisodeByIDRow{
 			Episode: sqlcdb.Episode{
 				ID:        1,
-				Monitored: 0,
+				Monitored: 1,
 			},
+			State: sql.NullString{String: string(storage.EpisodeStateDownloading), Valid: true},
 		}, nil)
 
 		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
 		err := m.SearchForEpisode(context.Background(), 1)
 
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "not monitored")
+		// Existing download keeps processing; request must not enqueue again.
+		assert.NoError(t, err)
 	})
 
 	t.Run("season not found for episode", func(t *testing.T) {
@@ -324,6 +280,7 @@ func TestMediaManager_SearchForEpisode(t *testing.T) {
 				SeasonID:  1,
 				Monitored: 1,
 			},
+			State: sql.NullString{String: string(storage.EpisodeStateMissing), Valid: true},
 		}, nil)
 		store.EXPECT().GetSeasonByID(gomock.Any(), gomock.Any()).Return(sqlcdb.GetSeasonByIDRow{}, storage.ErrNotFound)
 
@@ -345,6 +302,7 @@ func TestMediaManager_SearchForEpisode(t *testing.T) {
 				SeasonID:  1,
 				Monitored: 1,
 			},
+			State: sql.NullString{String: string(storage.EpisodeStateMissing), Valid: true},
 		}, nil)
 		store.EXPECT().GetSeasonByID(gomock.Any(), gomock.Any()).Return(sqlcdb.GetSeasonByIDRow{
 			Season: sqlcdb.Season{

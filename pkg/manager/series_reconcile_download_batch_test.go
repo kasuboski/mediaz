@@ -84,7 +84,7 @@ func TestReconcileMissingSeasonWithMetadataDownloadBatch(t *testing.T) {
 				require.NoError(t, getErr)
 				episodeMeta[metaID] = meta
 				episodeMetadataIDs = append(episodeMetadataIDs, metaID)
-				episodeID, episodeErr := db.CreateEpisode(ctx, sqlcdb.Episode{SeasonID: seasonID, EpisodeNumber: n, EpisodeMetadataID: sql.NullInt64{Int64: metaID, Valid: true}}, storage.EpisodeStateMissing)
+				episodeID, episodeErr := db.CreateEpisode(ctx, sqlcdb.Episode{SeasonID: seasonID, EpisodeNumber: n, EpisodeMetadataID: sql.NullInt64{Int64: metaID, Valid: true}, Monitored: 1}, storage.EpisodeStateMissing)
 				require.NoError(t, episodeErr)
 				episodeIDs = append(episodeIDs, episodeID)
 			}
@@ -106,11 +106,15 @@ func TestReconcileMissingSeasonWithMetadataDownloadBatch(t *testing.T) {
 					{ID: ptr.To(int32(2)), Title: nullable.NewNullableWithValue("series.S01E02.1080p.WEB-DL.HEVC.x265"), Size: sizeGBToBytes(1), Protocol: ptr.To(string(indexer.DownloadProtocolTorrent))},
 				}
 			}
-			profile := []sqlcdb.ListQualityProfileRowsRow{{QualityDefinition: sqlcdb.QualityDefinition{Name: "HD", MinSize: 15, MaxSize: 1000, PreferredSize: 995, MediaType: "tv"}}}
+			profile := []sqlcdb.ListQualityProfileRowsRow{{QualityDefinition: sqlcdb.QualityDefinition{Name: "HD", MinSize: 15, MaxSize: 1000, PreferredSize: 995, MediaType: "episode"}}}
 			snapshot := newReconcileSnapshot([]sqlcdb.Indexer{{ID: 1}}, []sqlcdb.DownloadClient{clientModel})
 			m := New(nil, nil, nil, store, factory, config.Manager{}, config.Config{})
-			err = m.reconcileMissingSeasonWithMetadata(ctx, "Series", seasonListRow(season), map[int64][]sqlcdb.ListEpisodesRow{seasonID: episodes}, map[int64]sqlcdb.SeasonMetadatum{seasonMetadataID: seasonMeta}, episodeMeta, snapshot, profile, releases)
-			require.NoError(t, err)
+			err = m.reconcileMissingSeasonWithMetadata(ctx, "Series", sqlcdb.Series{ID: 1, QualityProfileID: 1}, seasonListRow(season), map[int64][]sqlcdb.ListEpisodesRow{seasonID: episodes}, map[int64]sqlcdb.SeasonMetadatum{seasonMetadataID: seasonMeta}, episodeMeta, snapshot, profile, releases)
+			if tc.partialFailure {
+				require.ErrorContains(t, err, "admission retained pending manual recovery")
+			} else {
+				require.NoError(t, err)
+			}
 			require.LessOrEqual(t, store.listEpisodes, 2)
 			expectedEpisodes := append([]sqlcdb.ListEpisodesRow(nil), episodes...)
 			for i := range expectedEpisodes {

@@ -26,6 +26,7 @@ type Episode struct {
 	Monitored         int64
 	EpisodeMetadataID sql.NullInt64
 	EpisodeFileID     sql.NullInt64
+	QualityProfileID  sql.NullInt64
 }
 
 type EpisodeFile struct {
@@ -209,6 +210,7 @@ type Season struct {
 	SeasonNumber     int64
 	SeasonMetadataID sql.NullInt64
 	Monitored        int64
+	QualityProfileID sql.NullInt64
 }
 
 type SeasonMetadatum struct {
@@ -271,4 +273,9 @@ type SeriesTransition struct {
 	SortKey    int64
 	CreatedAt  sql.NullTime
 	UpdatedAt  sql.NullTime
+}
+
+type TvEpisodeAdmission struct {
+	EpisodeID int64
+	CreatedAt time.Time
 }

@@ -86,22 +86,29 @@ func (m MediaManager) IndexSeriesLibrary(ctx context.Context) error {
 			continue
 		}
 
-		seasonID, err := m.getOrCreateSeason(ctx, seriesID, int64(df.SeasonNumber), nil, storage.SeasonStateDiscovered)
-		if err != nil {
-			log.Error("couldn't ensure season for discovered file", zap.Error(err))
-			scanErrors = errors.Join(scanErrors, fmt.Errorf("ensure season for file %q: %w", f.RelativePath.String, err))
-			continue
-		}
-
-		// ensure episode exists; parse episode number from the discovered file data
-		// Link the episode to the episode file so reconciliation can find the file details
-		episode := sqlcdb.Episode{
-			SeasonID:      seasonID,
-			Monitored:     0,
-			EpisodeFileID: sql.NullInt64{Int64: f.ID, Valid: true},
-			EpisodeNumber: int64(df.EpisodeNumber),
-		}
-		episodeID, err := m.seriesStorage.CreateEpisode(ctx, episode, storage.EpisodeStateDiscovered)
+		var seasonID int64
+		episodeID, err := func() (int64, error) {
+			unlock := storage.LockTVAdmission(seriesID)
+			defer unlock()
+			series, err := m.seriesStorage.GetSeriesByID(ctx, seriesID)
+			if err != nil {
+				return 0, err
+			}
+			seasonID, err = m.getOrCreateSeason(ctx, seriesID, int64(df.SeasonNumber), nil, storage.SeasonStateDiscovered, series.Series.MonitorNewSeasons == 1)
+			if err != nil {
+				return 0, err
+			}
+			season, err := m.seriesStorage.GetSeasonByID(ctx, seasonID)
+			if err != nil {
+				return 0, err
+			}
+			// New file discoveries inherit the season choice. Upserts preserve
+			// already stored child policy rather than replacing it.
+			return m.seriesStorage.CreateEpisode(ctx, sqlcdb.Episode{
+				SeasonID: seasonID, Monitored: season.Season.Monitored,
+				EpisodeFileID: sql.NullInt64{Int64: f.ID, Valid: true}, EpisodeNumber: int64(df.EpisodeNumber),
+			}, storage.EpisodeStateDiscovered)
+		}()
 		if err != nil {
 			log.Warn("failed to create new episode", zap.Error(err))
 			scanErrors = errors.Join(scanErrors, fmt.Errorf("create episode for file %q: %w", f.RelativePath.String, err))
@@ -149,7 +156,7 @@ func (m MediaManager) ensureSeries(ctx context.Context, seriesName string) (int6
 
 // getOrCreateSeason unified function to get or create a season, with optional metadata linking
 // This prevents the duplicate creation issues between discovery and metadata refresh phases
-func (m MediaManager) getOrCreateSeason(ctx context.Context, seriesID int64, seasonNumber int64, seasonMetadataID *int64, initialState storage.SeasonState) (int64, error) {
+func (m MediaManager) getOrCreateSeason(ctx context.Context, seriesID int64, seasonNumber int64, seasonMetadataID *int64, initialState storage.SeasonState, monitorNew ...bool) (int64, error) {
 	log := logger.FromCtx(ctx).With(
 		zap.Int64("series_id", seriesID),
 		zap.Int64("season_number", seasonNumber),
@@ -182,6 +189,9 @@ func (m MediaManager) getOrCreateSeason(ctx context.Context, seriesID int64, sea
 		SeriesID:     seriesID,
 		SeasonNumber: seasonNumber,
 		Monitored:    0,
+	}
+	if len(monitorNew) > 0 && monitorNew[0] {
+		newSeason.Monitored = 1
 	}
 	if seasonMetadataID != nil {
 		newSeason.SeasonMetadataID = sql.NullInt64{Int64: *seasonMetadataID, Valid: true}

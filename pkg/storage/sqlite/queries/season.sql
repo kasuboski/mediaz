@@ -13,20 +13,25 @@ INSERT INTO
         "series_id",
         "season_number",
         "season_metadata_id",
-        "monitored"
+        "monitored",
+        "quality_profile_id"
     )
 VALUES (
     CAST(sqlc.narg('id') AS INTEGER),
     sqlc.arg('series_id'),
     sqlc.arg('season_number'),
     sqlc.narg('season_metadata_id'),
-    sqlc.arg('monitored')
+    sqlc.arg('monitored'),
+    CAST(sqlc.narg('quality_profile_id') AS INTEGER)
 )
 ON CONFLICT ("id") DO UPDATE SET
     "series_id" = excluded."series_id",
     "season_number" = excluded."season_number",
     "season_metadata_id" = excluded."season_metadata_id",
-    "monitored" = excluded."monitored"
+    "monitored" = season."monitored",
+    -- Refresh/upsert is not a policy edit. Use the selection patch or
+    -- explicit quality primitive to change an existing override.
+    "quality_profile_id" = season."quality_profile_id"
 RETURNING "id";
 
 -- name: GetSeasonByID :one
@@ -85,6 +90,16 @@ ORDER BY s.series_id ASC, s.season_number ASC, s.id ASC;
 DELETE FROM season
 WHERE id = ?;
 
+-- name: UpdateSeasonQualityProfile :exec
+-- Sets or clears (NULL) the season's quality profile override. NULL restores
+-- inheritance from the series default profile.
+UPDATE
+    season
+SET
+    "quality_profile_id" = CAST(sqlc.narg('quality_profile_id') AS INTEGER)
+WHERE
+    id = sqlc.arg('id');
+
 -- name: LinkSeasonMetadata :exec
 UPDATE
     season
@@ -116,3 +131,11 @@ INSERT INTO
         "is_entire_season_download"
     )
 VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+
+-- name: UpdateSeasonMonitored :exec
+UPDATE
+    season
+SET
+    "monitored" = ?
+WHERE
+    id = ?;

@@ -11,6 +11,7 @@ package storage
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 
 	"github.com/kasuboski/mediaz/pkg/machine"
@@ -19,6 +20,10 @@ import (
 
 // ErrNotFound is returned when a requested entity does not exist.
 var ErrNotFound = errors.New("not found in storage")
+
+// ErrNotOwned is returned when a referenced child entity exists but does not
+// belong to the series being updated.
+var ErrNotOwned = errors.New("entity not owned by series")
 
 // ErrJobAlreadyPending is returned when creating a pending job of a type that
 // already has a pending job (DB-enforced by idx_job_type_pending).
@@ -238,7 +243,7 @@ func (s SeriesState) Machine() *machine.StateMachine[SeriesState] {
 	return machine.New(s,
 		machine.From(SeriesStateNew).To(SeriesStateUnreleased, SeriesStateMissing, SeriesStateDiscovered),
 		machine.From(SeriesStateDiscovered).To(SeriesStateMissing, SeriesStateContinuing, SeriesStateCompleted),
-		machine.From(SeriesStateMissing).To(SeriesStateDiscovered, SeriesStateDownloading),
+		machine.From(SeriesStateMissing).To(SeriesStateDiscovered, SeriesStateDownloading, SeriesStateContinuing),
 		machine.From(SeriesStateUnreleased).To(SeriesStateDiscovered, SeriesStateMissing),
 		machine.From(SeriesStateDownloading).To(SeriesStateContinuing, SeriesStateCompleted),
 		machine.From(SeriesStateContinuing).To(SeriesStateCompleted, SeriesStateMissing),
@@ -251,7 +256,7 @@ func (s SeasonState) Machine() *machine.StateMachine[SeasonState] {
 	return machine.New(s,
 		machine.From(SeasonStateNew).To(SeasonStateUnreleased, SeasonStateMissing, SeasonStateDiscovered),
 		machine.From(SeasonStateDiscovered).To(SeasonStateMissing, SeasonStateContinuing, SeasonStateCompleted),
-		machine.From(SeasonStateMissing).To(SeasonStateDiscovered, SeasonStateDownloading),
+		machine.From(SeasonStateMissing).To(SeasonStateDiscovered, SeasonStateDownloading, SeasonStateContinuing),
 		machine.From(SeasonStateUnreleased).To(SeasonStateDiscovered, SeasonStateMissing),
 		machine.From(SeasonStateDownloading).To(SeasonStateContinuing, SeasonStateCompleted),
 		machine.From(SeasonStateContinuing).To(SeasonStateCompleted, SeasonStateMissing),
@@ -290,14 +295,51 @@ type EpisodeFilter struct {
 	States   []EpisodeState
 }
 
+// SeasonSelectionPatch updates one owned season inside a series selection
+// edit. Monitored nil and QualityProfileID nil mean unchanged; a non-nil
+// QualityProfileID > 0 sets the override, <= 0 clears it (inherit).
+type SeasonSelectionPatch struct {
+	ID               int64
+	Monitored        *bool
+	QualityProfileID *int64
+}
+
+// EpisodeSelectionPatch updates one owned episode inside a series selection
+// edit. Monitored nil and QualityProfileID nil mean unchanged; a non-nil
+// QualityProfileID > 0 sets the override, <= 0 clears it (inherit).
+type EpisodeSelectionPatch struct {
+	ID               int64
+	Monitored        *bool
+	QualityProfileID *int64
+}
+
+// SeriesSelectionPatch is a sparse atomic selection edit for one series.
+// Nil series-level fields are unchanged. Season and episode entries are
+// sparse updates (NOT replacements); every referenced ID must be owned by
+// the series and every set profile ID must exist, or the whole patch rolls
+// back. Referenced profiles must be series-compatible; type validation of
+// profile media type stays in the caller (manager/server).
+type SeriesSelectionPatch struct {
+	SeriesMonitored   *bool
+	MonitorNewSeasons *bool
+	QualityProfileID  *int64
+	Seasons           []SeasonSelectionPatch
+	Episodes          []EpisodeSelectionPatch
+}
+
 // SeriesStorage reads and writes series, seasons, episodes and their files.
 // Entity reads return generated join rows (entity embedded + named transition
 // columns). Seasons/episodes are ordered by (season/series id, number).
 type SeriesStorage interface {
+	// ReserveTVEpisodes atomically claims all episode IDs before external Add.
+	// Claims survive ambiguous outcomes/restarts until explicit safe release.
+	ReserveTVEpisodes(ctx context.Context, ids []int64) error
+	ReleaseTVEpisodes(ctx context.Context, ids []int64) error
 	GetSeriesByID(ctx context.Context, id int64) (sqlcdb.GetSeriesRow, error)
 	GetSeriesByMetadataID(ctx context.Context, metadataID int64) (sqlcdb.GetSeriesRow, error)
 	GetSeriesByPath(ctx context.Context, path string) (sqlcdb.GetSeriesRow, error)
 	CreateSeries(ctx context.Context, series sqlcdb.Series, initialState SeriesState) (int64, error)
+	CreateSeriesTree(ctx context.Context, series sqlcdb.Series, initialState SeriesState, seasons []sqlcdb.Season, episodes [][]sqlcdb.Episode) (int64, error)
 	DeleteSeries(ctx context.Context, id int64) error
 	ListSeries(ctx context.Context, filter SeriesFilter) ([]sqlcdb.ListSeriesRow, error)
 	ListLibraryShows(ctx context.Context, offset, limit int, states []SeriesState) ([]sqlcdb.ListLibraryShowsRow, error)
@@ -313,6 +355,9 @@ type SeriesStorage interface {
 	DeleteSeason(ctx context.Context, id int64) error
 	ListSeasons(ctx context.Context, filter SeasonFilter) ([]sqlcdb.ListSeasonsRow, error)
 	UpdateSeasonState(ctx context.Context, id int64, state SeasonState, metadata *TransitionStateMetadata) error
+	// UpdateSeasonQualityProfile sets or clears (NULL) the season's quality
+	// profile override. NULL restores inheritance from the series default.
+	UpdateSeasonQualityProfile(ctx context.Context, id int64, qualityProfileID sql.NullInt64) error
 	LinkSeasonMetadata(ctx context.Context, seasonID int64, metadataID int64) error
 
 	GetEpisodeByID(ctx context.Context, id int64) (sqlcdb.GetEpisodeByIDRow, error)
@@ -322,8 +367,19 @@ type SeriesStorage interface {
 	ListEpisodes(ctx context.Context, filter EpisodeFilter) ([]sqlcdb.ListEpisodesRow, error)
 	ListEpisodesBySeasonIDs(ctx context.Context, seasonIDs []int64) ([]sqlcdb.ListEpisodesBySeasonIDsRow, error)
 	UpdateEpisodeEpisodeFileID(ctx context.Context, id int64, fileID int64) error
+	// UpdateEpisodeQualityProfile sets or clears (NULL) the episode's quality
+	// profile override. NULL restores inheritance from season, then series.
+	UpdateEpisodeQualityProfile(ctx context.Context, id int64, qualityProfileID sql.NullInt64) error
 	UpdateEpisodeState(ctx context.Context, id int64, state EpisodeState, metadata *TransitionStateMetadata) error
 	LinkEpisodeMetadata(ctx context.Context, episodeID int64, seasonID int64, episodeMetadataID int64) error
+
+	// ApplySeriesSelectionPatch applies a whole-series selection edit (series
+	// automation flags / default quality profile plus sparse owned-child flag
+	// and nullable quality-profile overrides) in ONE transaction: any invalid
+	// entry or failed write rolls back everything. Nil series fields are left
+	// unchanged; child Monitored nil means unchanged, child QualityProfileID
+	// nil means unchanged (set Value+Valid to set or clear an override).
+	ApplySeriesSelectionPatch(ctx context.Context, seriesID int64, patch SeriesSelectionPatch) error
 
 	GetEpisodeFile(ctx context.Context, id int64) (sqlcdb.EpisodeFile, error)
 	GetEpisodeFileByID(ctx context.Context, id int64) ([]sqlcdb.EpisodeFile, error)

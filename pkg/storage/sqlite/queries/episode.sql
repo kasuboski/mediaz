@@ -16,7 +16,8 @@ INSERT INTO
         "episode_number",
         "monitored",
         "episode_metadata_id",
-        "episode_file_id"
+        "episode_file_id",
+        "quality_profile_id"
     )
 VALUES (
     CAST(sqlc.narg('id') AS INTEGER),
@@ -24,14 +25,18 @@ VALUES (
     sqlc.arg('episode_number'),
     sqlc.arg('monitored'),
     sqlc.narg('episode_metadata_id'),
-    sqlc.narg('episode_file_id')
+    sqlc.narg('episode_file_id'),
+    CAST(sqlc.narg('quality_profile_id') AS INTEGER)
 )
 ON CONFLICT ("id") DO UPDATE SET
     "season_id" = excluded."season_id",
     "episode_number" = excluded."episode_number",
-    "monitored" = excluded."monitored",
+    "monitored" = episode."monitored",
     "episode_metadata_id" = excluded."episode_metadata_id",
-    "episode_file_id" = excluded."episode_file_id"
+    "episode_file_id" = excluded."episode_file_id",
+    -- Refresh/upsert is not a policy edit. Use the selection patch or
+    -- explicit quality primitive to change an existing override.
+    "quality_profile_id" = episode."quality_profile_id"
 RETURNING "id";
 
 -- name: GetEpisodeByID :one
@@ -101,6 +106,16 @@ WHERE
 DELETE FROM episode
 WHERE id = ?;
 
+-- name: UpdateEpisodeQualityProfile :exec
+-- Sets or clears (NULL) the episode's quality profile override. NULL restores
+-- inheritance from the season (then series) profile.
+UPDATE
+    episode
+SET
+    "quality_profile_id" = CAST(sqlc.narg('quality_profile_id') AS INTEGER)
+WHERE
+    id = sqlc.arg('id');
+
 -- name: UpdateEpisodeEpisodeFileID :exec
 UPDATE
     episode
@@ -141,3 +156,11 @@ INSERT INTO
         "is_entire_season_download"
     )
 VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+
+-- name: UpdateEpisodeMonitored :exec
+UPDATE
+    episode
+SET
+    "monitored" = ?
+WHERE
+    id = ?;

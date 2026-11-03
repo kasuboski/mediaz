@@ -123,6 +123,7 @@ func TestMediaManager_reconcileMissingEpisodes(t *testing.T) {
 				SeasonID:          1,
 				EpisodeNumber:     1,
 				EpisodeMetadataID: sql.NullInt64{Int64: metadataID1, Valid: true},
+				Monitored:         1,
 			},
 		}
 
@@ -146,6 +147,7 @@ func TestMediaManager_reconcileMissingEpisodes(t *testing.T) {
 				SeasonID:          1,
 				EpisodeNumber:     2,
 				EpisodeMetadataID: sql.NullInt64{Int64: metadataID2, Valid: true},
+				Monitored:         1,
 			},
 		}
 		_, err = store.CreateEpisode(ctx, episode2.Episode, storage.EpisodeStateMissing)
@@ -168,6 +170,7 @@ func TestMediaManager_reconcileMissingEpisodes(t *testing.T) {
 				SeasonID:          1,
 				EpisodeNumber:     3,
 				EpisodeMetadataID: sql.NullInt64{Int64: metadataID3, Valid: true},
+				Monitored:         1,
 			},
 		}
 
@@ -194,7 +197,7 @@ func TestMediaManager_reconcileMissingEpisodes(t *testing.T) {
 			MinSize:       0,
 			MaxSize:       2000,
 			PreferredSize: 1000,
-			MediaType:     "tv",
+			MediaType:     "episode",
 		}}}
 
 		episodes, err := store.ListEpisodes(ctx, storage.EpisodeFilter{})
@@ -203,7 +206,7 @@ func TestMediaManager_reconcileMissingEpisodes(t *testing.T) {
 
 		m := New(nil, nil, nil, store, mockFactory, config.Manager{}, config.Config{})
 
-		err = m.reconcileMissingEpisodes(ctx, "Series", 1, 1, episodes, snapshot, qualityProfile, releases)
+		err = m.reconcileMissingEpisodes(ctx, "Series", 1, sql.NullInt64{}, 1, 1, episodes, snapshot, qualityProfile, releases)
 		require.NoError(t, err)
 
 		episodes, err = store.ListEpisodes(ctx, storage.EpisodeFilter{})
@@ -292,6 +295,7 @@ func TestMediaManager_reconcileMissingEpisodes(t *testing.T) {
 				SeasonID:          seasonID,
 				EpisodeNumber:     1,
 				EpisodeMetadataID: sql.NullInt64{Int64: metadataID1, Valid: true},
+				Monitored:         1,
 			},
 		}
 
@@ -315,6 +319,7 @@ func TestMediaManager_reconcileMissingEpisodes(t *testing.T) {
 				SeasonID:          seasonID,
 				EpisodeNumber:     2,
 				EpisodeMetadataID: sql.NullInt64{Int64: metadataID2, Valid: true},
+				Monitored:         1,
 			},
 		}
 		_, err = store.CreateEpisode(ctx, episode2.Episode, storage.EpisodeStateMissing)
@@ -340,7 +345,7 @@ func TestMediaManager_reconcileMissingEpisodes(t *testing.T) {
 			MinSize:       0,
 			MaxSize:       2000,
 			PreferredSize: 1000,
-			MediaType:     "tv",
+			MediaType:     "episode",
 		}}}
 
 		episodes, err := store.ListEpisodes(ctx, storage.EpisodeFilter{})
@@ -349,7 +354,7 @@ func TestMediaManager_reconcileMissingEpisodes(t *testing.T) {
 
 		m := New(nil, nil, nil, store, mockFactory, config.Manager{}, config.Config{})
 
-		err = m.reconcileMissingEpisodes(ctx, "Series", seasonID, 1, episodes, snapshot, qualityProfile, releases)
+		err = m.reconcileMissingEpisodes(ctx, "Series", 1, sql.NullInt64{}, seasonID, 1, episodes, snapshot, qualityProfile, releases)
 		require.NoError(t, err)
 
 		episodes, err = store.ListEpisodes(ctx, storage.EpisodeFilter{})
@@ -382,14 +387,14 @@ func TestMediaManager_reconcileMissingEpisodes(t *testing.T) {
 
 	t.Run("empty episode with nil snapshot", func(t *testing.T) {
 		m := New(nil, nil, nil, nil, nil, config.Manager{}, config.Config{})
-		err := m.reconcileMissingEpisodes(context.Background(), "Series", 1, 1, []sqlcdb.ListEpisodesRow{{}}, nil, nil, nil)
+		err := m.reconcileMissingEpisodes(context.Background(), "Series", 1, sql.NullInt64{}, 1, 1, []sqlcdb.ListEpisodesRow{{}}, nil, nil, nil)
 		require.NoError(t, err)
 	})
 
 	t.Run("nil snapshot", func(t *testing.T) {
 		m := New(nil, nil, nil, nil, nil, config.Manager{}, config.Config{})
 		episode := sqlcdb.ListEpisodesRow{}
-		err := m.reconcileMissingEpisodes(context.Background(), "Series", 1, 1, []sqlcdb.ListEpisodesRow{episode}, nil, nil, nil)
+		err := m.reconcileMissingEpisodes(context.Background(), "Series", 1, sql.NullInt64{}, 1, 1, []sqlcdb.ListEpisodesRow{episode}, nil, nil, nil)
 		require.NoError(t, err)
 	})
 
@@ -414,7 +419,7 @@ func TestMediaManager_reconcileMissingEpisodes(t *testing.T) {
 		}
 
 		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
-		err = m.reconcileMissingEpisodes(ctx, "Series", 1, 1, []sqlcdb.ListEpisodesRow{episode}, &ReconcileSnapshot{}, nil, nil)
+		err = m.reconcileMissingEpisodes(ctx, "Series", 1, sql.NullInt64{}, 1, 1, []sqlcdb.ListEpisodesRow{episode}, &ReconcileSnapshot{}, nil, nil)
 		require.NoError(t, err)
 	})
 
@@ -438,7 +443,7 @@ func TestMediaManager_reconcileMissingEpisodes(t *testing.T) {
 		}
 
 		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
-		err = m.reconcileMissingEpisodes(ctx, "Series", 1, 1, []sqlcdb.ListEpisodesRow{episode}, &ReconcileSnapshot{}, nil, nil)
+		err = m.reconcileMissingEpisodes(ctx, "Series", 1, sql.NullInt64{}, 1, 1, []sqlcdb.ListEpisodesRow{episode}, &ReconcileSnapshot{}, nil, nil)
 		require.NoError(t, err)
 	})
 }
@@ -447,7 +452,7 @@ func TestMediaManager_reconcileMissingSeason(t *testing.T) {
 		ctx := context.Background()
 		store := newStore(t, ctx)
 		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
-		err := m.reconcileMissingSeason(ctx, "Series", sqlcdb.ListSeasonsRow{}, nil, nil, nil)
+		err := m.reconcileMissingSeason(ctx, "Series", sqlcdb.Series{QualityProfileID: 1}, sqlcdb.ListSeasonsRow{}, nil, nil, nil)
 		require.ErrorIs(t, err, storage.ErrNotFound)
 	})
 
@@ -464,7 +469,7 @@ func TestMediaManager_reconcileMissingSeason(t *testing.T) {
 		}
 
 		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
-		err := m.reconcileMissingSeason(ctx, "Series", season, nil, nil, nil)
+		err := m.reconcileMissingSeason(ctx, "Series", sqlcdb.Series{QualityProfileID: 1}, season, nil, nil, nil)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "not found in storage")
 	})
@@ -482,7 +487,7 @@ func TestMediaManager_reconcileMissingSeason(t *testing.T) {
 		}
 
 		m := New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
-		err := m.reconcileMissingSeason(ctx, "Series", season, nil, nil, nil)
+		err := m.reconcileMissingSeason(ctx, "Series", sqlcdb.Series{QualityProfileID: 1}, season, nil, nil, nil)
 		require.NoError(t, err)
 	})
 
@@ -569,6 +574,7 @@ func TestMediaManager_reconcileMissingSeason(t *testing.T) {
 			SeasonID:          seasonID,
 			EpisodeNumber:     1,
 			EpisodeMetadataID: sql.NullInt64{Int64: episodeMetadataID1, Valid: true},
+			Monitored:         1,
 		}, storage.EpisodeStateMissing)
 		require.NoError(t, err)
 
@@ -586,6 +592,7 @@ func TestMediaManager_reconcileMissingSeason(t *testing.T) {
 			SeasonID:          seasonID,
 			EpisodeNumber:     2,
 			EpisodeMetadataID: sql.NullInt64{Int64: episodeMetadataID2, Valid: true},
+			Monitored:         1,
 		}, storage.EpisodeStateMissing)
 		require.NoError(t, err)
 
@@ -603,14 +610,14 @@ func TestMediaManager_reconcileMissingSeason(t *testing.T) {
 			MinSize:       15,
 			MaxSize:       1000,
 			PreferredSize: 995,
-			MediaType:     "tv",
+			MediaType:     "episode",
 		}}}
 
 		snapshot := newReconcileSnapshot([]sqlcdb.Indexer{{ID: 1}}, []sqlcdb.DownloadClient{downloadClientModel})
 
 		m := New(nil, nil, nil, store, mockFactory, config.Manager{}, config.Config{})
 
-		err = m.reconcileMissingSeason(ctx, "Series", seasonListRow(season), snapshot, qualityProfile, releases)
+		err = m.reconcileMissingSeason(ctx, "Series", sqlcdb.Series{QualityProfileID: 1}, seasonListRow(season), snapshot, qualityProfile, releases)
 		require.NoError(t, err)
 
 		episodes, err := store.ListEpisodes(ctx, storage.EpisodeFilter{})
@@ -716,6 +723,7 @@ func TestMediaManager_reconcileMissingSeason(t *testing.T) {
 			SeasonID:          seasonID,
 			EpisodeNumber:     1,
 			EpisodeMetadataID: sql.NullInt64{Int64: episodeMetadataID1, Valid: true},
+			Monitored:         1,
 		}, storage.EpisodeStateMissing)
 		require.NoError(t, err)
 
@@ -733,6 +741,7 @@ func TestMediaManager_reconcileMissingSeason(t *testing.T) {
 			SeasonID:          seasonID,
 			EpisodeNumber:     2,
 			EpisodeMetadataID: sql.NullInt64{Int64: episodeMetadataID2, Valid: true},
+			Monitored:         1,
 		}, storage.EpisodeStateMissing)
 		require.NoError(t, err)
 
@@ -756,12 +765,12 @@ func TestMediaManager_reconcileMissingSeason(t *testing.T) {
 			MinSize:       15,
 			MaxSize:       1000,
 			PreferredSize: 995,
-			MediaType:     "tv",
+			MediaType:     "episode",
 		}}}
 
 		m := New(nil, nil, nil, store, mockFactory, config.Manager{}, config.Config{})
 
-		err = m.reconcileMissingSeason(ctx, "Series", seasonListRow(season), snapshot, qualityProfile, releases)
+		err = m.reconcileMissingSeason(ctx, "Series", sqlcdb.Series{QualityProfileID: 1}, seasonListRow(season), snapshot, qualityProfile, releases)
 		require.NoError(t, err)
 
 		episodes, err := store.ListEpisodes(ctx, storage.EpisodeFilter{})
@@ -809,10 +818,7 @@ func TestMediaManager_ReconcileMissingSeries(t *testing.T) {
 		store := storageMocks.NewMockStorage(ctrl)
 
 		monitored := true
-		seriesFilter := storage.SeriesFilter{
-			States:    []storage.SeriesState{storage.SeriesStateMissing},
-			Monitored: &monitored,
-		}
+		seriesFilter := storage.SeriesFilter{Monitored: &monitored}
 
 		indexer := &sqlcdb.Indexer{ID: 1, Name: "test", Priority: 1}
 		store.EXPECT().ListIndexers(ctx).Return([]sqlcdb.Indexer{*indexer}, nil)
@@ -934,6 +940,7 @@ func TestMediaManager_ReconcileMissingSeries(t *testing.T) {
 			SeasonID:          seasonID,
 			EpisodeNumber:     2,
 			EpisodeMetadataID: sql.NullInt64{Int64: episodeMetadataID2, Valid: true},
+			Monitored:         1,
 		}, storage.EpisodeStateMissing)
 		require.NoError(t, err)
 
@@ -1016,9 +1023,7 @@ func TestMediaManager_ReconcileContinuingSeries(t *testing.T) {
 		ctx := context.Background()
 		store := storageMocks.NewMockStorage(ctrl)
 
-		continuingFilter := storage.SeriesFilter{
-			States: []storage.SeriesState{storage.SeriesStateContinuing, storage.SeriesStateDownloading},
-		}
+		continuingFilter := storage.SeriesFilter{}
 
 		store.EXPECT().ListSeries(ctx, continuingFilter).Return(nil, storage.ErrNotFound)
 
@@ -1034,9 +1039,7 @@ func TestMediaManager_ReconcileContinuingSeries(t *testing.T) {
 		ctx := context.Background()
 		store := storageMocks.NewMockStorage(ctrl)
 
-		continuingFilter := storage.SeriesFilter{
-			States: []storage.SeriesState{storage.SeriesStateContinuing, storage.SeriesStateDownloading},
-		}
+		continuingFilter := storage.SeriesFilter{}
 
 		expectedErr := errors.New("database error")
 		store.EXPECT().ListSeries(ctx, continuingFilter).Return(nil, expectedErr)

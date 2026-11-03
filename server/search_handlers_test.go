@@ -1,6 +1,8 @@
 package server
 
 import (
+	"database/sql"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -115,12 +117,13 @@ func TestServer_SearchForSeries(t *testing.T) {
 		assert.Equal(t, http.StatusNotFound, rr.Code)
 	})
 
-	t.Run("series not monitored", func(t *testing.T) {
+	t.Run("unmonitored series request once empty selection succeeds", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
 		store := storeMocks.NewMockStorage(ctrl)
 		store.EXPECT().GetSeriesByID(gomock.Any(), gomock.Any()).Return(sqlcdb.GetSeriesRow{Series: sqlcdb.Series{ID: 1, Monitored: 0}}, nil)
+		store.EXPECT().ListSeasons(gomock.Any(), gomock.Any()).Return(nil, nil)
 
 		mgr := manager.New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
 		s := newTestServer(withManager(mgr))
@@ -134,7 +137,7 @@ func TestServer_SearchForSeries(t *testing.T) {
 		handler := s.SearchForSeries()
 		handler.ServeHTTP(rr, req)
 
-		assert.Equal(t, http.StatusInternalServerError, rr.Code)
+		assert.Equal(t, http.StatusAccepted, rr.Code)
 	})
 }
 
@@ -176,12 +179,13 @@ func TestServer_SearchForSeason(t *testing.T) {
 		assert.Equal(t, http.StatusNotFound, rr.Code)
 	})
 
-	t.Run("season not monitored", func(t *testing.T) {
+	t.Run("unmonitored season request once reports operational failure", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
 		store := storeMocks.NewMockStorage(ctrl)
 		store.EXPECT().GetSeasonByID(gomock.Any(), gomock.Any()).Return(sqlcdb.GetSeasonByIDRow{Season: sqlcdb.Season{ID: 1, Monitored: 0}}, nil)
+		store.EXPECT().ListDownloadClients(gomock.Any()).Return(nil, fmt.Errorf("download clients unavailable"))
 
 		mgr := manager.New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
 		s := newTestServer(withManager(mgr))
@@ -237,12 +241,12 @@ func TestServer_SearchForEpisode(t *testing.T) {
 		assert.Equal(t, http.StatusNotFound, rr.Code)
 	})
 
-	t.Run("episode not monitored", func(t *testing.T) {
+	t.Run("unmonitored active episode request once is successful no-op", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
 		store := storeMocks.NewMockStorage(ctrl)
-		store.EXPECT().GetEpisodeByID(gomock.Any(), gomock.Any()).Return(sqlcdb.GetEpisodeByIDRow{Episode: sqlcdb.Episode{ID: 1, Monitored: 0}}, nil)
+		store.EXPECT().GetEpisodeByID(gomock.Any(), gomock.Any()).Return(sqlcdb.GetEpisodeByIDRow{Episode: sqlcdb.Episode{ID: 1, Monitored: 0}, State: sql.NullString{String: "downloading", Valid: true}}, nil)
 
 		mgr := manager.New(nil, nil, nil, store, nil, config.Manager{}, config.Config{})
 		s := newTestServer(withManager(mgr))
@@ -256,6 +260,6 @@ func TestServer_SearchForEpisode(t *testing.T) {
 		handler := s.SearchForEpisode()
 		handler.ServeHTTP(rr, req)
 
-		assert.Equal(t, http.StatusInternalServerError, rr.Code)
+		assert.Equal(t, http.StatusAccepted, rr.Code)
 	})
 }

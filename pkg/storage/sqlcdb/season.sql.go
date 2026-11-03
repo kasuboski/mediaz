@@ -19,20 +19,25 @@ INSERT INTO
         "series_id",
         "season_number",
         "season_metadata_id",
-        "monitored"
+        "monitored",
+        "quality_profile_id"
     )
 VALUES (
     CAST(?1 AS INTEGER),
     ?2,
     ?3,
     ?4,
-    ?5
+    ?5,
+    CAST(?6 AS INTEGER)
 )
 ON CONFLICT ("id") DO UPDATE SET
     "series_id" = excluded."series_id",
     "season_number" = excluded."season_number",
     "season_metadata_id" = excluded."season_metadata_id",
-    "monitored" = excluded."monitored"
+    "monitored" = season."monitored",
+    -- Refresh/upsert is not a policy edit. Use the selection patch or
+    -- explicit quality primitive to change an existing override.
+    "quality_profile_id" = season."quality_profile_id"
 RETURNING "id"
 `
 
@@ -42,6 +47,7 @@ type CreateSeasonParams struct {
 	SeasonNumber     int64
 	SeasonMetadataID sql.NullInt64
 	Monitored        int64
+	QualityProfileID sql.NullInt64
 }
 
 // TV season queries. Entity reads join the most recent season_transition via
@@ -58,6 +64,7 @@ func (q *Queries) CreateSeason(ctx context.Context, arg CreateSeasonParams) (int
 		arg.SeasonNumber,
 		arg.SeasonMetadataID,
 		arg.Monitored,
+		arg.QualityProfileID,
 	)
 	var id int64
 	err := row.Scan(&id)
@@ -94,7 +101,7 @@ func (q *Queries) DemoteSeasonTransition(ctx context.Context, seasonID int64) (i
 
 const getSeasonByID = `-- name: GetSeasonByID :one
 SELECT
-    s.id, s.series_id, s.season_number, s.season_metadata_id, s.monitored,
+    s.id, s.series_id, s.season_number, s.season_metadata_id, s.monitored, s."quality_profile_id",
     st.to_state AS state,
     st.download_id,
     st.download_client_id,
@@ -123,6 +130,7 @@ func (q *Queries) GetSeasonByID(ctx context.Context, id int64) (GetSeasonByIDRow
 		&i.Season.SeasonNumber,
 		&i.Season.SeasonMetadataID,
 		&i.Season.Monitored,
+		&i.Season.QualityProfileID,
 		&i.State,
 		&i.DownloadID,
 		&i.DownloadClientID,
@@ -133,7 +141,7 @@ func (q *Queries) GetSeasonByID(ctx context.Context, id int64) (GetSeasonByIDRow
 
 const getSeasonBySeriesIDAndNumber = `-- name: GetSeasonBySeriesIDAndNumber :one
 SELECT
-    s.id, s.series_id, s.season_number, s.season_metadata_id, s.monitored,
+    s.id, s.series_id, s.season_number, s.season_metadata_id, s.monitored, s."quality_profile_id",
     st.to_state AS state,
     st.download_id,
     st.download_client_id,
@@ -169,6 +177,7 @@ func (q *Queries) GetSeasonBySeriesIDAndNumber(ctx context.Context, arg GetSeaso
 		&i.Season.SeasonNumber,
 		&i.Season.SeasonMetadataID,
 		&i.Season.Monitored,
+		&i.Season.QualityProfileID,
 		&i.State,
 		&i.DownloadID,
 		&i.DownloadClientID,
@@ -238,7 +247,7 @@ func (q *Queries) LinkSeasonMetadata(ctx context.Context, arg LinkSeasonMetadata
 
 const listSeasons = `-- name: ListSeasons :many
 SELECT
-    s.id, s.series_id, s.season_number, s.season_metadata_id, s.monitored,
+    s.id, s.series_id, s.season_number, s.season_metadata_id, s.monitored, s."quality_profile_id",
     st.to_state AS state,
     st.download_id,
     st.download_client_id,
@@ -302,6 +311,7 @@ func (q *Queries) ListSeasons(ctx context.Context, arg ListSeasonsParams) ([]Lis
 			&i.Season.SeasonNumber,
 			&i.Season.SeasonMetadataID,
 			&i.Season.Monitored,
+			&i.Season.QualityProfileID,
 			&i.State,
 			&i.DownloadID,
 			&i.DownloadClientID,
@@ -318,4 +328,44 @@ func (q *Queries) ListSeasons(ctx context.Context, arg ListSeasonsParams) ([]Lis
 		return nil, err
 	}
 	return items, nil
+}
+
+const updateSeasonMonitored = `-- name: UpdateSeasonMonitored :exec
+UPDATE
+    season
+SET
+    "monitored" = ?
+WHERE
+    id = ?
+`
+
+type UpdateSeasonMonitoredParams struct {
+	Monitored int64
+	ID        int64
+}
+
+func (q *Queries) UpdateSeasonMonitored(ctx context.Context, arg UpdateSeasonMonitoredParams) error {
+	_, err := q.db.ExecContext(ctx, updateSeasonMonitored, arg.Monitored, arg.ID)
+	return err
+}
+
+const updateSeasonQualityProfile = `-- name: UpdateSeasonQualityProfile :exec
+UPDATE
+    season
+SET
+    "quality_profile_id" = CAST(?1 AS INTEGER)
+WHERE
+    id = ?2
+`
+
+type UpdateSeasonQualityProfileParams struct {
+	QualityProfileID sql.NullInt64
+	ID               int64
+}
+
+// Sets or clears (NULL) the season's quality profile override. NULL restores
+// inheritance from the series default profile.
+func (q *Queries) UpdateSeasonQualityProfile(ctx context.Context, arg UpdateSeasonQualityProfileParams) error {
+	_, err := q.db.ExecContext(ctx, updateSeasonQualityProfile, arg.QualityProfileID, arg.ID)
+	return err
 }

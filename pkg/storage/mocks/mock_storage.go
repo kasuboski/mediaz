@@ -42,6 +42,20 @@ func (m *MockStorage) EXPECT() *MockStorageMockRecorder {
 	return m.recorder
 }
 
+// ApplySeriesSelectionPatch mocks base method.
+func (m *MockStorage) ApplySeriesSelectionPatch(ctx context.Context, seriesID int64, patch storage.SeriesSelectionPatch) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ApplySeriesSelectionPatch", ctx, seriesID, patch)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ApplySeriesSelectionPatch indicates an expected call of ApplySeriesSelectionPatch.
+func (mr *MockStorageMockRecorder) ApplySeriesSelectionPatch(ctx, seriesID, patch any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ApplySeriesSelectionPatch", reflect.TypeOf((*MockStorage)(nil).ApplySeriesSelectionPatch), ctx, seriesID, patch)
+}
+
 // CountDownloadingMovies mocks base method.
 func (m *MockStorage) CountDownloadingMovies(arg0 context.Context) (int64, error) {
 	m.ctrl.T.Helper()
@@ -534,6 +548,21 @@ func (m *MockStorage) CreateSeriesMetadata(ctx context.Context, SeriesMeta sqlcd
 func (mr *MockStorageMockRecorder) CreateSeriesMetadata(ctx, SeriesMeta any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateSeriesMetadata", reflect.TypeOf((*MockStorage)(nil).CreateSeriesMetadata), ctx, SeriesMeta)
+}
+
+// CreateSeriesTree mocks base method.
+func (m *MockStorage) CreateSeriesTree(ctx context.Context, series sqlcdb.Series, initialState storage.SeriesState, seasons []sqlcdb.Season, episodes [][]sqlcdb.Episode) (int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateSeriesTree", ctx, series, initialState, seasons, episodes)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CreateSeriesTree indicates an expected call of CreateSeriesTree.
+func (mr *MockStorageMockRecorder) CreateSeriesTree(ctx, series, initialState, seasons, episodes any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateSeriesTree", reflect.TypeOf((*MockStorage)(nil).CreateSeriesTree), ctx, series, initialState, seasons, episodes)
 }
 
 // DeleteDownloadClient mocks base method.
@@ -2123,6 +2152,34 @@ func (mr *MockStorageMockRecorder) ListSeriesMetadataByStatus(ctx, status any) *
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListSeriesMetadataByStatus", reflect.TypeOf((*MockStorage)(nil).ListSeriesMetadataByStatus), ctx, status)
 }
 
+// ReleaseTVEpisodes mocks base method.
+func (m *MockStorage) ReleaseTVEpisodes(ctx context.Context, ids []int64) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ReleaseTVEpisodes", ctx, ids)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ReleaseTVEpisodes indicates an expected call of ReleaseTVEpisodes.
+func (mr *MockStorageMockRecorder) ReleaseTVEpisodes(ctx, ids any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReleaseTVEpisodes", reflect.TypeOf((*MockStorage)(nil).ReleaseTVEpisodes), ctx, ids)
+}
+
+// ReserveTVEpisodes mocks base method.
+func (m *MockStorage) ReserveTVEpisodes(ctx context.Context, ids []int64) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ReserveTVEpisodes", ctx, ids)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ReserveTVEpisodes indicates an expected call of ReserveTVEpisodes.
+func (mr *MockStorageMockRecorder) ReserveTVEpisodes(ctx, ids any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReserveTVEpisodes", reflect.TypeOf((*MockStorage)(nil).ReserveTVEpisodes), ctx, ids)
+}
+
 // RunMigrations mocks base method.
 func (m *MockStorage) RunMigrations(ctx context.Context) error {
 	m.ctrl.T.Helper()
@@ -2177,6 +2234,20 @@ func (m *MockStorage) UpdateEpisodeFile(ctx context.Context, id int64, episodeFi
 func (mr *MockStorageMockRecorder) UpdateEpisodeFile(ctx, id, episodeFile any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateEpisodeFile", reflect.TypeOf((*MockStorage)(nil).UpdateEpisodeFile), ctx, id, episodeFile)
+}
+
+// UpdateEpisodeQualityProfile mocks base method.
+func (m *MockStorage) UpdateEpisodeQualityProfile(ctx context.Context, id int64, qualityProfileID sql.NullInt64) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateEpisodeQualityProfile", ctx, id, qualityProfileID)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateEpisodeQualityProfile indicates an expected call of UpdateEpisodeQualityProfile.
+func (mr *MockStorageMockRecorder) UpdateEpisodeQualityProfile(ctx, id, qualityProfileID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateEpisodeQualityProfile", reflect.TypeOf((*MockStorage)(nil).UpdateEpisodeQualityProfile), ctx, id, qualityProfileID)
 }
 
 // UpdateEpisodeState mocks base method.
@@ -2331,6 +2402,20 @@ func (m *MockStorage) UpdateQualityProfile(ctx context.Context, id int64, profil
 func (mr *MockStorageMockRecorder) UpdateQualityProfile(ctx, id, profile any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateQualityProfile", reflect.TypeOf((*MockStorage)(nil).UpdateQualityProfile), ctx, id, profile)
+}
+
+// UpdateSeasonQualityProfile mocks base method.
+func (m *MockStorage) UpdateSeasonQualityProfile(ctx context.Context, id int64, qualityProfileID sql.NullInt64) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateSeasonQualityProfile", ctx, id, qualityProfileID)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateSeasonQualityProfile indicates an expected call of UpdateSeasonQualityProfile.
+func (mr *MockStorageMockRecorder) UpdateSeasonQualityProfile(ctx, id, qualityProfileID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateSeasonQualityProfile", reflect.TypeOf((*MockStorage)(nil).UpdateSeasonQualityProfile), ctx, id, qualityProfileID)
 }
 
 // UpdateSeasonState mocks base method.
@@ -3558,6 +3643,20 @@ func (m *MockSeriesStorage) EXPECT() *MockSeriesStorageMockRecorder {
 	return m.recorder
 }
 
+// ApplySeriesSelectionPatch mocks base method.
+func (m *MockSeriesStorage) ApplySeriesSelectionPatch(ctx context.Context, seriesID int64, patch storage.SeriesSelectionPatch) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ApplySeriesSelectionPatch", ctx, seriesID, patch)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ApplySeriesSelectionPatch indicates an expected call of ApplySeriesSelectionPatch.
+func (mr *MockSeriesStorageMockRecorder) ApplySeriesSelectionPatch(ctx, seriesID, patch any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ApplySeriesSelectionPatch", reflect.TypeOf((*MockSeriesStorage)(nil).ApplySeriesSelectionPatch), ctx, seriesID, patch)
+}
+
 // CountLibraryShows mocks base method.
 func (m *MockSeriesStorage) CountLibraryShows(ctx context.Context, states []storage.SeriesState) (int64, error) {
 	m.ctrl.T.Helper()
@@ -3646,6 +3745,21 @@ func (m *MockSeriesStorage) CreateSeries(ctx context.Context, series sqlcdb.Seri
 func (mr *MockSeriesStorageMockRecorder) CreateSeries(ctx, series, initialState any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateSeries", reflect.TypeOf((*MockSeriesStorage)(nil).CreateSeries), ctx, series, initialState)
+}
+
+// CreateSeriesTree mocks base method.
+func (m *MockSeriesStorage) CreateSeriesTree(ctx context.Context, series sqlcdb.Series, initialState storage.SeriesState, seasons []sqlcdb.Season, episodes [][]sqlcdb.Episode) (int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateSeriesTree", ctx, series, initialState, seasons, episodes)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CreateSeriesTree indicates an expected call of CreateSeriesTree.
+func (mr *MockSeriesStorageMockRecorder) CreateSeriesTree(ctx, series, initialState, seasons, episodes any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateSeriesTree", reflect.TypeOf((*MockSeriesStorage)(nil).CreateSeriesTree), ctx, series, initialState, seasons, episodes)
 }
 
 // DeleteEpisode mocks base method.
@@ -3971,6 +4085,34 @@ func (mr *MockSeriesStorageMockRecorder) ListSeries(ctx, filter any) *gomock.Cal
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListSeries", reflect.TypeOf((*MockSeriesStorage)(nil).ListSeries), ctx, filter)
 }
 
+// ReleaseTVEpisodes mocks base method.
+func (m *MockSeriesStorage) ReleaseTVEpisodes(ctx context.Context, ids []int64) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ReleaseTVEpisodes", ctx, ids)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ReleaseTVEpisodes indicates an expected call of ReleaseTVEpisodes.
+func (mr *MockSeriesStorageMockRecorder) ReleaseTVEpisodes(ctx, ids any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReleaseTVEpisodes", reflect.TypeOf((*MockSeriesStorage)(nil).ReleaseTVEpisodes), ctx, ids)
+}
+
+// ReserveTVEpisodes mocks base method.
+func (m *MockSeriesStorage) ReserveTVEpisodes(ctx context.Context, ids []int64) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ReserveTVEpisodes", ctx, ids)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ReserveTVEpisodes indicates an expected call of ReserveTVEpisodes.
+func (mr *MockSeriesStorageMockRecorder) ReserveTVEpisodes(ctx, ids any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReserveTVEpisodes", reflect.TypeOf((*MockSeriesStorage)(nil).ReserveTVEpisodes), ctx, ids)
+}
+
 // UpdateEpisodeEpisodeFileID mocks base method.
 func (m *MockSeriesStorage) UpdateEpisodeEpisodeFileID(ctx context.Context, id, fileID int64) error {
 	m.ctrl.T.Helper()
@@ -3999,6 +4141,20 @@ func (mr *MockSeriesStorageMockRecorder) UpdateEpisodeFile(ctx, id, episodeFile 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateEpisodeFile", reflect.TypeOf((*MockSeriesStorage)(nil).UpdateEpisodeFile), ctx, id, episodeFile)
 }
 
+// UpdateEpisodeQualityProfile mocks base method.
+func (m *MockSeriesStorage) UpdateEpisodeQualityProfile(ctx context.Context, id int64, qualityProfileID sql.NullInt64) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateEpisodeQualityProfile", ctx, id, qualityProfileID)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateEpisodeQualityProfile indicates an expected call of UpdateEpisodeQualityProfile.
+func (mr *MockSeriesStorageMockRecorder) UpdateEpisodeQualityProfile(ctx, id, qualityProfileID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateEpisodeQualityProfile", reflect.TypeOf((*MockSeriesStorage)(nil).UpdateEpisodeQualityProfile), ctx, id, qualityProfileID)
+}
+
 // UpdateEpisodeState mocks base method.
 func (m *MockSeriesStorage) UpdateEpisodeState(ctx context.Context, id int64, state storage.EpisodeState, metadata *storage.TransitionStateMetadata) error {
 	m.ctrl.T.Helper()
@@ -4011,6 +4167,20 @@ func (m *MockSeriesStorage) UpdateEpisodeState(ctx context.Context, id int64, st
 func (mr *MockSeriesStorageMockRecorder) UpdateEpisodeState(ctx, id, state, metadata any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateEpisodeState", reflect.TypeOf((*MockSeriesStorage)(nil).UpdateEpisodeState), ctx, id, state, metadata)
+}
+
+// UpdateSeasonQualityProfile mocks base method.
+func (m *MockSeriesStorage) UpdateSeasonQualityProfile(ctx context.Context, id int64, qualityProfileID sql.NullInt64) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateSeasonQualityProfile", ctx, id, qualityProfileID)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateSeasonQualityProfile indicates an expected call of UpdateSeasonQualityProfile.
+func (mr *MockSeriesStorageMockRecorder) UpdateSeasonQualityProfile(ctx, id, qualityProfileID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateSeasonQualityProfile", reflect.TypeOf((*MockSeriesStorage)(nil).UpdateSeasonQualityProfile), ctx, id, qualityProfileID)
 }
 
 // UpdateSeasonState mocks base method.

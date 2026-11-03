@@ -20,7 +20,8 @@ INSERT INTO
         "episode_number",
         "monitored",
         "episode_metadata_id",
-        "episode_file_id"
+        "episode_file_id",
+        "quality_profile_id"
     )
 VALUES (
     CAST(?1 AS INTEGER),
@@ -28,14 +29,18 @@ VALUES (
     ?3,
     ?4,
     ?5,
-    ?6
+    ?6,
+    CAST(?7 AS INTEGER)
 )
 ON CONFLICT ("id") DO UPDATE SET
     "season_id" = excluded."season_id",
     "episode_number" = excluded."episode_number",
-    "monitored" = excluded."monitored",
+    "monitored" = episode."monitored",
     "episode_metadata_id" = excluded."episode_metadata_id",
-    "episode_file_id" = excluded."episode_file_id"
+    "episode_file_id" = excluded."episode_file_id",
+    -- Refresh/upsert is not a policy edit. Use the selection patch or
+    -- explicit quality primitive to change an existing override.
+    "quality_profile_id" = episode."quality_profile_id"
 RETURNING "id"
 `
 
@@ -46,6 +51,7 @@ type CreateEpisodeParams struct {
 	Monitored         int64
 	EpisodeMetadataID sql.NullInt64
 	EpisodeFileID     sql.NullInt64
+	QualityProfileID  sql.NullInt64
 }
 
 // TV episode queries. Entity reads join the most recent episode_transition via
@@ -65,6 +71,7 @@ func (q *Queries) CreateEpisode(ctx context.Context, arg CreateEpisodeParams) (i
 		arg.Monitored,
 		arg.EpisodeMetadataID,
 		arg.EpisodeFileID,
+		arg.QualityProfileID,
 	)
 	var id int64
 	err := row.Scan(&id)
@@ -101,7 +108,7 @@ func (q *Queries) DemoteEpisodeTransition(ctx context.Context, episodeID int64) 
 
 const getEpisodeByEpisodeFileID = `-- name: GetEpisodeByEpisodeFileID :one
 SELECT
-    e.id, e.season_id, e.episode_number, e.monitored, e.episode_metadata_id, e.episode_file_id,
+    e.id, e.season_id, e.episode_number, e.monitored, e.episode_metadata_id, e.episode_file_id, e."quality_profile_id",
     et.to_state AS state,
     et.download_id,
     et.download_client_id,
@@ -132,6 +139,7 @@ func (q *Queries) GetEpisodeByEpisodeFileID(ctx context.Context, episodeFileID s
 		&i.Episode.Monitored,
 		&i.Episode.EpisodeMetadataID,
 		&i.Episode.EpisodeFileID,
+		&i.Episode.QualityProfileID,
 		&i.State,
 		&i.DownloadID,
 		&i.DownloadClientID,
@@ -142,7 +150,7 @@ func (q *Queries) GetEpisodeByEpisodeFileID(ctx context.Context, episodeFileID s
 
 const getEpisodeByID = `-- name: GetEpisodeByID :one
 SELECT
-    e.id, e.season_id, e.episode_number, e.monitored, e.episode_metadata_id, e.episode_file_id,
+    e.id, e.season_id, e.episode_number, e.monitored, e.episode_metadata_id, e.episode_file_id, e."quality_profile_id",
     et.to_state AS state,
     et.download_id,
     et.download_client_id,
@@ -172,6 +180,7 @@ func (q *Queries) GetEpisodeByID(ctx context.Context, id int64) (GetEpisodeByIDR
 		&i.Episode.Monitored,
 		&i.Episode.EpisodeMetadataID,
 		&i.Episode.EpisodeFileID,
+		&i.Episode.QualityProfileID,
 		&i.State,
 		&i.DownloadID,
 		&i.DownloadClientID,
@@ -243,7 +252,7 @@ func (q *Queries) LinkEpisodeMetadata(ctx context.Context, arg LinkEpisodeMetada
 
 const listEpisodes = `-- name: ListEpisodes :many
 SELECT
-    e.id, e.season_id, e.episode_number, e.monitored, e.episode_metadata_id, e.episode_file_id,
+    e.id, e.season_id, e.episode_number, e.monitored, e.episode_metadata_id, e.episode_file_id, e."quality_profile_id",
     et.to_state AS state,
     et.download_id,
     et.download_client_id,
@@ -308,6 +317,7 @@ func (q *Queries) ListEpisodes(ctx context.Context, arg ListEpisodesParams) ([]L
 			&i.Episode.Monitored,
 			&i.Episode.EpisodeMetadataID,
 			&i.Episode.EpisodeFileID,
+			&i.Episode.QualityProfileID,
 			&i.State,
 			&i.DownloadID,
 			&i.DownloadClientID,
@@ -328,7 +338,7 @@ func (q *Queries) ListEpisodes(ctx context.Context, arg ListEpisodesParams) ([]L
 
 const listEpisodesBySeasonIDs = `-- name: ListEpisodesBySeasonIDs :many
 SELECT
-    e.id, e.season_id, e.episode_number, e.monitored, e.episode_metadata_id, e.episode_file_id,
+    e.id, e.season_id, e.episode_number, e.monitored, e.episode_metadata_id, e.episode_file_id, e."quality_profile_id",
     et.to_state AS state,
     et.download_id,
     et.download_client_id,
@@ -373,6 +383,7 @@ func (q *Queries) ListEpisodesBySeasonIDs(ctx context.Context, seasonIds []int64
 			&i.Episode.Monitored,
 			&i.Episode.EpisodeMetadataID,
 			&i.Episode.EpisodeFileID,
+			&i.Episode.QualityProfileID,
 			&i.State,
 			&i.DownloadID,
 			&i.DownloadClientID,
@@ -407,5 +418,45 @@ type UpdateEpisodeEpisodeFileIDParams struct {
 
 func (q *Queries) UpdateEpisodeEpisodeFileID(ctx context.Context, arg UpdateEpisodeEpisodeFileIDParams) error {
 	_, err := q.db.ExecContext(ctx, updateEpisodeEpisodeFileID, arg.EpisodeFileID, arg.ID)
+	return err
+}
+
+const updateEpisodeMonitored = `-- name: UpdateEpisodeMonitored :exec
+UPDATE
+    episode
+SET
+    "monitored" = ?
+WHERE
+    id = ?
+`
+
+type UpdateEpisodeMonitoredParams struct {
+	Monitored int64
+	ID        int64
+}
+
+func (q *Queries) UpdateEpisodeMonitored(ctx context.Context, arg UpdateEpisodeMonitoredParams) error {
+	_, err := q.db.ExecContext(ctx, updateEpisodeMonitored, arg.Monitored, arg.ID)
+	return err
+}
+
+const updateEpisodeQualityProfile = `-- name: UpdateEpisodeQualityProfile :exec
+UPDATE
+    episode
+SET
+    "quality_profile_id" = CAST(?1 AS INTEGER)
+WHERE
+    id = ?2
+`
+
+type UpdateEpisodeQualityProfileParams struct {
+	QualityProfileID sql.NullInt64
+	ID               int64
+}
+
+// Sets or clears (NULL) the episode's quality profile override. NULL restores
+// inheritance from the season (then series) profile.
+func (q *Queries) UpdateEpisodeQualityProfile(ctx context.Context, arg UpdateEpisodeQualityProfileParams) error {
+	_, err := q.db.ExecContext(ctx, updateEpisodeQualityProfile, arg.QualityProfileID, arg.ID)
 	return err
 }

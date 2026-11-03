@@ -594,7 +594,7 @@ func TestWireContract_Series(t *testing.T) {
 
 	app.capture("tv_list", "GET", "/api/v1/library/tv", "", http.StatusOK, secretMustBeAbsent)
 	app.capture("tv_detail", "GET", "/api/v1/tv/22001", "", http.StatusOK, secretMustBeAbsent)
-	app.capture("series_add", "POST", "/api/v1/library/tv", `{"tmdbID":22002,"qualityProfileID":1,"monitorNewSeasons":true}`, http.StatusOK, secretMustBeAbsent)
+	app.capture("series_add", "POST", "/api/v1/library/tv", `{"tmdbID":22002,"qualityProfileID":4,"monitorNewSeasons":true}`, http.StatusOK, secretMustBeAbsent)
 	app.capture("series_patch_monitored", "PATCH", "/api/v1/library/tv/2/monitored", `{"monitored":false}`, http.StatusOK, secretMustBeAbsent)
 	app.capture("series_delete", "DELETE", "/api/v1/library/tv/2", "", http.StatusOK, secretMustBeAbsent)
 }

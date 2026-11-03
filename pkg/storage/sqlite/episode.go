@@ -3,6 +3,7 @@ package sqlite
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"sort"
 
 	"github.com/kasuboski/mediaz/pkg/storage"
@@ -27,6 +28,7 @@ func (s *SQLite) CreateEpisode(ctx context.Context, episode sqlcdb.Episode, init
 			Monitored:         episode.Monitored,
 			EpisodeMetadataID: episode.EpisodeMetadataID,
 			EpisodeFileID:     episode.EpisodeFileID,
+			QualityProfileID:  episode.QualityProfileID,
 		})
 		if err != nil {
 			return err
@@ -170,6 +172,18 @@ func (s *SQLite) UpdateEpisodeState(ctx context.Context, id int64, state storage
 
 		return q.InsertEpisodeTransition(ctx, transition)
 	})
+}
+
+// UpdateEpisodeQualityProfile sets or clears (NULL) the episode's quality
+// profile override. NULL restores inheritance from season, then series.
+func (s *SQLite) UpdateEpisodeQualityProfile(ctx context.Context, id int64, qualityProfileID sql.NullInt64) error {
+	if err := s.Queries.UpdateEpisodeQualityProfile(ctx, sqlcdb.UpdateEpisodeQualityProfileParams{
+		QualityProfileID: qualityProfileID,
+		ID:               id,
+	}); err != nil {
+		return fmt.Errorf("failed to update episode quality profile: %w", err)
+	}
+	return nil
 }
 
 // UpdateEpisodeEpisodeFileID updates the episode file id for an episode

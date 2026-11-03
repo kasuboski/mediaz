@@ -9,11 +9,11 @@ import (
 )
 
 // TestMigrations_BaselineOnly verifies the embedded migration source includes
-// the baseline and subsequent migrations, including the indexer source API path (version 4).
+// the baseline through version 6 (durable TV episode admission).
 func TestMigrations_BaselineOnly(t *testing.T) {
 	version, err := maxMigrationSourceVersion()
 	require.NoError(t, err)
-	assert.Equal(t, uint(4), version)
+	assert.Equal(t, uint(6), version)
 }
 
 // TestMigrations_RunnerIsIdempotent verifies the forward-only runner: the
@@ -35,7 +35,7 @@ func TestMigrations_RunnerIsIdempotent(t *testing.T) {
 	version, exists, err = storedMigrationVersion(db)
 	require.NoError(t, err)
 	assert.True(t, exists)
-	assert.Equal(t, uint64(4), version)
+	assert.Equal(t, uint64(6), version)
 
 	migrated, err = runMigrations(db, ":memory:")
 	require.NoError(t, err)
@@ -44,7 +44,7 @@ func TestMigrations_RunnerIsIdempotent(t *testing.T) {
 	version, exists, err = storedMigrationVersion(db)
 	require.NoError(t, err)
 	assert.True(t, exists)
-	assert.Equal(t, uint64(4), version)
+	assert.Equal(t, uint64(6), version)
 }
 
 func TestMigrations_V3PreservesIndexerSource(t *testing.T) {
@@ -57,6 +57,13 @@ func TestMigrations_V3PreservesIndexerSource(t *testing.T) {
 	_, err = runMigrations(db, ":memory:")
 	require.NoError(t, err)
 	_, err = db.Exec(`ALTER TABLE indexer_source DROP COLUMN api_path`)
+	require.NoError(t, err)
+	_, err = db.Exec(`DROP TABLE tv_episode_admission`)
+	require.NoError(t, err)
+	// Undo migration 5 too so the resumed run can re-apply it cleanly.
+	_, err = db.Exec(`ALTER TABLE season DROP COLUMN quality_profile_id`)
+	require.NoError(t, err)
+	_, err = db.Exec(`ALTER TABLE episode DROP COLUMN quality_profile_id`)
 	require.NoError(t, err)
 	_, err = db.Exec(`UPDATE schema_migrations SET version = 3`)
 	require.NoError(t, err)
@@ -94,7 +101,7 @@ func TestMigrations_V3PreservesIndexerSource(t *testing.T) {
 	version, exists, err := storedMigrationVersion(db)
 	require.NoError(t, err)
 	assert.True(t, exists)
-	assert.Equal(t, uint64(4), version)
+	assert.Equal(t, uint64(6), version)
 }
 
 func TestMigrations_EmptyVersionTableResumes(t *testing.T) {
@@ -110,7 +117,7 @@ func TestMigrations_EmptyVersionTableResumes(t *testing.T) {
 	version, exists, err := storedMigrationVersion(db)
 	require.NoError(t, err)
 	assert.True(t, exists)
-	assert.Equal(t, uint64(4), version)
+	assert.Equal(t, uint64(6), version)
 }
 
 // TestMigrations_RecreateErrorMessage pins the operator-facing error for

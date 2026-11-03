@@ -100,7 +100,7 @@ func TestSeriesFailureFollowup_AddSeriesChildCleanup(t *testing.T) {
 			svc := NewSeriesService(nil, nil, store, store, NewQualityService(store), &mockMetadataProvider{metadata: &metadata})
 
 			// Fail only after earlier children really exist. This protects the
-			// cascading cleanup of partial work, not merely an empty parent.
+			// transactional rollback of partial work, not merely an empty parent.
 			condition := fmt.Sprintf("NEW.season_metadata_id = %d", seasonIDs[1])
 			if child == "episode" {
 				condition = fmt.Sprintf("NEW.episode_metadata_id = %d", episodeIDs[1])
@@ -110,7 +110,7 @@ func TestSeriesFailureFollowup_AddSeriesChildCleanup(t *testing.T) {
 				BEGIN SELECT RAISE(ABORT, 'injected child creation failure'); END`, child, condition, episodeIDs[0])
 			_, err = db.ExecContext(ctx, trigger)
 			require.NoError(t, err)
-			got, err := svc.AddSeriesToLibrary(ctx, AddSeriesRequest{TMDBID: 9876, QualityProfileID: 1, MonitorNewSeasons: true})
+			got, err := svc.AddSeriesToLibrary(ctx, AddSeriesRequest{TMDBID: 9876, QualityProfileID: 4, MonitorNewSeasons: true})
 			require.ErrorContains(t, err, "injected child creation failure")
 			require.Nil(t, got)
 			require.Equal(t, before, snapshotSeriesFailure(t, ctx, store))
