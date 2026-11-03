@@ -28,6 +28,8 @@ func TestDownloadClientFactory_NewDownloadClient(t *testing.T) {
 		apiKey := "hello"
 		client, err := factory.NewDownloadClient(sqlcdb.DownloadClient{
 			Implementation: "sabnzbd",
+			Scheme:         "http",
+			Host:           "localhost",
 			ApiKey:         sql.NullString{String: apiKey, Valid: true},
 		})
 		_, ok := client.(*SabnzbdClient)

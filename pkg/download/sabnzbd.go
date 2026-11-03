@@ -25,35 +25,28 @@ type SabnzbdClient struct {
 }
 
 func NewSabnzbdClient(http mhttp.HTTPClient, scheme, host, mountPrefix, apiKey string) DownloadClient {
-	return &SabnzbdClient{
-		http,
-		scheme,
-		host,
-		apiKey,
-		mountPrefix,
-	}
+	return &SabnzbdClient{http: http, scheme: scheme, host: host, apiKey: apiKey, mountPrefix: mountPrefix}
 }
 
 type AddNewsResponse struct {
 	NzoIDs []string `json:"nzo_ids"`
-	Status bool
+	Status *bool    `json:"status,omitempty"`
 }
 
 func (c *SabnzbdClient) Add(ctx context.Context, request AddRequest) (Status, error) {
 	var status Status
 	log := logger.FromCtx(ctx)
 
+	if request.Release == nil {
+		return status, errors.New("failed to get download URI from release")
+	}
 	uri, err := request.Release.DownloadURL.Get()
-	if err != nil {
+	if err != nil || uri == "" {
 		log.Warn("failed to get download URI from release")
 		return status, errors.New("failed to get download URI from release")
 	}
 
-	url := url.URL{
-		Host:   c.host,
-		Scheme: c.scheme,
-		Path:   "/sabnzbd/api",
-	}
+	url := url.URL{Host: c.host, Scheme: c.scheme, Path: "/api"}
 
 	q := url.Query()
 	q.Add("mode", "addurl")
@@ -71,6 +64,9 @@ func (c *SabnzbdClient) Add(ctx context.Context, request AddRequest) (Status, er
 		return status, err
 	}
 
+	if response.Status != nil && !*response.Status {
+		return status, errors.New("SABnzbd rejected add request")
+	}
 	if len(response.NzoIDs) == 0 {
 		return status, errors.New("no ids returned")
 	}
@@ -79,7 +75,8 @@ func (c *SabnzbdClient) Add(ctx context.Context, request AddRequest) (Status, er
 }
 
 type QueueResponse struct {
-	Queue Queue `json:"queue"`
+	Queue  Queue `json:"queue"`
+	Status *bool `json:"status,omitempty"`
 }
 
 type Queue struct {
@@ -136,7 +133,7 @@ type Slot struct {
 	Cat          string   `json:"cat"`
 	Timeleft     string   `json:"timeleft"`
 	Labels       []string `json:"labels"`
-	Priority     int      `json:"priority"`
+	Priority     string   `json:"priority"`
 	Index        int64    `json:"index"`
 }
 
@@ -157,11 +154,7 @@ func (c *SabnzbdClient) Get(ctx context.Context, request GetRequest) (Status, er
 }
 
 func (c *SabnzbdClient) List(ctx context.Context) ([]Status, error) {
-	url := url.URL{
-		Host:   c.host,
-		Scheme: c.scheme,
-		Path:   "/sabnzbd/api",
-	}
+	url := url.URL{Host: c.host, Scheme: c.scheme, Path: "/api"}
 
 	q := url.Query()
 	q.Add("mode", "queue")
@@ -178,6 +171,9 @@ func (c *SabnzbdClient) List(ctx context.Context) ([]Status, error) {
 		return nil, err
 	}
 
+	if response.Status != nil && !*response.Status {
+		return nil, errors.New("SABnzbd rejected queue request")
+	}
 	ids := make([]string, 0)
 	for _, s := range response.Queue.Slots {
 		ids = append(ids, s.NzoID)
@@ -248,11 +244,7 @@ type StageLog struct {
 }
 
 func (c *SabnzbdClient) history(ctx context.Context, ids ...string) (HistoryResponse, error) {
-	url := url.URL{
-		Host:   c.host,
-		Scheme: c.scheme,
-		Path:   "/sabnzbd/api",
-	}
+	url := url.URL{Host: c.host, Scheme: c.scheme, Path: "/api"}
 
 	q := url.Query()
 	q.Set("mode", "history")
@@ -343,18 +335,30 @@ func (c *SabnzbdClient) do(ctx context.Context, url *url.URL) ([]byte, error) {
 		}
 		return nil, errors.New("http error during Get: SABnzbd request failed")
 	}
+	if resp == nil || resp.Body == nil {
+		return nil, errors.New("invalid SABnzbd response")
+	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("SABnzbd returned HTTP status %d", resp.StatusCode)
 	}
 
-	b, err := io.ReadAll(resp.Body)
+	b, err := io.ReadAll(io.LimitReader(resp.Body, 8*1024*1024+1))
 	if err != nil {
 		if ctx.Err() != nil {
 			return nil, ctx.Err()
 		}
 		return nil, errors.New("failed to read SABnzbd response")
+	}
+	if len(b) > 8*1024*1024 {
+		return nil, errors.New("SABnzbd response too large")
+	}
+	var envelope struct {
+		Status *bool `json:"status"`
+	}
+	if json.Unmarshal(b, &envelope) == nil && envelope.Status != nil && !*envelope.Status {
+		return nil, errors.New("SABnzbd rejected request")
 	}
 	return b, nil
 }

@@ -48,7 +48,7 @@ func TestSabnzbdAddDoesNotExposeSecrets(t *testing.T) {
 				tt.transport = fmt.Errorf("transport failed for %s?apikey=%s", uri, apiKey)
 			}
 			client.EXPECT().Do(gomock.Any()).DoAndReturn(func(req *http.Request) (*http.Response, error) {
-				require.Equal(t, "/sabnzbd/api", req.URL.Path)
+				require.Equal(t, "/api", req.URL.Path)
 				require.Equal(t, "addurl", req.URL.Query().Get("mode"))
 				return nil, fmt.Errorf("transport failed for %s?apikey=%s", uri, apiKey)
 			})
