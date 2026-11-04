@@ -10,6 +10,13 @@ prowlarr.schema.json:
 	curl https://raw.githubusercontent.com/Prowlarr/Prowlarr/32d23d6636aebc4490e36215bebf1a786abdb46f/src/Prowlarr.Api.V1/openapi.json | \
 	jq '.paths."/".get.parameters = null' > prowlarr.schema.json
 
+.PHONY: mutate mutate-selftest
+mutate:
+	@bash scripts/mutate.sh "$(PKG)"
+
+mutate-selftest:
+	@bash scripts/mutate-selftest.sh
+
 clean:
 	rm tmdb.schema.json
 	rm prowlarr.schema.json

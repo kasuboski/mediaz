@@ -39,6 +39,9 @@ local.yaml
 
 .direnv/
 
+# Local mutation reports and logs
+.artifacts/mutation/
+
 mediaz
 
 config.yaml

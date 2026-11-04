@@ -124,6 +124,18 @@ func TestFindEpisodes(t *testing.T) {
 	}
 }
 
+func TestFindMediaIncludesFileSize(t *testing.T) {
+	movies := fstest.MapFS{"Batman Begins (2005)/Batman Begins (2005).mkv": {Data: []byte("movie contents")}}
+	episodes := fstest.MapFS{"Fargo/Season 01/Fargo - S01E02.mkv": {Data: []byte("episode contents")}}
+	l := New(FileSystem{FS: movies}, FileSystem{FS: episodes, Path: "/tv"}, &io.MediaFileSystem{}, true)
+	gotMovies, err := l.FindMovies(context.Background())
+	assert.NoError(t, err)
+	assert.Equal(t, []MovieFile{{Name: "Batman Begins (2005)", RelativePath: "Batman Begins (2005)/Batman Begins (2005).mkv", Size: 14}}, gotMovies)
+	gotEpisodes, err := l.FindEpisodes(context.Background())
+	assert.NoError(t, err)
+	assert.Equal(t, []EpisodeFile{{Name: "Fargo - S01E02.mkv", RelativePath: "Fargo/Season 01/Fargo - S01E02.mkv", AbsolutePath: "/tv/Fargo/Season 01/Fargo - S01E02.mkv", SeriesName: "Fargo", SeasonNumber: 1, EpisodeNumber: 2, Size: 16}}, gotEpisodes)
+}
+
 func TestFindEpisodes_FlatStructure(t *testing.T) {
 	ctx := context.Background()
 	fs := fstest.MapFS{
@@ -299,6 +311,46 @@ func TestFindEpisodes_SkipsTooDeepNesting(t *testing.T) {
 	}
 
 	assert.Equal(t, want, got)
+}
+
+func TestDeleteMedia(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		root      string
+		relative  string
+		directory bool
+		delete    func(Library, context.Context, string) error
+	}{
+		{"movie file", "/movies", "Batman Begins (2005)/movie.mkv", false, Library.DeleteMovieFile},
+		{"movie directory", "/movies", "Batman Begins (2005)", true, Library.DeleteMovieDirectory},
+		{"episode file", "/tv", "Fargo/Season 01/episode.mkv", false, Library.DeleteSeriesFile},
+		{"series directory", "/tv", "Fargo", true, Library.DeleteSeriesDirectory},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			for _, wantErr := range []error{nil, errors.New("permission denied")} {
+				name := "success"
+				if wantErr != nil {
+					name = "failure"
+				}
+				t.Run(name, func(t *testing.T) {
+					fileIO := mocks.NewMockFileIO(gomock.NewController(t))
+					path := filepath.Join(tc.root, tc.relative)
+					if tc.directory {
+						fileIO.EXPECT().RemoveAll(path).Return(wantErr)
+					} else {
+						fileIO.EXPECT().Remove(path).Return(wantErr)
+					}
+					l := New(FileSystem{Path: "/movies"}, FileSystem{Path: "/tv"}, fileIO, true)
+					err := tc.delete(l, context.Background(), tc.relative)
+					if wantErr == nil {
+						assert.NoError(t, err)
+					} else {
+						assert.ErrorIs(t, err, wantErr)
+					}
+				})
+			}
+		})
+	}
 }
 
 func TestMediaLibrary_AddMovie(t *testing.T) {

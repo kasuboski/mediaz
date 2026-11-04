@@ -24,6 +24,15 @@
         default = pkgs.mkShell {
           packages = with pkgs; [
             ast-grep
+
+            # Local mutation-testing feedback (source/dependencies pinned).
+            (pkgs.callPackage ./nix/gremlins.nix { })
+            gnumake
+            bash
+            coreutils
+            git
+            jq
+
             # go (version is specified by overlay)
             go
 
