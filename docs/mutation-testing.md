@@ -111,5 +111,4 @@ mutation can still expose limitations. Keep raw logs and investigate suspicious
 all-killed results rather than treating a percentage as unquestionable truth.
 
 No CI workflow or required percentage threshold is added. The purpose is a quick,
-actionable local feedback loop. For tool comparisons and pilot findings, see
-[the research report](mutation-testing-research.md).
+actionable local feedback loop.
