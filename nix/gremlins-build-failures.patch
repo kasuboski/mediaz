@@ -1,0 +1,26 @@
+--- a/internal/engine/executor.go
++++ b/internal/engine/executor.go
+@@ -19,0 +20 @@
++	"bytes"
+@@ -20,0 +22 @@
++	"encoding/json"
+@@ -204,0 +207,3 @@
++	var output bytes.Buffer
++	cmd.Stdout = &output
++	cmd.Stderr = &output
+@@ -212,0 +218,12 @@
++		// Modern go test exits 1 for both assertion and build failures. Only
++		// the former is evidence of a test killing a runnable mutation.
++		for _, line := range bytes.Split(output.Bytes(), []byte{'\n'}) {
++			var event struct {
++				Action      string
++				FailedBuild string
++			}
++			if json.Unmarshal(line, &event) == nil && (event.Action == "build-fail" || event.FailedBuild != "") {
++				log.Errorf("mutation did not compile at %s:\n%s", m.mutant.Position(), output.String())
++				return mutator.NotViable
++			}
++		}
+@@ -220 +237 @@
+-	args := []string{"test"}
++	args := []string{"test", "-json"}
