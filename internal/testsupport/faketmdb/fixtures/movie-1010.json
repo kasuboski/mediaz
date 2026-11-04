@@ -1,0 +1,26 @@
+{
+  "adult": false,
+  "backdrop_path": "/synthetic/backdrops/1010.jpg",
+  "belongs_to_collection": null,
+  "budget": 0,
+  "genres": [
+    {
+      "id": 18,
+      "name": "Drama"
+    }
+  ],
+  "homepage": null,
+  "id": 1010,
+  "imdb_id": "tt90001010",
+  "original_title": "Northbound",
+  "overview": "A synthetic story about Northbound.",
+  "popularity": 12.4,
+  "poster_path": "/synthetic/movies/1010.jpg",
+  "production_companies": [],
+  "release_date": "2013-06-14",
+  "revenue": 0,
+  "runtime": 101,
+  "status": "Released",
+  "tagline": null,
+  "title": "Northbound"
+}

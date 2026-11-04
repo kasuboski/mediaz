@@ -1,0 +1,30 @@
+{
+  "air_date": "2022-01-15",
+  "episodes": [
+    {
+      "air_date": "2022-01-11",
+      "episode_number": 1,
+      "id": 200201,
+      "name": "Episode 1",
+      "overview": "Synthetic episode 1.",
+      "runtime": 43,
+      "season_number": 0,
+      "still_path": "/synthetic/episodes/200201.jpg"
+    },
+    {
+      "air_date": "2022-01-12",
+      "episode_number": 2,
+      "id": 200202,
+      "name": "Episode 2",
+      "overview": "Synthetic episode 2.",
+      "runtime": 43,
+      "season_number": 0,
+      "still_path": "/synthetic/episodes/200202.jpg"
+    }
+  ],
+  "id": 20020,
+  "name": "Specials",
+  "overview": "Synthetic season.",
+  "poster_path": "/synthetic/seasons/20020.jpg",
+  "season_number": 0
+}

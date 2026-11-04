@@ -1,0 +1,26 @@
+{
+  "movie_count": 21,
+  "provenance": "Entirely synthetic hand-authored catalog; no live captures. Relative TMDB image paths are preserved; no artwork bundled.",
+  "providers": "US Netflix present for 2001; absent for 2002",
+  "tv_series": [
+    {
+      "episodes_per_season": 2,
+      "id": 2001,
+      "name": "Lanterns at Low Tide",
+      "seasons": [
+        0,
+        1
+      ]
+    },
+    {
+      "episodes_per_season": 2,
+      "id": 2002,
+      "name": "The Astral Workshop",
+      "seasons": [
+        0,
+        1
+      ]
+    }
+  ],
+  "version": 1
+}

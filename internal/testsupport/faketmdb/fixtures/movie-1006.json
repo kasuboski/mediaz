@@ -1,0 +1,26 @@
+{
+  "adult": false,
+  "backdrop_path": "/synthetic/backdrops/1006.jpg",
+  "belongs_to_collection": null,
+  "budget": 0,
+  "genres": [
+    {
+      "id": 18,
+      "name": "Drama"
+    }
+  ],
+  "homepage": null,
+  "id": 1006,
+  "imdb_id": "tt90001006",
+  "original_title": "Blue Meridian",
+  "overview": "A synthetic story about Blue Meridian.",
+  "popularity": 12.4,
+  "poster_path": "/synthetic/movies/1006.jpg",
+  "production_companies": [],
+  "release_date": "2009-06-14",
+  "revenue": 0,
+  "runtime": 97,
+  "status": "Released",
+  "tagline": null,
+  "title": "Blue Meridian"
+}

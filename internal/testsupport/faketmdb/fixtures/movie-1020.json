@@ -1,0 +1,26 @@
+{
+  "adult": false,
+  "backdrop_path": "/synthetic/backdrops/1020.jpg",
+  "belongs_to_collection": null,
+  "budget": 0,
+  "genres": [
+    {
+      "id": 18,
+      "name": "Drama"
+    }
+  ],
+  "homepage": null,
+  "id": 1020,
+  "imdb_id": "tt90001020",
+  "original_title": "A Thousand Mile Road",
+  "overview": "A synthetic story about A Thousand Mile Road.",
+  "popularity": 12.4,
+  "poster_path": "/synthetic/movies/1020.jpg",
+  "production_companies": [],
+  "release_date": "2023-06-14",
+  "revenue": 0,
+  "runtime": 111,
+  "status": "Released",
+  "tagline": null,
+  "title": "A Thousand Mile Road"
+}

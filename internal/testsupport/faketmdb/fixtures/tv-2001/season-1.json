@@ -1,0 +1,30 @@
+{
+  "air_date": "2019-01-15",
+  "episodes": [
+    {
+      "air_date": "2019-02-11",
+      "episode_number": 1,
+      "id": 200111,
+      "name": "Episode 1",
+      "overview": "Synthetic episode 1.",
+      "runtime": 43,
+      "season_number": 1,
+      "still_path": "/synthetic/episodes/200111.jpg"
+    },
+    {
+      "air_date": "2019-02-12",
+      "episode_number": 2,
+      "id": 200112,
+      "name": "Episode 2",
+      "overview": "Synthetic episode 2.",
+      "runtime": 43,
+      "season_number": 1,
+      "still_path": "/synthetic/episodes/200112.jpg"
+    }
+  ],
+  "id": 20011,
+  "name": "Season 1",
+  "overview": "Synthetic season.",
+  "poster_path": "/synthetic/seasons/20011.jpg",
+  "season_number": 1
+}

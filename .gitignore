@@ -14,6 +14,16 @@
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
 
+# Dependency directories
+node_modules/
+**/node_modules/
+
+# Playwright artifacts
+playwright-report/
+test-results/
+**/playwright-report/
+**/test-results/
+
 # Dependency directories (remove the comment below to include it)
 # vendor/
 

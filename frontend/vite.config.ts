@@ -1,4 +1,4 @@
-import { defineConfig } from "vite";
+import { configDefaults, defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react-swc";
 import path from "node:path";
 import { componentTagger } from "lovable-tagger";
@@ -8,6 +8,7 @@ export default defineConfig(({ mode }) => {
 
 	return {
 		test: {
+			exclude: [...configDefaults.exclude, "e2e/**"],
 			environment: "jsdom",
 			setupFiles: "./src/test-setup.ts",
 		},

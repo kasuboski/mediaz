@@ -1,0 +1,26 @@
+{
+  "adult": false,
+  "backdrop_path": "/synthetic/backdrops/1004.jpg",
+  "belongs_to_collection": null,
+  "budget": 0,
+  "genres": [
+    {
+      "id": 18,
+      "name": "Drama"
+    }
+  ],
+  "homepage": null,
+  "id": 1004,
+  "imdb_id": "tt90001004",
+  "original_title": "Paper Kingdom",
+  "overview": "A synthetic story about Paper Kingdom.",
+  "popularity": 12.4,
+  "poster_path": "/synthetic/movies/1004.jpg",
+  "production_companies": [],
+  "release_date": "2007-06-14",
+  "revenue": 0,
+  "runtime": 95,
+  "status": "Released",
+  "tagline": null,
+  "title": "Paper Kingdom"
+}

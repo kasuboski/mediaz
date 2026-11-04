@@ -1,0 +1,26 @@
+{
+  "adult": false,
+  "backdrop_path": "/synthetic/backdrops/1008.jpg",
+  "belongs_to_collection": null,
+  "budget": 0,
+  "genres": [
+    {
+      "id": 18,
+      "name": "Drama"
+    }
+  ],
+  "homepage": null,
+  "id": 1008,
+  "imdb_id": "tt90001008",
+  "original_title": "The Long Frequency",
+  "overview": "A synthetic story about The Long Frequency.",
+  "popularity": 12.4,
+  "poster_path": "/synthetic/movies/1008.jpg",
+  "production_companies": [],
+  "release_date": "2011-06-14",
+  "revenue": 0,
+  "runtime": 99,
+  "status": "Released",
+  "tagline": null,
+  "title": "The Long Frequency"
+}

@@ -1,0 +1,26 @@
+{
+  "adult": false,
+  "backdrop_path": "/synthetic/backdrops/1003.jpg",
+  "belongs_to_collection": null,
+  "budget": 0,
+  "genres": [
+    {
+      "id": 18,
+      "name": "Drama"
+    }
+  ],
+  "homepage": null,
+  "id": 1003,
+  "imdb_id": "tt90001003",
+  "original_title": "Winter Signal",
+  "overview": "A synthetic story about Winter Signal.",
+  "popularity": 12.4,
+  "poster_path": "/synthetic/movies/1003.jpg",
+  "production_companies": [],
+  "release_date": "2006-06-14",
+  "revenue": 0,
+  "runtime": 94,
+  "status": "Released",
+  "tagline": null,
+  "title": "Winter Signal"
+}

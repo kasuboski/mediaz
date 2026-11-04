@@ -1,0 +1,31 @@
+{
+  "page": 1,
+  "results": [
+    {
+      "backdrop_path": "/synthetic/tv/2001-backdrop.jpg",
+      "first_air_date": "2018-09-01",
+      "genre_ids": [
+        18
+      ],
+      "id": 2001,
+      "name": "Lanterns at Low Tide",
+      "original_name": "Lanterns at Low Tide",
+      "overview": "Synthetic ensemble series: Lanterns at Low Tide",
+      "poster_path": "/synthetic/tv/2001.jpg"
+    },
+    {
+      "backdrop_path": "/synthetic/tv/2002-backdrop.jpg",
+      "first_air_date": "2022-09-01",
+      "genre_ids": [
+        18
+      ],
+      "id": 2002,
+      "name": "The Astral Workshop",
+      "original_name": "The Astral Workshop",
+      "overview": "Synthetic ensemble series: The Astral Workshop",
+      "poster_path": "/synthetic/tv/2002.jpg"
+    }
+  ],
+  "total_pages": 1,
+  "total_results": 2
+}

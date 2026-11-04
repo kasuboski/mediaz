@@ -1,0 +1,26 @@
+{
+  "adult": false,
+  "backdrop_path": "/synthetic/backdrops/1014.jpg",
+  "belongs_to_collection": null,
+  "budget": 0,
+  "genres": [
+    {
+      "id": 18,
+      "name": "Drama"
+    }
+  ],
+  "homepage": null,
+  "id": 1014,
+  "imdb_id": "tt90001014",
+  "original_title": "The Cartographer's Room",
+  "overview": "A synthetic story about The Cartographer's Room.",
+  "popularity": 12.4,
+  "poster_path": "/synthetic/movies/1014.jpg",
+  "production_companies": [],
+  "release_date": "2017-06-14",
+  "revenue": 0,
+  "runtime": 105,
+  "status": "Released",
+  "tagline": null,
+  "title": "The Cartographer's Room"
+}

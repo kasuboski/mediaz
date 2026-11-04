@@ -1,0 +1,26 @@
+{
+  "adult": false,
+  "backdrop_path": "/synthetic/backdrops/1019.jpg",
+  "belongs_to_collection": null,
+  "budget": 0,
+  "genres": [
+    {
+      "id": 18,
+      "name": "Drama"
+    }
+  ],
+  "homepage": null,
+  "id": 1019,
+  "imdb_id": "tt90001019",
+  "original_title": "Bright Machines",
+  "overview": "A synthetic story about Bright Machines.",
+  "popularity": 12.4,
+  "poster_path": "/synthetic/movies/1019.jpg",
+  "production_companies": [],
+  "release_date": "2022-06-14",
+  "revenue": 0,
+  "runtime": 110,
+  "status": "Released",
+  "tagline": null,
+  "title": "Bright Machines"
+}

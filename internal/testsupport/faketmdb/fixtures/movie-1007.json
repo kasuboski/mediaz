@@ -1,0 +1,26 @@
+{
+  "adult": false,
+  "backdrop_path": "/synthetic/backdrops/1007.jpg",
+  "belongs_to_collection": null,
+  "budget": 0,
+  "genres": [
+    {
+      "id": 18,
+      "name": "Drama"
+    }
+  ],
+  "homepage": null,
+  "id": 1007,
+  "imdb_id": "tt90001007",
+  "original_title": "Borrowed Light",
+  "overview": "A synthetic story about Borrowed Light.",
+  "popularity": 12.4,
+  "poster_path": "/synthetic/movies/1007.jpg",
+  "production_companies": [],
+  "release_date": "2010-06-14",
+  "revenue": 0,
+  "runtime": 98,
+  "status": "Released",
+  "tagline": null,
+  "title": "Borrowed Light"
+}

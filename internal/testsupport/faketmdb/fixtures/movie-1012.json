@@ -1,0 +1,26 @@
+{
+  "adult": false,
+  "backdrop_path": "/synthetic/backdrops/1012.jpg",
+  "belongs_to_collection": null,
+  "budget": 0,
+  "genres": [
+    {
+      "id": 18,
+      "name": "Drama"
+    }
+  ],
+  "homepage": null,
+  "id": 1012,
+  "imdb_id": "tt90001012",
+  "original_title": "A House Made of Rain",
+  "overview": "A synthetic story about A House Made of Rain.",
+  "popularity": 12.4,
+  "poster_path": "/synthetic/movies/1012.jpg",
+  "production_companies": [],
+  "release_date": "2015-06-14",
+  "revenue": 0,
+  "runtime": 103,
+  "status": "Released",
+  "tagline": null,
+  "title": "A House Made of Rain"
+}

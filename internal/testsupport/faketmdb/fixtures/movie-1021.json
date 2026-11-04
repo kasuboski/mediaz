@@ -1,0 +1,26 @@
+{
+  "adult": false,
+  "backdrop_path": "/synthetic/backdrops/1021.jpg",
+  "belongs_to_collection": null,
+  "budget": 0,
+  "genres": [
+    {
+      "id": 18,
+      "name": "Drama"
+    }
+  ],
+  "homepage": null,
+  "id": 1021,
+  "imdb_id": "tt90001021",
+  "original_title": "The Unfinished Summer",
+  "overview": "A synthetic story about The Unfinished Summer.",
+  "popularity": 12.4,
+  "poster_path": "/synthetic/movies/1021.jpg",
+  "production_companies": [],
+  "release_date": "2024-06-14",
+  "revenue": 0,
+  "runtime": 112,
+  "status": "Released",
+  "tagline": null,
+  "title": "The Unfinished Summer"
+}
