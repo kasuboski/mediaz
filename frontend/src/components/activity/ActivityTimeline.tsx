@@ -92,9 +92,9 @@ export function ActivityTimeline({ data, isLoading, page, onPageChange }: Activi
                 <YAxis stroke="hsl(var(--muted-foreground))" />
                 <Tooltip content={<CustomTooltip />} />
                 <Legend />
-                <Line type="monotone" dataKey="downloaded" stroke="#22c55e" strokeWidth={2} name="Movies Downloaded" />
-                <Line type="monotone" dataKey="completed" stroke="#3b82f6" strokeWidth={2} name="Series Completed" />
-                <Line type="monotone" dataKey="done" stroke="#a855f7" strokeWidth={2} name="Jobs Done" />
+                <Line type="monotone" dataKey="downloaded" stroke="hsl(var(--chart-1))" strokeWidth={2} name="Movies Downloaded" />
+                <Line type="monotone" dataKey="completed" stroke="hsl(var(--chart-2))" strokeWidth={2} name="Series Completed" />
+                <Line type="monotone" dataKey="done" stroke="hsl(var(--chart-3))" strokeWidth={2} name="Jobs Done" />
               </LineChart>
             </ResponsiveContainer>
           </TabsContent>
@@ -107,8 +107,8 @@ export function ActivityTimeline({ data, isLoading, page, onPageChange }: Activi
                 <YAxis stroke="hsl(var(--muted-foreground))" />
                 <Tooltip content={<CustomTooltip />} />
                 <Legend />
-                <Line type="monotone" dataKey="downloaded" stroke="#22c55e" strokeWidth={2} name="Downloaded" />
-                <Line type="monotone" dataKey="downloading" stroke="#3b82f6" strokeWidth={2} name="Downloading" />
+                <Line type="monotone" dataKey="downloaded" stroke="hsl(var(--chart-1))" strokeWidth={2} name="Downloaded" />
+                <Line type="monotone" dataKey="downloading" stroke="hsl(var(--chart-2))" strokeWidth={2} name="Downloading" />
               </LineChart>
             </ResponsiveContainer>
           </TabsContent>
@@ -121,8 +121,8 @@ export function ActivityTimeline({ data, isLoading, page, onPageChange }: Activi
                 <YAxis stroke="hsl(var(--muted-foreground))" />
                 <Tooltip content={<CustomTooltip />} />
                 <Legend />
-                <Line type="monotone" dataKey="completed" stroke="#22c55e" strokeWidth={2} name="Completed" />
-                <Line type="monotone" dataKey="downloadingSeries" stroke="#3b82f6" strokeWidth={2} name="Downloading" />
+                <Line type="monotone" dataKey="completed" stroke="hsl(var(--chart-1))" strokeWidth={2} name="Completed" />
+                <Line type="monotone" dataKey="downloadingSeries" stroke="hsl(var(--chart-2))" strokeWidth={2} name="Downloading" />
               </LineChart>
             </ResponsiveContainer>
           </TabsContent>
@@ -259,13 +259,13 @@ function getEntityIcon(entityType: string) {
 
 function getStateColor(state: string): string {
   if (state === "downloaded" || state === "completed" || state === "done") {
-    return "text-green-500";
+    return "text-success";
   }
   if (state === "downloading" || state === "running" || state === "pending") {
-    return "text-blue-500";
+    return "text-info";
   }
   if (state === "error" || state === "failed") {
-    return "text-red-500";
+    return "text-destructive";
   }
   return "text-muted-foreground";
 }

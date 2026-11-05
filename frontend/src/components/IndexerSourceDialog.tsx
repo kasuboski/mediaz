@@ -250,8 +250,8 @@ export function IndexerSourceDialog({ open, onOpenChange, source }: IndexerSourc
             disabled={testStatus === 'testing' || !host || !name || isLoading}
           >
             {testStatus === 'testing' && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {testStatus === 'success' && <CheckCircle className="mr-2 h-4 w-4 text-green-500" />}
-            {testStatus === 'error' && <AlertCircle className="mr-2 h-4 w-4 text-red-500" />}
+            {testStatus === 'success' && <CheckCircle className="mr-2 h-4 w-4 text-success" />}
+            {testStatus === 'error' && <AlertCircle className="mr-2 h-4 w-4 text-destructive" />}
             Test Connection
           </Button>
           <Button onClick={handleSubmit} disabled={isLoading || testStatus === 'testing'}>

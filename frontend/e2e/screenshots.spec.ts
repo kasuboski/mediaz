@@ -1,11 +1,15 @@
 import { test, expect } from '@playwright/test';
 
 const viewport = { width: 1440, height: 1000 };
-const capture = async (page: import('@playwright/test').Page, testInfo: import('@playwright/test').TestInfo, name: string) => {
-  await page.setViewportSize(viewport);
+const capture = async (page: import('@playwright/test').Page, testInfo: import('@playwright/test').TestInfo, name: string, size = viewport) => {
+  await page.setViewportSize(size);
+  // Assert rendered colors, not just token strings: catches missing Tailwind
+  // mappings, stale CSS, and accidental light fallback surfaces.
+  await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(30, 30, 46)');
+  await expect(page.locator('body')).toHaveCSS('color', 'rgb(205, 214, 244)');
   // Give visible remote artwork a bounded chance to load before capture. Do not
   // block screenshots when the CDN is unavailable.
-  const artwork = await page.evaluate(async () => {
+  await page.evaluate(async () => {
     const visible = (element: Element) => {
       const rect = element.getBoundingClientRect();
       const style = getComputedStyle(element);
@@ -79,7 +83,12 @@ test('capture representative application pages', async ({ page }, testInfo) => {
   await page.getByRole('button', { name: 'Search', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Search Results' })).toBeVisible();
   await expect(page.getByText('The Glass Harbor', { exact: true })).toBeVisible();
+  await page.mouse.move(0, 0); // Assert the default color, not the post-click hover state.
+  const searchButton = page.getByRole('button', { name: 'Search', exact: true });
+  await expect(searchButton).toHaveCSS('background-image', 'linear-gradient(135deg, rgb(203, 166, 247) 0%, rgb(180, 190, 254) 100%)');
+  await expect(searchButton).toHaveCSS('color', 'rgb(30, 30, 46)');
   await capture(page, testInfo, 'discover-search-results');
+  await capture(page, testInfo, 'discover-search-results-mobile', { width: 390, height: 844 });
 
   await ensureFixtureLibrary(page);
   await page.goto('/series');
@@ -105,4 +114,20 @@ test('capture representative application pages', async ({ page }, testInfo) => {
   // an honest reflection of this isolated run's real backend state.
   await expect(page.getByRole('heading', { name: 'No Active Processes' })).toBeVisible();
   await capture(page, testInfo, 'activity');
+
+  await page.goto('/clients');
+  await page.getByRole('button', { name: 'Add Download Client', exact: true }).click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog).toBeVisible();
+  await expect(dialog).toHaveCSS('background-color', 'rgb(30, 30, 46)');
+  const host = dialog.getByLabel('Host', { exact: true });
+  await host.focus();
+  await expect(host).toHaveCSS('border-color', 'rgb(166, 173, 200)');
+  await expect(host).toHaveCSS('color', 'rgb(205, 214, 244)');
+  const focusShadow = await host.evaluate(element => getComputedStyle(element).boxShadow);
+  expect(focusShadow, 'focused form input uses the Mauve ring').toContain('203, 166, 247');
+  const placeholderColor = await host.evaluate(element => getComputedStyle(element, '::placeholder').color);
+  expect(placeholderColor).toBe('rgb(166, 173, 200)');
+  await capture(page, testInfo, 'download-client-form');
+  await capture(page, testInfo, 'download-client-form-mobile', { width: 390, height: 844 });
 });

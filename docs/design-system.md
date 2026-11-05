@@ -1,252 +1,118 @@
-# Mediaz Design System Documentation
+# Mediaz design system
 
-## Overview
+## Direction and ownership
 
-The Mediaz design system is a comprehensive design language for a media discovery and request application. It features a dark theme with blue accents inspired by Overseerr, designed to provide an elegant and modern interface for browsing movies and TV shows.
+Mediaz uses a Catppuccin Mocha-inspired dark theme for evening media browsing.
+[DESIGN.md](../DESIGN.md) defines the design contract. This retheme preserves
+layout, typography, radii, artwork, transitions, and interactions; there is no
+light theme or theme switcher.
 
-## Visual Identity
+`frontend/src/index.css` is the source of truth for palette, semantic colors,
+gradients, and shadows. Official sRGB hex colors are converted to HSL channels
+(with precision retained to reproduce the original RGB values).
+`frontend/tailwind.config.ts` maps semantic utilities with `<alpha-value>` support;
+for example, `bg-success/10` and `border-info/20`. Stock Tailwind palettes are
+not overridden. Do not introduce raw color literals or numbered palette utilities
+in application components.
 
-### Brand Colors
+## Palette and semantic roles
 
-The design system is built around a sophisticated dark theme with vibrant blue accents:
+| Palette | Hex | Application role |
+| --- | --- | --- |
+| Base | `#1e1e2e` | Canvas/background; foreground on filled pastel actions |
+| Mantle | `#181825` | Cards and popovers |
+| Crust | `#11111b` | Sidebar, modal scrims, shadow pigment |
+| Surface 0 | `#313244` | Secondary/muted surfaces, sidebar hover |
+| Surface 1 | `#45475a` | Decorative borders and interactive hover surface |
+| Surface 2 | `#585b70` | Reserved supporting surface token |
+| Text | `#cdd6f4` | Body, headings, card/popover text |
+| Subtext 1 | `#bac2de` | Sidebar copy |
+| Subtext 0 | `#a6adc8` | Muted copy, placeholders, meaningful input boundaries |
+| Mauve | `#cba6f7` | Primary actions, selected states, focus rings |
+| Blue | `#89b4fa` | `info`, links, downloading/in-progress states |
+| Green | `#a6e3a1` | `success`, available/completed states |
+| Yellow | `#f9e2af` | `warning`, queued/unreleased states |
+| Red | `#f38ba8` | `destructive`, failed/missing states |
+| Peach | `#fab387` | `category`, secondary media category |
+| Lavender | `#b4befe` | Supporting visualization |
+| Teal | `#94e2d5` | Supporting visualization |
 
-- **Brand Blue**: `hsl(213, 94%, 68%)` - A bright, engaging blue used for primary actions and accents
-- **Deep Blue Variant**: `hsl(213, 84%, 58%)` - A slightly darker variant used in gradients
+`primary-foreground` and `destructive-foreground` are Base, not white: pastel
+fills need dark text. `accent` is a neutral hover surface, not another brand
+color. Semantic badges use tinted backgrounds, pastel text, and subtle borders;
+keep their existing icons and labels so color is never the only signal.
 
-### Theme Philosophy
+The chart series tokens are `--chart-1` (Green), `--chart-2` (Blue),
+`--chart-3` (Lavender), and `--chart-4` (Teal). Activity charts reference these
+variables directly in SVG strokes; axes/grid use muted foreground/border tokens.
+Series names and legends remain intact.
 
-- **Dark-first approach**: All components are designed with a dark background as the primary theme
-- **High contrast**: Ensures excellent readability with carefully chosen text colors
-- **Blue accent system**: Uses blue as the primary accent color for interactive elements and branding
-- **Gradient emphasis**: Leverages gradients to create depth and visual interest
+## Components and effects
 
-## Color System
+- Primary buttons use Mauve or the subtle Mauve-to-Lavender primary gradient,
+  always with Base text. Links use Blue.
+- Cards use Mantle, with a subtle Mantle-to-Base optional gradient.
+- Hero gradients end in Base, blending into the application canvas.
+- Card/modal shadows use Crust; hover shadows use a faint Mauve tint.
+- Forms use Base backgrounds and Subtext 0 boundaries. Decorative Surface 1
+  separators are deliberately quieter and must not substitute for a meaningful
+  control boundary. Focus rings use Mauve.
+- Placeholder and secondary copy use Subtext 0 without additional opacity.
+- Error toast controls use Base on Red, including close icons and focus rings.
+- Dialog, sheet, drawer, and confirmation scrims use the centralized Crust token.
+- The not-found page uses the same dark canvas and semantic text/link colors.
 
-### Core Colors
+Use semantic utilities or CSS variables:
 
-#### Background Colors
-- **Primary Background**: `hsl(220, 13%, 9%)` - Main app background
-- **Card Background**: `hsl(220, 13%, 11%)` - Card and panel backgrounds
-- **Secondary Background**: `hsl(220, 13%, 15%)` - Secondary surfaces
-- **Input Background**: `hsl(220, 13%, 15%)` - Form input backgrounds
-
-#### Text Colors
-- **Primary Text**: `hsl(220, 9%, 95%)` - Main text color
-- **Muted Text**: `hsl(220, 9%, 65%)` - Secondary text and descriptions
-- **Primary Foreground**: `hsl(220, 13%, 9%)` - Text on blue backgrounds
-
-#### Interactive Colors
-- **Primary**: `hsl(213, 94%, 68%)` - Primary buttons, links, and active states
-- **Destructive**: `hsl(0, 84%, 60%)` - Error states and dangerous actions
-- **Border**: `hsl(220, 13%, 20%)` - Border color for components
-- **Ring**: `hsl(213, 94%, 68%)` - Focus ring color
-
-#### Sidebar-Specific Colors
-- **Sidebar Background**: `hsl(220, 13%, 8%)` - Slightly darker than main background
-- **Sidebar Foreground**: `hsl(220, 9%, 85%)` - Sidebar text
-- **Sidebar Accent**: `hsl(220, 13%, 12%)` - Sidebar hover and active states
-- **Sidebar Border**: `hsl(220, 13%, 18%)` - Sidebar internal borders
-
-### Usage Guidelines
-
-#### Color Accessibility
-- All text color combinations meet WCAG AA standards for contrast
-- Focus states use high-contrast blue for keyboard navigation
-- Error states use red with sufficient contrast against dark backgrounds
-
-#### Color Hierarchy
-1. **Primary Blue**: Used sparingly for key actions and brand elements
-2. **White/Light Gray**: Primary text and important information
-3. **Medium Gray**: Secondary text and supporting information
-4. **Dark Gray**: Backgrounds and subtle elements
-
-## Typography
-
-### Font Features
-- **OpenType Features**: `"rlig" 1, "calt" 1` - Enables contextual alternates and ligatures
-- **System Font Stack**: Relies on system fonts for optimal performance and native feel
-
-### Text Utilities
-- **Line Clamping**: Built-in utilities for 1, 2, and 3-line text truncation
-- **Font Weight Scale**: Medium weight (500) used for emphasized text and headings
-- **Letter Spacing**: Tracking adjustments for uppercase labels and small text
-
-## Layout System
-
-### Grid and Spacing
-- **Container**: Centered with 2rem padding, max-width of 1400px on 2xl screens
-- **Responsive Design**: Mobile-first approach with standard breakpoints
-- **Flexbox-based**: Primary layout mechanism for consistent alignment
-
-### Layout Patterns
-
-#### Application Shell
-```
-┌─────────────────────────────────────┐
-│ Sidebar (64px wide)    │ Header     │
-│ ┌─────────────────────┐│ ┌─────────┐│
-│ │ Logo + Navigation   ││ │ Search  ││
-│ │                     ││ └─────────┘│
-│ │ • Discover          ││            │
-│ │ • Movies            ││ Main       │
-│ │ • TV Shows          ││ Content    │
-│ │                     ││ Area       │
-│ │ Manage              ││            │
-│ │ • Library           ││            │
-│ │ • Settings          ││            │
-│ └─────────────────────┘│            │
-└─────────────────────────────────────┘
+```tsx
+<Badge className="bg-success/10 text-success border-success/20">Available</Badge>
 ```
 
-#### Content Grid
-- **Media Grid**: Responsive grid for movie/TV show posters
-- **Aspect Ratios**: 2:3 ratio for media posters (movie poster standard)
-- **Card Spacing**: Consistent gaps between grid items
-
-## Component Architecture
-
-### Design Principles
-1. **Consistency**: All components follow the same design patterns
-2. **Reusability**: Components are designed to work in multiple contexts
-3. **Accessibility**: Built with keyboard navigation and screen readers in mind
-4. **Performance**: Optimized for smooth animations and interactions
-
-### Core Components
-
-#### Cards
-- **Background**: Gradient background using `bg-gradient-card`
-- **Borders**: Subtle borders with `border-border/50`
-- **Shadows**: Layered shadow system (card, card-hover, modal)
-- **Hover Effects**: Scale and shadow transitions on hover
-- **Content Structure**: Consistent padding and text hierarchy
-
-#### Buttons
-- **Primary**: Blue gradient background with white text
-- **Secondary**: Muted background with light text
-- **Ghost**: Transparent with hover background
-- **Destructive**: Red background for dangerous actions
-
-#### Navigation
-- **Sidebar**: Fixed-width sidebar with brand header and grouped navigation
-- **Active States**: Blue accent color for current page
-- **Hover States**: Subtle background changes on hover
-- **Icons**: Consistent icon usage with lucide-react
-
-#### Forms
-- **Inputs**: Dark backgrounds with light borders
-- **Focus States**: Blue ring on focus
-- **Placeholder Text**: Muted foreground color
-- **Labels**: Medium font weight for form labels
-
-## Animation and Transitions
-
-### Transition System
-- **Smooth Transitions**: `all 0.3s cubic-bezier(0.4, 0, 0.2, 1)` for general animations
-- **Fast Transitions**: `all 0.15s cubic-bezier(0.4, 0, 0.2, 1)` for quick interactions
-- **Hover Effects**: Transform and shadow changes on hover
-- **Loading States**: Spinner animations for async operations
-
-### Motion Guidelines
-1. **Subtle Movement**: Gentle hover effects that don't distract
-2. **Consistent Timing**: Standard easing curves across all animations
-3. **Performance**: GPU-accelerated transforms for smooth animations
-4. **Reduced Motion**: Should respect user's reduced motion preferences
-
-## Gradients and Effects
-
-### Gradient System
-- **Primary Gradient**: `linear-gradient(135deg, hsl(213 94% 68%) 0%, hsl(213 84% 58%) 100%)`
-- **Card Gradient**: `linear-gradient(145deg, hsl(220 13% 11%) 0%, hsl(220 13% 13%) 100%)`
-- **Hero Gradient**: `linear-gradient(180deg, hsl(220 13% 9% / 0.4) 0%, hsl(220 13% 9%) 100%)`
-
-### Shadow System
-- **Card Shadow**: `0 4px 12px -4px hsl(220 13% 5% / 0.4)`
-- **Card Hover Shadow**: `0 8px 25px -8px hsl(213 94% 68% / 0.15)`
-- **Modal Shadow**: `0 25px 50px -12px hsl(220 13% 5% / 0.8)`
-
-## Responsive Design
-
-### Breakpoint Strategy
-- **Mobile-first**: Base styles for mobile, enhanced for larger screens
-- **Container Queries**: Where appropriate for component-level responsiveness
-- **Flexible Layouts**: Use of flexbox and grid for adaptive layouts
-
-### Responsive Patterns
-1. **Sidebar**: Collapsible on mobile with hamburger trigger
-2. **Grid Layouts**: Responsive columns based on screen size
-3. **Typography**: Responsive font sizes using Tailwind's responsive utilities
-
-## Content Guidelines
-
-### Media Display
-- **Poster Images**: Always use 2:3 aspect ratio for consistency
-- **Image Loading**: Implement lazy loading for performance
-- **Fallbacks**: Placeholder images for missing poster artwork
-- **Image Sources**: TMDB image URLs with appropriate sizing
-
-### Text Content
-- **Truncation**: Use line-clamp utilities for consistent text overflow handling
-- **Hierarchy**: Clear visual hierarchy with font weights and colors
-- **Spacing**: Consistent spacing between text elements
-
-## Accessibility Standards
-
-### WCAG Compliance
-- **Color Contrast**: All text meets WCAG AA standards (4.5:1 ratio minimum)
-- **Focus Indicators**: Visible focus states for keyboard navigation
-- **Screen Reader Support**: Proper semantic HTML and ARIA labels
-- **Keyboard Navigation**: All interactive elements accessible via keyboard
-
-### Implementation Requirements
-1. **Focus Management**: Logical tab order throughout the application
-2. **Alt Text**: Descriptive alt text for all images
-3. **Form Labels**: Proper labeling for all form inputs
-4. **Role Attributes**: Appropriate ARIA roles for custom components
-
-## Implementation Guidelines
-
-### CSS Custom Properties
-Use the defined CSS custom properties for colors:
 ```css
-/* Example usage */
-.my-component {
-  background-color: hsl(var(--card));
+.panel {
+  background: hsl(var(--card));
   color: hsl(var(--card-foreground));
-  border: 1px solid hsl(var(--border));
+  border-color: hsl(var(--border));
 }
 ```
 
-### Tailwind CSS Integration
-The system is fully integrated with Tailwind CSS:
-```jsx
-// Example component usage
+## Preserved structure
 
-    Primary Action
+The system font stack, OpenType ligatures, spacing, responsive breakpoints,
+poster aspect ratios, line clamps, radius (`0.75rem`), and existing animation
+behavior are unchanged. Components continue to use Radix/shadcn primitives,
+Lucide icons, and Tailwind utility layout. Do not use a retheme as an opportunity
+to change page structure or interaction behavior.
 
-```
+## Noncentral exceptions
 
-### Component Development
-1. **Use Design Tokens**: Always reference CSS custom properties
-2. **Follow Naming Conventions**: Use semantic naming for components and classes  
-3. **Maintain Consistency**: Stick to established patterns for spacing, colors, and typography
-4. **Test Accessibility**: Verify keyboard navigation and screen reader compatibility
+- Movie/TV detail hero text, ratings, genre badges, and controls retain white
+  and translucent white utilities over unpredictable backdrop artwork. These are
+  image-legibility treatments, not general application text colors.
+- `components/ui/chart.tsx` contains literal `#ccc`/`#fff` in selectors that match
+  Recharts-generated attributes. These are compatibility selectors, not palette
+  declarations; their replacements use semantic stroke/fill utilities.
+- Posters, backdrops, provider logos, and other external image assets retain
+  their source colors. They are not recolored by the theme.
+- Browser-native widgets and third-party generated details may retain their
+  own rendering. Sonner toast containers/actions use semantic classes; no global
+  stock-palette override is used to recolor dependency internals.
 
-## Quality Assurance
+## Verification
 
-### Design Review Checklist
-- [ ] Colors match the defined palette
-- [ ] Proper contrast ratios maintained
-- [ ] Consistent spacing and typography
-- [ ] Responsive behavior across screen sizes
-- [ ] Hover and focus states implemented
-- [ ] Loading states for async operations
-- [ ] Error states properly styled
-- [ ] Accessibility requirements met
+Target at least 4.5:1 for body and placeholder copy, and 3:1 for focus indicators
+and meaningful control boundaries. The brighter input boundary is intentional;
+decorative separators need not have control-level contrast. Existing disabled
+opacity and artwork-dependent contrast should be reviewed in context rather
+than claiming universal WCAG conformance.
 
-### Performance Considerations
-- **Optimize Images**: Use appropriate image sizes and formats
-- **Minimize Repaints**: Use transform properties for animations
-- **Efficient Selectors**: Leverage Tailwind's utility classes
-- **Bundle Size**: Monitor CSS bundle size and optimize when necessary
+`frontend/e2e/screenshots.spec.ts` captures discovery, movie/TV library, detail,
+activity, a download-client form, and narrow discovery/form views using the
+real-backend isolated harness. It also asserts computed canvas/text, pastel
+button foreground, input/placeholder colors, and focused Mauve ring. Captures
+are attached artifacts, not committed golden-image comparisons. Remote artwork
+has a bounded load wait so CDN availability does not block screenshots.
 
-This design system provides a comprehensive foundation for building consistent, accessible, and visually appealing interfaces within the Mediaz application ecosystem.
+Run frontend commands through `nix develop --command` in this environment.
+Build before running the complete Playwright suite; inspect screenshots for
+artwork overlays, focus/hover states, readable status labels, and narrow layouts.

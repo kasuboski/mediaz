@@ -61,9 +61,9 @@ export default function DownloadClients() {
 
   const getImplementationBadge = (Implementation: string) => {
     if (Implementation === 'transmission') {
-      return <Badge variant="outline" className="bg-blue-500/10 text-blue-500 border-blue-500/20">Transmission</Badge>;
+      return <Badge variant="outline" className="bg-info/10 text-info border-info/20">Transmission</Badge>;
     }
-    return <Badge variant="outline" className="bg-purple-500/10 text-purple-500 border-purple-500/20">SABnzbd</Badge>;
+    return <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">SABnzbd</Badge>;
   };
 
   return (

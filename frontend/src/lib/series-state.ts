@@ -10,17 +10,17 @@ export type SeriesState =
 export function getSeriesStateColor(state?: string): string {
   switch (state) {
     case "completed":
-      return "bg-emerald-500";
+      return "bg-success";
     case "continuing":
-      return "bg-blue-500";
+      return "bg-info";
     case "downloading":
-      return "bg-purple-500";
+      return "bg-primary";
     case "discovered":
-      return "bg-green-500";
+      return "bg-success";
     case "missing":
-      return "bg-red-500";
+      return "bg-destructive";
     case "unreleased":
-      return "bg-cyan-500";
+      return "bg-info";
     default:
       return "bg-muted";
   }
