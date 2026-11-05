@@ -1,0 +1,38 @@
+{
+  "backdrop_path": "/zuW6fOiusv4X9nnW3paHGfXcSll.jpg",
+  "first_air_date": "2018-09-01",
+  "genres": [
+    {
+      "id": 18,
+      "name": "Drama"
+    }
+  ],
+  "id": 2001,
+  "in_production": false,
+  "last_air_date": "2019-04-20",
+  "name": "Lanterns at Low Tide",
+  "number_of_episodes": 4,
+  "number_of_seasons": 2,
+  "original_name": "Lanterns at Low Tide",
+  "overview": "Synthetic ensemble series: Lanterns at Low Tide",
+  "poster_path": "/aOyE420zuFq9zWtEWjIccAiTrzU.jpg",
+  "seasons": [
+    {
+      "air_date": "2018-01-15",
+      "id": 20010,
+      "name": "Specials",
+      "overview": "Synthetic season.",
+      "poster_path": "/aOyE420zuFq9zWtEWjIccAiTrzU.jpg",
+      "season_number": 0
+    },
+    {
+      "air_date": "2019-01-15",
+      "id": 20011,
+      "name": "Season 1",
+      "overview": "Synthetic season.",
+      "poster_path": "/aOyE420zuFq9zWtEWjIccAiTrzU.jpg",
+      "season_number": 1
+    }
+  ],
+  "status": "Ended"
+}

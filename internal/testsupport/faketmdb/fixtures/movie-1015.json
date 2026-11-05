@@ -1,0 +1,26 @@
+{
+  "adult": false,
+  "backdrop_path": "/zuW6fOiusv4X9nnW3paHGfXcSll.jpg",
+  "belongs_to_collection": null,
+  "budget": 0,
+  "genres": [
+    {
+      "id": 18,
+      "name": "Drama"
+    }
+  ],
+  "homepage": null,
+  "id": 1015,
+  "imdb_id": "tt90001015",
+  "original_title": "Silent Current",
+  "overview": "A synthetic story about Silent Current.",
+  "popularity": 12.4,
+  "poster_path": "/aOyE420zuFq9zWtEWjIccAiTrzU.jpg",
+  "production_companies": [],
+  "release_date": "2018-06-14",
+  "revenue": 0,
+  "runtime": 106,
+  "status": "Released",
+  "tagline": null,
+  "title": "Silent Current"
+}

@@ -1,0 +1,30 @@
+{
+  "air_date": "2023-01-15",
+  "episodes": [
+    {
+      "air_date": "2023-02-11",
+      "episode_number": 1,
+      "id": 200211,
+      "name": "Episode 1",
+      "overview": "Synthetic episode 1.",
+      "runtime": 43,
+      "season_number": 1,
+      "still_path": "/zuW6fOiusv4X9nnW3paHGfXcSll.jpg"
+    },
+    {
+      "air_date": "2023-02-12",
+      "episode_number": 2,
+      "id": 200212,
+      "name": "Episode 2",
+      "overview": "Synthetic episode 2.",
+      "runtime": 43,
+      "season_number": 1,
+      "still_path": "/zuW6fOiusv4X9nnW3paHGfXcSll.jpg"
+    }
+  ],
+  "id": 20021,
+  "name": "Season 1",
+  "overview": "Synthetic season.",
+  "poster_path": "/aOyE420zuFq9zWtEWjIccAiTrzU.jpg",
+  "season_number": 1
+}

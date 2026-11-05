@@ -1,0 +1,26 @@
+{
+  "adult": false,
+  "backdrop_path": "/zuW6fOiusv4X9nnW3paHGfXcSll.jpg",
+  "belongs_to_collection": null,
+  "budget": 0,
+  "genres": [
+    {
+      "id": 18,
+      "name": "Drama"
+    }
+  ],
+  "homepage": null,
+  "id": 1002,
+  "imdb_id": "tt90001002",
+  "original_title": "A Map of Quiet Stars",
+  "overview": "A synthetic story about A Map of Quiet Stars.",
+  "popularity": 12.4,
+  "poster_path": "/aOyE420zuFq9zWtEWjIccAiTrzU.jpg",
+  "production_companies": [],
+  "release_date": "2005-06-14",
+  "revenue": 0,
+  "runtime": 93,
+  "status": "Released",
+  "tagline": null,
+  "title": "A Map of Quiet Stars"
+}

@@ -1,0 +1,14 @@
+{
+  "id": 2001,
+  "results": {
+    "US": {
+      "flatrate": [
+        {
+          "provider_id": 8,
+          "provider_name": "Netflix"
+        }
+      ],
+      "link": "https://example.invalid/watch"
+    }
+  }
+}

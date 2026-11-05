@@ -1,0 +1,38 @@
+{
+  "backdrop_path": "/zuW6fOiusv4X9nnW3paHGfXcSll.jpg",
+  "first_air_date": "2022-09-01",
+  "genres": [
+    {
+      "id": 18,
+      "name": "Drama"
+    }
+  ],
+  "id": 2002,
+  "in_production": true,
+  "last_air_date": "2023-04-20",
+  "name": "The Astral Workshop",
+  "number_of_episodes": 4,
+  "number_of_seasons": 2,
+  "original_name": "The Astral Workshop",
+  "overview": "Synthetic ensemble series: The Astral Workshop",
+  "poster_path": "/aOyE420zuFq9zWtEWjIccAiTrzU.jpg",
+  "seasons": [
+    {
+      "air_date": "2022-01-15",
+      "id": 20020,
+      "name": "Specials",
+      "overview": "Synthetic season.",
+      "poster_path": "/aOyE420zuFq9zWtEWjIccAiTrzU.jpg",
+      "season_number": 0
+    },
+    {
+      "air_date": "2023-01-15",
+      "id": 20021,
+      "name": "Season 1",
+      "overview": "Synthetic season.",
+      "poster_path": "/aOyE420zuFq9zWtEWjIccAiTrzU.jpg",
+      "season_number": 1
+    }
+  ],
+  "status": "Returning Series"
+}

@@ -1,0 +1,26 @@
+{
+  "adult": false,
+  "backdrop_path": "/zuW6fOiusv4X9nnW3paHGfXcSll.jpg",
+  "belongs_to_collection": null,
+  "budget": 0,
+  "genres": [
+    {
+      "id": 18,
+      "name": "Drama"
+    }
+  ],
+  "homepage": null,
+  "id": 1011,
+  "imdb_id": "tt90001011",
+  "original_title": "The Hollow Atlas",
+  "overview": "A synthetic story about The Hollow Atlas.",
+  "popularity": 12.4,
+  "poster_path": "/aOyE420zuFq9zWtEWjIccAiTrzU.jpg",
+  "production_companies": [],
+  "release_date": "2014-06-14",
+  "revenue": 0,
+  "runtime": 102,
+  "status": "Released",
+  "tagline": null,
+  "title": "The Hollow Atlas"
+}

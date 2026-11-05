@@ -1,0 +1,30 @@
+{
+  "air_date": "2018-01-15",
+  "episodes": [
+    {
+      "air_date": "2018-01-11",
+      "episode_number": 1,
+      "id": 200101,
+      "name": "Episode 1",
+      "overview": "Synthetic episode 1.",
+      "runtime": 43,
+      "season_number": 0,
+      "still_path": "/zuW6fOiusv4X9nnW3paHGfXcSll.jpg"
+    },
+    {
+      "air_date": "2018-01-12",
+      "episode_number": 2,
+      "id": 200102,
+      "name": "Episode 2",
+      "overview": "Synthetic episode 2.",
+      "runtime": 43,
+      "season_number": 0,
+      "still_path": "/zuW6fOiusv4X9nnW3paHGfXcSll.jpg"
+    }
+  ],
+  "id": 20010,
+  "name": "Specials",
+  "overview": "Synthetic season.",
+  "poster_path": "/aOyE420zuFq9zWtEWjIccAiTrzU.jpg",
+  "season_number": 0
+}
