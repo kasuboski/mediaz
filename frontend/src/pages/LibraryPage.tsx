@@ -60,13 +60,13 @@ export default function LibraryPage() {
               <div>
                 <p className="text-xs text-muted-foreground mb-1">Movies Directory</p>
                 <div className="flex items-center gap-2">
-                  <Film className="h-4 w-4 text-blue-500" />
+                  <Film className="h-4 w-4 text-info" />
                   <p className="text-sm font-mono bg-muted px-2 py-1 rounded">
                     {config?.library.movieDir || "Using default location"}
                   </p>
                   {!config?.library.movieDir && (
                     <span title="Using default or relative path" aria-label="Using default or relative path">
-                      <AlertCircle className="h-4 w-4 text-yellow-500" aria-hidden="true" />
+                      <AlertCircle className="h-4 w-4 text-warning" aria-hidden="true" />
                     </span>
                   )}
                 </div>
@@ -74,20 +74,20 @@ export default function LibraryPage() {
               <div>
                 <p className="text-xs text-muted-foreground mb-1">TV Shows Directory</p>
                 <div className="flex items-center gap-2">
-                  <Tv className="h-4 w-4 text-orange-500" />
+                  <Tv className="h-4 w-4 text-category" />
                   <p className="text-sm font-mono bg-muted px-2 py-1 rounded">
                     {config?.library.tvDir || "Using default location"}
                   </p>
                   {!config?.library.tvDir && (
                     <span title="Using default or relative path" aria-label="Using default or relative path">
-                      <AlertCircle className="h-4 w-4 text-yellow-500" aria-hidden="true" />
+                      <AlertCircle className="h-4 w-4 text-warning" aria-hidden="true" />
                     </span>
                   )}
                 </div>
               </div>
             </div>
             {!config?.library.movieDir && !config?.library.tvDir && (
-              <div className="text-xs text-muted-foreground bg-blue-500/10 border border-blue-500/20 rounded p-2">
+              <div className="text-xs text-muted-foreground bg-info/10 border border-info/20 rounded p-2">
                 <AlertCircle className="h-3 w-3 inline mr-1" />
                 Library paths are using defaults or relative paths. Your library may still be functional.
               </div>
@@ -104,19 +104,19 @@ export default function LibraryPage() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <p className="text-xs text-muted-foreground">Movie Index</p>
-                <p className="text-sm font-semibold text-blue-400">{config?.jobs.movieIndex}</p>
+                <p className="text-sm font-semibold text-info">{config?.jobs.movieIndex}</p>
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Movie Reconcile</p>
-                <p className="text-sm font-semibold text-blue-400">{config?.jobs.movieReconcile}</p>
+                <p className="text-sm font-semibold text-info">{config?.jobs.movieReconcile}</p>
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Series Index</p>
-                <p className="text-sm font-semibold text-orange-400">{config?.jobs.seriesIndex}</p>
+                <p className="text-sm font-semibold text-category">{config?.jobs.seriesIndex}</p>
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Series Reconcile</p>
-                <p className="text-sm font-semibold text-orange-400">{config?.jobs.seriesReconcile}</p>
+                <p className="text-sm font-semibold text-category">{config?.jobs.seriesReconcile}</p>
               </div>
             </div>
           </CardContent>
@@ -137,10 +137,10 @@ export default function LibraryPage() {
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-2xl font-bold text-blue-400">{stats?.movies.total}</p>
+                  <p className="text-2xl font-bold text-info">{stats?.movies.total}</p>
                   <p className="text-xs text-muted-foreground">Total Movies</p>
                 </div>
-                <Film className="h-8 w-8 text-blue-500/20" />
+                <Film className="h-8 w-8 text-info/20" />
               </div>
               <div className="space-y-2">
                 <p className="text-sm font-medium text-muted-foreground">Breakdown by Status</p>
@@ -149,12 +149,12 @@ export default function LibraryPage() {
                     const percentage = Math.round((count / (stats?.movies.total || 1)) * 100);
                     const getColor = (state: string) => {
                       switch (state) {
-                        case 'downloaded': return 'bg-green-500';
-                        case 'downloading': return 'bg-blue-500';
-                        case 'discovered': return 'bg-gray-500';
-                        case 'missing': return 'bg-red-500';
-                        case 'unreleased': return 'bg-yellow-500';
-                        default: return 'bg-gray-500';
+                        case 'downloaded': return 'bg-success';
+                        case 'downloading': return 'bg-info';
+                        case 'discovered': return 'bg-muted-foreground';
+                        case 'missing': return 'bg-destructive';
+                        case 'unreleased': return 'bg-warning';
+                        default: return 'bg-muted-foreground';
                       }
                     };
                     
@@ -186,10 +186,10 @@ export default function LibraryPage() {
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-2xl font-bold text-orange-400">{stats?.tv.total}</p>
+                  <p className="text-2xl font-bold text-category">{stats?.tv.total}</p>
                   <p className="text-xs text-muted-foreground">Total Series</p>
                 </div>
-                <Tv className="h-8 w-8 text-orange-500/20" />
+                <Tv className="h-8 w-8 text-category/20" />
               </div>
               <div className="space-y-2">
                 <p className="text-sm font-medium text-muted-foreground">Breakdown by Status</p>
@@ -198,11 +198,11 @@ export default function LibraryPage() {
                     const percentage = Math.round((count / (stats?.tv.total || 1)) * 100);
                     const getColor = (state: string) => {
                       switch (state) {
-                        case 'completed': return 'bg-green-500';
-                        case 'continuing': return 'bg-blue-500';
-                        case 'discovered': return 'bg-gray-500';
-                        case 'missing': return 'bg-red-500';
-                        default: return 'bg-gray-500';
+                        case 'completed': return 'bg-success';
+                        case 'continuing': return 'bg-info';
+                        case 'discovered': return 'bg-muted-foreground';
+                        case 'missing': return 'bg-destructive';
+                        default: return 'bg-muted-foreground';
                       }
                     };
                     
@@ -229,35 +229,35 @@ export default function LibraryPage() {
 
       {/* Summary Cards */}
       <div className="grid gap-4 md:grid-cols-3">
-        <Card className="bg-gradient-to-br from-blue-500/10 to-blue-600/5 border-blue-500/20">
+        <Card className="bg-gradient-to-br from-info/10 to-info/5 border-info/20">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-blue-400">Library Overview</p>
-                <p className="text-2xl font-bold text-blue-400">
+                <p className="text-sm font-medium text-info">Library Overview</p>
+                <p className="text-2xl font-bold text-info">
                   {((stats?.movies.total || 0) + (stats?.tv.total || 0)).toLocaleString()}
                 </p>
                 <p className="text-xs text-muted-foreground">Total Items</p>
               </div>
               <div className="flex -space-x-2">
-                <Film className="h-8 w-8 text-blue-500" />
-                <Tv className="h-8 w-8 text-orange-500" />
+                <Film className="h-8 w-8 text-info" />
+                <Tv className="h-8 w-8 text-category" />
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-green-500/10 to-green-600/5 border-green-500/20">
+        <Card className="bg-gradient-to-br from-success/10 to-success/5 border-success/20">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-green-400">Available to Watch</p>
-                <p className="text-2xl font-bold text-green-400">
+                <p className="text-sm font-medium text-success">Available to Watch</p>
+                <p className="text-2xl font-bold text-success">
                   {((stats?.movies.byState.discovered || 0) + (stats?.tv.byState.completed || 0) + (stats?.tv.byState.continuing || 0)).toLocaleString()}
                 </p>
                 <p className="text-xs text-muted-foreground">Ready Now</p>
               </div>
-              <CheckCircle className="h-8 w-8 text-green-500" />
+              <CheckCircle className="h-8 w-8 text-success" />
             </div>
             <div className="mt-3 space-y-1 text-xs text-muted-foreground">
               <div>• {stats?.movies.byState.discovered} movies discovered</div>
@@ -266,17 +266,17 @@ export default function LibraryPage() {
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-orange-500/10 to-orange-600/5 border-orange-500/20">
+        <Card className="bg-gradient-to-br from-category/10 to-category/5 border-category/20">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-orange-400">Still Missing</p>
-                <p className="text-2xl font-bold text-orange-400">
+                <p className="text-sm font-medium text-category">Still Missing</p>
+                <p className="text-2xl font-bold text-category">
                   {(stats?.tv.byState.missing || 0).toLocaleString()}
                 </p>
                 <p className="text-xs text-muted-foreground">Content to Find</p>
               </div>
-              <AlertCircle className="h-8 w-8 text-orange-500" />
+              <AlertCircle className="h-8 w-8 text-category" />
             </div>
             <div className="mt-3 space-y-1 text-xs text-muted-foreground">
               <div>• {stats?.tv.byState.missing} TV series missing</div>

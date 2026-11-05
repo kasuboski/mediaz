@@ -28,35 +28,35 @@ export function getMovieStateBadge(state?: string): StateBadgeConfig {
       return {
         variant: "outline",
         icon: CheckCircle,
-        className: "bg-green-500/10 text-green-500 border-green-500/20",
+        className: "bg-success/10 text-success border-success/20",
         label: "Downloaded",
       };
     case "downloading":
       return {
         variant: "secondary",
         icon: Download,
-        className: "bg-blue-500/10 text-blue-500 border-blue-500/20",
+        className: "bg-info/10 text-info border-info/20",
         label: "Downloading",
       };
     case "discovered":
       return {
         variant: "outline",
         icon: FolderSearch,
-        className: "bg-cyan-500/10 text-cyan-500 border-cyan-500/20",
+        className: "bg-info/10 text-info border-info/20",
         label: "Discovered",
       };
     case "missing":
       return {
         variant: "outline",
         icon: AlertCircle,
-        className: "bg-yellow-500/10 text-yellow-500 border-yellow-500/20",
+        className: "bg-warning/10 text-warning border-warning/20",
         label: "Missing",
       };
     case "unreleased":
       return {
         variant: "outline",
         icon: Clock,
-        className: "bg-purple-500/10 text-purple-500 border-purple-500/20",
+        className: "bg-primary/10 text-primary border-primary/20",
         label: "Unreleased",
       };
     default:
@@ -72,15 +72,15 @@ export function getMovieStateBadge(state?: string): StateBadgeConfig {
 export function getMovieStateColor(state?: string): string {
   switch (state) {
     case "downloaded":
-      return "bg-green-500";
+      return "bg-success";
     case "downloading":
-      return "bg-purple-500";
+      return "bg-primary";
     case "discovered":
-      return "bg-green-500";
+      return "bg-success";
     case "missing":
-      return "bg-red-500";
+      return "bg-destructive";
     case "unreleased":
-      return "bg-cyan-500";
+      return "bg-info";
     default:
       return "bg-muted";
   }

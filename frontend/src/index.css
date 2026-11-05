@@ -2,63 +2,92 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Mediaz Design System - Dark theme with blue accents inspired by Overseerr */
+/* Catppuccin Mocha palette. All application colors are defined here. */
 
 @layer base {
   :root {
-    /* Dark theme colors */
-    --background: 220 13% 9%;
-    --foreground: 220 9% 95%;
+    /* Official palette, converted from sRGB hex to HSL channels. */
+    --mocha-base: 240 21.05263% 14.90196%; /* #1e1e2e */
+    --mocha-mantle: 240 21.31148% 11.96078%; /* #181825 */
+    --mocha-crust: 240 22.72727% 8.62745%; /* #11111b */
+    --mocha-surface0: 236.84211 16.23932% 22.94118%; /* #313244 */
+    --mocha-surface1: 234.28571 13.20755% 31.17647%; /* #45475a */
+    --mocha-surface2: 232.5 12% 39.21569%; /* #585b70 */
+    --mocha-text: 226.15385 63.93443% 88.03922%; /* #cdd6f4 */
+    --mocha-subtext1: 226.66667 35.29412% 80%; /* #bac2de */
+    --mocha-subtext0: 227.64706 23.61111% 71.76471%; /* #a6adc8 */
+    --mocha-mauve: 267.40741 83.50515% 80.98039%; /* #cba6f7 */
+    --mocha-blue: 217.16814 91.86992% 75.88235%; /* #89b4fa */
+    --mocha-green: 115.45455 54.09836% 76.07843%; /* #a6e3a1 */
+    --mocha-yellow: 41.35135 86.04651% 83.13725%; /* #f9e2af */
+    --mocha-red: 343.26923 81.25% 74.90196%; /* #f38ba8 */
+    --mocha-peach: 22.95652 92% 75.49020%; /* #fab387 */
+    --mocha-lavender: 231.89189 97.36842% 85.09804%; /* #b4befe */
+    --mocha-teal: 170 57.35294% 73.33333%; /* #94e2d5 */
 
-    --card: 220 13% 11%;
-    --card-foreground: 220 9% 95%;
+    --success: var(--mocha-green);
+    --warning: var(--mocha-yellow);
+    --info: var(--mocha-blue);
+    --category: var(--mocha-peach);
+    --chart-1: var(--mocha-green);
+    --chart-2: var(--mocha-blue);
+    --chart-3: var(--mocha-lavender);
+    --chart-4: var(--mocha-teal);
+    --scrim: var(--mocha-crust);
 
-    --popover: 220 13% 11%;
-    --popover-foreground: 220 9% 95%;
+    --background: var(--mocha-base);
+    --foreground: var(--mocha-text);
 
-    /* Blue accent colors */
-    --primary: 213 94% 68%;
-    --primary-foreground: 220 13% 9%;
+    --card: var(--mocha-mantle);
+    --card-foreground: var(--mocha-text);
 
-    --secondary: 220 13% 15%;
-    --secondary-foreground: 220 9% 95%;
+    --popover: var(--mocha-mantle);
+    --popover-foreground: var(--mocha-text);
 
-    --muted: 220 13% 15%;
-    --muted-foreground: 220 9% 65%;
+    /* Semantic interaction roles */
+    --primary: var(--mocha-mauve);
+    --primary-foreground: var(--mocha-base);
 
-    --accent: 213 94% 68%;
-    --accent-foreground: 220 13% 9%;
+    --secondary: var(--mocha-surface0);
+    --secondary-foreground: var(--mocha-text);
 
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 220 9% 95%;
+    --muted: var(--mocha-surface0);
+    --muted-foreground: var(--mocha-subtext0);
 
-    --border: 220 13% 20%;
-    --input: 220 13% 15%;
-    --ring: 213 94% 68%;
+    --accent: var(--mocha-surface1);
+    --accent-foreground: var(--mocha-text);
+
+    --destructive: var(--mocha-red);
+    --destructive-foreground: var(--mocha-base);
+
+    --border: var(--mocha-surface1);
+    /* Stronger than decorative borders: >=3:1 against control surfaces. */
+    --input: var(--mocha-subtext0);
+    --ring: var(--mocha-mauve);
 
     --radius: 0.75rem;
 
     /* Custom design tokens */
-    --gradient-primary: linear-gradient(135deg, hsl(213 94% 68%) 0%, hsl(213 84% 58%) 100%);
-    --gradient-card: linear-gradient(145deg, hsl(220 13% 11%) 0%, hsl(220 13% 13%) 100%);
-    --gradient-hero: linear-gradient(180deg, hsl(220 13% 9% / 0.4) 0%, hsl(220 13% 9%) 100%);
+    --gradient-primary: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--mocha-lavender)) 100%);
+    --gradient-card: linear-gradient(145deg, hsl(var(--card)) 0%, hsl(var(--background)) 100%);
+    --gradient-hero: linear-gradient(180deg, hsl(var(--background) / 0.4) 0%, hsl(var(--background)) 100%);
     
-    --shadow-card: 0 4px 12px -4px hsl(220 13% 5% / 0.4);
-    --shadow-card-hover: 0 8px 25px -8px hsl(213 94% 68% / 0.15);
-    --shadow-modal: 0 25px 50px -12px hsl(220 13% 5% / 0.8);
+    --shadow-card: 0 4px 12px -4px hsl(var(--mocha-crust) / 0.4);
+    --shadow-card-hover: 0 8px 25px -8px hsl(var(--primary) / 0.15);
+    --shadow-modal: 0 25px 50px -12px hsl(var(--mocha-crust) / 0.8);
     
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     --transition-fast: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
 
     /* Sidebar specific colors */
-    --sidebar-background: 220 13% 8%;
-    --sidebar-foreground: 220 9% 85%;
-    --sidebar-primary: 213 94% 68%;
-    --sidebar-primary-foreground: 220 13% 9%;
-    --sidebar-accent: 220 13% 12%;
-    --sidebar-accent-foreground: 220 9% 95%;
-    --sidebar-border: 220 13% 18%;
-    --sidebar-ring: 213 94% 68%;
+    --sidebar-background: var(--mocha-crust);
+    --sidebar-foreground: var(--mocha-subtext1);
+    --sidebar-primary: var(--mocha-mauve);
+    --sidebar-primary-foreground: var(--mocha-base);
+    --sidebar-accent: var(--mocha-surface0);
+    --sidebar-accent-foreground: var(--mocha-text);
+    --sidebar-border: var(--mocha-surface0);
+    --sidebar-ring: var(--mocha-mauve);
   }
 }
 

@@ -11,15 +11,15 @@ export function ActiveJobCard({ job }: ActiveJobCardProps) {
   const getJobStateColor = (state: string): string => {
     switch (state) {
       case "running":
-        return "bg-blue-500/10 text-blue-500 border-blue-500/20";
+        return "bg-info/10 text-info border-info/20";
       case "pending":
-        return "bg-yellow-500/10 text-yellow-500 border-yellow-500/20";
+        return "bg-warning/10 text-warning border-warning/20";
       case "error":
-        return "bg-red-500/10 text-red-500 border-red-500/20";
+        return "bg-destructive/10 text-destructive border-destructive/20";
       case "done":
-        return "bg-green-500/10 text-green-500 border-green-500/20";
+        return "bg-success/10 text-success border-success/20";
       case "cancelled":
-        return "bg-gray-500/10 text-gray-500 border-gray-500/20";
+        return "bg-muted-foreground/10 text-muted-foreground border-muted-foreground/20";
       default:
         return "text-muted-foreground";
     }

@@ -48,7 +48,7 @@ function ActiveProcessesSection({ activeData, isLoading, pages, pageSize, onPage
         <CardHeader>
           <CollapsibleTrigger className="flex items-center justify-between w-full">
             <div className="flex items-center gap-3">
-              <ActivityIcon className="h-5 w-5 text-blue-400" />
+              <ActivityIcon className="h-5 w-5 text-info" />
               <CardTitle className="text-xl">Active Processes</CardTitle>
             </div>
             <div className="flex items-center gap-4">

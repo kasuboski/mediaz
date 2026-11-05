@@ -106,7 +106,7 @@ export default function MovieDetail() {
         <div className="text-center">
           <p className="text-muted-foreground mb-2">Movie not found</p>
           {error && (
-            <p className="text-sm text-red-500">
+            <p className="text-sm text-destructive">
               {error instanceof Error ? error.message : 'An error occurred while loading the movie'}
             </p>
           )}

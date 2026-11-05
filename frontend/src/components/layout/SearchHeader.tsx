@@ -29,7 +29,7 @@ export function SearchHeader() {
               placeholder="Search movies and TV shows..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 bg-input border-border focus:ring-primary"
+              className="pl-10 bg-muted border-input focus:ring-ring"
             />
           </div>
           <Button type="submit" size="sm" className="bg-gradient-primary hover:opacity-90">

@@ -35,25 +35,25 @@ function getJobStateBadge(state: JobState) {
       return {
         variant: "outline" as const,
         icon: <Clock className="h-3 w-3" />,
-        className: "bg-yellow-500/10 text-yellow-500 border-yellow-500/20",
+        className: "bg-warning/10 text-warning border-warning/20",
       };
     case "running":
       return {
         variant: "secondary" as const,
         icon: <Loader2 className="h-3 w-3 animate-spin" />,
-        className: "bg-blue-500/10 text-blue-500 border-blue-500/20",
+        className: "bg-info/10 text-info border-info/20",
       };
     case "done":
       return {
         variant: "outline" as const,
         icon: <CheckCircle className="h-3 w-3" />,
-        className: "bg-green-500/10 text-green-500 border-green-500/20",
+        className: "bg-success/10 text-success border-success/20",
       };
     case "error":
       return {
         variant: "outline" as const,
         icon: <AlertCircle className="h-3 w-3" />,
-        className: "bg-red-500/10 text-red-500 border-red-500/20",
+        className: "bg-destructive/10 text-destructive border-destructive/20",
       };
     case "cancelled":
       return {
@@ -195,7 +195,7 @@ export default function Jobs() {
               <TableBody>
                 <TableRow>
                   <TableCell className="font-medium">Movie Index</TableCell>
-                  <TableCell className="font-semibold text-blue-400">
+                  <TableCell className="font-semibold text-info">
                     {config.jobs.movieIndex}
                   </TableCell>
                   <TableCell className="text-right">
@@ -215,7 +215,7 @@ export default function Jobs() {
                 </TableRow>
                 <TableRow>
                   <TableCell className="font-medium">Movie Reconcile</TableCell>
-                  <TableCell className="font-semibold text-blue-400">
+                  <TableCell className="font-semibold text-info">
                     {config.jobs.movieReconcile}
                   </TableCell>
                   <TableCell className="text-right">
@@ -235,7 +235,7 @@ export default function Jobs() {
                 </TableRow>
                 <TableRow>
                   <TableCell className="font-medium">Series Index</TableCell>
-                  <TableCell className="font-semibold text-orange-400">
+                  <TableCell className="font-semibold text-category">
                     {config.jobs.seriesIndex}
                   </TableCell>
                   <TableCell className="text-right">
@@ -255,7 +255,7 @@ export default function Jobs() {
                 </TableRow>
                 <TableRow>
                   <TableCell className="font-medium">Series Reconcile</TableCell>
-                  <TableCell className="font-semibold text-orange-400">
+                  <TableCell className="font-semibold text-category">
                     {config.jobs.seriesReconcile}
                   </TableCell>
                   <TableCell className="text-right">

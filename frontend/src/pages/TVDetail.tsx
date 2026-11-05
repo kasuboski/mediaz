@@ -35,7 +35,7 @@ import { useQueryClient } from "@tanstack/react-query";
 // Component for rendering individual episodes
 
 const EpisodeItem = ({ episode }: { episode: EpisodeResult }) => (
-  <div className="bg-background/50 dark:bg-gray-800/50 rounded-lg p-4 border border-border/50 hover:border-border transition-colors">
+  <div className="bg-background/50 dark:bg-muted/50 rounded-lg p-4 border border-border/50 hover:border-border transition-colors">
     <div className="flex items-start gap-4">
       <div className="aspect-video w-32 bg-muted rounded-lg overflow-hidden flex-shrink-0">
         {episode.stillPath ? (
@@ -233,7 +233,7 @@ export default function TVDetail() {
         <div className="text-center">
           <p className="text-muted-foreground mb-2">TV show not found</p>
           {error && (
-            <p className="text-sm text-red-500">
+            <p className="text-sm text-destructive">
               {error instanceof Error ? error.message : 'An error occurred while loading the TV show'}
             </p>
           )}
