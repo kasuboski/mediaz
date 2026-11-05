@@ -1,5 +1,5 @@
 {
-  "backdrop_path": "/synthetic/tv/2002-backdrop.jpg",
+  "backdrop_path": "/zuW6fOiusv4X9nnW3paHGfXcSll.jpg",
   "first_air_date": "2022-09-01",
   "genres": [
     {
@@ -15,14 +15,14 @@
   "number_of_seasons": 2,
   "original_name": "The Astral Workshop",
   "overview": "Synthetic ensemble series: The Astral Workshop",
-  "poster_path": "/synthetic/tv/2002.jpg",
+  "poster_path": "/aOyE420zuFq9zWtEWjIccAiTrzU.jpg",
   "seasons": [
     {
       "air_date": "2022-01-15",
       "id": 20020,
       "name": "Specials",
       "overview": "Synthetic season.",
-      "poster_path": "/synthetic/seasons/20020.jpg",
+      "poster_path": "/aOyE420zuFq9zWtEWjIccAiTrzU.jpg",
       "season_number": 0
     },
     {
@@ -30,7 +30,7 @@
       "id": 20021,
       "name": "Season 1",
       "overview": "Synthetic season.",
-      "poster_path": "/synthetic/seasons/20021.jpg",
+      "poster_path": "/aOyE420zuFq9zWtEWjIccAiTrzU.jpg",
       "season_number": 1
     }
   ],

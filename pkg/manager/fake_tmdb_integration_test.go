@@ -76,7 +76,7 @@ func TestFakeTMDBMovieAddDetailAndPersistedMetadata(t *testing.T) {
 	exact, err := m.SearchMovie(ctx, "Glass Harbor", 1)
 	require.NoError(t, err)
 	require.Len(t, exact.Results, 1)
-	require.Equal(t, "/synthetic/movies/1001.jpg", detail.PosterPath)
+	require.Equal(t, "/aOyE420zuFq9zWtEWjIccAiTrzU.jpg", detail.PosterPath)
 	require.Equal(t, "2004-06-14", *detail.ReleaseDate)
 
 	storedMovie, err := m.movieStorage.GetMovie(ctx, added.Movie.ID)
@@ -85,7 +85,7 @@ func TestFakeTMDBMovieAddDetailAndPersistedMetadata(t *testing.T) {
 	metadata, err := m.GetMovieMetadata(ctx, 1001)
 	require.NoError(t, err)
 	require.NotNil(t, metadata)
-	require.Equal(t, sqlcdb.MovieMetadatum{ID: metadata.ID, TmdbID: 1001, ImdbID: sql.NullString{String: "tt90001001", Valid: true}, Images: "/synthetic/movies/1001.jpg", Genres: sql.NullString{String: "Drama", Valid: true}, Title: "The Glass Harbor", OriginalTitle: sql.NullString{String: "The Glass Harbor", Valid: true}, Runtime: 92, ReleaseDate: sql.NullTime{Time: time.Date(2004, time.June, 14, 0, 0, 0, 0, time.UTC), Valid: true}, Year: sql.NullInt64{Int64: 2004, Valid: true}, Overview: sql.NullString{String: "A synthetic story about The Glass Harbor.", Valid: true}, Popularity: sql.NullFloat64{Float64: 12.399999618530273, Valid: true}}, *metadata)
+	require.Equal(t, sqlcdb.MovieMetadatum{ID: metadata.ID, TmdbID: 1001, ImdbID: sql.NullString{String: "tt90001001", Valid: true}, Images: "/aOyE420zuFq9zWtEWjIccAiTrzU.jpg", Genres: sql.NullString{String: "Drama", Valid: true}, Title: "The Glass Harbor", OriginalTitle: sql.NullString{String: "The Glass Harbor", Valid: true}, Runtime: 92, ReleaseDate: sql.NullTime{Time: time.Date(2004, time.June, 14, 0, 0, 0, 0, time.UTC), Valid: true}, Year: sql.NullInt64{Int64: 2004, Valid: true}, Overview: sql.NullString{String: "A synthetic story about The Glass Harbor.", Valid: true}, Popularity: sql.NullFloat64{Float64: 12.399999618530273, Valid: true}}, *metadata)
 
 	requests := fake.Requests()
 	require.Len(t, requests, 2)

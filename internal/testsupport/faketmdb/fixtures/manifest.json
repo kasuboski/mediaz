@@ -1,6 +1,6 @@
 {
   "movie_count": 21,
-  "provenance": "Entirely synthetic hand-authored catalog; no live captures. Relative TMDB image paths are preserved; no artwork bundled.",
+  "provenance": "Fictional hand-authored catalog and metadata; no live captures. Artwork uses representative real TMDB schema-example image paths served by the live CDN; artwork is borrowed and does not match fictional titles.",
   "providers": "US Netflix present for 2001; absent for 2002",
   "tv_series": [
     {

@@ -3,8 +3,10 @@ package faketmdb
 import (
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync"
 	"testing"
 )
@@ -91,6 +93,82 @@ func TestSearchFiltersWholeCatalogBeforePaginating(t *testing.T) {
 	}
 	if got := search("/3/search/movie?query=UNFINISHED%20SUMMER"); len(got["results"].([]any)) != 1 {
 		t.Fatal("case-insensitive title filter did not match")
+	}
+}
+
+func TestFixtureArtworkUsesRepresentativePathsAndSearchMatchesDetails(t *testing.T) {
+	if err := fs.WalkDir(fixtures, "fixtures", func(name string, entry fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if entry.IsDir() {
+			return nil
+		}
+		data, err := fixtures.ReadFile(name)
+		if err != nil {
+			return err
+		}
+		var value any
+		if err := json.Unmarshal(data, &value); err != nil {
+			return err
+		}
+		checkImageFields(t, value)
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	server := httptest.NewServer(New())
+	defer server.Close()
+	var search struct {
+		Results []struct {
+			ID         int    `json:"id"`
+			PosterPath string `json:"poster_path"`
+		} `json:"results"`
+	}
+	resp, err := server.Client().Get(server.URL + "/3/search/movie?query=Glass%20Harbor")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&search); err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+	if len(search.Results) != 1 {
+		t.Fatalf("search returned %d results", len(search.Results))
+	}
+	var detail struct {
+		PosterPath string `json:"poster_path"`
+	}
+	resp, err = server.Client().Get(server.URL + "/3/movie/1001")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&detail); err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+	if search.Results[0].ID != 1001 || search.Results[0].PosterPath != detail.PosterPath {
+		t.Fatalf("search poster %d %q differs from detail %q", search.Results[0].ID, search.Results[0].PosterPath, detail.PosterPath)
+	}
+}
+
+func checkImageFields(t *testing.T, value any) {
+	t.Helper()
+	switch v := value.(type) {
+	case map[string]any:
+		for key, item := range v {
+			if (key == "poster_path" || key == "backdrop_path" || key == "still_path" || key == "logo_path") && item != nil {
+				if path, ok := item.(string); ok && strings.Contains(path, "/synthetic/") {
+					t.Errorf("invented image path in %s: %s", key, path)
+				}
+			}
+			checkImageFields(t, item)
+		}
+	case []any:
+		for _, item := range v {
+			checkImageFields(t, item)
+		}
 	}
 }
 

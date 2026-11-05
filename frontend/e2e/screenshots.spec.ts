@@ -3,6 +3,32 @@ import { test, expect } from '@playwright/test';
 const viewport = { width: 1440, height: 1000 };
 const capture = async (page: import('@playwright/test').Page, testInfo: import('@playwright/test').TestInfo, name: string) => {
   await page.setViewportSize(viewport);
+  // Give visible remote artwork a bounded chance to load before capture. Do not
+  // block screenshots when the CDN is unavailable.
+  const artwork = await page.evaluate(async () => {
+    const visible = (element: Element) => {
+      const rect = element.getBoundingClientRect();
+      const style = getComputedStyle(element);
+      return rect.width > 0 && rect.height > 0 && style.visibility !== 'hidden' && style.display !== 'none';
+    };
+    const images = [...document.images].filter(visible);
+    const backgrounds = [...document.querySelectorAll<HTMLElement>('*')]
+      .filter(visible)
+      .map(element => ({ element, url: getComputedStyle(element).backgroundImage.match(/url\\([\"']?(.*?)[\"']?\\)/)?.[1] }))
+      .filter((entry): entry is { element: HTMLElement; url: string } => Boolean(entry.url));
+    await Promise.race([
+      Promise.all([
+        ...images.map(image => image.decode().catch(() => undefined)),
+        ...backgrounds.map(({ url }) => new Promise<void>(resolve => {
+          const image = new Image();
+          image.onload = () => resolve();
+          image.onerror = () => resolve();
+          image.src = url;
+        })),
+      ]),
+      new Promise(resolve => setTimeout(resolve, 5000)),
+    ]);
+  });
   const path = testInfo.outputPath(`${name}.png`);
   await page.screenshot({ path, fullPage: true, animations: 'disabled' });
   await testInfo.attach(`${name}.png`, { path, contentType: 'image/png' });

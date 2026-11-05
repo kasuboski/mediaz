@@ -3,7 +3,6 @@ package manager
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"net/http/httptest"
 	"strconv"
 	"testing"
@@ -42,7 +41,7 @@ func TestFakeTMDBTVSearchMetadataHierarchyPersistence(t *testing.T) {
 	metadata, err := m.GetSeriesMetadata(ctx, 2001)
 	require.NoError(t, err)
 	require.Equal(t, "Lanterns at Low Tide", metadata.Title)
-	require.Equal(t, sqlcdb.SeriesMetadatum{ID: metadata.ID, TmdbID: 2001, Title: "Lanterns at Low Tide", Overview: sql.NullString{String: "Synthetic ensemble series: Lanterns at Low Tide", Valid: true}, FirstAirDate: sql.NullTime{Time: time.Date(2018, 9, 1, 0, 0, 0, 0, time.UTC), Valid: true}, SeasonCount: 2, EpisodeCount: 4, Status: "Ended", PosterPath: sql.NullString{String: "/synthetic/tv/2001.jpg", Valid: true}, ExternalIds: sql.NullString{String: `{"imdb_id":"tt80002001","tvdb_id":702001}`, Valid: true}, WatchProviders: sql.NullString{String: `{"US":{"flatrate":[{"provider_id":8,"provider_name":"Netflix","logo_path":"/synthetic/providers/netflix.jpg"}],"link":"https://example.invalid/watch"}}`, Valid: true}}, *metadata)
+	require.Equal(t, sqlcdb.SeriesMetadatum{ID: metadata.ID, TmdbID: 2001, Title: "Lanterns at Low Tide", Overview: sql.NullString{String: "Synthetic ensemble series: Lanterns at Low Tide", Valid: true}, FirstAirDate: sql.NullTime{Time: time.Date(2018, 9, 1, 0, 0, 0, 0, time.UTC), Valid: true}, SeasonCount: 2, EpisodeCount: 4, Status: "Ended", PosterPath: sql.NullString{String: "/aOyE420zuFq9zWtEWjIccAiTrzU.jpg", Valid: true}, ExternalIds: sql.NullString{String: `{"imdb_id":"tt80002001","tvdb_id":702001}`, Valid: true}, WatchProviders: sql.NullString{String: `{"US":{"flatrate":[{"provider_id":8,"provider_name":"Netflix","logo_path":null}],"link":"https://example.invalid/watch"}}`, Valid: true}}, *metadata)
 
 	seasons, err := m.seriesMetaStorage.ListSeasonMetadataBySeriesMetadataID(ctx, metadata.ID)
 	require.NoError(t, err)
@@ -61,7 +60,7 @@ func TestFakeTMDBTVSearchMetadataHierarchyPersistence(t *testing.T) {
 		}
 		want := make([]sqlcdb.EpisodeMetadatum, 2)
 		for j := range want {
-			want[j] = sqlcdb.EpisodeMetadatum{SeasonMetadataID: season.ID, Number: int64(j + 1), TmdbID: ids[j], Title: "Episode " + strconv.Itoa(j+1), Overview: sql.NullString{String: "Synthetic episode " + strconv.Itoa(j+1) + ".", Valid: true}, AirDate: sql.NullTime{Time: time.Date(year, month, 11+j, 0, 0, 0, 0, time.UTC), Valid: true}, Runtime: sql.NullInt64{Int64: 43, Valid: true}, StillPath: sql.NullString{String: fmt.Sprintf("/synthetic/episodes/%d.jpg", ids[j]), Valid: true}}
+			want[j] = sqlcdb.EpisodeMetadatum{SeasonMetadataID: season.ID, Number: int64(j + 1), TmdbID: ids[j], Title: "Episode " + strconv.Itoa(j+1), Overview: sql.NullString{String: "Synthetic episode " + strconv.Itoa(j+1) + ".", Valid: true}, AirDate: sql.NullTime{Time: time.Date(year, month, 11+j, 0, 0, 0, 0, time.UTC), Valid: true}, Runtime: sql.NullInt64{Int64: 43, Valid: true}, StillPath: sql.NullString{String: "/zuW6fOiusv4X9nnW3paHGfXcSll.jpg", Valid: true}}
 		}
 		for j := range want {
 			want[j].ID = episodes[j].ID
@@ -88,12 +87,12 @@ func TestFakeTMDBTVSearchMetadataHierarchyPersistence(t *testing.T) {
 	detail, err := m.GetTVDetailByTMDBID(ctx, 2001)
 	require.NoError(t, err)
 	require.Equal(t, int64(2001), detail.TMDBID)
-	require.Equal(t, ptr.To("/synthetic/tv/2001-backdrop.jpg"), detail.BackdropPath)
+	require.Equal(t, ptr.To("/zuW6fOiusv4X9nnW3paHGfXcSll.jpg"), detail.BackdropPath)
 	require.Empty(t, detail.Networks) // The TV2001 fixture does not define networks.
 	require.Equal(t, []string{"Drama"}, detail.Genres)
 	require.Nil(t, detail.OriginalLanguage) // The TV2001 fixture does not define an original language.
 	require.Equal(t, ptr.To("Ended"), detail.Status)
-	require.Equal(t, []WatchProvider{{ProviderID: 8, Name: "Netflix", LogoPath: ptr.To("/synthetic/providers/netflix.jpg")}}, detail.WatchProviders)
+	require.Equal(t, []WatchProvider{{ProviderID: 8, Name: "Netflix", LogoPath: nil}}, detail.WatchProviders)
 	require.Equal(t, &ExternalIDs{ImdbID: ptr.To("tt80002001"), TvdbID: ptr.To(702001)}, detail.ExternalIDs)
 
 	requests := fake.Requests()

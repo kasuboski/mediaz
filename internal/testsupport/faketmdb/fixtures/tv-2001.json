@@ -1,5 +1,5 @@
 {
-  "backdrop_path": "/synthetic/tv/2001-backdrop.jpg",
+  "backdrop_path": "/zuW6fOiusv4X9nnW3paHGfXcSll.jpg",
   "first_air_date": "2018-09-01",
   "genres": [
     {
@@ -15,14 +15,14 @@
   "number_of_seasons": 2,
   "original_name": "Lanterns at Low Tide",
   "overview": "Synthetic ensemble series: Lanterns at Low Tide",
-  "poster_path": "/synthetic/tv/2001.jpg",
+  "poster_path": "/aOyE420zuFq9zWtEWjIccAiTrzU.jpg",
   "seasons": [
     {
       "air_date": "2018-01-15",
       "id": 20010,
       "name": "Specials",
       "overview": "Synthetic season.",
-      "poster_path": "/synthetic/seasons/20010.jpg",
+      "poster_path": "/aOyE420zuFq9zWtEWjIccAiTrzU.jpg",
       "season_number": 0
     },
     {
@@ -30,7 +30,7 @@
       "id": 20011,
       "name": "Season 1",
       "overview": "Synthetic season.",
-      "poster_path": "/synthetic/seasons/20011.jpg",
+      "poster_path": "/aOyE420zuFq9zWtEWjIccAiTrzU.jpg",
       "season_number": 1
     }
   ],

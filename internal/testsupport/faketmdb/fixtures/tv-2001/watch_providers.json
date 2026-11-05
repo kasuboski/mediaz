@@ -4,7 +4,6 @@
     "US": {
       "flatrate": [
         {
-          "logo_path": "/synthetic/providers/netflix.jpg",
           "provider_id": 8,
           "provider_name": "Netflix"
         }
